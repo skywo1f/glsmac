@@ -11,10 +11,10 @@ return {
 		const was_ready = player.is_ready();
 		if (was_ready != e.data.ready) {
 			player.set_ready(e.data.ready);
-			return {
-				was_ready: was_ready,
-			};
 		}
+		return {
+			was_ready: was_ready,
+		};
 	},
 
 	rollback: (e) => {
