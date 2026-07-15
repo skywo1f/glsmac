@@ -143,7 +143,7 @@ Engine::~Engine() {
 }
 
 int Engine::Run() {
-	int result = EXIT_SUCCESS;
+	m_exit_code = EXIT_SUCCESS;
 
 	// TODO: dynamic threadpool
 
@@ -194,14 +194,17 @@ int Engine::Run() {
 
 	}
 	catch ( std::runtime_error& e ) {
-		result = EXIT_FAILURE;
+		m_exit_code = EXIT_FAILURE;
 		m_error_handler->HandleError( e );
 	}
 
-	return result;
+	return m_exit_code.load();
 }
 
-void Engine::ShutDown() {
+void Engine::ShutDown( const int result ) {
+	if ( result != EXIT_SUCCESS ) {
+		m_exit_code = result;
+	}
 
 	m_is_shutting_down = true;
 }
