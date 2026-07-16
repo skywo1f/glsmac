@@ -373,6 +373,9 @@ Config::Config( const std::string& path )
 			m_debug_flags |= DF_GSE_ONLY | DF_GSE_PROMPT_JS;
 		}
 	);
+#endif
+
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	m_manager->AddRule(
 		"gse-tests", "Run GSE tests and exit", AH( this ) {
 			m_debug_flags |= DF_GSE_ONLY | DF_GSE_TESTS;
@@ -387,6 +390,7 @@ Config::Config( const std::string& path )
 			m_gse_tests_script = value;
 		}
 	);
+#endif
 
 #ifdef DEBUG
 	m_manager->AddRule(
@@ -411,8 +415,6 @@ Config::Config( const std::string& path )
 			m_debug_flags |= DF_QUICKSTART_MAP_DUMP;
 		}
 	);
-#endif
-
 #endif
 
 }
@@ -446,7 +448,7 @@ const std::string& Config::GetPrefix() const {
 	return m_prefix;
 }
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 const std::string Config::GetDebugPath() const {
 	return m_prefix + "debug/";
@@ -537,7 +539,7 @@ const uint16_t Config::GetMaxIPS() const {
 	return m_maxips;
 }
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 const bool Config::HasDebugFlag( const debug_flag_t flag ) const {
 	return m_debug_flags & flag;

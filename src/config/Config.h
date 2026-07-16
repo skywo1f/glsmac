@@ -56,7 +56,7 @@ CLASS( Config, common::Module )
 		LF_VERBOSE = 1 << 22,
 	};
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	enum debug_flag_t : uint16_t {
 		DF_NONE = 0,
 		DF_GDB = 1 << 0,
@@ -85,7 +85,7 @@ CLASS( Config, common::Module )
 
 	void SetSMACPath( const std::string& path ) const;
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	const std::string GetDebugPath() const; // to store debug stuff like dumps
 #endif
 
@@ -106,7 +106,7 @@ CLASS( Config, common::Module )
 	const std::string& GetWorldScript() const;
 	const uint16_t GetMaxIPS() const;
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 	const bool HasDebugFlag( const debug_flag_t flag ) const;
 	const std::string& GetQuickstartMapDump() const;
@@ -153,7 +153,7 @@ private:
 	std::string m_worldscript = "default";
 	uint16_t m_maxips = 500;
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 	uint16_t m_debug_flags = DF_NONE;
 	std::string m_quickstart_mapdump = "";

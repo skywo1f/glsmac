@@ -20,7 +20,7 @@
 
 #endif
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 #include "graphics/Null.h"
 #include "loader/font/Null.h"
@@ -29,7 +29,6 @@
 #include "input/Null.h"
 #include "audio/Null.h"
 
-#else
 #endif
 
 #include "logger/Stdout.h"
@@ -50,8 +49,10 @@
 #if defined( DEBUG ) || defined( FASTDEBUG )
 
 #include "task/gseprompt/GSEPrompt.h"
-#include "task/gsetests/GSETests.h"
+#endif
 
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
+#include "task/gsetests/GSETests.h"
 #endif
 
 #include "task/main/Main.h"
@@ -223,7 +224,7 @@ int main( const int argc, char* const argv[] ) {
 	network::simpletcp::SimpleTCP network;
 	scheduler::Simple scheduler;
 
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	if ( config.HasDebugFlag( config::Config::DF_GSE_ONLY ) ) {
 
 		loader::font::Null font_loader;
@@ -237,10 +238,12 @@ int main( const int argc, char* const argv[] ) {
 			NEWV( task, task::gsetests::GSETests );
 			scheduler.AddTask( task );
 		}
+#if defined( DEBUG ) || defined( FASTDEBUG )
 		else if ( config.HasDebugFlag( config::Config::DF_GSE_PROMPT_JS ) ) {
 			NEWV( task, task::gseprompt::GSEPrompt, "js" );
 			scheduler.AddTask( task );
 		}
+#endif
 
 		engine::Engine engine(
 			&config,

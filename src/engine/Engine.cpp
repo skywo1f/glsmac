@@ -78,7 +78,7 @@ Engine::Engine(
 	for ( const auto& logger : m_loggers ) {
 		t_main->AddModule( logger );
 	}
-#if defined( DEBUG ) || defined ( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	if ( !m_config->HasDebugFlag( config::Config::DF_GSE_ONLY ) )
 #endif
 	{

@@ -1,7 +1,13 @@
 IF ( CMAKE_CONFIGURATION_TYPES )
-	SET( SRC ${SRC}
-		$<$<OR:$<CONFIG:Debug>,$<CONFIG:FastDebug>>:${PWD}/GSETests.cpp>
-		PARENT_SCOPE )
+	IF ( BUILD_TESTING )
+		SET( SRC ${SRC}
+			${PWD}/GSETests.cpp
+			PARENT_SCOPE )
+	ELSE ()
+		SET( SRC ${SRC}
+			$<$<OR:$<CONFIG:Debug>,$<CONFIG:FastDebug>>:${PWD}/GSETests.cpp>
+			PARENT_SCOPE )
+	ENDIF ()
 ELSE ()
 	SET( SRC ${SRC}
 		${PWD}/GSETests.cpp
