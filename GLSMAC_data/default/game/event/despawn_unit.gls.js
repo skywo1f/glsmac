@@ -7,23 +7,37 @@ return {
 	},
 
 	apply: (e) => {
-		e.game.um.despawn_unit(e.data.unit);
+		const unit = e.data.unit;
+		const tile = unit.get_tile();
+		const backup = {
+			id: unit.id,
+			def: unit.def,
+			owner: unit.owner,
+			tile_x: tile.x,
+			tile_y: tile.y,
+			movement: unit.movement,
+			morale: unit.morale,
+			health: unit.health,
+			moved_this_turn: unit.moved_this_turn,
+		};
+		e.game.um.despawn_unit(unit);
 		return {
-			unit: e.data.unit,
+			unit: backup,
 		};
 	},
 
 	rollback: (e) => {
 		const u = e.applied.unit;
-		// TODO: make e.game.um.spawn_unit(u); possible
-		e.game.um.spawn_unit({
+		const unit = e.game.um.spawn_unit({
 			id: u.id,
 			def: u.def,
 			owner: e.game.get_player(u.owner),
-			tile: e.game.tm.get_tile(u.tile.x, u.tile.y),
+			tile: e.game.tm.get_tile(u.tile_x, u.tile_y),
 			morale: u.morale,
 			health: u.health,
 		});
+		unit.movement = u.movement;
+		unit.moved_this_turn = u.moved_this_turn;
 	},
 
 };

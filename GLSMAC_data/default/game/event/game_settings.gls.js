@@ -17,8 +17,12 @@ return {
 
 	apply: (e) => {
 		let old_settings = [];
+		let ready_states = [];
 		let settings = e.game.get_settings().global.map;
 		let changes = [];
+		for (player of e.game.get_players()) {
+			ready_states :+[player.id, player.is_ready()];
+		}
 		for (c of e.data.changes) {
 			if (c[0] == 'planet_size') {
 				const xy = #split(c[1], 'x');
@@ -43,6 +47,7 @@ return {
 		});
 		return {
 			old_settings: old_settings,
+			ready_states: ready_states,
 		};
 	},
 
@@ -52,7 +57,9 @@ return {
 			settings[c[0]] = c[1];
 		}
 
-		unready_players(e.game.get_players());
+		for (state of e.applied.ready_states) {
+			e.game.get_player(state[0]).set_ready(state[1]);
+		}
 
 		e.game.trigger('game_settings', {
 			settings: e.applied.old_settings

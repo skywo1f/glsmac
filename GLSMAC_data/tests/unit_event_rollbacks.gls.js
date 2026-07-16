@@ -1,0 +1,172 @@
+const despawn_unit = #include('../default/game/event/despawn_unit');
+const attack_unit = #include('../default/game/event/attack_unit');
+
+const owner = {id: 1};
+const attacker_tile = {x: 3, y: 4};
+const defender_tile = {x: 4, y: 4};
+
+const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => {
+	return {
+		id: id,
+		def: def,
+		owner: owner.id,
+		movement: movement,
+		morale: morale,
+		health: health,
+		moved_this_turn: moved_this_turn,
+		get_tile: () => {
+			return tile;
+		},
+	};
+};
+
+{
+	let active_unit = make_unit(10, 'MindWorms', attacker_tile, 0.75, 4, 0.6, true);
+	let spawn_data = null;
+	const game = {
+		um: {
+			despawn_unit: (unit) => {
+				test.assert(unit == active_unit);
+				active_unit = null;
+			},
+			spawn_unit: (data) => {
+				spawn_data = data;
+				active_unit = make_unit(data.id, data.def, data.tile, 9.0, data.morale, data.health, false);
+				return active_unit;
+			},
+		},
+		get_player: (id) => {
+			test.assert(id == owner.id);
+			return owner;
+		},
+		tm: {
+			get_tile: (x, y) => {
+				test.assert(x == attacker_tile.x);
+				test.assert(y == attacker_tile.y);
+				return attacker_tile;
+			},
+		},
+	};
+	const original = active_unit;
+	const event = {
+		game: game,
+		data: {unit: original},
+	};
+
+	event.applied = despawn_unit.apply(event);
+	test.assert(active_unit == null);
+	original.movement = 5.0;
+	original.health = 0.1;
+	original.moved_this_turn = false;
+	despawn_unit.rollback(event);
+	test.assert(spawn_data.id == 10);
+	test.assert(spawn_data.def == 'MindWorms');
+	test.assert(spawn_data.owner == owner);
+	test.assert(spawn_data.tile == attacker_tile);
+	test.assert(active_unit.movement == 0.75);
+	test.assert(active_unit.morale == 4);
+	test.assert(active_unit.health == 0.6);
+	test.assert(active_unit.moved_this_turn == true);
+}
+
+{
+	let attacker = make_unit(20, 'MindWorms', attacker_tile, 0.5, 3, 0.8, true);
+	let defender = make_unit(21, 'MindWorms', defender_tile, 1.0, 5, 0.9, false);
+	let active_attacker = attacker;
+	let active_defender = defender;
+	let animations = null;
+	let stopped_animation_id = 0;
+
+	const um = {
+		has_unit: (id) => {
+			if (id == attacker.id) {
+				return active_attacker != null;
+			}
+			return active_defender != null;
+		},
+		get_unit: (id) => {
+			if (id == attacker.id) {
+				return active_attacker;
+			}
+			return active_defender;
+		},
+		despawn_unit: (unit) => {
+			if (unit.id == attacker.id) {
+				active_attacker = null;
+			} else {
+				active_defender = null;
+			}
+		},
+		spawn_unit: (data) => {
+			const unit = make_unit(data.id, data.def, data.tile, 9.0, data.morale, data.health, false);
+			if (data.id == attacker.id) {
+				active_attacker = unit;
+			} else {
+				active_defender = unit;
+			}
+			return unit;
+		},
+	};
+	const game = {
+		um: um,
+		am: {
+			show_animations: (value) => {
+				animations = value;
+				return 73;
+			},
+			stop_animations: (id) => {
+				stopped_animation_id = id;
+			},
+		},
+		get_player: (id) => {
+			return owner;
+		},
+		tm: {
+			get_tile: (x, y) => {
+				if (x == attacker_tile.x && y == attacker_tile.y) {
+					return attacker_tile;
+				}
+				return defender_tile;
+			},
+		},
+		event: (name, data) => {
+			test.assert(name == 'despawn_unit');
+			um.despawn_unit(data.unit);
+		},
+	};
+	const event = {
+		game: game,
+		data: {
+			attacker: attacker,
+			defender: defender,
+		},
+		resolved: {
+			sequence: [
+				[true, 0.3],
+				[false, 0.2],
+			],
+			attacker_dead: true,
+			defender_dead: true,
+		},
+	};
+
+	event.applied = attack_unit.apply(event);
+	for (animation of animations) {
+		animation.oncomplete();
+	}
+	test.assert(active_attacker == null);
+	test.assert(active_defender == null);
+
+	attack_unit.rollback(event);
+	test.assert(stopped_animation_id == 73);
+	test.assert(active_attacker.id == 20);
+	test.assert(active_attacker.movement == 0.5);
+	test.assert(active_attacker.morale == 3);
+	test.assert(active_attacker.health == 0.8);
+	test.assert(active_attacker.moved_this_turn == true);
+	test.assert(active_defender.id == 21);
+	test.assert(active_defender.movement == 1.0);
+	test.assert(active_defender.morale == 5);
+	test.assert(active_defender.health == 0.9);
+	test.assert(active_defender.moved_this_turn == false);
+}
