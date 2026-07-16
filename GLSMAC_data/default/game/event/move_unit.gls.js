@@ -118,12 +118,13 @@ return {
 				tile: src_tile,
 				movement: movement,
 				moved_this_turn: unit.moved_this_turn,
-			}
+			},
+			movement_started: e.resolved.is_movement_successful,
 		};
 
 		let movement_cost = get_movement_cost(unit, src_tile, dst_tile) + get_movement_aftercost(unit, src_tile, dst_tile);
 
-		let next = () => {
+		const finish_movement = () => {
 			// reduce remaining movement points (even if failed)
 			if (movement >= movement_cost) {
 				unit.movement = movement - movement_cost;
@@ -134,9 +135,15 @@ return {
 		};
 
 		if (e.resolved.is_movement_successful) {
-			unit.move_to_tile(dst_tile, next);
+			unit.move_to_tile(dst_tile, finish_movement);
 		} else {
-			next();
+			// No native move is started on a failed roll, so update state synchronously.
+			if (movement >= movement_cost) {
+				unit.movement = movement - movement_cost;
+			} else {
+				unit.movement = 0.0;
+			}
+			unit.moved_this_turn = true;
 		}
 
 		return result;
@@ -146,10 +153,15 @@ return {
 
 		const unit = e.data.unit;
 		const orig = e.applied.orig;
-		unit.move_to_tile(orig.tile, () => {
+		if (e.applied.movement_started) {
+			unit.move_to_tile(orig.tile, () => {
+				unit.movement = orig.movement;
+				unit.moved_this_turn = orig.moved_this_turn;
+			});
+		} else {
 			unit.movement = orig.movement;
 			unit.moved_this_turn = orig.moved_this_turn;
-		});
+		}
 	},
 
 };

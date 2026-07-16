@@ -1,5 +1,6 @@
 const despawn_unit = #include('../default/game/event/despawn_unit');
 const attack_unit = #include('../default/game/event/attack_unit');
+const move_unit = #include('../default/game/event/move_unit');
 
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
@@ -67,6 +68,80 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_unit.morale == 4);
 	test.assert(active_unit.health == 0.6);
 	test.assert(active_unit.moved_this_turn == true);
+}
+
+{
+	const src_tile = {
+		is_land: true,
+		is_water: false,
+		features: {
+			river: false,
+			xenofungus: false,
+		},
+		rockiness: 0,
+	};
+	const dst_tile = {
+		is_land: true,
+		is_water: false,
+		features: {
+			river: false,
+			xenofungus: false,
+		},
+		rockiness: 0,
+	};
+	let current_tile = src_tile;
+	let move_calls = 0;
+	const unit = {
+		movement: 0.5,
+		moved_this_turn: false,
+		get_tile: () => {
+			return current_tile;
+		},
+		move_to_tile: (tile, oncomplete) => {
+			move_calls++;
+			current_tile = tile;
+			oncomplete();
+		},
+	};
+	const failed_event = {
+		data: {
+			unit: unit,
+			tile: dst_tile,
+		},
+		resolved: {
+			is_movement_successful: false,
+		},
+	};
+
+	failed_event.applied = move_unit.apply(failed_event);
+	test.assert(move_calls == 0);
+	test.assert(current_tile == src_tile);
+	test.assert(failed_event.applied.movement_started == false);
+	test.assert(failed_event.applied.orig.movement == 0.5);
+	test.assert(failed_event.applied.orig.moved_this_turn == false);
+	move_unit.rollback(failed_event);
+	test.assert(move_calls == 0);
+	test.assert(current_tile == src_tile);
+
+	unit.movement = 1.5;
+	const successful_event = {
+		data: {
+			unit: unit,
+			tile: dst_tile,
+		},
+		resolved: {
+			is_movement_successful: true,
+		},
+	};
+	successful_event.applied = move_unit.apply(successful_event);
+	test.assert(move_calls == 1);
+	test.assert(current_tile == dst_tile);
+	test.assert(successful_event.applied.movement_started == true);
+	test.assert(successful_event.applied.orig.movement == 1.5);
+	test.assert(successful_event.applied.orig.moved_this_turn == false);
+	move_unit.rollback(successful_event);
+	test.assert(move_calls == 2);
+	test.assert(current_tile == src_tile);
 }
 
 {
