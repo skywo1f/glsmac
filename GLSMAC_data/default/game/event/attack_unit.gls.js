@@ -157,6 +157,7 @@ return {
 		};
 
 		attacker.movement = 0.0; // TODO: rovers etc
+		attacker.moved_this_turn = true;
 
 		let animations = [];
 		for (step of e.resolved.sequence) {
@@ -206,7 +207,6 @@ return {
 	},
 
 	rollback: (e) => {
-		// TODO: test in multiplayer
 		const a = e.applied;
 		e.game.am.stop_animations(a.animations_id);
 		restore_unit(e, a.backup.attacker);

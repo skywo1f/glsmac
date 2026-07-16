@@ -145,7 +145,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 }
 
 {
-	let attacker = make_unit(20, 'MindWorms', attacker_tile, 0.5, 3, 0.8, true);
+	let attacker = make_unit(20, 'MindWorms', attacker_tile, 0.5, 3, 0.8, false);
 	let defender = make_unit(21, 'MindWorms', defender_tile, 1.0, 5, 0.9, false);
 	let active_attacker = attacker;
 	let active_defender = defender;
@@ -226,6 +226,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	};
 
 	event.applied = attack_unit.apply(event);
+	test.assert(event.applied.backup.attacker.moved_this_turn == false);
 	for (animation of animations) {
 		animation.oncomplete();
 	}
@@ -238,7 +239,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_attacker.movement == 0.5);
 	test.assert(active_attacker.morale == 3);
 	test.assert(active_attacker.health == 0.8);
-	test.assert(active_attacker.moved_this_turn == true);
+	test.assert(active_attacker.moved_this_turn == false);
 	test.assert(active_defender.id == 21);
 	test.assert(active_defender.movement == 1.0);
 	test.assert(active_defender.morale == 5);

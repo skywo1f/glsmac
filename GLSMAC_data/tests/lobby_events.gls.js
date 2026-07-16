@@ -166,3 +166,88 @@ game_settings.rollback(settings_event);
 test.assert(settings.global.map.size_x == 40);
 test.assert(settings.global.map.size_y == 20);
 test.assert(triggered_settings == [['planet_size', '40x20']]);
+
+const select_faction = #include('../default/game/event/select_faction');
+const factions = [
+	{id: 'GAIANS'},
+	{id: 'HIVE'},
+];
+let selected_factions = ['GAIANS', #undefined];
+let faction_updates = 0;
+const faction_players = [
+	{
+		id: 0,
+		get_faction: () => {
+			return #is_defined(selected_factions[0]) ? {id: selected_factions[0]} : #undefined;
+		},
+		set_faction_by_id: (id) => {
+			selected_factions[0] = id;
+		},
+		unset_faction: () => {
+			selected_factions[0] = #undefined;
+		},
+	},
+	{
+		id: 1,
+		get_faction: () => {
+			return #is_defined(selected_factions[1]) ? {id: selected_factions[1]} : #undefined;
+		},
+		set_faction_by_id: (id) => {
+			selected_factions[1] = id;
+		},
+		unset_faction: () => {
+			selected_factions[1] = #undefined;
+		},
+	},
+];
+const faction_game = {
+	is_started: () => {
+		return false;
+	},
+	get_fm: () => {
+		return {
+			list: () => {
+				return factions;
+			},
+		};
+	},
+	get_players: () => {
+		return faction_players;
+	},
+	get_player: (id) => {
+		return faction_players[id];
+	},
+	trigger: (name, data) => {
+		test.assert(name == 'player_update');
+		faction_updates++;
+	},
+};
+let faction_event = {
+	caller: 1,
+	game: faction_game,
+	data: {
+		faction: 'GAIANS',
+	},
+};
+
+test.assert(#is_defined(select_faction.validate(faction_event)));
+faction_event.data.faction = 'UNKNOWN';
+test.assert(#is_defined(select_faction.validate(faction_event)));
+faction_event.data.faction = 'HIVE';
+test.assert(!#is_defined(select_faction.validate(faction_event)));
+
+faction_event.applied = select_faction.apply(faction_event);
+test.assert(faction_event.applied.faction == 'RANDOM');
+test.assert(selected_factions[1] == 'HIVE');
+select_faction.rollback(faction_event);
+test.assert(!#is_defined(selected_factions[1]));
+
+selected_factions[1] = 'HIVE';
+faction_event.data.faction = 'RANDOM';
+test.assert(!#is_defined(select_faction.validate(faction_event)));
+faction_event.applied = select_faction.apply(faction_event);
+test.assert(faction_event.applied.faction == 'HIVE');
+test.assert(!#is_defined(selected_factions[1]));
+select_faction.rollback(faction_event);
+test.assert(selected_factions[1] == 'HIVE');
+test.assert(faction_updates == 4);

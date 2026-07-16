@@ -18,7 +18,7 @@ return {
 	},
 
 	rollback: (e) => {
-		#print('TODO: ADVANCE TURN ROLLBACK');
+		// Advance-turn events are host-authored and never applied speculatively.
 	},
 
 };

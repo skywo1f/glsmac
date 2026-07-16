@@ -1,5 +1,7 @@
 #include "Game.h"
 
+#include <algorithm>
+
 #include "engine/Engine.h"
 #include "types/Exception.h"
 #include "types/texture/Texture.h"
@@ -1625,26 +1627,43 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 	if ( m_state->IsMaster() ) {
 
 		// assign random factions to players
-		auto factions = m_state->GetFM()->GetAll();
-		std::vector< size_t > m_available_factions = {};
+		const auto factions = m_state->GetFM()->GetAll();
+		std::vector< size_t > available_factions = {};
+		available_factions.reserve( factions.size() );
+		for ( size_t i = 0 ; i < factions.size() ; i++ ) {
+			available_factions.push_back( i );
+		}
 		const auto& slots = m_state->m_slots->GetSlots();
 		for ( const auto& slot : slots ) {
 			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
-				auto* player = slot.GetPlayer();
+				auto* const player = slot.GetPlayer();
+				ASSERT( player, "player not set" );
+				if ( player->GetFaction() ) {
+					const auto selected = std::find( factions.begin(), factions.end(), player->GetFaction() );
+					if ( selected == factions.end() ) {
+						THROW( "Selected faction is not registered: " + player->GetFaction()->m_id );
+					}
+					const auto index = static_cast< size_t >( selected - factions.begin() );
+					const auto available = std::find( available_factions.begin(), available_factions.end(), index );
+					if ( available == available_factions.end() ) {
+						THROW( "Faction selected by multiple players: " + player->GetFaction()->m_id );
+					}
+					available_factions.erase( available );
+				}
+			}
+		}
+		for ( const auto& slot : slots ) {
+			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+				auto* const player = slot.GetPlayer();
 				ASSERT( player, "player not set" );
 				if ( !player->GetFaction() ) {
-					if ( m_available_factions.empty() ) {
-						// (re)load factions list
-						for ( size_t i = 0 ; i < factions.size() ; i++ ) {
-						//for ( const auto& faction : factions ) {
-							m_available_factions.push_back( i );
-						}
-						ASSERT( !m_available_factions.empty(), "no factions found" );
+					if ( available_factions.empty() ) {
+						THROW( "Not enough unique factions for all players" );
 					}
-					ASSERT( m_available_factions.size() <= UINT32_MAX, "too many factions" );
-					const auto it = m_available_factions.begin() + m_random->GetUInt( 0, (uint32_t)m_available_factions.size() - 1 );
+					ASSERT( available_factions.size() <= UINT32_MAX, "too many factions" );
+					const auto it = available_factions.begin() + m_random->GetUInt( 0, static_cast< uint32_t >( available_factions.size() ) - 1 );
 					player->SetFaction( factions.at( *it ) );
-					m_available_factions.erase( it );
+					available_factions.erase( it );
 				}
 			}
 		}
