@@ -74,6 +74,33 @@ IF ( BUILD_TESTING )
 		TIMEOUT 180
 		WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 	)
+
+	SET( GLSMAC_SMAC_PATH "" CACHE PATH "SMAC installation used by the optional runtime smoke test" )
+	IF ( GLSMAC_SMAC_PATH )
+		SET( RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "RUNTIME_SMOKE_FAIL"
+			PASS_REGULAR_EXPRESSION "RUNTIME_SMOKE_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+	ENDIF ()
 ENDIF ()
 
 # Some 32-bit targets implement 64-bit std::atomic operations in libatomic.
