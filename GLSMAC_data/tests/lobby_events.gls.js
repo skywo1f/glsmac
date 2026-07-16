@@ -113,15 +113,56 @@ const settings_event = {
 	},
 };
 
+const validation_game = {
+	is_started: () => {
+		return false;
+	},
+};
+const validate_change = (change) => {
+	return game_settings.validate({
+		caller: 0,
+		game: validation_game,
+		data: {
+			changes: [change],
+		},
+	});
+};
+
+test.assert(!#is_defined(validate_change(['planet_size', '64x32'])));
+test.assert(!#is_defined(validate_change(['ocean_coverage', 0.6])));
+test.assert(#is_defined(validate_change(['planet_size', '64'])));
+test.assert(#is_defined(validate_change(['planet_size', '3x4'])));
+test.assert(#is_defined(validate_change(['planet_size', '5x4'])));
+test.assert(#is_defined(validate_change(['planet_size', '180x92'])));
+test.assert(#is_defined(validate_change(['ocean_coverage', 2.0])));
+test.assert(#is_defined(validate_change(['unknown', 0.5])));
+
 settings_event.applied = game_settings.apply(settings_event);
 test.assert(settings.global.map.size_x == 64);
 test.assert(settings.global.map.size_y == 32);
 test.assert(player_ready[0] == false);
 test.assert(player_ready[1] == false);
 test.assert(triggered_settings[0][0] == 'planet_size');
+test.assert(triggered_settings[0][1] == '64x32');
 
 game_settings.rollback(settings_event);
 test.assert(settings.global.map.size_x == 40);
 test.assert(settings.global.map.size_y == 20);
 test.assert(player_ready[0] == true);
 test.assert(player_ready[1] == false);
+test.assert(triggered_settings == [['planet_size', '40x20']]);
+
+settings_event.data.changes = [
+	['planet_size', '64x32'],
+	['planet_size', '80x40'],
+];
+settings_event.applied = game_settings.apply(settings_event);
+test.assert(settings.global.map.size_x == 80);
+test.assert(settings.global.map.size_y == 40);
+test.assert(#sizeof(settings_event.applied.old_settings) == 2);
+test.assert(settings_event.applied.old_ui_settings == [['planet_size', '40x20']]);
+
+game_settings.rollback(settings_event);
+test.assert(settings.global.map.size_x == 40);
+test.assert(settings.global.map.size_y == 20);
+test.assert(triggered_settings == [['planet_size', '40x20']]);

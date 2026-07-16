@@ -207,10 +207,14 @@ Config::Config( const std::string& path )
 			}
 			m_quickstart_mapsize = ParseSize( value );
 			if (
-				m_quickstart_mapsize.x < 4 || m_quickstart_mapsize.y < 4 ||
-				( m_quickstart_mapsize.x & 1 ) || ( m_quickstart_mapsize.y & 1 )
+				m_quickstart_mapsize.x < game::backend::settings::MAP_MIN_DIMENSION ||
+				m_quickstart_mapsize.y < game::backend::settings::MAP_MIN_DIMENSION ||
+				( m_quickstart_mapsize.x & 1 ) || ( m_quickstart_mapsize.y & 1 ) ||
+				m_quickstart_mapsize.x > game::backend::settings::MAP_MAX_AREA ||
+				m_quickstart_mapsize.y > game::backend::settings::MAP_MAX_AREA ||
+				m_quickstart_mapsize.x * m_quickstart_mapsize.y > game::backend::settings::MAP_MAX_AREA
 			) {
-				Error( "Quickstart map width and height must be even numbers of at least 4" );
+				Error( "Quickstart map dimensions must be even numbers of at least 4 with area no larger than Huge Planet (180x90)" );
 			}
 			m_launch_flags |= LF_QUICKSTART_MAP_SIZE;
 		}

@@ -257,7 +257,7 @@ const std::string& Map::GetErrorString( const error_code_t& code ) {
 	static const std::unordered_map< error_code_t, const std::string > m_error_code_strings = {
 		{ EC_UNKNOWN,                "Unknown error" },
 		{ EC_MAPFILE_FORMAT_ERROR,   "Invalid map file format" },
-		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be positive even 32-bit values" }
+		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be even values of at least 4 with area no larger than Huge Planet (180x90)" }
 	};
 
 	auto it = m_error_code_strings.find( code );
@@ -690,16 +690,24 @@ const Map::error_code_t Map::Generate( settings::MapSettings* map_settings, MT_C
 			: random->GetFloat( 0.2, 0.8f );
 	}
 	if (
-		map_settings->size_x <= 0 || map_settings->size_y <= 0 ||
+		map_settings->size_x < settings::MAP_MIN_DIMENSION ||
+		map_settings->size_y < settings::MAP_MIN_DIMENSION ||
 		( map_settings->size_x & 1 ) || ( map_settings->size_y & 1 ) ||
 		map_settings->size_x > std::numeric_limits< uint32_t >::max() ||
-		map_settings->size_y > std::numeric_limits< uint32_t >::max()
+		map_settings->size_y > std::numeric_limits< uint32_t >::max() ||
+		map_settings->size_x > settings::MAP_MAX_AREA ||
+		map_settings->size_y > settings::MAP_MAX_AREA ||
+		static_cast< uint64_t >( map_settings->size_x ) * static_cast< uint64_t >( map_settings->size_y ) > settings::MAP_MAX_AREA
 	) {
 		return EC_INVALID_MAP_DIMENSIONS;
 	}
 	Log( "Generating map of size " + std::to_string( map_settings->size_x ) + "x" + std::to_string( map_settings->size_y ) );
 	ASSERT( !m_tiles, "tiles already set" );
-	NEW( m_tiles, tile::Tiles, this, map_settings->size_x, map_settings->size_y );
+	NEW(
+		m_tiles, tile::Tiles, this,
+		static_cast< uint32_t >( map_settings->size_x ),
+		static_cast< uint32_t >( map_settings->size_y )
+	);
 	generator.Generate( m_tiles, map_settings, MT_C );
 	if ( canceled ) {
 		Log( "Map generation canceled" );
