@@ -13,6 +13,10 @@
 #include "util/LogHelper.h"
 #include "config/WrappedConfig.h"
 
+#ifdef _WIN32
+#include "config/WindowsInstallPaths.h"
+#endif
+
 namespace config {
 
 void Config::Error( const std::string& error ) {
@@ -468,6 +472,10 @@ const std::vector< std::string > Config::GetPossibleSMACPaths() const {
 	if ( m_smac_path != "." ) {
 		result.push_back( "." );
 	}
+#ifdef _WIN32
+	const auto install_paths = GetWindowsSMACInstallPaths();
+	result.insert( result.end(), install_paths.begin(), install_paths.end() );
+#endif
 	return result;
 }
 

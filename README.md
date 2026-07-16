@@ -252,7 +252,7 @@ Wasn't tested. Feel free to test, but I have feeling it will require many change
 
 Just run GLSMAC	binary without arguments.
 
-If this is your first launch it will ask you for SMAC location and save it in profile. Just can also specify smac location on command line: ./GLSMAC --smacpath <smac_directory>
+On Windows, registered GOG and Steam installations are detected automatically. If no installation is found, the first launch asks for the SMAC location and saves it in the profile. You can also specify the location on the command line: ./GLSMAC --smacpath <smac_directory>
 
 You can also put `GLSMAC` file into your SMAC directory and it will detect SMAC installation.
 
