@@ -99,7 +99,7 @@ public:
 	virtual void SendMessage( const std::string& message ) = 0;
 
 protected:
-	const int DOWNLOAD_CHUNK_SIZE = 16384;
+	static constexpr size_t DOWNLOAD_CHUNK_SIZE = 16384;
 
 	network::Network* const m_network;
 
@@ -150,6 +150,7 @@ private:
 
 	void ProcessPending( const bool nosend );
 	void ClearPending();
+	void FinalizeStoppedNetwork();
 
 	gc::Space* const m_gc_space;
 

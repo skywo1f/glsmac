@@ -48,6 +48,7 @@ CLASS( Buffer, common::Class )
 	const void* ReadData( const uint32_t len );
 
 	const std::string ToString() const;
+	const uint32_t GetRemaining() const;
 
 private:
 

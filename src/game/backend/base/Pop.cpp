@@ -1,5 +1,7 @@
 #include "Pop.h"
 
+#include <limits>
+
 #include "game/backend/Game.h"
 #include "game/backend/base/Base.h"
 #include "game/backend/base/PopDef.h"
@@ -25,7 +27,7 @@ void Pop::Serialize( types::Buffer& buf ) const {
 	ASSERT( m_def, "pop def is null" );
 
 	buf.WriteInt( m_id );
-	buf.WriteString( m_def->m_name );
+	buf.WriteString( m_def->m_id );
 	buf.WriteInt( m_variant );
 }
 
@@ -36,10 +38,21 @@ void Pop::Deserialize( types::Buffer& buf, Game* game ) {
 	auto* bm = game->GetBM();
 	ASSERT( bm, "bm is null" );
 
-	m_id = buf.ReadInt();
-	m_def = bm->GetPopDef( buf.ReadString() );
-	ASSERT( m_def, "pop def not found" );
-	m_variant = buf.ReadInt();
+	const auto id = buf.ReadInt();
+	if ( id < 0 || static_cast< uint64_t >( id ) > std::numeric_limits< size_t >::max() ) {
+		THROW( "invalid serialized base population id: " + std::to_string( id ) );
+	}
+	m_id = static_cast< size_t >( id );
+	const auto def_id = buf.ReadString();
+	m_def = bm->GetPopDef( def_id );
+	if ( !m_def ) {
+		THROW( "base pop definition not found: " + def_id );
+	}
+	const auto variant = buf.ReadInt();
+	if ( variant < 0 || variant > std::numeric_limits< uint8_t >::max() ) {
+		THROW( "invalid serialized base population variant: " + std::to_string( variant ) );
+	}
+	m_variant = static_cast< uint8_t >( variant );
 }
 
 void Pop::SetBase( Base* const base ) {

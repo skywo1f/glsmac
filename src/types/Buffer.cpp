@@ -249,4 +249,9 @@ const std::string Buffer::ToString() const {
 		: "";
 }
 
+const uint32_t Buffer::GetRemaining() const {
+	ASSERT( lenr <= lenw, "buffer read position overflow" );
+	return lenw - lenr;
+}
+
 }

@@ -394,6 +394,7 @@ private:
 	turn::Turn m_current_turn = {};
 
 	bool m_is_turn_complete = false;
+	void RestoreTurn( const size_t turn_id );
 	void CheckTurnComplete();
 
 	std::unordered_map< std::string, event::EventHandler* > m_event_handlers = {};

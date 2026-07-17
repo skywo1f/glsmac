@@ -18,6 +18,7 @@ return (game) => {
 		'spawn_base',
 		'add_base_pop',
 		'remove_base_pop',
+		'process_base_growth',
 		'complete_turn',
 		'uncomplete_turn',
 		'advance_turn',

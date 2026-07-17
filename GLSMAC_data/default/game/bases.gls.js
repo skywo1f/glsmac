@@ -71,6 +71,9 @@ const process_growth = (game, base) => {
 	}
 	accumulated += get_pending_growth(base);
 	if (accumulated < 0) {
+		if (!game.is_master()) {
+			return;
+		}
 		let pop = null;
 		// try to remove non-worker pop first
 		for (p of base.get_pops()) {
@@ -110,6 +113,9 @@ const process_growth = (game, base) => {
 	}
 
 	if (grow) {
+		if (!game.is_master()) {
+			return;
+		}
 		const best_tile = (find_best_or_worst_tiles(base, base.get_unworked_tiles(), 1, 1))[0];
 		if (best_tile != null) {
 			// found tile to work, spawn worker
@@ -261,16 +267,19 @@ return (game) => {
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
 		game.set('f_base_reset_nutrients', reset_nutrients);
+		game.set('f_base_process_growth', process_growth);
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
 
 		// new turn, process all bases
 		game.on('turn', (e) => {
-			for (base of bm.get_bases()) {
-
-				process_growth(game, base);
-
+			if (game.is_master()) {
+				for (base of bm.get_bases()) {
+					game.event('process_base_growth', {
+						base: base,
+					});
+				}
 			}
 		});
 

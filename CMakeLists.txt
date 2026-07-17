@@ -100,6 +100,43 @@ IF ( BUILD_TESTING )
 			TIMEOUT 90
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
+
+		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
+		IF ( Python3_Interpreter_FOUND )
+			SET( MULTIPLAYER_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/multiplayer-runtime-smoke" )
+			ADD_TEST( NAME multiplayer_runtime_smoke COMMAND
+				"${Python3_EXECUTABLE}"
+				"${PROJECT_SOURCE_DIR}/tools/tests/multiplayer_smoke.py"
+				--executable "$<TARGET_FILE:${PROJECT_NAME}>"
+				--smac-path "${GLSMAC_SMAC_PATH}"
+				--output-dir "${MULTIPLAYER_TEST_OUTPUT_DIR}"
+				--workdir "${PROJECT_SOURCE_DIR}"
+				--timeout 90
+				--malformed-probes
+				--exercise-reconnect
+			)
+			SET_TESTS_PROPERTIES( multiplayer_runtime_smoke PROPERTIES
+				RUN_SERIAL TRUE
+				TIMEOUT 150
+				WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+			)
+
+			SET( RUNNING_RECONNECT_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/running-reconnect-smoke" )
+			ADD_TEST( NAME running_reconnect_smoke COMMAND
+				"${Python3_EXECUTABLE}"
+				"${PROJECT_SOURCE_DIR}/tools/tests/running_reconnect_smoke.py"
+				--executable "$<TARGET_FILE:${PROJECT_NAME}>"
+				--smac-path "${GLSMAC_SMAC_PATH}"
+				--output-dir "${RUNNING_RECONNECT_TEST_OUTPUT_DIR}"
+				--workdir "${PROJECT_SOURCE_DIR}"
+				--timeout 90
+			)
+			SET_TESTS_PROPERTIES( running_reconnect_smoke PROPERTIES
+				RUN_SERIAL TRUE
+				TIMEOUT 180
+				WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+			)
+		ENDIF ()
 	ENDIF ()
 ENDIF ()
 

@@ -313,6 +313,12 @@ void Game::Iterate() {
 				if ( m_game_state == GS_RUNNING ) {
 					ProcessEvents();
 					CheckTurnComplete();
+					if ( !m_state->IsMaster() && m_current_turn.GetId() > 0 ) {
+						SetTurnStatus( m_is_turn_complete
+							? turn::TS_TURN_COMPLETE
+							: turn::TS_TURN_ACTIVE
+						);
+					}
 				}
 
 			});
@@ -1261,14 +1267,12 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 			m_bm->RefreshBase( base );
 		}
 
-		if ( m_state->IsMaster() ) {
-			m_state->TriggerObject( this, "turn", ARGS_F( this ) {
-				{
-					"year",
-					VALUE( gse::value::Int,, m_current_turn.GetId() + 2100 /* TODO: better way to define starting year? */ ),
-				},
-			}; } );
-		}
+		m_state->TriggerObject( this, "turn", ARGS_F( this ) {
+			{
+				"year",
+				VALUE( gse::value::Int,, m_current_turn.GetId() + 2100 /* TODO: better way to define starting year? */ ),
+			},
+		}; } );
 	});
 
 	for ( const auto& slot : m_state->m_slots->GetSlots() ) {
@@ -1283,6 +1287,16 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 		SetTurnStatus( turn::TS_TURN_ACTIVE );
 	}
 
+}
+
+void Game::RestoreTurn( const size_t turn_id ) {
+	m_current_turn.AdvanceTurn( turn_id );
+	m_is_turn_complete = false;
+	MTModule::Log( "Turn restored: " + std::to_string( turn_id ) );
+
+	auto fr = FrontendRequest( FrontendRequest::FR_TURN_ADVANCE );
+	fr.data.turn_advance.turn_id = turn_id;
+	AddFrontendRequest( fr );
 }
 
 void Game::GlobalFinalizeTurn( GSE_CALLABLE ) {
@@ -1951,7 +1965,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 								const auto turn_id = buf.ReadInt();
 								if ( turn_id > 0 ) {
 									MTModule::Log( "Received turn ID: " + std::to_string( turn_id ) );
-									AdvanceTurn( turn_id );
+									RestoreTurn( turn_id );
 								}
 
 								m_game_state = GS_INITIALIZING;

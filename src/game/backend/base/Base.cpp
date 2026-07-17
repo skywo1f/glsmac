@@ -1,5 +1,7 @@
 #include "Base.h"
 
+#include <limits>
+
 #include "gse/context/Context.h"
 #include "gse/value/Object.h"
 #include "gse/value/Int.h"
@@ -24,6 +26,8 @@
 namespace game {
 namespace backend {
 namespace base {
+
+static constexpr size_t MAX_SERIALIZED_POPS = 1024;
 
 static size_t next_id = 1;
 const size_t Base::GetNextId() {
@@ -124,11 +128,28 @@ Base* Base::Deserialize( types::Buffer& buf, Game* game ) {
 	const auto name = buf.ReadString();
 	pops_t pops = {};
 	const auto pops_count = buf.ReadInt();
-	for ( size_t i = 0 ; i < pops_count ; i++ ) {
+	if ( pops_count < 0 || pops_count > MAX_SERIALIZED_POPS ) {
+		THROW( "invalid serialized base population count: " + std::to_string( pops_count ) );
+	}
+	for ( size_t i = 0 ; i < static_cast< size_t >( pops_count ) ; i++ ) {
 		const auto pop_id = buf.ReadInt();
+		if ( pop_id < 0 || static_cast< uint64_t >( pop_id ) > std::numeric_limits< size_t >::max() ) {
+			THROW( "invalid serialized base population id: " + std::to_string( pop_id ) );
+		}
 		Pop pop = {};
 		pop.Deserialize( buf, game );
-		pops.insert_or_assign( pop_id, pop );
+		if ( pop.m_id != static_cast< size_t >( pop_id ) ) {
+			THROW( "serialized base population id mismatch" );
+		}
+		if ( !pops.emplace( pop.m_id, pop ).second ) {
+			THROW( "duplicate serialized base population id: " + std::to_string( pop.m_id ) );
+		}
+		const auto& renders = ( faction->m_flags & faction::Faction::FF_PROGENITOR )
+			? pop.m_def->m_renders_progenitor
+			: pop.m_def->m_renders_human;
+		if ( pop.m_variant >= renders.size() ) {
+			THROW( "serialized base population variant is unavailable" );
+		}
 	}
 	const auto next_pop_id = buf.ReadInt();
 	return new Base( game, id, slot, faction, tile, name, pops, next_pop_id );

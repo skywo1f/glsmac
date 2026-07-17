@@ -205,6 +205,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteString( m_faction->Serialize().ToString() );
 	}
 	buf.WriteString( m_difficulty_level );
+	buf.WriteBool( m_is_turn_completed );
 
 	return buf;
 }
@@ -219,6 +220,7 @@ void Player::Deserialize( types::Buffer buf ) {
 		m_faction->Deserialize( buf.ReadString() );
 	}
 	m_difficulty_level = buf.ReadString();
+	m_is_turn_completed = buf.ReadBool();
 
 }
 
