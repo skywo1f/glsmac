@@ -13,6 +13,7 @@ return (game) => {
 		'despawn_unit',
 		'move_unit',
 		'attack_unit',
+		'advance_unit_after_combat',
 		'unit_skip_turn',
 		'define_base_pop',
 		'spawn_base',

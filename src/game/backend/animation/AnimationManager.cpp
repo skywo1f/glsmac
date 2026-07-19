@@ -258,12 +258,16 @@ WRAPIMPL_BEGIN( AnimationManager )
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( animations_id, 0, Int );
 
+				AnimationSequence* sequence = nullptr;
 				{
 					std::lock_guard guard( m_animation_sequences_mutex );
 					const auto& it = m_animation_sequences.find( animations_id );
 					if ( it != m_animation_sequences.end() ) {
-						it->second->Abort();
+						sequence = it->second;
 					}
+				}
+				if ( sequence ) {
+					sequence->Abort();
 				}
 
 				return VALUE( gse::value::Undefined );
@@ -356,7 +360,9 @@ void AnimationManager::Serialize( types::Buffer& buf ) const {
 		buf.WriteString( animation::Def::Serialize( it.second ).ToString() );
 	}
 	buf.WriteInt( m_next_running_animation_id );
+	buf.WriteInt( m_next_animation_sequence_id );
 	Log( "Saved next animation id: " + std::to_string( m_next_running_animation_id ) );
+	Log( "Saved next animation sequence id: " + std::to_string( m_next_animation_sequence_id ) );
 }
 
 void AnimationManager::Deserialize( types::Buffer& buf ) {
@@ -387,6 +393,10 @@ void AnimationManager::Deserialize( types::Buffer& buf ) {
 	if ( next_running_animation_id == ( std::numeric_limits< size_t >::max )() ) {
 		THROW( "serialized next running animation id cannot be incremented" );
 	}
+	const auto next_animation_sequence_id = buf.ReadInt< size_t >( "next animation sequence id" );
+	if ( next_animation_sequence_id == 0 ) {
+		THROW( "serialized next animation sequence id is zero" );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized animation manager" );
 	}
@@ -395,7 +405,9 @@ void AnimationManager::Deserialize( types::Buffer& buf ) {
 		DefineAnimation( definition.release() );
 	}
 	m_next_running_animation_id = next_running_animation_id;
+	m_next_animation_sequence_id = next_animation_sequence_id;
 	Log( "Restored next animation id: " + std::to_string( m_next_running_animation_id ) );
+	Log( "Restored next animation sequence id: " + std::to_string( m_next_animation_sequence_id ) );
 }
 
 const size_t AnimationManager::AddAnimationCallback( const cb_oncomplete& on_complete ) {

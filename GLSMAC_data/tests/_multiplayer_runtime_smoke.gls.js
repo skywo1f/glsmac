@@ -155,6 +155,9 @@
 				if (tile == source || tile == movement_target || tile.is_locked()) {
 					continue;
 				}
+				if (tile.get_base() != null) {
+					continue;
+				}
 				if (unit.is_land && tile.is_water) {
 					continue;
 				}
@@ -303,6 +306,17 @@
 		const run_client_combat_probe = () => {
 			let phase = 'wait_for_defender';
 			let wait_ticks = 0;
+			const mark_immediate_combat_complete = () => {
+				if (!client_immediate_combat_probe_complete) {
+					client_immediate_combat_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_IMMEDIATE_COMBAT_PASS_CLIENT');
+				}
+			};
+			const finish_combat_probe = () => {
+				client_combat_probe_complete = true;
+				#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
+				game.event('complete_turn', {});
+			};
 			#async(100, () => {
 				wait_ticks++;
 				if (phase == 'wait_for_defender') {
@@ -316,39 +330,40 @@
 						phase = 'wait_for_combat_apply';
 					}
 				}
-				else if (phase == 'wait_for_combat_apply') {
-					if (
-						!game.get_um().has_unit(client_movement_unit_id) ||
-						!game.get_um().has_unit(combat_defender_id)
-					) {
-						client_immediate_combat_probe_complete = true;
-						client_combat_probe_complete = true;
-						#print('MULTIPLAYER_SMOKE_IMMEDIATE_COMBAT_PASS_CLIENT');
-						#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
-						game.event('complete_turn', {});
+				else {
+					const attacker_exists = game.get_um().has_unit(client_movement_unit_id);
+					const defender_exists = game.get_um().has_unit(combat_defender_id);
+					if (!attacker_exists) {
+						mark_immediate_combat_complete();
+						finish_combat_probe();
 						return false;
 					}
-					const attacker = game.get_um().get_unit(client_movement_unit_id);
-					const defender = game.get_um().get_unit(combat_defender_id);
-					if (attacker.movement == 0.0) {
-						if (attacker.health > 0.0 && defender.health > 0.0) {
-							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat state waited for animation completion');
-							glsmac.exit();
+					if (!defender_exists) {
+						mark_immediate_combat_complete();
+						const attacker_tile = game.get_um().get_unit(client_movement_unit_id).get_tile();
+						if (
+							attacker_tile.x == client_combat_target_x &&
+							attacker_tile.y == client_combat_target_y
+						) {
+							#print('MULTIPLAYER_SMOKE_POST_COMBAT_ADVANCE_PASS_CLIENT');
+							finish_combat_probe();
 							return false;
 						}
-						client_immediate_combat_probe_complete = true;
-						#print('MULTIPLAYER_SMOKE_IMMEDIATE_COMBAT_PASS_CLIENT');
-						phase = 'combat';
+						phase = 'wait_for_post_combat_advance';
 					}
-				}
-				else if (
-					!game.get_um().has_unit(client_movement_unit_id) ||
-					!game.get_um().has_unit(combat_defender_id)
-				) {
-					client_combat_probe_complete = true;
-					#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
-					game.event('complete_turn', {});
-					return false;
+					else if (phase == 'wait_for_combat_apply') {
+						const attacker = game.get_um().get_unit(client_movement_unit_id);
+						const defender = game.get_um().get_unit(combat_defender_id);
+						if (attacker.movement == 0.0) {
+							if (attacker.health > 0.0 && defender.health > 0.0) {
+								#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat state waited for animation completion');
+								glsmac.exit();
+								return false;
+							}
+							mark_immediate_combat_complete();
+							phase = 'combat';
+						}
+					}
 				}
 				if (wait_ticks >= 200) {
 					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat probe timed out in ' + phase);
@@ -569,8 +584,8 @@
 				if (client_unit != null) {
 					client_unit_invalid =
 						client_unit.owner != client_player_id ||
-						client_unit.get_tile().x != client_movement_target_x ||
-						client_unit.get_tile().y != client_movement_target_y;
+						client_unit.get_tile().x != client_combat_target_x ||
+						client_unit.get_tile().y != client_combat_target_y;
 				}
 				let combat_defender_invalid = false;
 				if (combat_defender != null) {

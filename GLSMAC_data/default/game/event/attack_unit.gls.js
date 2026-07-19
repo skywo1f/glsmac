@@ -136,7 +136,7 @@ return {
 				damage_sequence [] = [true, damage];
 				defender_health -= damage;
 			}
-			if (defence_roll >= attack_roll) {
+			else {
 				let damage = #min(attacker_health, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
 				damage_sequence [] = [false, damage];
 				attacker_health -= damage;
@@ -187,10 +187,22 @@ return {
 			};
 		}
 		if (e.resolved.defender_dead) {
-			animations :+{
+			let death_animation = {
 				id: 'DEATH_PSI',
 				tile: defender_tile,
 			};
+			if (!e.resolved.attacker_dead) {
+				death_animation.oncomplete = () => {
+					if (e.game.is_master()) {
+						e.game.event('advance_unit_after_combat', {
+							unit: attacker,
+							tile: defender_tile,
+							animations_id: applied.animations_id,
+						});
+					}
+				};
+			}
+			animations :+death_animation;
 		}
 
 		applied.animations_id = e.game.am.show_animations(animations);

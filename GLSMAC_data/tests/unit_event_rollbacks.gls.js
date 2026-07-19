@@ -1,5 +1,6 @@
 const despawn_unit = #include('../default/game/event/despawn_unit');
 const attack_unit = #include('../default/game/event/attack_unit');
+const advance_unit_after_combat = #include('../default/game/event/advance_unit_after_combat');
 const move_unit = #include('../default/game/event/move_unit');
 
 const owner = {id: 1};
@@ -20,6 +21,37 @@ test.assert(
 		},
 	}) == 'Unit cannot attack a friendly unit'
 );
+
+{
+	const random_values = [0.5, 0.5, 0.1];
+	let random_index = 0;
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					return random_values[random_index++];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 3,
+				health: 0.1,
+				is_land: false,
+			},
+			defender: {
+				morale: 3,
+				health: 0.1,
+				is_land: false,
+			},
+		},
+	});
+	test.assert(random_index == 3);
+	test.assert(#sizeof(resolved.sequence) == 1);
+	test.assert(resolved.sequence[0][0] == true);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
 
 const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => {
 	return {
@@ -170,6 +202,96 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 }
 
 {
+	let current_tile = null;
+	let destination_units = [];
+	let destination_base = null;
+	let move_calls = 0;
+	let stopped_animations_id = 0;
+	let tiles_locked = true;
+	const src_tile = {
+		is_land: true,
+		is_water: false,
+		is_locked: () => {
+			return tiles_locked;
+		},
+		is_adjactent_to: (tile) => {
+			return true;
+		},
+	};
+	const dst_tile = {
+		is_land: true,
+		is_water: false,
+		is_locked: () => {
+			return tiles_locked;
+		},
+		get_base: () => {
+			return destination_base;
+		},
+		get_units: () => {
+			return destination_units;
+		},
+	};
+	current_tile = src_tile;
+	const unit = {
+		owner: owner.id,
+		health: 0.8,
+		is_land: true,
+		is_water: false,
+		movement: 0.0,
+		moved_this_turn: true,
+		get_tile: () => {
+			return current_tile;
+		},
+		move_to_tile: (tile, oncomplete) => {
+			test.assert(tiles_locked == false);
+			move_calls++;
+			current_tile = tile;
+			oncomplete();
+		},
+	};
+	const event = {
+		caller: 0,
+		game: {
+			am: {
+				stop_animations: (id) => {
+					stopped_animations_id = id;
+					tiles_locked = false;
+				},
+			},
+		},
+		data: {
+			unit: unit,
+			tile: dst_tile,
+			animations_id: 73,
+		},
+	};
+
+	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
+	event.caller = owner.id;
+	test.assert(#is_defined(advance_unit_after_combat.validate(event)));
+	event.caller = 0;
+	destination_units = [{owner: 2, health: 1.0}];
+	test.assert(#is_defined(advance_unit_after_combat.validate(event)));
+	destination_units = [{owner: 2, health: 0.0}];
+	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
+	destination_units = [];
+	destination_base = {};
+	test.assert(#is_defined(advance_unit_after_combat.validate(event)));
+	destination_base = null;
+
+	event.applied = advance_unit_after_combat.apply(event);
+	test.assert(event.applied.orig_tile == src_tile);
+	test.assert(stopped_animations_id == 73);
+	test.assert(current_tile == dst_tile);
+	test.assert(move_calls == 1);
+	test.assert(unit.movement == 0.0);
+	test.assert(unit.moved_this_turn == true);
+	advance_unit_after_combat.rollback(event);
+	test.assert(current_tile == src_tile);
+	test.assert(move_calls == 2);
+}
+
+{
 	let attacker = make_unit(20, 'MindWorms', attacker_tile, 0.5, 3, 0.8, false);
 	let defender = make_unit(21, 'MindWorms', defender_tile, 1.0, 5, 0.9, false);
 	let active_attacker = attacker;
@@ -178,6 +300,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let stopped_animation_id = 0;
 	let is_master = false;
 	let despawn_requests = 0;
+	let advance_requests = 0;
+	let advance_data = null;
 
 	const um = {
 		has_unit: (id) => {
@@ -235,9 +359,15 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			},
 		},
 		event: (name, data) => {
-			test.assert(name == 'despawn_unit');
-			despawn_requests++;
-			um.despawn_unit(data.unit);
+			if (name == 'despawn_unit') {
+				despawn_requests++;
+				um.despawn_unit(data.unit);
+			}
+			else {
+				test.assert(name == 'advance_unit_after_combat');
+				advance_requests++;
+				advance_data = data;
+			}
 		},
 	};
 	const event = {
@@ -289,6 +419,27 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(despawn_requests == 2);
 	test.assert(active_attacker == null);
 	test.assert(active_defender == null);
+	attack_unit.rollback(event);
+	test.assert(active_attacker.health == 0.8);
+	test.assert(active_defender.health == 0.9);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.resolved = {
+		sequence: [[true, 0.9]],
+		attacker_dead: false,
+		defender_dead: true,
+	};
+	event.applied = attack_unit.apply(event);
+	test.assert(despawn_requests == 3);
+	test.assert(#sizeof(animations) == 2);
+	test.assert(#is_defined(animations[1].oncomplete));
+	test.assert(advance_requests == 0);
+	animations[1].oncomplete();
+	test.assert(advance_requests == 1);
+	test.assert(advance_data.unit == active_attacker);
+	test.assert(advance_data.tile == defender_tile);
+	test.assert(advance_data.animations_id == 73);
 	attack_unit.rollback(event);
 	test.assert(active_attacker.health == 0.8);
 	test.assert(active_defender.health == 0.9);
