@@ -60,6 +60,36 @@ void Pop::SetBase( Base* const base ) {
 	m_base = base;
 }
 
+WRAPIMPL_SERIALIZE( Pop )
+	if ( !obj->m_base ) {
+		THROW( "pop base is null" );
+	}
+	buf->WriteInt( obj->m_base->m_id );
+	buf->WriteInt( obj->m_id );
+}
+
+WRAPIMPL_DESERIALIZE( Pop )
+	const auto base_id = buf->ReadInt();
+	const auto pop_id = buf->ReadInt();
+	if (
+		base_id < 0 ||
+		pop_id < 0 ||
+		static_cast< uint64_t >( base_id ) > std::numeric_limits< size_t >::max() ||
+		static_cast< uint64_t >( pop_id ) > std::numeric_limits< size_t >::max()
+	) {
+		THROW( "invalid base population reference" );
+	}
+	auto* const base = game->GetBM()->GetBase( static_cast< size_t >( base_id ) );
+	if ( !base ) {
+		THROW( "base population reference has unknown base: " + std::to_string( base_id ) );
+	}
+	const auto it = base->m_pops.find( static_cast< size_t >( pop_id ) );
+	if ( it == base->m_pops.end() ) {
+		THROW( "base population reference has unknown population: " + std::to_string( pop_id ) );
+	}
+	return it->second.Wrap( GSE_CALL );
+}
+
 WRAPIMPL_BEGIN( Pop )
 	WRAPIMPL_PROPS
 	WRAPIMPL_CUSTOM_SETTERS

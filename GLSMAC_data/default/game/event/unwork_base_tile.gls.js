@@ -8,6 +8,12 @@ return {
 		if (!#is_defined(work_pop)) {
 			return 'Tile is not being worked';
 		}
+		if (!e.data.base.is_tile_worked(e.data.tile)) {
+			return 'Tile is not worked by this base';
+		}
+		if (work_pop.get_base() != e.data.base) {
+			return 'Tile population does not belong to this base';
+		}
 	},
 
 	apply: (e) => {
