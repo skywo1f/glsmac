@@ -30,6 +30,7 @@
 #include "gse/value/String.h"
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
+#include "game/backend/map/tile/Tile.h"
 
 namespace gse {
 namespace tests {
@@ -40,6 +41,71 @@ void AddTests( task::gsetests::GSETests* task ) {
 		task->AddTest(
 			"test if tests work",
 			GT() {
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"tile serialization round trip",
+			GT() {
+				using namespace game::backend::map::tile;
+
+				Tile source;
+				elevation_t source_center = 0;
+				elevation_t source_left = -1200;
+				elevation_t source_top = -300;
+				elevation_t source_right = 700;
+				elevation_t source_bottom = 1800;
+				source.elevation.center = &source_center;
+				source.elevation.left = &source_left;
+				source.elevation.top = &source_top;
+				source.elevation.right = &source_right;
+				source.elevation.bottom = &source_bottom;
+				source.elevation.corners = {
+					&source_left,
+					&source_top,
+					&source_right,
+					&source_bottom,
+				};
+				source.coord = { 6, 3 };
+				source.moisture = MOISTURE_RAINY;
+				source.rockiness = ROCKINESS_ROCKY;
+				source.bonus = BONUS_MINERALS;
+				source.features = FEATURE_RIVER | FEATURE_XENOFUNGUS;
+				source.terraforming = TERRAFORMING_ROAD | TERRAFORMING_FARM;
+				source.Update();
+
+				Tile restored;
+				elevation_t restored_center = ELEVATION_MIN;
+				elevation_t restored_left = ELEVATION_MIN;
+				elevation_t restored_top = ELEVATION_MIN;
+				elevation_t restored_right = ELEVATION_MIN;
+				elevation_t restored_bottom = ELEVATION_MIN;
+				restored.elevation.center = &restored_center;
+				restored.elevation.left = &restored_left;
+				restored.elevation.top = &restored_top;
+				restored.elevation.right = &restored_right;
+				restored.elevation.bottom = &restored_bottom;
+				restored.elevation.corners = {
+					&restored_left,
+					&restored_top,
+					&restored_right,
+					&restored_bottom,
+				};
+				restored.Deserialize( source.Serialize() );
+
+				GT_ASSERT( restored.coord.x == source.coord.x, "tile x coordinate changed" );
+				GT_ASSERT( restored.coord.y == source.coord.y, "tile y coordinate changed" );
+				GT_ASSERT( restored_center == source_center, "tile center elevation changed" );
+				GT_ASSERT( restored_left == source_left, "tile left elevation changed" );
+				GT_ASSERT( restored_top == source_top, "tile top elevation changed" );
+				GT_ASSERT( restored_right == source_right, "tile right elevation changed" );
+				GT_ASSERT( restored_bottom == source_bottom, "tile bottom elevation changed" );
+				GT_ASSERT( restored.moisture == source.moisture, "tile moisture changed" );
+				GT_ASSERT( restored.rockiness == source.rockiness, "tile rockiness changed" );
+				GT_ASSERT( restored.bonus == source.bonus, "tile bonus changed" );
+				GT_ASSERT( restored.features == source.features, "tile features changed" );
+				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
+				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
 				GT_OK();
 			}
 		);
