@@ -290,9 +290,11 @@ WRAPIMPL_SERIALIZE( Base )
 }
 
 WRAPIMPL_DESERIALIZE( Base )
-	const auto id = buf->ReadInt();
+	const auto id = buf->ReadInt< size_t >( "base reference id" );
 	const auto& base = game->GetBM()->GetBase( id );
-	ASSERT( base, "base id not found: " + std::to_string( id ) );
+	if ( !base ) {
+		THROW( "base id not found: " + std::to_string( id ) );
+	}
 	return base->Wrap( GSE_CALL );
 }
 

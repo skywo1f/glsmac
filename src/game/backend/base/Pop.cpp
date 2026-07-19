@@ -1,7 +1,5 @@
 #include "Pop.h"
 
-#include <limits>
-
 #include "game/backend/Game.h"
 #include "game/backend/base/Base.h"
 #include "game/backend/base/PopDef.h"
@@ -152,21 +150,13 @@ WRAPIMPL_SERIALIZE( Pop )
 }
 
 WRAPIMPL_DESERIALIZE( Pop )
-	const auto base_id = buf->ReadInt();
-	const auto pop_id = buf->ReadInt();
-	if (
-		base_id < 0 ||
-		pop_id < 0 ||
-		static_cast< uint64_t >( base_id ) > std::numeric_limits< size_t >::max() ||
-		static_cast< uint64_t >( pop_id ) > std::numeric_limits< size_t >::max()
-	) {
-		THROW( "invalid base population reference" );
-	}
-	auto* const base = game->GetBM()->GetBase( static_cast< size_t >( base_id ) );
+	const auto base_id = buf->ReadInt< size_t >( "base population reference base id" );
+	const auto pop_id = buf->ReadInt< size_t >( "base population reference id" );
+	auto* const base = game->GetBM()->GetBase( base_id );
 	if ( !base ) {
 		THROW( "base population reference has unknown base: " + std::to_string( base_id ) );
 	}
-	const auto it = base->m_pops.find( static_cast< size_t >( pop_id ) );
+	const auto it = base->m_pops.find( pop_id );
 	if ( it == base->m_pops.end() ) {
 		THROW( "base population reference has unknown population: " + std::to_string( pop_id ) );
 	}

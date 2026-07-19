@@ -267,8 +267,19 @@ WRAPIMPL_SERIALIZE( Player )
 }
 
 WRAPIMPL_DESERIALIZE( Player )
-	const auto slot_num = buf->ReadInt();
-	const auto& player = game->GetState()->m_slots->GetSlot( slot_num ).GetPlayer();
+	const auto slot_num = buf->ReadInt< size_t >( "player reference slot" );
+	auto* const slots = game->GetState()->m_slots;
+	if ( slot_num >= slots->GetCount() ) {
+		THROW( "player reference slot is out of bounds: " + std::to_string( slot_num ) );
+	}
+	auto& player_slot = slots->GetSlot( slot_num );
+	if ( player_slot.GetState() != slot::Slot::SS_PLAYER ) {
+		THROW( "player reference points to an empty slot: " + std::to_string( slot_num ) );
+	}
+	auto* const player = player_slot.GetPlayer();
+	if ( !player ) {
+		THROW( "player reference points to a slot without a player: " + std::to_string( slot_num ) );
+	}
 	return player->Wrap( GSE_CALL );
 }
 

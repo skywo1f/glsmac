@@ -323,38 +323,54 @@ const types::Buffer Tiles::Serialize() const {
 
 void Tiles::Deserialize( types::Buffer buf ) {
 
-	const auto width = buf.ReadInt();
-	const auto height = buf.ReadInt();
+	const auto width = buf.ReadInt< uint32_t >( "map width" );
+	const auto height = buf.ReadInt< uint32_t >( "map height" );
+	const auto area = static_cast< uint64_t >( width ) * height;
 	if (
-		width <= 0 ||
-		height <= 0 ||
-		static_cast< uint64_t >( width ) > settings::MAP_MAX_AREA ||
-		static_cast< uint64_t >( height ) > settings::MAP_MAX_AREA ||
-		static_cast< uint64_t >( width ) * static_cast< uint64_t >( height ) > settings::MAP_MAX_AREA
+		width < settings::MAP_MIN_DIMENSION ||
+		height < settings::MAP_MIN_DIMENSION ||
+		( width & 1 ) ||
+		( height & 1 ) ||
+		area > settings::MAP_MAX_AREA
 	) {
 		THROW( "invalid serialized map dimensions" );
 	}
-
-	m_width = m_height = 0;
-	Resize( static_cast< uint32_t >( width ), static_cast< uint32_t >( height ) );
-
-	for ( auto y = 0 ; y < m_height ; y++ ) {
-		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
-			At( x, y ).Deserialize( types::Buffer( buf.ReadString() ) );
-		}
+	std::vector< std::string > serialized_tiles;
+	serialized_tiles.reserve( static_cast< size_t >( area / 2 ) );
+	for ( size_t i = 0 ; i < area / 2 ; i++ ) {
+		serialized_tiles.push_back( buf.ReadString() );
 	}
-
-	for ( auto y = 0 ; y < m_height ; y++ ) {
-		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
-			At( x, y ).Update();
-		}
-	}
-
-	m_is_validated = buf.ReadBool();
+	const auto is_validated = buf.ReadBool();
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized tiles" );
 	}
 
+	m_width = m_height = 0;
+	Resize( width, height );
+
+	size_t tile_index = 0;
+	for ( auto y = 0 ; y < m_height ; y++ ) {
+		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
+			auto& tile = At( x, y );
+			tile.Deserialize( types::Buffer( serialized_tiles.at( tile_index++ ) ) );
+			if ( tile.coord.x != x || tile.coord.y != y ) {
+				THROW( "serialized tile coordinates do not match the map grid" );
+			}
+		}
+	}
+
+	tile_index = 0;
+	for ( auto y = 0 ; y < m_height ; y++ ) {
+		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
+			auto& tile = At( x, y );
+			tile.Update();
+			if ( tile.Serialize().ToString() != serialized_tiles.at( tile_index++ ) ) {
+				THROW( "serialized tiles contain inconsistent shared elevation data" );
+			}
+		}
+	}
+
+	m_is_validated = is_validated;
 }
 
 }

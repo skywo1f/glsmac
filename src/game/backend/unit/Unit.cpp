@@ -159,9 +159,11 @@ WRAPIMPL_SERIALIZE( Unit )
 }
 
 WRAPIMPL_DESERIALIZE( Unit )
-	const auto id = buf->ReadInt();
+	const auto id = buf->ReadInt< size_t >( "unit reference id" );
 	const auto& unit = game->GetUM()->GetUnit( id );
-	ASSERT( unit, "base id not found: " + std::to_string( id ) );
+	if ( !unit ) {
+		THROW( "unit id not found: " + std::to_string( id ) );
+	}
 	return unit->Wrap( GSE_CALL );
 }
 

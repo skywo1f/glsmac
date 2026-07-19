@@ -135,6 +135,9 @@ static constexpr feature_t FEATURE_NONE = 0;
 #define X_FEATURE( _x, _i ) static constexpr feature_t FEATURE_ ## _x = 1 << _i;
 X_FEATURES
 #undef X_FEATURE
+#define X_FEATURE( _x, _i ) FEATURE_ ## _x |
+static constexpr feature_t FEATURE_ALL = X_FEATURES FEATURE_NONE;
+#undef X_FEATURE
 
 // bitflags
 static constexpr terraforming_t TERRAFORMING_NONE = 0;
@@ -151,6 +154,20 @@ static constexpr terraforming_t TERRAFORMING_BOREHOLE = 1 << 9;
 static constexpr terraforming_t TERRAFORMING_SENSOR = 1 << 10;
 static constexpr terraforming_t TERRAFORMING_BUNKER = 1 << 11;
 static constexpr terraforming_t TERRAFORMING_AIRBASE = 1 << 12;
+static constexpr terraforming_t TERRAFORMING_ALL =
+	TERRAFORMING_ROAD |
+	TERRAFORMING_MAG_TUBE |
+	TERRAFORMING_FOREST |
+	TERRAFORMING_FARM |
+	TERRAFORMING_SOIL_ENRICHER |
+	TERRAFORMING_SOLAR |
+	TERRAFORMING_MINE |
+	TERRAFORMING_CONDENSER |
+	TERRAFORMING_MIRROR |
+	TERRAFORMING_BOREHOLE |
+	TERRAFORMING_SENSOR |
+	TERRAFORMING_BUNKER |
+	TERRAFORMING_AIRBASE;
 
 }
 }

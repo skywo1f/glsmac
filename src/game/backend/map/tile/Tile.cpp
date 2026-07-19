@@ -119,22 +119,73 @@ const types::Buffer Tile::Serialize() const {
 }
 
 void Tile::Deserialize( types::Buffer buf ) {
+	if (
+		!elevation.center ||
+		!elevation.left ||
+		!elevation.top ||
+		!elevation.right ||
+		!elevation.bottom
+	) {
+		THROW( "cannot deserialize an unlinked tile" );
+	}
 
-	coord.x = buf.ReadInt();
-	coord.y = buf.ReadInt();
+	const auto x = buf.ReadInt< size_t >( "tile x coordinate" );
+	const auto y = buf.ReadInt< size_t >( "tile y coordinate" );
 
-	*elevation.center = buf.ReadInt();
-	*elevation.left = buf.ReadInt();
-	*elevation.top = buf.ReadInt();
-	*elevation.right = buf.ReadInt();
-	*elevation.bottom = buf.ReadInt();
+	const auto center = buf.ReadInt< elevation_t >( "tile center elevation" );
+	const auto left = buf.ReadInt< elevation_t >( "tile left elevation" );
+	const auto top = buf.ReadInt< elevation_t >( "tile top elevation" );
+	const auto right = buf.ReadInt< elevation_t >( "tile right elevation" );
+	const auto bottom = buf.ReadInt< elevation_t >( "tile bottom elevation" );
+	if (
+		center < ELEVATION_MIN || center > ELEVATION_MAX ||
+		left < ELEVATION_MIN || left > ELEVATION_MAX ||
+		top < ELEVATION_MIN || top > ELEVATION_MAX ||
+		right < ELEVATION_MIN || right > ELEVATION_MAX ||
+		bottom < ELEVATION_MIN || bottom > ELEVATION_MAX
+	) {
+		THROW( "invalid serialized tile elevation" );
+	}
+	if ( center != ( left + top + right + bottom ) / 4 ) {
+		THROW( "serialized tile center elevation does not match its corners" );
+	}
 
-	moisture = buf.ReadInt();
-	rockiness = buf.ReadInt();
-	bonus = buf.ReadInt();
+	const auto serialized_moisture = buf.ReadInt< moisture_t >( "tile moisture" );
+	const auto serialized_rockiness = buf.ReadInt< rockiness_t >( "tile rockiness" );
+	const auto serialized_bonus = buf.ReadInt< bonus_t >( "tile bonus" );
+	if ( serialized_moisture > MOISTURE_RAINY ) {
+		THROW( "invalid serialized tile moisture" );
+	}
+	if ( serialized_rockiness > ROCKINESS_ROCKY ) {
+		THROW( "invalid serialized tile rockiness" );
+	}
+	if ( serialized_bonus > BONUS_MINERALS ) {
+		THROW( "invalid serialized tile bonus" );
+	}
 
-	features = buf.ReadInt();
-	terraforming = buf.ReadInt();
+	const auto serialized_features = buf.ReadInt< feature_t >( "tile features" );
+	const auto serialized_terraforming = buf.ReadInt< terraforming_t >( "tile terraforming" );
+	if ( serialized_features & static_cast< feature_t >( ~FEATURE_ALL ) ) {
+		THROW( "invalid serialized tile features" );
+	}
+	if ( serialized_terraforming & static_cast< terraforming_t >( ~TERRAFORMING_ALL ) ) {
+		THROW( "invalid serialized tile terraforming" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile" );
+	}
+
+	coord = { x, y };
+	*elevation.center = center;
+	*elevation.left = left;
+	*elevation.top = top;
+	*elevation.right = right;
+	*elevation.bottom = bottom;
+	moisture = serialized_moisture;
+	rockiness = serialized_rockiness;
+	bonus = serialized_bonus;
+	features = serialized_features;
+	terraforming = serialized_terraforming;
 
 	Update();
 }
@@ -145,9 +196,17 @@ WRAPIMPL_SERIALIZE( Tile )
 }
 
 WRAPIMPL_DESERIALIZE( Tile )
-	const auto tile_x = buf->ReadInt();
-	const auto tile_y = buf->ReadInt();
-	const auto& tile = game->GetMap()->GetTile( tile_x, tile_y );
+	const auto tile_x = buf->ReadInt< size_t >( "tile reference x coordinate" );
+	const auto tile_y = buf->ReadInt< size_t >( "tile reference y coordinate" );
+	const auto* const map = game->GetMap();
+	if (
+		tile_x >= map->GetWidth() ||
+		tile_y >= map->GetHeight() ||
+		( tile_x & 1 ) != ( tile_y & 1 )
+	) {
+		THROW( "invalid serialized tile reference" );
+	}
+	const auto& tile = map->GetTile( tile_x, tile_y );
 	return tile->Wrap( GSE_CALL );
 }
 

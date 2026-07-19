@@ -1,6 +1,7 @@
 #include "Tests.h"
 
 #include <memory>
+#include <utility>
 
 #include "GSE.h"
 #include "Parser.h"
@@ -37,6 +38,7 @@
 #include "game/backend/base/PopDef.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
+#include "game/backend/map/tile/Tiles.h"
 #include "game/backend/settings/Settings.h"
 #include "game/backend/slot/Slot.h"
 #include "game/backend/resource/Resource.h"
@@ -310,7 +312,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 			}
 		);
 		task->AddTest(
-			"tile serialization round trip",
+			"tile serialization validation",
 			GT() {
 				using namespace game::backend::map::tile;
 
@@ -371,6 +373,116 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.features == source.features, "tile features changed" );
 				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
 				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
+
+				const auto serialize_source = [&]( const int moisture, const feature_t features, const terraforming_t terraforming ) {
+					types::Buffer serialized;
+					serialized.WriteInt( source.coord.x );
+					serialized.WriteInt( source.coord.y );
+					serialized.WriteInt( source_center );
+					serialized.WriteInt( source_left );
+					serialized.WriteInt( source_top );
+					serialized.WriteInt( source_right );
+					serialized.WriteInt( source_bottom );
+					serialized.WriteInt( moisture );
+					serialized.WriteInt( source.rockiness );
+					serialized.WriteInt( source.bonus );
+					serialized.WriteInt( features );
+					serialized.WriteInt( terraforming );
+					return serialized;
+				};
+				const auto rejects_tile = [&]( types::Buffer serialized ) {
+					try {
+						restored.Deserialize( std::move( serialized ) );
+					}
+					catch ( const std::runtime_error& ) {
+						return true;
+					}
+					return false;
+				};
+				const auto restored_before_invalid_data = restored.Serialize().ToString();
+				GT_ASSERT(
+					rejects_tile( serialize_source( MOISTURE_RAINY + 1, source.features, source.terraforming ) ),
+					"invalid tile moisture accepted"
+				);
+				GT_ASSERT(
+					rejects_tile( serialize_source( source.moisture, static_cast< feature_t >( 1 << 15 ), source.terraforming ) ),
+					"unknown tile feature accepted"
+				);
+				GT_ASSERT(
+					rejects_tile( serialize_source( source.moisture, source.features, static_cast< terraforming_t >( 1 << 13 ) ) ),
+					"unknown tile terraforming accepted"
+				);
+				auto trailing_tile = source.Serialize();
+				trailing_tile.WriteBool( false );
+				GT_ASSERT( rejects_tile( std::move( trailing_tile ) ), "trailing tile data accepted" );
+				GT_ASSERT(
+					restored.Serialize().ToString() == restored_before_invalid_data,
+					"invalid tile data was partially applied"
+				);
+
+				Tiles grid( nullptr, 4, 4 );
+				grid.Clear();
+				Tiles grid_round_trip( nullptr );
+				grid_round_trip.Deserialize( grid.Serialize() );
+				GT_ASSERT( grid_round_trip.GetWidth() == 4, "tile grid width changed" );
+				GT_ASSERT( grid_round_trip.GetHeight() == 4, "tile grid height changed" );
+
+				const auto make_first_grid_tile = [](
+					const size_t x,
+					const elevation_t center,
+					const elevation_t bottom
+				) {
+					types::Buffer serialized;
+					serialized.WriteInt( x );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( center );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( bottom );
+					serialized.WriteInt( MOISTURE_NONE );
+					serialized.WriteInt( ROCKINESS_NONE );
+					serialized.WriteInt( BONUS_NONE );
+					serialized.WriteInt( FEATURE_NONE );
+					serialized.WriteInt( TERRAFORMING_NONE );
+					return serialized.ToString();
+				};
+				const auto make_grid = [&]( const std::string& first_tile ) {
+					types::Buffer serialized;
+					serialized.WriteInt( grid.GetWidth() );
+					serialized.WriteInt( grid.GetHeight() );
+					bool is_first = true;
+					for ( size_t y = 0 ; y < grid.GetHeight() ; y++ ) {
+						for ( size_t x = y & 1 ; x < grid.GetWidth() ; x += 2 ) {
+							serialized.WriteString(
+								is_first
+									? first_tile
+									: grid.AtConst( x, y ).Serialize().ToString()
+							);
+							is_first = false;
+						}
+					}
+					serialized.WriteBool( false );
+					return serialized;
+				};
+				const auto rejects_grid = []( types::Buffer serialized ) {
+					try {
+						Tiles restored_grid( nullptr );
+						restored_grid.Deserialize( std::move( serialized ) );
+					}
+					catch ( const std::runtime_error& ) {
+						return true;
+					}
+					return false;
+				};
+				GT_ASSERT(
+					rejects_grid( make_grid( make_first_grid_tile( 2, 0, 0 ) ) ),
+					"mismatched tile grid coordinates accepted"
+				);
+				GT_ASSERT(
+					rejects_grid( make_grid( make_first_grid_tile( 0, 1, 4 ) ) ),
+					"conflicting shared tile elevations accepted"
+				);
 				GT_OK();
 			}
 		);
