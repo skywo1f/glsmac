@@ -31,6 +31,7 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/map/tile/Tile.h"
+#include "types/Color.h"
 
 namespace gse {
 namespace tests {
@@ -106,6 +107,26 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.features == source.features, "tile features changed" );
 				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
 				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"packed color conversion",
+			GT() {
+				const types::Color::color_t color = {
+					0.425f,
+					0.378f,
+					0.311f,
+					1.0f,
+				};
+				const auto rgba = types::Color::ToRGBA( color );
+
+				GT_ASSERT( rgba == types::Color( color ).GetRGBA(), "raw and wrapped color packing differ" );
+				GT_ASSERT( ( rgba & 0xff ) == 108, "packed red channel changed" );
+				GT_ASSERT( ( ( rgba >> 8 ) & 0xff ) == 96, "packed green channel changed" );
+				GT_ASSERT( ( ( rgba >> 16 ) & 0xff ) == 79, "packed blue channel changed" );
+				GT_ASSERT( ( ( rgba >> 24 ) & 0xff ) == 255, "packed alpha channel changed" );
+				GT_ASSERT( types::Color::RGBA( 0x12, 0x34, 0x56, 0x78 ) == 0x78563412, "RGBA byte order changed" );
 				GT_OK();
 			}
 		);
