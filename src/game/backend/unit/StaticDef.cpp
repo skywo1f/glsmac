@@ -1,5 +1,8 @@
 #include "StaticDef.h"
 
+#include <cmath>
+#include <memory>
+
 #include "Render.h"
 
 #include "gse/value/Bool.h"
@@ -81,11 +84,27 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 }
 
 StaticDef* StaticDef::Deserialize( types::Buffer& buf, const std::string& id, const std::string& moraleset_name, const std::string& name ) {
-	const auto movement_type = (movement_type_t)buf.ReadInt();
+	const auto serialized_movement_type = buf.ReadInt();
 	const auto movement_per_turn = buf.ReadFloat();
+	if ( serialized_movement_type < MT_IMMOVABLE || serialized_movement_type > MT_AIR ) {
+		THROW( "invalid serialized unit movement type" );
+	}
+	if ( !std::isfinite( movement_per_turn ) || movement_per_turn < 0.0f ) {
+		THROW( "invalid serialized unit movement per turn" );
+	}
 	const auto* moraleset = g_engine->GetGame()->GetUM()->GetMoraleSet( moraleset_name );
-	ASSERT( moraleset, "could not find morale set: " + moraleset_name );
-	return new StaticDef( id, moraleset, name, movement_type, movement_per_turn, Render::Deserialize( buf ) );
+	if ( !moraleset ) {
+		THROW( "could not find morale set: " + moraleset_name );
+	}
+	auto render = std::unique_ptr< Render >( Render::Deserialize( buf ) );
+	return new StaticDef(
+		id,
+		moraleset,
+		name,
+		static_cast< movement_type_t >( serialized_movement_type ),
+		movement_per_turn,
+		render.release()
+	);
 }
 
 WRAPIMPL_BEGIN( StaticDef )

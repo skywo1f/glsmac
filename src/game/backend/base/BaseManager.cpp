@@ -1,5 +1,9 @@
 #include "BaseManager.h"
 
+#include <algorithm>
+#include <memory>
+#include <unordered_set>
+
 #include "game/backend/Game.h"
 #include "game/backend/State.h"
 #include "game/backend/Bindings.h"
@@ -468,9 +472,9 @@ void BaseManager::Serialize( types::Buffer& buf ) const {
 }
 
 void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
-	ASSERT( m_base_popdefs.empty(), "base pop defs not empty" );
-	ASSERT( m_bases.empty(), "bases not empty" );
-	ASSERT( m_unprocessed_bases.empty(), "unprocessed bases not empty" );
+	if ( !m_base_popdefs.empty() || !m_bases.empty() || !m_unprocessed_bases.empty() ) {
+		THROW( "cannot deserialize bases into a non-empty manager" );
+	}
 
 	size_t sz = buf.ReadCollectionSize( "base population definition" );
 	m_base_popdefs.reserve( sz );
@@ -478,7 +482,17 @@ void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		const auto name = buf.ReadString();
 		auto b = types::Buffer( buf.ReadString() );
-		DefinePop( base::PopDef::Deserialize( b ) );
+		auto pop_def = std::unique_ptr< base::PopDef >( base::PopDef::Deserialize( b ) );
+		if ( b.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized base population definition" );
+		}
+		if ( name != pop_def->m_id ) {
+			THROW( "serialized base population definition id mismatch" );
+		}
+		if ( m_base_popdefs.find( name ) != m_base_popdefs.end() ) {
+			THROW( "duplicate serialized base population definition: " + name );
+		}
+		DefinePop( pop_def.release() );
 	}
 
 	sz = buf.ReadCollectionSize( "base" );
@@ -486,17 +500,33 @@ void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	if ( !m_game->IsRunning() ) {
 		m_unprocessed_bases.reserve( sz );
 	}
+	std::unordered_set< size_t > serialized_base_ids = {};
+	size_t max_base_id = 0;
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		auto b = types::Buffer( buf.ReadString() );
+		auto id_buffer = b;
+		const auto id = id_buffer.ReadInt< size_t >( "base id" );
+		if ( id == 0 || !serialized_base_ids.insert( id ).second ) {
+			THROW( "invalid or duplicate serialized base id: " + std::to_string( id ) );
+		}
+		max_base_id = std::max( max_base_id, id );
 		if ( m_game->IsRunning() ) {
-			SpawnBase( GSE_CALL, base::Base::Deserialize( GSE_CALL, b, m_game ) );
+			auto base = std::unique_ptr< base::Base >( base::Base::Deserialize( GSE_CALL, b, m_game ) );
+			SpawnBase( GSE_CALL, base.release() );
 		}
 		else {
 			m_unprocessed_bases.push_back( b );
 		}
 	}
 
-	base::Base::SetNextId( buf.ReadInt() );
+	const auto next_base_id = buf.ReadInt< size_t >( "next base id" );
+	if ( next_base_id == 0 || next_base_id <= max_base_id ) {
+		THROW( "invalid serialized next base id" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized base manager" );
+	}
+	base::Base::SetNextId( next_base_id );
 	Log( "Restored next base id: " + std::to_string( base::Base::GetNextId() ) );
 }
 

@@ -1,5 +1,7 @@
 #include "Unit.h"
 
+#include <cmath>
+
 #include "gse/context/Context.h"
 #include "gse/value/Object.h"
 #include "gse/value/Int.h"
@@ -96,21 +98,59 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 }
 
 Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
-	ASSERT( um, "um is null" );
-	const auto id = buf.ReadInt();
+	if ( !um ) {
+		THROW( "cannot deserialize unit without a manager" );
+	}
+	const auto id = buf.ReadInt< size_t >( "unit id" );
+	if ( id == 0 ) {
+		THROW( "serialized unit id is zero" );
+	}
 	const auto def_id = buf.ReadString();
 	auto* def = um->GetUnitDef( def_id );
 	if ( !def ) {
 		THROW( "could not find unit def: " + def_id );
 	}
-	auto* slot = um->GetSlot( buf.ReadInt() );
-	const auto pos_x = buf.ReadInt();
-	const auto pos_y = buf.ReadInt();
+	const auto slot_num = buf.ReadInt< size_t >( "unit owner slot" );
+	if ( slot_num >= um->m_game->GetState()->m_slots->GetCount() ) {
+		THROW( "serialized unit owner slot is out of bounds" );
+	}
+	auto* slot = um->GetSlot( slot_num );
+	if ( slot->GetState() != slot::Slot::SS_PLAYER ) {
+		THROW( "serialized unit owner slot has no player" );
+	}
+	const auto pos_x = buf.ReadInt< size_t >( "unit tile x" );
+	const auto pos_y = buf.ReadInt< size_t >( "unit tile y" );
+	if (
+		pos_x >= um->GetMap()->GetWidth() ||
+		pos_y >= um->GetMap()->GetHeight() ||
+		pos_x % 2 != pos_y % 2
+	) {
+		THROW( "invalid serialized unit tile" );
+	}
 	auto* tile = um->GetMap()->GetTile( pos_x, pos_y );
-	const auto movement = (movement_t)buf.ReadFloat();
-	const auto morale = (morale_t)buf.ReadInt();
-	const auto health = (health_t)buf.ReadFloat();
+	if ( tile->units.find( id ) != tile->units.end() ) {
+		THROW( "serialized unit id already exists on tile" );
+	}
+	const auto movement = buf.ReadFloat();
+	const auto morale = buf.ReadInt< morale_t >( "unit morale" );
+	const auto health = buf.ReadFloat();
 	const auto moved_this_turn = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized unit" );
+	}
+	if ( !std::isfinite( movement ) || movement < 0.0f ) {
+		THROW( "invalid serialized unit movement" );
+	}
+	if (
+		morale < MORALE_MIN ||
+		morale > MORALE_MAX ||
+		static_cast< size_t >( morale ) >= def->m_moraleset->m_morale_values.size()
+	) {
+		THROW( "invalid serialized unit morale" );
+	}
+	if ( !std::isfinite( health ) || health <= 0.0f || health > StaticDef::HEALTH_MAX ) {
+		THROW( "invalid serialized unit health" );
+	}
 	return new Unit( GSE_CALL, um, id, def, slot, tile, movement, morale, health, moved_this_turn );
 }
 

@@ -1,5 +1,7 @@
 #include "Tests.h"
 
+#include <memory>
+
 #include "GSE.h"
 #include "Parser.h"
 #include "Runner.h"
@@ -31,6 +33,7 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
+#include "game/backend/base/PopDef.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
 #include "game/backend/settings/Settings.h"
@@ -225,6 +228,34 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_slot_flags = true;
 				}
 				GT_ASSERT( rejected_slot_flags, "unknown slot player flags accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"base definition validation",
+			GT() {
+				bool rejected_unknown_pop_flags = false;
+				try {
+					types::Buffer pop_def;
+					pop_def.WriteString( "WORKER" );
+					pop_def.WriteString( "Worker" );
+					for ( size_t i = 0 ; i < 2 ; i++ ) {
+						pop_def.WriteInt( 1 );
+						pop_def.WriteString( "bases.pcx" );
+						pop_def.WriteInt( 0 );
+						pop_def.WriteInt( 0 );
+						pop_def.WriteInt( 32 );
+						pop_def.WriteInt( 32 );
+					}
+					pop_def.WriteInt( 0x80 );
+					std::unique_ptr< game::backend::base::PopDef > parsed(
+						game::backend::base::PopDef::Deserialize( pop_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_unknown_pop_flags = true;
+				}
+				GT_ASSERT( rejected_unknown_pop_flags, "unknown base population flags accepted" );
 				GT_OK();
 			}
 		);

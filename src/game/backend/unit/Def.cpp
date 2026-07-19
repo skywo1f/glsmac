@@ -40,7 +40,14 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 	const auto id = buf.ReadString();
 	const auto moraleset = buf.ReadString();
 	const auto name = buf.ReadString();
-	const auto type = (def_type_t)buf.ReadInt();
+	const auto serialized_type = buf.ReadInt();
+	if ( id.empty() || moraleset.empty() ) {
+		THROW( "serialized unit definition id or morale set is empty" );
+	}
+	if ( serialized_type != DT_STATIC ) {
+		THROW( "unknown def type on read: " + std::to_string( serialized_type ) );
+	}
+	const auto type = static_cast< def_type_t >( serialized_type );
 	switch ( type ) {
 		case DT_STATIC:
 			return StaticDef::Deserialize( buf, id, moraleset, name );

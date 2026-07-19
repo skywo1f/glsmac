@@ -1,5 +1,9 @@
 #include "UnitManager.h"
 
+#include <algorithm>
+#include <memory>
+#include <unordered_set>
+
 #include "MoraleSet.h"
 #include "Def.h"
 #include "StaticDef.h"
@@ -557,10 +561,14 @@ void UnitManager::Serialize( types::Buffer& buf ) const {
 }
 
 void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
-	ASSERT( m_unit_moralesets.empty(), "unit moralesets not empty" );
-	ASSERT( m_unit_defs.empty(), "unit defs not empty" );
-	ASSERT( m_units.empty(), "units not empty" );
-	ASSERT( m_unprocessed_units.empty(), "unprocessed units not empty" );
+	if (
+		!m_unit_moralesets.empty() ||
+		!m_unit_defs.empty() ||
+		!m_units.empty() ||
+		!m_unprocessed_units.empty()
+	) {
+		THROW( "cannot deserialize units into a non-empty manager" );
+	}
 
 	size_t sz = buf.ReadCollectionSize( "unit morale set" );
 	Log( "Unserializing " + std::to_string( sz ) + " unit moralesets" );
@@ -568,7 +576,17 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		const auto name = buf.ReadString();
 		auto b = types::Buffer( buf.ReadString() );
-		DefineMoraleSet( MoraleSet::Deserialize( b ) );
+		auto moraleset = std::unique_ptr< MoraleSet >( MoraleSet::Deserialize( b ) );
+		if ( b.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized unit morale set" );
+		}
+		if ( name != moraleset->m_id ) {
+			THROW( "serialized unit morale set id mismatch" );
+		}
+		if ( m_unit_moralesets.find( name ) != m_unit_moralesets.end() ) {
+			THROW( "duplicate serialized unit morale set: " + name );
+		}
+		DefineMoraleSet( moraleset.release() );
 	}
 
 	sz = buf.ReadCollectionSize( "unit definition" );
@@ -577,7 +595,17 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		const auto name = buf.ReadString();
 		auto b = types::Buffer( buf.ReadString() );
-		DefineUnit( Def::Deserialize( b ) );
+		auto def = std::unique_ptr< Def >( Def::Deserialize( b ) );
+		if ( b.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized unit definition" );
+		}
+		if ( name != def->m_id ) {
+			THROW( "serialized unit definition id mismatch" );
+		}
+		if ( m_unit_defs.find( name ) != m_unit_defs.end() ) {
+			THROW( "duplicate serialized unit definition: " + name );
+		}
+		DefineUnit( def.release() );
 	}
 
 	sz = buf.ReadCollectionSize( "unit" );
@@ -585,12 +613,28 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	if ( !m_game->IsRunning() ) {
 		m_unprocessed_units.reserve( sz );
 	}
+	std::unordered_set< size_t > serialized_unit_ids = {};
+	size_t max_unit_id = 0;
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		auto b = types::Buffer( buf.ReadString() );
-		SpawnUnit( GSE_CALL, Unit::Deserialize( GSE_CALL, b, this ) );
+		auto id_buffer = b;
+		const auto id = id_buffer.ReadInt< size_t >( "unit id" );
+		if ( id == 0 || !serialized_unit_ids.insert( id ).second ) {
+			THROW( "invalid or duplicate serialized unit id: " + std::to_string( id ) );
+		}
+		max_unit_id = std::max( max_unit_id, id );
+		auto unit = std::unique_ptr< Unit >( Unit::Deserialize( GSE_CALL, b, this ) );
+		SpawnUnit( GSE_CALL, unit.release() );
 	}
 
-	Unit::SetNextId( buf.ReadInt() );
+	const auto next_unit_id = buf.ReadInt< size_t >( "next unit id" );
+	if ( next_unit_id == 0 || next_unit_id <= max_unit_id ) {
+		THROW( "invalid serialized next unit id" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized unit manager" );
+	}
+	Unit::SetNextId( next_unit_id );
 	Log( "Restored next unit id: " + std::to_string( Unit::GetNextId() ) );
 }
 

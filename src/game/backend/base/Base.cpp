@@ -1,6 +1,9 @@
 #include "Base.h"
 
+#include <algorithm>
 #include <limits>
+#include <memory>
+#include <unordered_set>
 
 #include "gse/context/Context.h"
 #include "gse/value/Object.h"
@@ -12,6 +15,7 @@
 #include "gse/callable/Native.h"
 #include "game/backend/Game.h"
 #include "game/backend/State.h"
+#include "game/backend/Player.h"
 #include "game/backend/slot/Slot.h"
 #include "game/backend/slot/Slots.h"
 #include "game/backend/map/Map.h"
@@ -188,28 +192,57 @@ const types::Buffer Base::Serialize( const Base* base ) {
 }
 
 Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
-	ASSERT( game, "game is null" );
-	const auto id = buf.ReadInt();
-	auto* slot = &game->GetState()->m_slots->GetSlot( buf.ReadInt() );
+	if ( !game ) {
+		THROW( "cannot deserialize base without a game" );
+	}
+	const auto id = buf.ReadInt< size_t >( "base id" );
+	if ( id == 0 ) {
+		THROW( "serialized base id is zero" );
+	}
+	const auto slot_num = buf.ReadInt< size_t >( "base owner slot" );
+	auto* const slots = game->GetState()->m_slots;
+	if ( slot_num >= slots->GetCount() ) {
+		THROW( "serialized base owner slot is out of bounds" );
+	}
+	auto* slot = &slots->GetSlot( slot_num );
+	if ( slot->GetState() != slot::Slot::SS_PLAYER || !slot->GetPlayer() ) {
+		THROW( "serialized base owner slot has no player" );
+	}
 	const auto faction_id = buf.ReadString();
 	auto* faction = game->GetFaction( faction_id );
-	const auto pos_x = buf.ReadInt();
-	const auto pos_y = buf.ReadInt();
+	auto* const owner_faction = slot->GetPlayer()->GetFaction();
+	if ( !faction || !owner_faction || owner_faction->m_id != faction_id ) {
+		THROW( "serialized base faction does not match its owner" );
+	}
+	const auto pos_x = buf.ReadInt< size_t >( "base tile x" );
+	const auto pos_y = buf.ReadInt< size_t >( "base tile y" );
+	if (
+		pos_x >= game->GetMap()->GetWidth() ||
+		pos_y >= game->GetMap()->GetHeight() ||
+		pos_x % 2 != pos_y % 2
+	) {
+		THROW( "invalid serialized base tile" );
+	}
 	auto* tile = game->GetMap()->GetTile( pos_x, pos_y );
+	if ( tile->base ) {
+		THROW( "serialized base tile already has a base" );
+	}
 	const auto name = buf.ReadString();
 	pops_t pops = {};
-	const auto pops_count = buf.ReadInt();
-	if ( pops_count < 0 || pops_count > MAX_SERIALIZED_POPS ) {
+	const auto pops_count = buf.ReadCollectionSize( "base population" );
+	if ( pops_count > MAX_SERIALIZED_POPS ) {
 		THROW( "invalid serialized base population count: " + std::to_string( pops_count ) );
 	}
-	for ( size_t i = 0 ; i < static_cast< size_t >( pops_count ) ; i++ ) {
-		const auto pop_id = buf.ReadInt();
-		if ( pop_id < 0 || static_cast< uint64_t >( pop_id ) > std::numeric_limits< size_t >::max() ) {
-			THROW( "invalid serialized base population id: " + std::to_string( pop_id ) );
+	size_t max_pop_id = 0;
+	std::unordered_set< map::tile::Tile* > worked_tiles = {};
+	for ( size_t i = 0 ; i < pops_count ; i++ ) {
+		const auto pop_id = buf.ReadInt< size_t >( "base population id" );
+		if ( pop_id == 0 ) {
+			THROW( "serialized base population id is zero" );
 		}
 		Pop pop = {};
 		pop.Deserialize( buf, game );
-		if ( pop.m_id != static_cast< size_t >( pop_id ) ) {
+		if ( pop.m_id != pop_id ) {
 			THROW( "serialized base population id mismatch" );
 		}
 		if ( !pops.emplace( pop.m_id, pop ).second ) {
@@ -221,11 +254,27 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		if ( pop.m_variant >= renders.size() ) {
 			THROW( "serialized base population variant is unavailable" );
 		}
+		if ( pop.m_worked_tile ) {
+			if (
+				!worked_tiles.insert( pop.m_worked_tile ).second ||
+				pop.m_worked_tile->HasWorkingPopLink() ||
+				pop.HasWorkedTileLink()
+			) {
+				THROW( "invalid serialized base population worked tile" );
+			}
+		}
+		max_pop_id = std::max( max_pop_id, pop_id );
 	}
-	const auto next_pop_id = buf.ReadInt();
+	const auto next_pop_id = buf.ReadInt< size_t >( "next base population id" );
+	if ( next_pop_id == 0 || next_pop_id <= max_pop_id ) {
+		THROW( "invalid serialized next base population id" );
+	}
 	const bool has_accumulated_nutrients = buf.ReadBool();
 	const auto accumulated_nutrients = has_accumulated_nutrients ? buf.ReadInt() : 0;
-	auto* const base = new Base( game, id, slot, faction, tile, name, pops, next_pop_id );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized base" );
+	}
+	auto base = std::make_unique< Base >( game, id, slot, faction, tile, name, pops, next_pop_id );
 	if ( has_accumulated_nutrients ) {
 		base->CustomSet(
 			"accumulated_nutrients",
@@ -233,7 +282,7 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );
-	return base;
+	return base.release();
 }
 
 WRAPIMPL_SERIALIZE( Base )

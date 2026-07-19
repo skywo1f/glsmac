@@ -46,37 +46,31 @@ void Pop::Deserialize( types::Buffer& buf, Game* game ) {
 	auto* bm = game->GetBM();
 	ASSERT( bm, "bm is null" );
 
-	const auto id = buf.ReadInt();
-	if ( id < 0 || static_cast< uint64_t >( id ) > std::numeric_limits< size_t >::max() ) {
-		THROW( "invalid serialized base population id: " + std::to_string( id ) );
+	const auto id = buf.ReadInt< size_t >( "base population id" );
+	if ( id == 0 ) {
+		THROW( "serialized base population id is zero" );
 	}
-	m_id = static_cast< size_t >( id );
+	m_id = id;
 	const auto def_id = buf.ReadString();
 	m_def = bm->GetPopDef( def_id );
 	if ( !m_def ) {
 		THROW( "base pop definition not found: " + def_id );
 	}
-	const auto variant = buf.ReadInt();
-	if ( variant < 0 || variant > std::numeric_limits< uint8_t >::max() ) {
-		THROW( "invalid serialized base population variant: " + std::to_string( variant ) );
-	}
-	m_variant = static_cast< uint8_t >( variant );
+	m_variant = buf.ReadInt< uint8_t >( "base population variant" );
 	if ( buf.ReadBool() ) {
-		const auto tile_x = buf.ReadInt();
-		const auto tile_y = buf.ReadInt();
+		const auto tile_x = buf.ReadInt< size_t >( "base population worked tile x" );
+		const auto tile_y = buf.ReadInt< size_t >( "base population worked tile y" );
 		auto* const map = game->GetMap();
 		if (
-			tile_x < 0 ||
-			tile_y < 0 ||
-			static_cast< uint64_t >( tile_x ) >= map->GetWidth() ||
-			static_cast< uint64_t >( tile_y ) >= map->GetHeight() ||
+			tile_x >= map->GetWidth() ||
+			tile_y >= map->GetHeight() ||
 			tile_x % 2 != tile_y % 2
 		) {
 			THROW( "invalid serialized base population worked tile" );
 		}
 		m_worked_tile = map->GetTile(
-			static_cast< size_t >( tile_x ),
-			static_cast< size_t >( tile_y )
+			tile_x,
+			tile_y
 		);
 	}
 }
