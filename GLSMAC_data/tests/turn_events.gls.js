@@ -118,6 +118,7 @@ const unit = {
 };
 const skip_event = {
 	caller: 1,
+	game: game,
 	data: {
 		unit: unit,
 	},

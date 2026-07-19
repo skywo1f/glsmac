@@ -26,6 +26,7 @@ class Unit;
 
 namespace base {
 class Base;
+class Pop;
 }
 
 namespace map {
@@ -119,6 +120,11 @@ public:
 
 	const resources_t GetResources( GSE_CALLABLE, slot::Slot* const slot );
 	gse::value::Object* const GetResourcesAsValue( GSE_CALLABLE, slot::Slot* const slot );
+
+	bool HasWorkingPopLink() const;
+	base::Pop* GetWorkingPop() const;
+	void SetWorkingPop( GSE_CALLABLE, base::Pop* const pop );
+	void UnsetWorkingPop( GSE_CALLABLE, const base::Pop* const pop );
 
 private:
 	bool m_is_locked = false;

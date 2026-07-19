@@ -67,6 +67,9 @@ return {
 		if (e.data.attacker.owner != e.caller) {
 			return 'Unit can only be ordered to attack by its owner';
 		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
 		if (e.data.defender.owner == e.data.attacker.owner) {
 			return 'Unit cannot attack a friendly unit';
 		}

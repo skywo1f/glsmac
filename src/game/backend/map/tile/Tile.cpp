@@ -13,6 +13,7 @@
 #include "game/backend/map/Map.h"
 #include "game/backend/unit/Unit.h"
 #include "game/backend/base/Base.h"
+#include "game/backend/base/Pop.h"
 #include "game/backend/map/tile/TileManager.h"
 #include "game/backend/resource/ResourceManager.h"
 #include "game/backend/slot/Slot.h"
@@ -152,6 +153,56 @@ WRAPIMPL_DESERIALIZE( Tile )
 
 const std::string Tile::ToString() const {
 	return "@[ " + std::to_string( coord.x ) + " " + std::to_string( coord.y ) + " ]";
+}
+
+bool Tile::HasWorkingPopLink() const {
+	return const_cast< Tile* >( this )->CustomHas( "working_pop" );
+}
+
+base::Pop* Tile::GetWorkingPop() const {
+	auto* const value = const_cast< Tile* >( this )->CustomGet( "working_pop" );
+	if ( !value ) {
+		return nullptr;
+	}
+	auto* const dereferenced = value->Deref();
+	if (
+		dereferenced->type != gse::VT_OBJECT ||
+		( (gse::value::Object*)dereferenced )->object_class != base::Pop::WRAP_CLASS
+	) {
+		return nullptr;
+	}
+	return (base::Pop*)( (gse::value::Object*)dereferenced )->wrapobj;
+}
+
+void Tile::SetWorkingPop( GSE_CALLABLE, base::Pop* const pop ) {
+	if ( !pop ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "working population is null" );
+	}
+	auto* const value = CustomGet( "working_pop" );
+	if ( value ) {
+		auto* const dereferenced = value->Deref();
+		if (
+			dereferenced->type != gse::VT_OBJECT ||
+			( (gse::value::Object*)dereferenced )->object_class != base::Pop::WRAP_CLASS ||
+			( (gse::value::Object*)dereferenced )->wrapobj != pop
+		) {
+			GSE_ERROR( gse::EC.GAME_ERROR, "tile already has another working population" );
+		}
+		return;
+	}
+	CustomSet( "working_pop", pop->Wrap( GSE_CALL ) );
+}
+
+void Tile::UnsetWorkingPop( GSE_CALLABLE, const base::Pop* const pop ) {
+	auto* const value = CustomGet( "working_pop" );
+	if (
+		!value ||
+		value->type != gse::VT_OBJECT ||
+		( (gse::value::Object*)value )->wrapobj != pop
+	) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "tile working population does not match" );
+	}
+	CustomUnset( "working_pop" );
 }
 
 #define GETN( _n ) \

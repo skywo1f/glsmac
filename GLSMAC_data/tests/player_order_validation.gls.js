@@ -1,0 +1,53 @@
+const move_unit = #include('../default/game/event/move_unit');
+const attack_unit = #include('../default/game/event/attack_unit');
+const unit_skip_turn = #include('../default/game/event/unit_skip_turn');
+const work_base_tile = #include('../default/game/event/work_base_tile');
+const unwork_base_tile = #include('../default/game/event/unwork_base_tile');
+
+const player_id = 1;
+const completed_error = 'Player has already completed this turn';
+const game = {
+	is_turn_complete: (id) => {
+		test.assert(id == player_id);
+		return true;
+	},
+};
+const unit = {owner: player_id};
+const base = {
+	get_owner: () => {
+		return {id: player_id};
+	},
+};
+
+test.assert(move_unit.validate({
+	caller: player_id,
+	game: game,
+	data: {unit: unit},
+}) == completed_error);
+
+test.assert(attack_unit.validate({
+	caller: player_id,
+	game: game,
+	data: {
+		attacker: unit,
+		defender: {owner: 0},
+	},
+}) == completed_error);
+
+test.assert(unit_skip_turn.validate({
+	caller: player_id,
+	game: game,
+	data: {unit: unit},
+}) == completed_error);
+
+test.assert(work_base_tile.validate({
+	caller: player_id,
+	game: game,
+	data: {base: base},
+}) == completed_error);
+
+test.assert(unwork_base_tile.validate({
+	caller: player_id,
+	game: game,
+	data: {base: base},
+}) == completed_error);

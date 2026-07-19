@@ -41,6 +41,9 @@ return {
 		if (e.data.unit.owner != e.caller) {
 			return 'Unit can only be moved by it\'s owner';
 		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;

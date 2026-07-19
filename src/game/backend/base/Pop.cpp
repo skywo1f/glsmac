@@ -6,6 +6,8 @@
 #include "game/backend/base/Base.h"
 #include "game/backend/base/PopDef.h"
 #include "game/backend/base/BaseManager.h"
+#include "game/backend/map/Map.h"
+#include "game/backend/map/tile/Tile.h"
 #include "gse/value/Int.h"
 #include "gse/value/Bool.h"
 #include "gse/callable/Native.h"
@@ -18,7 +20,8 @@ Pop::Pop( Base* const base, const size_t id, const PopDef* def, const uint8_t va
 	: m_base( base )
 	, m_id( id )
 	, m_def( def )
-	, m_variant( variant ) {
+	, m_variant( variant )
+	, m_worked_tile( worked_tile ) {
 	//
 }
 
@@ -29,6 +32,11 @@ void Pop::Serialize( types::Buffer& buf ) const {
 	buf.WriteInt( m_id );
 	buf.WriteString( m_def->m_id );
 	buf.WriteInt( m_variant );
+	buf.WriteBool( m_worked_tile != nullptr );
+	if ( m_worked_tile ) {
+		buf.WriteInt( m_worked_tile->coord.x );
+		buf.WriteInt( m_worked_tile->coord.y );
+	}
 }
 
 void Pop::Deserialize( types::Buffer& buf, Game* game ) {
@@ -53,11 +61,92 @@ void Pop::Deserialize( types::Buffer& buf, Game* game ) {
 		THROW( "invalid serialized base population variant: " + std::to_string( variant ) );
 	}
 	m_variant = static_cast< uint8_t >( variant );
+	if ( buf.ReadBool() ) {
+		const auto tile_x = buf.ReadInt();
+		const auto tile_y = buf.ReadInt();
+		auto* const map = game->GetMap();
+		if (
+			tile_x < 0 ||
+			tile_y < 0 ||
+			static_cast< uint64_t >( tile_x ) >= map->GetWidth() ||
+			static_cast< uint64_t >( tile_y ) >= map->GetHeight() ||
+			tile_x % 2 != tile_y % 2
+		) {
+			THROW( "invalid serialized base population worked tile" );
+		}
+		m_worked_tile = map->GetTile(
+			static_cast< size_t >( tile_x ),
+			static_cast< size_t >( tile_y )
+		);
+	}
 }
 
 void Pop::SetBase( Base* const base ) {
 	ASSERT( !m_base, "pop base already set" );
 	m_base = base;
+}
+
+bool Pop::HasWorkedTileLink() const {
+	return const_cast< Pop* >( this )->CustomHas( "worked_tile" );
+}
+
+map::tile::Tile* Pop::GetWorkedTileLink() const {
+	auto* const value = const_cast< Pop* >( this )->CustomGet( "worked_tile" );
+	if ( !value ) {
+		return nullptr;
+	}
+	auto* const dereferenced = value->Deref();
+	if (
+		dereferenced->type != gse::VT_OBJECT ||
+		( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS
+	) {
+		return nullptr;
+	}
+	return (map::tile::Tile*)( (gse::value::Object*)dereferenced )->wrapobj;
+}
+
+void Pop::SetWorkedTile( GSE_CALLABLE, map::tile::Tile* const tile ) {
+	if ( !tile ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "population worked tile is null" );
+	}
+	if ( m_worked_tile && m_worked_tile != tile ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population already works another tile" );
+	}
+	auto* const value = CustomGet( "worked_tile" );
+	if ( value ) {
+		auto* const dereferenced = value->Deref();
+		if (
+			dereferenced->type != gse::VT_OBJECT ||
+			( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS ||
+			( (gse::value::Object*)dereferenced )->wrapobj != tile
+		) {
+			GSE_ERROR( gse::EC.GAME_ERROR, "population has a conflicting worked tile link" );
+		}
+	}
+	m_worked_tile = tile;
+	if ( !value ) {
+		CustomSet( "worked_tile", tile->Wrap( GSE_CALL ) );
+	}
+}
+
+void Pop::UnsetWorkedTile( GSE_CALLABLE, const map::tile::Tile* const tile ) {
+	if ( !m_worked_tile || m_worked_tile != tile ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile does not match" );
+	}
+	auto* const value = CustomGet( "worked_tile" );
+	if ( !value ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile link is missing" );
+	}
+	auto* const dereferenced = value->Deref();
+	if (
+		dereferenced->type != gse::VT_OBJECT ||
+		( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS ||
+		( (gse::value::Object*)dereferenced )->wrapobj != tile
+	) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile link does not match" );
+	}
+	m_worked_tile = nullptr;
+	CustomUnset( "worked_tile" );
 }
 
 WRAPIMPL_SERIALIZE( Pop )

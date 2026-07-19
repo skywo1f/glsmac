@@ -9,6 +9,11 @@ const defender_tile = {x: 4, y: 4};
 test.assert(
 	attack_unit.validate({
 		caller: owner.id,
+		game: {
+			is_turn_complete: () => {
+				return false;
+			},
+		},
 		data: {
 			attacker: {owner: owner.id},
 			defender: {owner: owner.id},

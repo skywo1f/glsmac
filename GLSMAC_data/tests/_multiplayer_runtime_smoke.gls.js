@@ -13,9 +13,14 @@
 	let client_event_probe_complete = false;
 	let client_worker_probe_complete = false;
 	let client_movement_probe_complete = false;
+	let client_combat_probe_complete = false;
 	let client_movement_unit_id = 0;
 	let client_movement_target_x = 0;
 	let client_movement_target_y = 0;
+	let client_combat_target_x = 0;
+	let client_combat_target_y = 0;
+	let combat_defender_id = 0;
+	let combat_defender_spawn_requested = false;
 
 	glsmac.on('configure_state', (e) => {
 		if (lobby_timer_started) {
@@ -132,6 +137,41 @@
 			return null;
 		};
 
+		const find_combat_target = (unit, source, movement_target) => {
+			let first_empty_tile = null;
+			const candidates = [
+				movement_target.get_N(),
+				movement_target.get_NE(),
+				movement_target.get_E(),
+				movement_target.get_SE(),
+				movement_target.get_S(),
+				movement_target.get_SW(),
+				movement_target.get_W(),
+				movement_target.get_NW(),
+			];
+			for (tile of candidates) {
+				if (tile == source || tile == movement_target || tile.is_locked()) {
+					continue;
+				}
+				if (unit.is_land && tile.is_water) {
+					continue;
+				}
+				if (unit.is_water && tile.is_land) {
+					continue;
+				}
+				const occupants = tile.get_units();
+				for (occupant of occupants) {
+					if (occupant.owner != unit.owner) {
+						return tile;
+					}
+				}
+				if (#sizeof(occupants) == 0 && first_empty_tile == null) {
+					first_empty_tile = tile;
+				}
+			}
+			return first_empty_tile;
+		};
+
 		const prepare_client_movement_probe = () => {
 			if (client_movement_unit_id != 0) {
 				return true;
@@ -144,9 +184,66 @@
 			if (target == null) {
 				return false;
 			}
+			const combat_target = find_combat_target(unit, unit.get_tile(), target);
+			if (combat_target == null) {
+				return false;
+			}
 			client_movement_unit_id = unit.id;
 			client_movement_target_x = target.x;
 			client_movement_target_y = target.y;
+			client_combat_target_x = combat_target.x;
+			client_combat_target_y = combat_target.y;
+			return true;
+		};
+
+		const find_combat_defender = () => {
+			if (combat_defender_id != 0) {
+				if (game.get_um().has_unit(combat_defender_id)) {
+					return game.get_um().get_unit(combat_defender_id);
+				}
+				return null;
+			}
+			const target = game.get_tm().get_tile(
+				client_combat_target_x,
+				client_combat_target_y
+			);
+			for (unit of target.get_units()) {
+				if (unit.owner != get_client_player_id()) {
+					combat_defender_id = unit.id;
+					return unit;
+				}
+			}
+			return null;
+		};
+
+		const spawn_combat_defender = () => {
+			if (combat_defender_spawn_requested) {
+				return true;
+			}
+			if (!prepare_client_movement_probe()) {
+				return false;
+			}
+			const attacker = game.get_um().get_unit(client_movement_unit_id);
+			game.event('multiplayer_smoke_set_unit_movement', {
+				unit: attacker,
+				movement: 3.0,
+			});
+			game.event('spawn_unit', {
+				owner: game.get_player(0),
+				tile: game.get_tm().get_tile(
+					client_combat_target_x,
+					client_combat_target_y
+				),
+				type: attacker.def,
+				health: 0.1,
+				morale: 0,
+			});
+			combat_defender_spawn_requested = true;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				return find_combat_defender() == null && wait_ticks < 100;
+			});
 			return true;
 		};
 
@@ -185,6 +282,57 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_set_unit_movement', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can prepare movement coverage';
+				}
+			},
+			apply: (e) => {
+				const previous = e.data.unit.movement;
+				e.data.unit.movement = e.data.movement;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				e.data.unit.movement = e.applied.previous;
+			},
+		});
+
+		const run_client_combat_probe = () => {
+			let phase = 'wait_for_defender';
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (phase == 'wait_for_defender') {
+					const attacker = game.get_um().get_unit(client_movement_unit_id);
+					const defender = find_combat_defender();
+					if (defender != null) {
+						game.event('attack_unit', {
+							attacker: attacker,
+							defender: defender,
+						});
+						phase = 'combat';
+					}
+				}
+				else if (
+					!game.get_um().has_unit(client_movement_unit_id) ||
+					!game.get_um().has_unit(combat_defender_id)
+				) {
+					client_combat_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
+					game.event('complete_turn', {});
+					return false;
+				}
+				if (wait_ticks >= 200) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat probe timed out in ' + phase);
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+			return true;
+		};
+
 		const run_client_movement_probe = () => {
 			if (!prepare_client_movement_probe()) {
 				return false;
@@ -194,16 +342,21 @@
 				client_movement_target_x,
 				client_movement_target_y
 			);
-			const movement_before = unit.movement;
-			game.event('move_unit', {
-				unit: unit,
-				tile: target,
-			});
 
+			let phase = 'wait_for_movement';
+			let movement_before = 0.0;
 			let wait_ticks = 0;
 			#async(100, () => {
 				wait_ticks++;
-				if (unit.get_tile() == target) {
+				if (phase == 'wait_for_movement' && unit.movement >= 3.0) {
+					movement_before = unit.movement;
+					game.event('move_unit', {
+						unit: unit,
+						tile: target,
+					});
+					phase = 'movement';
+				}
+				else if (phase == 'movement' && unit.get_tile() == target) {
 					if (!unit.moved_this_turn || unit.movement >= movement_before) {
 						#print(
 							'MULTIPLAYER_SMOKE_FAIL_CLIENT: movement state was not consumed (' +
@@ -215,11 +368,14 @@
 					}
 					client_movement_probe_complete = true;
 					#print('MULTIPLAYER_SMOKE_MOVEMENT_PASS_CLIENT');
-					game.event('complete_turn', {});
+					if (!run_client_combat_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat probe could not start');
+						glsmac.exit();
+					}
 					return false;
 				}
 				if (wait_ticks >= 100) {
-					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: movement probe timed out');
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: movement probe timed out in ' + phase);
 					glsmac.exit();
 					return false;
 				}
@@ -319,6 +475,11 @@
 			if (turn_id == 1) {
 				#print('MULTIPLAYER_SMOKE_' + role + ': synchronized turn 1');
 				if (game.is_master()) {
+					if (!spawn_combat_defender()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat defender could not be spawned');
+						glsmac.exit();
+						return;
+					}
 					game.event('complete_turn', {});
 				}
 				else {
@@ -356,18 +517,37 @@
 				if (game.get_um().has_unit(client_movement_unit_id)) {
 					client_unit = game.get_um().get_unit(client_movement_unit_id);
 				}
+				let combat_defender = null;
+				if (combat_defender_id != 0 && game.get_um().has_unit(combat_defender_id)) {
+					combat_defender = game.get_um().get_unit(combat_defender_id);
+				}
+				let client_unit_invalid = false;
+				if (client_unit != null) {
+					client_unit_invalid =
+						client_unit.owner != client_player_id ||
+						client_unit.get_tile().x != client_movement_target_x ||
+						client_unit.get_tile().y != client_movement_target_y;
+				}
+				let combat_defender_invalid = false;
+				if (combat_defender != null) {
+					combat_defender_invalid =
+						combat_defender.owner == client_player_id ||
+						combat_defender.get_tile().x != client_combat_target_x ||
+						combat_defender.get_tile().y != client_combat_target_y;
+				}
 				if (
 					accepted_event_count != 1 ||
 					rejected_event_count != 0 ||
 					(!game.is_master() && !client_event_probe_complete) ||
 					(!game.is_master() && !client_worker_probe_complete) ||
 					(!game.is_master() && !client_movement_probe_complete) ||
+					(!game.is_master() && !client_combat_probe_complete) ||
 					client_base == null ||
 					#sizeof(client_base.get_worked_tiles()) != 0 ||
-					client_unit == null ||
-					client_unit.owner != client_player_id ||
-					client_unit.get_tile().x != client_movement_target_x ||
-					client_unit.get_tile().y != client_movement_target_y
+					combat_defender_id == 0 ||
+					(client_unit != null && combat_defender != null) ||
+					client_unit_invalid ||
+					combat_defender_invalid
 				) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +

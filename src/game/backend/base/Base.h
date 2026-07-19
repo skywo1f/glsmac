@@ -55,8 +55,10 @@ public:
 	const Game* const GetGame() const;
 
 	Pop* const AddPop( const Pop& pop );
-	void RemovePop( const size_t pop_id );
+	void RemovePop( GSE_CALLABLE, const size_t pop_id );
 	void ChangePopType( GSE_CALLABLE, const size_t pop_id, const std::string& def_id );
+	void WorkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile );
+	void UnworkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile );
 
 	const size_t m_id;
 	slot::Slot* m_owner;
@@ -65,7 +67,7 @@ public:
 	pops_t m_pops;
 
 	static const types::Buffer Serialize( const Base* base );
-	static Base* Deserialize( types::Buffer& buf, Game* game );
+	static Base* Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game );
 
 	WRAPDEFS_DYNAMIC( Base );
 
@@ -87,6 +89,7 @@ private:
 	gse::value::Array* const GetUnworkedTiles( GSE_CALLABLE );
 	gse::value::Object* const GetIntake( GSE_CALLABLE );
 	gse::value::Object* const GetConsumption( GSE_CALLABLE );
+	void RestoreWorkedTiles( GSE_CALLABLE );
 
 	void TriggerUpdate();
 };

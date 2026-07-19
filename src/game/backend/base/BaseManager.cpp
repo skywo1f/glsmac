@@ -154,6 +154,12 @@ void BaseManager::DespawnBase( GSE_CALLABLE, const size_t base_id ) {
 	auto* base = it->second;
 
 	Log( "Despawning base #" + std::to_string( base->m_id ) + " at " + base->GetTile()->ToString() );
+	for ( auto& pop_it : base->m_pops ) {
+		auto& pop = pop_it.second;
+		if ( pop.m_worked_tile ) {
+			base->UnworkPopTile( GSE_CALL, &pop, pop.m_worked_tile );
+		}
+	}
 
 	{
 		std::lock_guard guard( m_updated_bases_mutex );
@@ -193,7 +199,7 @@ const BaseManager::popdefs_t& BaseManager::GetBasePopDefs() const {
 
 void BaseManager::ProcessUnprocessed( GSE_CALLABLE ) {
 	for ( auto& it : m_unprocessed_bases ) {
-		SpawnBase( GSE_CALL, base::Base::Deserialize( it, m_game ) );
+		SpawnBase( GSE_CALL, base::Base::Deserialize( GSE_CALL, it, m_game ) );
 	}
 	m_unprocessed_bases.clear();
 }
@@ -476,7 +482,7 @@ void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	for ( size_t i = 0 ; i < sz ; i++ ) {
 		auto b = types::Buffer( buf.ReadString() );
 		if ( m_game->IsRunning() ) {
-			SpawnBase( GSE_CALL, base::Base::Deserialize( b, m_game ) );
+			SpawnBase( GSE_CALL, base::Base::Deserialize( GSE_CALL, b, m_game ) );
 		}
 		else {
 			m_unprocessed_bases.push_back( b );

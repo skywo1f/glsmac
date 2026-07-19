@@ -78,9 +78,15 @@ Pop* const Base::AddPop( const Pop& pop ) {
 	return &m_pops.at( pop.m_id );
 }
 
-void Base::RemovePop( const size_t pop_id ) {
-	ASSERT( m_pops.find( pop_id ) != m_pops.end(), "pop id not found" );
-	m_pops.erase( pop_id );
+void Base::RemovePop( GSE_CALLABLE, const size_t pop_id ) {
+	const auto it = m_pops.find( pop_id );
+	if ( it == m_pops.end() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population does not belong to this base" );
+	}
+	if ( it->second.m_worked_tile ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population must stop working before it can be removed" );
+	}
+	m_pops.erase( it );
 	m_game->GetBM()->RefreshBase( this );
 	TriggerUpdate();
 }
@@ -99,8 +105,65 @@ void Base::ChangePopType( GSE_CALLABLE, const size_t pop_id, const std::string& 
 	}
 }
 
+void Base::WorkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile ) {
+	if ( !pop || pop->m_base != this ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population does not belong to this base" );
+	}
+	if ( !tile ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "worked tile is null" );
+	}
+	if ( pop->m_worked_tile && pop->m_worked_tile != tile ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population already works a tile" );
+	}
+	if ( m_worked_tiles.find( tile ) != m_worked_tiles.end() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "tile is already worked by this base" );
+	}
+	tile->SetWorkingPop( GSE_CALL, pop );
+	pop->SetWorkedTile( GSE_CALL, tile );
+	m_worked_tiles.insert( tile );
+	TriggerUpdate();
+}
+
+void Base::UnworkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile ) {
+	if ( !pop || pop->m_base != this ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population does not belong to this base" );
+	}
+	if ( !tile || pop->m_worked_tile != tile ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "population does not work this tile" );
+	}
+	const auto it = m_worked_tiles.find( tile );
+	if ( it == m_worked_tiles.end() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "tile is not worked by this base" );
+	}
+	tile->UnsetWorkingPop( GSE_CALL, pop );
+	pop->UnsetWorkedTile( GSE_CALL, tile );
+	m_worked_tiles.erase( it );
+	TriggerUpdate();
+}
+
 const types::Buffer Base::Serialize( const Base* base ) {
 	types::Buffer buf;
+	std::unordered_set< map::tile::Tile* > pop_worked_tiles = {};
+	for ( const auto& it : base->m_pops ) {
+		const auto& pop = it.second;
+		if ( pop.m_worked_tile ) {
+			if (
+				pop.GetWorkedTileLink() != pop.m_worked_tile ||
+				pop.m_worked_tile->GetWorkingPop() != &pop
+			) {
+				THROW( "base population worker links do not match its assignment" );
+			}
+			if ( !pop_worked_tiles.insert( pop.m_worked_tile ).second ) {
+				THROW( "multiple populations work the same tile" );
+			}
+		}
+		else if ( pop.HasWorkedTileLink() ) {
+			THROW( "unassigned base population has a worked tile link" );
+		}
+	}
+	if ( pop_worked_tiles != base->m_worked_tiles ) {
+		THROW( "base worked tiles do not match population assignments" );
+	}
 	buf.WriteInt( base->m_id );
 	buf.WriteInt( base->m_owner->GetIndex() );
 	buf.WriteString( base->m_faction->m_id );
@@ -113,10 +176,18 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		it.second.Serialize( buf );
 	}
 	buf.WriteInt( base->m_next_pop_id );
+	auto* const accumulated_nutrients = const_cast< Base* >( base )->CustomGet( "accumulated_nutrients" );
+	buf.WriteBool( accumulated_nutrients != nullptr );
+	if ( accumulated_nutrients ) {
+		if ( accumulated_nutrients->type != gse::VT_INT ) {
+			THROW( "base accumulated nutrients must be an integer" );
+		}
+		buf.WriteInt( ( (gse::value::Int*)accumulated_nutrients )->value );
+	}
 	return buf;
 }
 
-Base* Base::Deserialize( types::Buffer& buf, Game* game ) {
+Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	ASSERT( game, "game is null" );
 	const auto id = buf.ReadInt();
 	auto* slot = &game->GetState()->m_slots->GetSlot( buf.ReadInt() );
@@ -152,7 +223,17 @@ Base* Base::Deserialize( types::Buffer& buf, Game* game ) {
 		}
 	}
 	const auto next_pop_id = buf.ReadInt();
-	return new Base( game, id, slot, faction, tile, name, pops, next_pop_id );
+	const bool has_accumulated_nutrients = buf.ReadBool();
+	const auto accumulated_nutrients = has_accumulated_nutrients ? buf.ReadInt() : 0;
+	auto* const base = new Base( game, id, slot, faction, tile, name, pops, next_pop_id );
+	if ( has_accumulated_nutrients ) {
+		base->CustomSet(
+			"accumulated_nutrients",
+			VALUE( gse::value::Int, , accumulated_nutrients )
+		);
+	}
+	base->RestoreWorkedTiles( GSE_CALL );
+	return base;
 }
 
 WRAPIMPL_SERIALIZE( Base )
@@ -173,6 +254,34 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	WRAPIMPL_CUSTOM_SETTERS
 	{
+		"work_pop_tile",
+		NATIVE_CALL( this ) {
+
+			m_game->CheckRW( GSE_CALL );
+
+			N_EXPECT_ARGS( 2 );
+			N_GETVALUE_UNWRAP( pop, 0, Pop );
+			N_GETVALUE_UNWRAP( tile, 1, map::tile::Tile );
+			WorkPopTile( GSE_CALL, pop, tile );
+
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"unwork_pop_tile",
+		NATIVE_CALL( this ) {
+
+			m_game->CheckRW( GSE_CALL );
+
+			N_EXPECT_ARGS( 2 );
+			N_GETVALUE_UNWRAP( pop, 0, Pop );
+			N_GETVALUE_UNWRAP( tile, 1, map::tile::Tile );
+			UnworkPopTile( GSE_CALL, pop, tile );
+
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
 		"create_pop",
 		NATIVE_CALL( this ) {
 
@@ -187,8 +296,20 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 				? 1 // aliens have 1 gender
 				: 2; // humans have 2
 			ASSERT( max_variants > 0, "no variants found for pop type: " + def_id );
+			if (
+				worked_tile &&
+				(
+					m_worked_tiles.find( worked_tile ) != m_worked_tiles.end() ||
+					worked_tile->HasWorkingPopLink()
+				)
+			) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "worked tile already has a population" );
+			}
 
 			auto* const pop = AddPop( Pop( this, m_next_pop_id++, def, m_game->GetRandom()->GetUInt(0, max_variants - 1), worked_tile ) );
+			if ( worked_tile ) {
+				WorkPopTile( GSE_CALL, pop, worked_tile );
+			}
 
 			return pop->Wrap( GSE_CALL );
 		} )
@@ -202,11 +323,12 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE_UNWRAP( pop, 0, Pop );
 
-			if ( m_pops.find( pop->m_id ) == m_pops.end() ) {
+			const auto it = m_pops.find( pop->m_id );
+			if ( it == m_pops.end() || &it->second != pop ) {
 				GSE_ERROR( gse::EC.GAME_ERROR, "Base does not have pop " + std::to_string( pop->m_id ) );
 			}
 
-			RemovePop( pop->m_id );
+			RemovePop( GSE_CALL, pop->m_id );
 
 			return VALUE( gse::value::Undefined );
 		} )
@@ -223,9 +345,11 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			if ( m_worked_tiles.find( tile ) != m_worked_tiles.end() ) {
 				GSE_ERROR( gse::EC.GAME_ERROR, "This tile is already worked" );
 			}
-			m_worked_tiles.insert( tile );
-
-			TriggerUpdate();
+			auto* const pop = tile->GetWorkingPop();
+			if ( !pop ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "Worked tile has an invalid population link" );
+			}
+			WorkPopTile( GSE_CALL, pop, tile );
 
 			return VALUE( gse::value::Undefined );
 		} )
@@ -242,9 +366,22 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			if ( m_worked_tiles.find( tile ) == m_worked_tiles.end() ) {
 				GSE_ERROR( gse::EC.GAME_ERROR, "This tile is not worked" );
 			}
-			m_worked_tiles.erase( tile );
-
-			TriggerUpdate();
+			Pop* pop = nullptr;
+			for ( auto& it : m_pops ) {
+				if ( it.second.m_worked_tile == tile ) {
+					if ( pop ) {
+						GSE_ERROR( gse::EC.GAME_ERROR, "Multiple populations work this tile" );
+					}
+					pop = &it.second;
+				}
+			}
+			if ( !pop ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "Worked tile does not identify its population" );
+			}
+			// Preserve compatibility with scripts that clear the two dynamic links first.
+			tile->SetWorkingPop( GSE_CALL, pop );
+			pop->SetWorkedTile( GSE_CALL, tile );
+			UnworkPopTile( GSE_CALL, pop, tile );
 
 			return VALUE( gse::value::Undefined );
 		} )
@@ -401,6 +538,34 @@ gse::value::Object* const Base::GetConsumption( GSE_CALLABLE ) {
 			m_owner->Wrap( GSE_CALL )
 		},
 	}; } );
+}
+
+void Base::RestoreWorkedTiles( GSE_CALLABLE ) {
+	if ( !m_worked_tiles.empty() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "base worked tiles were already restored" );
+	}
+	std::unordered_set< map::tile::Tile* > restored_tiles = {};
+	for ( auto& it : m_pops ) {
+		auto& pop = it.second;
+		auto* const tile = pop.m_worked_tile;
+		if ( tile ) {
+			if ( !restored_tiles.insert( tile ).second ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "multiple populations work the same tile" );
+			}
+			if ( tile->HasWorkingPopLink() || pop.HasWorkedTileLink() ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "serialized worker links were already restored" );
+			}
+		}
+	}
+	for ( auto& it : m_pops ) {
+		auto& pop = it.second;
+		auto* const tile = pop.m_worked_tile;
+		if ( tile ) {
+			tile->SetWorkingPop( GSE_CALL, &pop );
+			pop.SetWorkedTile( GSE_CALL, tile );
+		}
+	}
+	m_worked_tiles = restored_tiles;
 }
 
 void Base::TriggerUpdate() {

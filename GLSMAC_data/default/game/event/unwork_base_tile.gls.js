@@ -4,6 +4,9 @@ return {
 		if (e.caller != e.data.base.get_owner().id) {
 			return 'Only base owner can control base pops';
 		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
 		const work_pop = e.data.tile.get('working_pop');
 		if (!#is_defined(work_pop)) {
 			return 'Tile is not being worked';

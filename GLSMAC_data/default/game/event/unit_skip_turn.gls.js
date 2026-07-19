@@ -5,6 +5,9 @@ return {
 		if (unit.owner != e.caller) {
 			return 'Unit can only be moved by it\'s owner';
 		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
 		if (unit.get_tile().is_locked()) {
 			return 'Unit tile is locked';
 		}

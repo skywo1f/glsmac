@@ -4,6 +4,9 @@ return {
 		if (e.caller != e.data.base.get_owner().id) {
 			return 'Only base owner can control base pops';
 		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
 		if (e.data.pop.get_base() != e.data.base) {
 			return 'Population does not belong to this base';
 		}
