@@ -94,6 +94,7 @@ public:
 	~Engine();
 	int Run();
 	void ShutDown( int result = 0 );
+	const bool IsShuttingDown() const { return m_is_shutting_down.load(); }
 
 	config::Config* GetConfig() const { return m_config; }
 	resource::ResourceManager* GetResourceManager() const { return m_resource_manager; }

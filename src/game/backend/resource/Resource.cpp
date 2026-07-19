@@ -76,7 +76,7 @@ Resource* Resource::Deserialize( types::Buffer& buf ) {
 	render_info.file = buf.ReadString();
 	{
 		auto& r = render_info.coords;
-		const auto count = buf.ReadInt();
+		const auto count = buf.ReadCollectionSize( "resource render coordinate" );
 		r.reserve( count );
 		for ( size_t i = 0 ; i < count ; i++ ) {
 			r.push_back(

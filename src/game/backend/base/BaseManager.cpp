@@ -472,7 +472,7 @@ void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	ASSERT( m_bases.empty(), "bases not empty" );
 	ASSERT( m_unprocessed_bases.empty(), "unprocessed bases not empty" );
 
-	size_t sz = buf.ReadInt();
+	size_t sz = buf.ReadCollectionSize( "base population definition" );
 	m_base_popdefs.reserve( sz );
 	Log( "Unserializing " + std::to_string( sz ) + " base pop defs" );
 	for ( size_t i = 0 ; i < sz ; i++ ) {
@@ -481,7 +481,7 @@ void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 		DefinePop( base::PopDef::Deserialize( b ) );
 	}
 
-	sz = buf.ReadInt();
+	sz = buf.ReadCollectionSize( "base" );
 	Log( "Unserializing " + std::to_string( sz ) + " bases" );
 	if ( !m_game->IsRunning() ) {
 		m_unprocessed_bases.reserve( sz );

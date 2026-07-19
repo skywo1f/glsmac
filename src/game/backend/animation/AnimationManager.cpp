@@ -352,7 +352,7 @@ void AnimationManager::Serialize( types::Buffer& buf ) const {
 
 void AnimationManager::Deserialize( types::Buffer& buf ) {
 	ASSERT( m_animation_defs.empty(), "animation defs not empty" );
-	size_t sz = buf.ReadInt();
+	size_t sz = buf.ReadCollectionSize( "animation definition" );
 	Log( "Unserializing " + std::to_string( sz ) + " animation defs" );
 	m_animation_defs.reserve( sz );
 	for ( size_t i = 0 ; i < sz ; i++ ) {

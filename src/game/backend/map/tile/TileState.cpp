@@ -175,7 +175,7 @@ void TileState::Deserialize( types::Buffer buf ) {
 		river_original->Deserialize( buf.ReadString() );
 	}
 
-	const size_t sprites_count = buf.ReadInt();
+	const size_t sprites_count = buf.ReadCollectionSize( "tile sprite" );
 	sprites.clear();
 	for ( size_t i = 0 ; i < sprites_count ; i++ ) {
 		sprite_t sprite;

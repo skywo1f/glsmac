@@ -31,6 +31,7 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/map/tile/Tile.h"
+#include "types/Buffer.h"
 #include "types/Color.h"
 
 namespace gse {
@@ -42,6 +43,80 @@ void AddTests( task::gsetests::GSETests* task ) {
 		task->AddTest(
 			"test if tests work",
 			GT() {
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"buffer ownership and validation",
+			GT() {
+				types::Buffer source;
+				source.WriteInt( 11 );
+				types::Buffer copy( source );
+				copy.WriteInt( 22 );
+				types::Buffer assigned;
+				assigned.WriteString( "discarded" );
+				assigned = copy;
+
+				GT_ASSERT( source.ReadInt() == 11, "source buffer changed after copy" );
+				GT_ASSERT( source.GetRemaining() == 0, "source buffer gained copied data" );
+				GT_ASSERT( copy.ReadInt() == 11 && copy.ReadInt() == 22, "copied buffer append failed" );
+				GT_ASSERT( assigned.ReadInt() == 11 && assigned.ReadInt() == 22, "buffer copy assignment failed" );
+
+				types::Buffer valid_count;
+				valid_count.WriteInt( 2 );
+				valid_count.WriteBool( false );
+				valid_count.WriteBool( true );
+				GT_ASSERT( valid_count.ReadCollectionSize( "test" ) == 2, "valid collection count rejected" );
+
+				bool rejected_negative_count = false;
+				try {
+					types::Buffer negative_count;
+					negative_count.WriteInt( -1 );
+					negative_count.ReadCollectionSize( "test" );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_count = true;
+				}
+				GT_ASSERT( rejected_negative_count, "negative collection count accepted" );
+
+				bool rejected_impossible_count = false;
+				try {
+					types::Buffer impossible_count;
+					impossible_count.WriteInt( 1 );
+					impossible_count.ReadCollectionSize( "test" );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_impossible_count = true;
+				}
+				GT_ASSERT( rejected_impossible_count, "impossible collection count accepted" );
+
+				types::Buffer string_buffer;
+				string_buffer.WriteString( "x" );
+				auto malformed_data = string_buffer.ToString();
+				for ( size_t i = 1 ; i < 5 ; i++ ) {
+					malformed_data[ i ] = static_cast< char >( 0xff );
+				}
+				bool rejected_overflowing_size = false;
+				try {
+					types::Buffer malformed_buffer( malformed_data );
+					malformed_buffer.ReadString();
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_overflowing_size = true;
+				}
+				GT_ASSERT( rejected_overflowing_size, "overflowing buffer field size accepted" );
+
+				bool rejected_data_size_mismatch = false;
+				try {
+					const uint8_t value = 7;
+					types::Buffer data_buffer;
+					data_buffer.WriteData( &value, sizeof( value ) );
+					data_buffer.ReadData( sizeof( value ) + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_data_size_mismatch = true;
+				}
+				GT_ASSERT( rejected_data_size_mismatch, "buffer data size mismatch accepted" );
 				GT_OK();
 			}
 		);

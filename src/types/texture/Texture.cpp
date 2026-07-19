@@ -3,6 +3,7 @@
 #include <cstring>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <vector>
 
 #include "common/ObjectLink.h"
@@ -1000,29 +1001,41 @@ const types::Buffer Texture::Serialize() const {
 
 void Texture::Deserialize( types::Buffer buf ) {
 
-	m_filename = buf.ReadString();
-	size_t width = buf.ReadInt();
-	if ( width != m_width ) {
+	const auto filename = buf.ReadString();
+	const auto width = buf.ReadInt();
+	if ( width < 0 || static_cast< unsigned long long >( width ) != m_width ) {
 		THROW( "texture read width mismatch ( " + std::to_string( width ) + " != " + std::to_string( m_width ) + " )" );
 	}
-	size_t height = buf.ReadInt();
-	if ( height != m_height ) {
+	const auto height = buf.ReadInt();
+	if ( height < 0 || static_cast< unsigned long long >( height ) != m_height ) {
 		THROW( "texture read height mismatch ( " + std::to_string( height ) + " != " + std::to_string( m_height ) + " )" );
 	}
 
-	m_aspect_ratio = buf.ReadFloat();
-
-	m_bpp = buf.ReadInt();
-	ASSERT( m_bpp == 4, "invalid bpp" );
-
-	m_bitmap_size = buf.ReadInt();
+	const auto aspect_ratio = buf.ReadFloat();
+	const auto bpp = buf.ReadInt();
+	if ( bpp != m_bpp ) {
+		THROW( "texture read bpp mismatch ( " + std::to_string( bpp ) + " != " + std::to_string( m_bpp ) + " )" );
+	}
+	const auto bitmap_size = buf.ReadInt();
+	if ( bitmap_size < 0 || static_cast< unsigned long long >( bitmap_size ) != m_bitmap_size ) {
+		THROW( "texture read bitmap size mismatch ( " + std::to_string( bitmap_size ) + " != " + std::to_string( m_bitmap_size ) + " )" );
+	}
+	std::unique_ptr< unsigned char, decltype( &free ) > bitmap(
+		(unsigned char*)buf.ReadData( static_cast< uint32_t >( m_bitmap_size ) ),
+		&free
+	);
+	const bool is_tiled = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized texture" );
+	}
 
 	if ( m_bitmap ) {
 		free( m_bitmap );
 	}
-	m_bitmap = (unsigned char*)buf.ReadData( m_bitmap_size );
-
-	m_is_tiled = buf.ReadBool();
+	m_filename = filename;
+	m_aspect_ratio = aspect_ratio;
+	m_bitmap = bitmap.release();
+	m_is_tiled = is_tiled;
 
 	FullUpdate();
 }

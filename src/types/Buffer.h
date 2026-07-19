@@ -20,6 +20,9 @@ CLASS( Buffer, common::Class )
 	~Buffer();
 
 	Buffer( const Buffer& other );
+	Buffer( Buffer&& other ) noexcept;
+	Buffer& operator=( const Buffer& other );
+	Buffer& operator=( Buffer&& other ) noexcept;
 
 	data_t* data;
 	data_t* dw;
@@ -32,6 +35,7 @@ CLASS( Buffer, common::Class )
 	const bool ReadBool();
 	void WriteInt( const long long int val );
 	const long long int ReadInt();
+	const size_t ReadCollectionSize( const std::string& name );
 	void WriteFloat( const float val );
 	const float ReadFloat();
 	void WriteString( const std::string& val );

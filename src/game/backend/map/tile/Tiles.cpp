@@ -3,6 +3,7 @@
 
 #include "Tiles.h"
 
+#include "game/backend/settings/Types.h"
 #include "util/Clamper.h"
 #include "util/random/Random.h"
 
@@ -24,6 +25,9 @@ Tiles::~Tiles() {
 void Tiles::Resize( const uint32_t width, const uint32_t height ) {
 	if ( !width || !height || ( width & 1 ) || ( height & 1 ) ) {
 		THROW( "map dimensions must be positive even numbers" );
+	}
+	if ( static_cast< uint64_t >( width ) * height > settings::MAP_MAX_AREA ) {
+		THROW( "map dimensions exceed maximum area" );
 	}
 
 	if ( width != m_width || height != m_height ) {
@@ -319,11 +323,20 @@ const types::Buffer Tiles::Serialize() const {
 
 void Tiles::Deserialize( types::Buffer buf ) {
 
-	size_t width = buf.ReadInt();
-	size_t height = buf.ReadInt();
+	const auto width = buf.ReadInt();
+	const auto height = buf.ReadInt();
+	if (
+		width <= 0 ||
+		height <= 0 ||
+		static_cast< uint64_t >( width ) > settings::MAP_MAX_AREA ||
+		static_cast< uint64_t >( height ) > settings::MAP_MAX_AREA ||
+		static_cast< uint64_t >( width ) * static_cast< uint64_t >( height ) > settings::MAP_MAX_AREA
+	) {
+		THROW( "invalid serialized map dimensions" );
+	}
 
 	m_width = m_height = 0;
-	Resize( width, height );
+	Resize( static_cast< uint32_t >( width ), static_cast< uint32_t >( height ) );
 
 	for ( auto y = 0 ; y < m_height ; y++ ) {
 		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
@@ -335,6 +348,11 @@ void Tiles::Deserialize( types::Buffer buf ) {
 		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {
 			At( x, y ).Update();
 		}
+	}
+
+	m_is_validated = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tiles" );
 	}
 
 }

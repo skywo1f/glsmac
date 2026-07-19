@@ -1,4 +1,5 @@
 #include <cstring>
+#include <limits>
 
 #include "Buffer.h"
 
@@ -14,12 +15,21 @@ Buffer::Buffer() {
 }
 
 Buffer::Buffer( const std::string& val ) {
-	allocated_len = val.size();
-	lenw = val.size();
+	if ( val.size() > std::numeric_limits< uint32_t >::max() ) {
+		THROW( "buffer input is too large" );
+	}
+	allocated_len = static_cast< uint32_t >( val.size() );
+	lenw = allocated_len;
 	lenr = 0;
-	data = (data_t*)malloc( lenw );
-	memcpy( ptr( data, 0, lenw ), val.data(), lenw );
-	dw = data + lenw;
+	data = lenw > 0
+		? (data_t*)malloc( allocated_len )
+		: nullptr;
+	if ( lenw > 0 ) {
+		memcpy( data, val.data(), lenw );
+	}
+	dw = data
+		? data + lenw
+		: nullptr;
 	dr = data;
 }
 
@@ -34,15 +44,83 @@ Buffer::Buffer( const Buffer& other ) {
 	lenw = other.lenw;
 	lenr = other.lenr;
 	if ( other.data ) {
-		data_t* newptr = (data_t*)malloc( lenw );
+		data_t* newptr = (data_t*)malloc( allocated_len );
 		data = newptr;
-		memcpy( ptr( data, 0, lenw ), ptr( other.data, 0, other.lenw ), lenw );
+		memcpy( data, other.data, lenw );
 	}
 	else {
 		data = nullptr;
 	}
-	dw = data + lenw;
-	dr = data + lenr;
+	dw = data
+		? data + lenw
+		: nullptr;
+	dr = data
+		? data + lenr
+		: nullptr;
+}
+
+Buffer::Buffer( Buffer&& other ) noexcept {
+	allocated_len = other.allocated_len;
+	lenw = other.lenw;
+	lenr = other.lenr;
+	data = other.data;
+	dw = other.dw;
+	dr = other.dr;
+
+	other.allocated_len = 0;
+	other.lenw = 0;
+	other.lenr = 0;
+	other.data = nullptr;
+	other.dw = nullptr;
+	other.dr = nullptr;
+}
+
+Buffer& Buffer::operator=( const Buffer& other ) {
+	if ( this != &other ) {
+		data_t* new_data = nullptr;
+		if ( other.data ) {
+			new_data = (data_t*)malloc( other.allocated_len );
+			memcpy( new_data, other.data, other.lenw );
+		}
+		if ( data ) {
+			free( data );
+		}
+
+		allocated_len = other.allocated_len;
+		lenw = other.lenw;
+		lenr = other.lenr;
+		data = new_data;
+		dw = data
+			? data + lenw
+			: nullptr;
+		dr = data
+			? data + lenr
+			: nullptr;
+	}
+	return *this;
+}
+
+Buffer& Buffer::operator=( Buffer&& other ) noexcept {
+	if ( this != &other ) {
+		if ( data ) {
+			free( data );
+		}
+
+		allocated_len = other.allocated_len;
+		lenw = other.lenw;
+		lenr = other.lenr;
+		data = other.data;
+		dw = other.dw;
+		dr = other.dr;
+
+		other.allocated_len = 0;
+		other.lenw = 0;
+		other.lenr = 0;
+		other.data = nullptr;
+		other.dw = nullptr;
+		other.dr = nullptr;
+	}
+	return *this;
 }
 
 void Buffer::Alloc( uint32_t size ) {
@@ -89,44 +167,47 @@ void Buffer::WriteImpl( type_t type, const char* s, const uint32_t sz ) {
 
 char* Buffer::ReadImpl( type_t need_type, char* s, uint32_t* sz, const uint32_t need_sz ) {
 	ASSERT( need_type > T_NONE && need_type < T_MAX, "invalid buffer read type " + std::to_string( need_type ) );
+	const uint32_t header_size = sizeof( type_t ) + sizeof( *sz );
+	const uint32_t checksum_size = sizeof( checksum_t );
 	type_t type = T_NONE;
-	if ( lenw < lenr + sizeof( type ) + sizeof( *sz ) ) {
+	if ( GetRemaining() < header_size ) {
 		THROW( "buffer ends prematurely (while reading header)" );
 	}
-	memcpy( &type, dr, sizeof( type ) );
-	dr += sizeof( type );
+	const auto* read_ptr = data + lenr;
+	memcpy( &type, read_ptr, sizeof( type ) );
+	read_ptr += sizeof( type );
 	if ( type != need_type ) {
 		THROW( "unexpected type on buffer read ( " + std::to_string( need_type ) + " != " + std::to_string( type ) + " )" );
 	}
-	memcpy( sz, dr, sizeof( *sz ) );
-	dr += sizeof( *sz );
+	memcpy( sz, read_ptr, sizeof( *sz ) );
+	read_ptr += sizeof( *sz );
 	if ( need_sz && ( need_sz != *sz ) ) {
 		THROW( "buffer read size mismatch ( " + std::to_string( need_sz ) + " != " + std::to_string( *sz ) + " )" );
 	}
-	checksum_t need_c = 0;
-	lenr += sizeof( type ) + sizeof( *sz ) + *sz + sizeof( need_c );
-	if ( lenw < lenr ) {
+	const uint64_t total_size = static_cast< uint64_t >( header_size ) + *sz + checksum_size;
+	if ( total_size > GetRemaining() ) {
 		THROW( "buffer ends prematurely (while reading data)" );
 	}
-	//Log( "Reading " + std::to_string( *sz ) + " bytes (type=" + std::to_string( type ) + ")" );
+
+	checksum_t need_c = 0;
+	for ( uint32_t i = 0 ; i < *sz ; i++ ) {
+		need_c ^= static_cast< checksum_t >( read_ptr[ i ] );
+	}
+	const checksum_t c = static_cast< checksum_t >( read_ptr[ *sz ] );
+	if ( need_c != c ) {
+		THROW( "buffer read checksum mismatch ( " + std::to_string( need_c ) + " != " + std::to_string( c ) + " )" );
+	}
 
 	if ( s == nullptr && *sz > 0 ) {
 		s = (char*)malloc( *sz );
 	}
-
-	char* s_ptr = s;
-
-	for ( uint32_t i = 0 ; i < *sz ; i++ ) {
-		need_c ^= ( *( s_ptr++ ) = *( dr++ ) );
+	if ( *sz > 0 ) {
+		memcpy( s, read_ptr, *sz );
 	}
 
-	//Log( "Checking checksum (" + to_string( need_c ) + ")" );
-	checksum_t c = *( dr++ );
-	if ( need_c != c ) {
-		THROW( "buffer read checksum mismatch ( " + std::to_string( need_c ) + " != " + std::to_string( c ) + " )" );
-	}
+	lenr += static_cast< uint32_t >( total_size );
+	dr = data + lenr;
 	ASSERT( dr - data == lenr, "buffer read bytes count mismatch ( " + std::to_string( dr - data ) + " != " + std::to_string( lenr ) + " )" );
-	//Log( "Read successfully" );
 
 	return s;
 }
@@ -154,6 +235,16 @@ const long long int Buffer::ReadInt() {
 	uint32_t sz = 0;
 	ReadImpl( T_INT, (char*)&val, &sz, sizeof( val ) );
 	return val;
+}
+
+const size_t Buffer::ReadCollectionSize( const std::string& name ) {
+	const auto count = ReadInt();
+	const size_t min_element_size = sizeof( type_t ) + sizeof( uint32_t ) + sizeof( checksum_t );
+	const size_t max_count = GetRemaining() / min_element_size;
+	if ( count < 0 || static_cast< unsigned long long >( count ) > max_count ) {
+		THROW( "invalid serialized " + name + " count: " + std::to_string( count ) );
+	}
+	return static_cast< size_t >( count );
 }
 
 void Buffer::WriteFloat( const float val ) {
@@ -238,8 +329,11 @@ void Buffer::WriteData( const void* data, const uint32_t len ) {
 
 const void* Buffer::ReadData( const uint32_t len ) {
 	uint32_t sz = 0;
-	const void* val = ReadImpl( T_DATA, nullptr, &sz );
-	ASSERT( sz == len, "buffer data read size mismatch" );
+	const void* val = ReadImpl( T_DATA, nullptr, &sz, len );
+	if ( sz != len ) {
+		free( (void*)val );
+		THROW( "buffer data read size mismatch" );
+	}
 	return val;
 }
 

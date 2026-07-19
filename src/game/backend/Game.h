@@ -293,6 +293,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 	Random* GetRandom() const;
 	map::Map* GetMap() const;
 	State* GetState() const;
+	State* TryGetState() const;
 	const Player* GetPlayer() const;
 	const size_t GetSlotNum() const;
 

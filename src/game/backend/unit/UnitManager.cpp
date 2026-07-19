@@ -562,7 +562,7 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	ASSERT( m_units.empty(), "units not empty" );
 	ASSERT( m_unprocessed_units.empty(), "unprocessed units not empty" );
 
-	size_t sz = buf.ReadInt();
+	size_t sz = buf.ReadCollectionSize( "unit morale set" );
 	Log( "Unserializing " + std::to_string( sz ) + " unit moralesets" );
 	m_unit_moralesets.reserve( sz );
 	for ( size_t i = 0 ; i < sz ; i++ ) {
@@ -571,7 +571,7 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 		DefineMoraleSet( MoraleSet::Deserialize( b ) );
 	}
 
-	sz = buf.ReadInt();
+	sz = buf.ReadCollectionSize( "unit definition" );
 	Log( "Unserializing " + std::to_string( sz ) + " unit defs" );
 	m_unit_defs.reserve( sz );
 	for ( size_t i = 0 ; i < sz ; i++ ) {
@@ -580,7 +580,7 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 		DefineUnit( Def::Deserialize( b ) );
 	}
 
-	sz = buf.ReadInt();
+	sz = buf.ReadCollectionSize( "unit" );
 	Log( "Unserializing " + std::to_string( sz ) + " units" );
 	if ( !m_game->IsRunning() ) {
 		m_unprocessed_units.reserve( sz );

@@ -59,7 +59,7 @@ PopDef* PopDef::Deserialize( types::Buffer& buf ) {
 	const auto name = buf.ReadString();
 #define X( _r ) \
     pop_render_infos_t _r = {}; \
-    _r.resize( buf.ReadInt() ); \
+    _r.resize( buf.ReadCollectionSize( #_r " render" ) ); \
     for ( auto& r : _r ) { \
         r.file = buf.ReadString(); \
         r.x = buf.ReadInt(); \

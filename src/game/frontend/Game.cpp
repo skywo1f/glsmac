@@ -207,6 +207,9 @@ void Game::Stop() {
 }
 
 void Game::Iterate() {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 
 	auto* game = g_engine->GetGame();
 
@@ -1869,6 +1872,9 @@ void Game::SelectTileAtPoint( const backend::tile_query_purpose_t tile_query_pur
 }
 
 void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 
 	ASSERT( m_tile_at_query_purpose != backend::TQP_NONE, "tile query purpose not set" );
 
@@ -2392,9 +2398,14 @@ void Game::UnregisterWidgets() {
 
 void Game::Trigger( gse::GCWrappable* const object, const std::string& event, const gse::f_args_t& f_args ) {
 	// TODO: some mutexes needed?
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	ASSERT( object, "triggered object is null" );
-	auto* state = m_game->GetState();
-	ASSERT( state, "game state is null" );
+	auto* state = m_game->TryGetState();
+	if ( !state ) {
+		return;
+	}
 	state->WithGSE(
 		state, [ state, object, event, f_args ]( GSE_CALLABLE ) {
 			state->TriggerObject( object, event, f_args );
@@ -2447,6 +2458,9 @@ void Game::SetSelectedTile( tile::Tile* tile ) {
 }
 
 void Game::UpdateTilePreview( tile::Tile* const tile ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	const auto& c = tile->GetCoords();
 	auto* const t = m_game->GetMap()->GetTile( c.x, c.y );
 	Trigger(
@@ -2460,6 +2474,9 @@ void Game::UpdateTilePreview( tile::Tile* const tile ) {
 }
 
 void Game::UpdateUnitPreview( const unit::Unit* const unit ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	auto* const u = unit
 		? m_game->GetUM()->GetUnit( unit->GetId() )
 		: nullptr;
@@ -2476,6 +2493,9 @@ void Game::UpdateUnitPreview( const unit::Unit* const unit ) {
 }
 
 void Game::UpdateBasePreview( const base::Base* const base ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	auto* const b = base
 		? m_game->GetBM()->GetBase( base->GetId() )
 		: nullptr;

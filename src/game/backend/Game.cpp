@@ -445,6 +445,10 @@ State* Game::GetState() const {
 	return m_state;
 }
 
+State* Game::TryGetState() const {
+	return m_state;
+}
+
 const Player* Game::GetPlayer() const {
 	ASSERT( m_state, "state not set" );
 	if ( m_state->m_connection ) {

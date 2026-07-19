@@ -260,7 +260,7 @@ void ResourceManager::Serialize( types::Buffer& buf ) const {
 void ResourceManager::Deserialize( types::Buffer& buf ) {
 	Clear();
 	ASSERT( m_resources.empty(), "resources not empty" );
-	size_t sz = buf.ReadInt();
+	size_t sz = buf.ReadCollectionSize( "resource" );
 	Log( "Deserializing " + std::to_string( sz ) + " resources" );
 	m_resources.reserve( sz );
 	for ( size_t i = 0 ; i < sz ; i++ ) {

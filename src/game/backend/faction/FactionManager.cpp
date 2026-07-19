@@ -242,7 +242,7 @@ const types::Buffer FactionManager::Serialize() const {
 void FactionManager::Deserialize( types::Buffer buf ) {
 	Clear();
 
-	const size_t factions_count = buf.ReadInt();
+	const size_t factions_count = buf.ReadCollectionSize( "faction" );
 	for ( size_t i = 0 ; i < factions_count ; i++ ) {
 		const auto faction_id = buf.ReadString();
 		ASSERT( m_factions.find( faction_id ) == m_factions.end(), "duplicate faction id" );

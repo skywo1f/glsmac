@@ -124,6 +124,9 @@ GLSMAC::~GLSMAC() {
 }
 
 void GLSMAC::Iterate() {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	{
 		bool ticked = false;
 		while ( m_loader_dots_timer.HasTicked() ) {
@@ -151,9 +154,18 @@ void GLSMAC::Iterate() {
 		}
 	}
 	m_gse->Iterate();
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	m_ui->Iterate();
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	if ( m_game ) {
 		m_game->Iterate();
+	}
+	if ( g_engine->IsShuttingDown() ) {
+		return;
 	}
 	if ( m_reset_needed ) {
 		m_reset_needed = false;
@@ -361,7 +373,9 @@ gse::Value* const GLSMAC::TriggerObject( gse::GCWrappable* object, const std::st
 }
 
 void GLSMAC::WithGSE( const std::function<void( GSE_CALLABLE )>& f ) {
-	m_state->WithGSE( this, f );
+	if ( !g_engine->IsShuttingDown() && m_state ) {
+		m_state->WithGSE( this, f );
+	}
 }
 
 void GLSMAC::GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects ) {

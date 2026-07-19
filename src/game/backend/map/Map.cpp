@@ -230,15 +230,15 @@ void Map::Deserialize( types::Buffer buf ) {
 	m_meshes.terrain_data->Deserialize( buf.ReadString() );
 	m_textures.terrain->Deserialize( buf.ReadString() );
 
-	size_t sz = buf.ReadInt();
+	size_t sz = buf.ReadCollectionSize( "map sprite actor" );
 	m_sprite_actors.clear();
-	for ( auto i = 0 ; i < sz ; i++ ) {
+	for ( size_t i = 0 ; i < sz ; i++ ) {
 		m_sprite_actors[ buf.ReadString() ] = DeserializeSpriteActor( buf.ReadString() );
 	}
 
-	sz = buf.ReadInt();
+	sz = buf.ReadCollectionSize( "map sprite instance" );
 	m_sprite_instances.clear();
-	for ( auto i = 0 ; i < sz ; i++ ) {
+	for ( size_t i = 0 ; i < sz ; i++ ) {
 		m_sprite_instances[ buf.ReadInt() ] = {
 			buf.ReadString(),
 			buf.ReadVec3()
