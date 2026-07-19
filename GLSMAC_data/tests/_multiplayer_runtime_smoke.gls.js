@@ -14,6 +14,7 @@
 	let client_worker_probe_complete = false;
 	let client_movement_probe_complete = false;
 	let client_combat_probe_complete = false;
+	let client_immediate_combat_probe_complete = false;
 	let client_movement_unit_id = 0;
 	let client_movement_target_x = 0;
 	let client_movement_target_y = 0;
@@ -311,6 +312,31 @@
 							attacker: attacker,
 							defender: defender,
 						});
+						phase = 'wait_for_combat_apply';
+					}
+				}
+				else if (phase == 'wait_for_combat_apply') {
+					if (
+						!game.get_um().has_unit(client_movement_unit_id) ||
+						!game.get_um().has_unit(combat_defender_id)
+					) {
+						client_immediate_combat_probe_complete = true;
+						client_combat_probe_complete = true;
+						#print('MULTIPLAYER_SMOKE_IMMEDIATE_COMBAT_PASS_CLIENT');
+						#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
+						game.event('complete_turn', {});
+						return false;
+					}
+					const attacker = game.get_um().get_unit(client_movement_unit_id);
+					const defender = game.get_um().get_unit(combat_defender_id);
+					if (attacker.movement == 0.0) {
+						if (attacker.health > 0.0 && defender.health > 0.0) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat state waited for animation completion');
+							glsmac.exit();
+							return false;
+						}
+						client_immediate_combat_probe_complete = true;
+						#print('MULTIPLAYER_SMOKE_IMMEDIATE_COMBAT_PASS_CLIENT');
 						phase = 'combat';
 					}
 				}
@@ -541,6 +567,7 @@
 					(!game.is_master() && !client_event_probe_complete) ||
 					(!game.is_master() && !client_worker_probe_complete) ||
 					(!game.is_master() && !client_movement_probe_complete) ||
+					(!game.is_master() && !client_immediate_combat_probe_complete) ||
 					(!game.is_master() && !client_combat_probe_complete) ||
 					client_base == null ||
 					#sizeof(client_base.get_worked_tiles()) != 0 ||

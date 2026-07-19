@@ -166,6 +166,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let active_defender = defender;
 	let animations = null;
 	let stopped_animation_id = 0;
+	let is_master = false;
+	let despawn_requests = 0;
 
 	const um = {
 		has_unit: (id) => {
@@ -199,6 +201,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	};
 	const game = {
 		um: um,
+		is_master: () => {
+			return is_master;
+		},
 		am: {
 			show_animations: (value) => {
 				animations = value;
@@ -221,6 +226,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		},
 		event: (name, data) => {
 			test.assert(name == 'despawn_unit');
+			despawn_requests++;
 			um.despawn_unit(data.unit);
 		},
 	};
@@ -232,8 +238,10 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		},
 		resolved: {
 			sequence: [
-				[true, 0.3],
-				[false, 0.2],
+				[true, 0.4],
+				[false, 0.3],
+				[true, 0.5],
+				[false, 0.5],
 			],
 			attacker_dead: true,
 			defender_dead: true,
@@ -242,11 +250,14 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 
 	event.applied = attack_unit.apply(event);
 	test.assert(event.applied.backup.attacker.moved_this_turn == false);
+	test.assert(event.data.attacker.health == 0.0);
+	test.assert(event.data.defender.health == 0.0);
+	test.assert(event.data.attacker.movement == 0.0);
+	test.assert(despawn_requests == 0);
+	test.assert(#sizeof(animations) == 6);
 	for (animation of animations) {
-		animation.oncomplete();
+		test.assert(!#is_defined(animation.oncomplete));
 	}
-	test.assert(active_attacker == null);
-	test.assert(active_defender == null);
 
 	attack_unit.rollback(event);
 	test.assert(stopped_animation_id == 73);
@@ -260,4 +271,15 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_defender.morale == 5);
 	test.assert(active_defender.health == 0.9);
 	test.assert(active_defender.moved_this_turn == false);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	is_master = true;
+	event.applied = attack_unit.apply(event);
+	test.assert(despawn_requests == 2);
+	test.assert(active_attacker == null);
+	test.assert(active_defender == null);
+	attack_unit.rollback(event);
+	test.assert(active_attacker.health == 0.8);
+	test.assert(active_defender.health == 0.9);
 }

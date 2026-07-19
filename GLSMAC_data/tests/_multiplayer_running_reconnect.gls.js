@@ -8,6 +8,7 @@
 	let game_configured = false;
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
+	const defeated_snapshot_unit_id = 3;
 
 	glsmac.on('configure_state', (e) => {
 		#async(100, () => {
@@ -71,6 +72,9 @@
 		};
 
 		const get_base_state_error = (player_id) => {
+			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
+				return 'defeated unit was restored from the snapshot';
+			}
 			const base = find_base_for_player(player_id);
 			if (base == null) {
 				return 'base is missing';
@@ -137,8 +141,21 @@
 						glsmac.exit();
 						return;
 					}
-					// Initial growth adds 2 nutrients, then spends 10 when creating the first worker.
+					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
+					const defeated_unit = game.get_um().spawn_unit({
+						def: 'MindWorms',
+						owner: client_base.get_owner(),
+						tile: client_base.get_tile(),
+						morale: 1,
+						health: 1.0,
+					});
+					if (defeated_unit.id != defeated_snapshot_unit_id) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: unexpected defeated unit id');
+						glsmac.exit();
+						return;
+					}
+					defeated_unit.health = 0.0;
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});
 				}

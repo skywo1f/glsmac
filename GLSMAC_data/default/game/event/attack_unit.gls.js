@@ -167,24 +167,16 @@ return {
 
 		let animations = [];
 		for (step of e.resolved.sequence) {
-			const s = step;
 			if (step[0]) {
 				animations :+{
 					id: 'ATTACK_PSI',
 					tile: defender_tile,
-					oncomplete: () => {
-						defender.health = defender.health - s[1];
-					}
 				};
 			}
 			else {
-				const s = step;
 				animations :+{
 					id: 'ATTACK_PSI',
 					tile: attacker_tile,
-					oncomplete: () => {
-						attacker.health = attacker.health - s[1];
-					}
 				};
 			}
 		}
@@ -192,22 +184,38 @@ return {
 			animations :+{
 				id: 'DEATH_PSI',
 				tile: attacker_tile,
-				oncomplete: () => {
-					e.game.event('despawn_unit', {unit: attacker});
-				}
 			};
 		}
 		if (e.resolved.defender_dead) {
 			animations :+{
 				id: 'DEATH_PSI',
 				tile: defender_tile,
-				oncomplete: () => {
-					e.game.event('despawn_unit', {unit: defender});
-				}
 			};
 		}
 
 		applied.animations_id = e.game.am.show_animations(animations);
+		for (step of e.resolved.sequence) {
+			if (step[0]) {
+				defender.health = #max(0.0, defender.health - step[1]);
+			}
+			else {
+				attacker.health = #max(0.0, attacker.health - step[1]);
+			}
+		}
+		if (e.resolved.attacker_dead) {
+			attacker.health = 0.0;
+		}
+		if (e.resolved.defender_dead) {
+			defender.health = 0.0;
+		}
+		if (e.game.is_master()) {
+			if (e.resolved.attacker_dead) {
+				e.game.event('despawn_unit', {unit: attacker});
+			}
+			if (e.resolved.defender_dead) {
+				e.game.event('despawn_unit', {unit: defender});
+			}
+		}
 
 		return applied;
 	},

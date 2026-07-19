@@ -5,12 +5,16 @@
 
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
+	const defeated_snapshot_unit_id = 3;
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
 		let handled_turns = {};
 
 		const get_base_state_error = () => {
+			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
+				return 'defeated unit was restored from the snapshot';
+			}
 			let base = null;
 			for (candidate of game.get_bm().get_bases()) {
 				if (candidate.get_owner().id == game.get_player().id) {

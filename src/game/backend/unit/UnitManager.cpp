@@ -538,10 +538,18 @@ void UnitManager::Serialize( types::Buffer& buf ) const {
 		buf.WriteString( Def::Serialize( it.second ).ToString() );
 	}
 
-	Log( "Serializing " + std::to_string( m_units.size() ) + " units" );
-	buf.WriteInt( m_units.size() );
+	size_t serialized_units = 0;
 	for ( const auto& it : m_units ) {
-		buf.WriteString( Unit::Serialize( it.second ).ToString() );
+		if ( it.second->m_health > 0.0f ) {
+			serialized_units++;
+		}
+	}
+	Log( "Serializing " + std::to_string( serialized_units ) + " units" );
+	buf.WriteInt( serialized_units );
+	for ( const auto& it : m_units ) {
+		if ( it.second->m_health > 0.0f ) {
+			buf.WriteString( Unit::Serialize( it.second ).ToString() );
+		}
 	}
 	buf.WriteInt( Unit::GetNextId() );
 
