@@ -8,6 +8,9 @@
 	let ready_requested = false;
 	let game_configured = false;
 	let exit_scheduled = false;
+	let accepted_event_count = 0;
+	let rejected_event_count = 0;
+	let client_event_probe_complete = false;
 
 	glsmac.on('configure_state', (e) => {
 		if (lobby_timer_started) {
@@ -59,6 +62,41 @@
 		let handled_turns = {};
 		#print('MULTIPLAYER_SMOKE_CONFIGURE_' + role);
 
+		game.register_event('multiplayer_smoke_accept_once', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Probe must be submitted by a client';
+				}
+			},
+			apply: (e) => {
+				const previous = accepted_event_count;
+				accepted_event_count++;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				accepted_event_count = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_reject_and_rollback', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Probe must be submitted by a client';
+				}
+				if (e.game.is_master()) {
+					return 'Intentional server rejection for rollback coverage';
+				}
+			},
+			apply: (e) => {
+				const previous = rejected_event_count;
+				rejected_event_count++;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				rejected_event_count = e.applied.previous;
+			},
+		});
+
 		let handle_turn = (turn_id) => {
 			const turn_key = #to_string(turn_id);
 			if (#is_defined(handled_turns[turn_key])) {
@@ -80,9 +118,48 @@
 
 			if (turn_id == 1) {
 				#print('MULTIPLAYER_SMOKE_' + role + ': synchronized turn 1');
-				game.event('complete_turn', {});
+				if (game.is_master()) {
+					game.event('complete_turn', {});
+				}
+				else {
+					game.event('multiplayer_smoke_accept_once', {});
+					game.event('multiplayer_smoke_reject_and_rollback', {});
+					let wait_ticks = 0;
+					#async(100, () => {
+						wait_ticks++;
+						if (accepted_event_count == 1 && rejected_event_count == 0) {
+							client_event_probe_complete = true;
+							#print('MULTIPLAYER_SMOKE_EVENT_RESPONSE_PASS_CLIENT');
+							game.event('complete_turn', {});
+							return false;
+						}
+						if (accepted_event_count > 1 || wait_ticks >= 100) {
+							#print(
+								'MULTIPLAYER_SMOKE_FAIL_CLIENT: event response counts are ' +
+								#to_string(accepted_event_count) + '/' +
+								#to_string(rejected_event_count)
+							);
+							glsmac.exit();
+							return false;
+						}
+						return true;
+					});
+				}
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
+				if (
+					accepted_event_count != 1 ||
+					rejected_event_count != 0 ||
+					(!game.is_master() && !client_event_probe_complete)
+				) {
+					#print(
+						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +
+						#to_string(accepted_event_count) + '/' +
+						#to_string(rejected_event_count)
+					);
+					glsmac.exit();
+					return;
+				}
 				exit_scheduled = true;
 				#print('MULTIPLAYER_SMOKE_PASS_' + role + ': reached synchronized turn 2 with two players');
 				#async(game.is_master() ? 2500 : 1000, () => {

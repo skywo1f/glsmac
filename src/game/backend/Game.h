@@ -406,6 +406,7 @@ private:
 	struct event_waiting_for_response_t {
 		event::Event* event;
 		gse::Value* rollback_data;
+		bool was_applied = false;
 	};
 	std::unordered_map< std::string, event_waiting_for_response_t > m_events_waiting_for_responses = {};
 	common::Mutex m_events_waiting_for_responses_mutex;
