@@ -316,7 +316,7 @@ void Game::Iterate() {
 					const auto on_game_exit = m_on_game_exit;
 					m_on_game_exit = nullptr;
 					on_game_exit();
-					break;
+					return; // callback may start frontend or engine teardown
 				}
 				default: {
 					THROW( "unknown response result " + std::to_string( response.result ) );

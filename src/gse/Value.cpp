@@ -114,6 +114,14 @@ const std::string& Value::GetTypeString() const {
 	return GetTypeStringStatic( type );
 }
 
+const bool Value::IsInvalidated() const {
+	return m_is_invalidated;
+}
+
+void Value::Invalidate() {
+	m_is_invalidated = true;
+}
+
 const std::string Value::ToString() const {
 	std::unordered_set< const Value* > stack = {};
 	return ToStringImpl( stack );

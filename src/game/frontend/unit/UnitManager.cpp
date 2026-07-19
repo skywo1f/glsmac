@@ -159,6 +159,7 @@ void UnitManager::DespawnUnit( const size_t unit_id ) {
 	auto* unit = it->second;
 
 	m_units.erase( it );
+	m_game->UpdateRelatedWidgets( ui::WT_UNIT_PREVIEW, unit_id, nullptr );
 
 	if ( unit->IsOwned() ) {
 		RemoveSelectable( unit );

@@ -7,9 +7,11 @@ return {
 	},
 
 	apply: (e) => {
-		const base = e.game.bm.spawn_base(e.data.owner, e.data.tile, {
-			// name: e.data.name,
-		});
+		let info = {};
+		if (#is_defined(e.data.name)) {
+			info.name = e.data.name;
+		}
+		const base = e.game.bm.spawn_base(e.data.owner, e.data.tile, info);
 
 		return {
 			base: base,

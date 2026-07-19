@@ -39,7 +39,13 @@ void BaseManager::Clear() {
 	}
 	m_bases.clear();
 
+	m_registered_base_names.clear();
+	m_unprocessed_bases.clear();
 	m_base_updates.clear();
+	{
+		std::lock_guard guard( m_updated_bases_mutex );
+		m_updated_bases.clear();
+	}
 }
 
 base::PopDef* BaseManager::GetPopDef( const std::string& id ) const {
@@ -175,6 +181,7 @@ void BaseManager::DespawnBase( GSE_CALLABLE, const size_t base_id ) {
 	tile->base = nullptr;
 
 	m_bases.erase( it );
+	m_registered_base_names.erase( base->m_name );
 
 	auto* state = m_game->GetState();
 	if ( state->IsMaster() ) {
@@ -381,7 +388,7 @@ WRAPIMPL_BEGIN( BaseManager )
 					owner->GetSlot(),
 					owner->GetFaction(),
 					tile,
-					m_name,
+					name,
 					{}
 				);
 

@@ -1170,7 +1170,7 @@ void Game::Message( const std::string& text ) {
 
 void Game::Quit( const std::string& reason ) {
 	auto fr = FrontendRequest( FrontendRequest::FR_QUIT );
-	NEW( fr.data.quit.reason, std::string, "Lost connection to server" );
+	NEW( fr.data.quit.reason, std::string, reason );
 	AddFrontendRequest( fr );
 }
 
@@ -1472,6 +1472,7 @@ void Game::ProcessEvents() {
 		m_state->WithGSE( this, [ this, events ]( GSE_CALLABLE ) {
 			const std::string* errptr = nullptr;
 			for ( const auto& event : events ) {
+				errptr = nullptr;
 #if defined(DEBUG) || defined(FASTDEBUG)
 				MTModule::Log( "Event begin: " + event->ToString() );
 #endif
@@ -1485,7 +1486,10 @@ void Game::ProcessEvents() {
 						? it->second
 						: nullptr;
 				}
-				if ( handler ) {
+				if ( event->HasInvalidatedReferences() ) {
+					errptr = new std::string( "Event references an object that no longer exists" );
+				}
+				else if ( handler ) {
 					errptr = handler->Validate( GSE_CALL, fargs );
 				}
 				else {

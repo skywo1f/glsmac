@@ -1,11 +1,46 @@
 #include "Event.h"
 
 #include "game/backend/Game.h"
+#include "gse/value/Array.h"
 #include "gse/value/Object.h"
 
 namespace game {
 namespace backend {
 namespace event {
+
+namespace {
+
+const bool HasInvalidatedReference( const gse::Value* const value, std::unordered_set< const gse::Value* >& visited ) {
+	if ( !value || !visited.insert( value ).second ) {
+		return false;
+	}
+	if ( value->IsInvalidated() ) {
+		return true;
+	}
+	switch ( value->type ) {
+		case gse::VT_ARRAY: {
+			for ( const auto* const element : ( (const gse::value::Array*)value )->value ) {
+				if ( HasInvalidatedReference( element, visited ) ) {
+					return true;
+				}
+			}
+			break;
+		}
+		case gse::VT_OBJECT: {
+			for ( const auto& property : ( (const gse::value::Object*)value )->value ) {
+				if ( HasInvalidatedReference( property.second, visited ) ) {
+					return true;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	return false;
+}
+
+}
 
 Event::Event( Game* game, const source_t source, const size_t caller, GSE_CALLABLE, const std::string& name, const gse::value::object_properties_t& data, const std::string& id )
 	: gc::Object( gc_space )
@@ -108,6 +143,16 @@ const std::string& Event::GetEventName() const {
 
 const gse::value::object_properties_t& Event::GetData() const {
 	return m_data;
+}
+
+const bool Event::HasInvalidatedReferences() const {
+	std::unordered_set< const gse::Value* > visited = {};
+	for ( const auto& property : m_original_data ) {
+		if ( HasInvalidatedReference( property.second, visited ) ) {
+			return true;
+		}
+	}
+	return false;
 }
 
 void Event::SetResolved( gse::Value* const resolved ) {

@@ -145,8 +145,17 @@ void BaseManager::DespawnBase( const size_t base_id ) {
 	ASSERT( it != m_bases.end(), "base id not found" );
 
 	auto* base = it->second;
+	auto* faction = base->GetFaction();
 
 	m_bases.erase( it );
+	m_game->UpdateRelatedWidgets( ui::WT_BASE_PREVIEW, base_id, nullptr );
+
+	const auto& faction_it = m_faction_base_ids.find( faction );
+	ASSERT( faction_it != m_faction_base_ids.end(), "faction base ids not found" );
+	ASSERT( faction_it->second.erase( base_id ) == 1, "base id not found in faction index" );
+	if ( faction_it->second.empty() ) {
+		m_faction_base_ids.erase( faction_it );
+	}
 
 	delete base;
 
@@ -157,25 +166,6 @@ void BaseManager::RefreshBase( Base* base ) {
 	m_game->RenderTile( base->GetTile(), m_game->GetUM()->GetSelectedUnit() );
 	m_game->UpdateRelatedWidgets( ui::WT_BASE_PREVIEW, base->GetId(), base );
 }
-
-/* TODO void BaseManager::DespawnBase( const size_t base_id ) {
-	const auto& it = m_units.find( unit_id );
-	ASSERT( it != m_units.end(), "unit id not found" );
-
-	auto* unit = it->second;
-
-	m_units.erase( it );
-
-	if ( unit->IsOwned() ) {
-		RemoveSelectable( unit );
-	}
-
-	delete unit;
-
-	m_game->RefreshSelectedTile( m_selected_unit );
-
-}*/
-
 SlotBadges* BaseManager::GetSlotBadges( const size_t slot_index ) const {
 	ASSERT( m_slot_badges.find( slot_index ) != m_slot_badges.end(), "slot base badges for index " + std::to_string( slot_index ) + " not defined" );
 	return m_slot_badges.at( slot_index );
