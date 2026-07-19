@@ -84,7 +84,7 @@ void Unit::SetTile( GSE_CALLABLE, map::tile::Tile* tile ) {
 const types::Buffer Unit::Serialize( const Unit* unit ) {
 	types::Buffer buf;
 	buf.WriteInt( unit->m_id );
-	buf.WriteString( Def::Serialize( unit->m_def ).ToString() );
+	buf.WriteString( unit->m_def->m_id );
 	buf.WriteInt( unit->m_owner->GetIndex() );
 	buf.WriteInt( unit->m_tile->coord.x );
 	buf.WriteInt( unit->m_tile->coord.y );
@@ -98,8 +98,11 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	ASSERT( um, "um is null" );
 	const auto id = buf.ReadInt();
-	auto defbuf = types::Buffer( buf.ReadString() );
-	auto* def = Def::Deserialize( defbuf );
+	const auto def_id = buf.ReadString();
+	auto* def = um->GetUnitDef( def_id );
+	if ( !def ) {
+		THROW( "could not find unit def: " + def_id );
+	}
 	auto* slot = um->GetSlot( buf.ReadInt() );
 	const auto pos_x = buf.ReadInt();
 	const auto pos_y = buf.ReadInt();

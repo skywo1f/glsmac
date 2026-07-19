@@ -15,6 +15,10 @@
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
 			}
+			const restored_unit = game.get_um().get_unit(1);
+			if (restored_unit.get_def().id != restored_unit.def) {
+				return 'unit definition link is inconsistent';
+			}
 			let base = null;
 			for (candidate of game.get_bm().get_bases()) {
 				if (candidate.get_owner().id == game.get_player().id) {
@@ -87,6 +91,7 @@
 					return;
 				}
 				#print('RUNNING_RECONNECT_BASE_STATE_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}
