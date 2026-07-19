@@ -46,7 +46,9 @@ TileState* TileState::GetNeighbour( const direction_t direction ) {
 }
 
 const types::Vec3& TileState::GetCenterCoords( tile_layer_type_t layer ) const {
-	ASSERT( layer <= LAYER_MAX, "layer overflow" );
+	if ( layer < 0 || layer >= LAYER_MAX ) {
+		THROW( "tile-state layer overflow" );
+	}
 	return layers[ layer ].coords.center;
 }
 
@@ -150,7 +152,7 @@ void TileState::Deserialize( types::Buffer buf ) {
 	tex_coord.x2 = buf.ReadFloat();
 	tex_coord.y2 = buf.ReadFloat();
 	elevations.Deserialize( buf.ReadString() );
-	if ( (tile_layer_type_t)buf.ReadInt() != LAYER_MAX ) {
+	if ( buf.ReadInt() != LAYER_MAX ) {
 		THROW( "LAYER_MAX mismatch" );
 	}
 	for ( auto i = 0 ; i < LAYER_MAX ; i++ ) {
@@ -180,10 +182,13 @@ void TileState::Deserialize( types::Buffer buf ) {
 	for ( size_t i = 0 ; i < sprites_count ; i++ ) {
 		sprite_t sprite;
 		sprite.actor = buf.ReadString();
-		sprite.instance = buf.ReadInt();
+		sprite.instance = buf.ReadInt< size_t >( "tile sprite instance id" );
 		sprite.name = buf.ReadString();
 		sprite.tex_coords = buf.ReadVec2u();
 		sprites.push_back( sprite );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile state" );
 	}
 
 }
@@ -206,6 +211,9 @@ const tile_vertices_t TileState::DeserializeTileVertices( types::Buffer buf ) {
 	const auto top = buf.ReadVec3();
 	const auto right = buf.ReadVec3();
 	const auto bottom = buf.ReadVec3();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile vertices" );
+	}
 	return {
 		center,
 		left,
@@ -233,6 +241,9 @@ const tile_tex_coords_t TileState::DeserializeTileTexCoords( types::Buffer buf )
 	const auto top = buf.ReadVec2f();
 	const auto right = buf.ReadVec2f();
 	const auto bottom = buf.ReadVec2f();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile texture coordinates" );
+	}
 	return {
 		center,
 		left,
@@ -260,6 +271,9 @@ void TileState::DeserializeTileColors( types::Buffer buf, tile_colors_t& colors 
 	buf.ReadColor( colors.top );
 	buf.ReadColor( colors.right );
 	buf.ReadColor( colors.bottom );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile colors" );
+	}
 }
 
 void TileState::tile_elevations_t::Deserialize( types::Buffer buf ) {
@@ -268,6 +282,9 @@ void TileState::tile_elevations_t::Deserialize( types::Buffer buf ) {
 	top = buf.ReadInt();
 	right = buf.ReadInt();
 	bottom = buf.ReadInt();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile elevations" );
+	}
 }
 
 void TileState::tile_layer_t::Deserialize( types::Buffer buf ) {
@@ -278,21 +295,30 @@ void TileState::tile_layer_t::Deserialize( types::Buffer buf ) {
 	DeserializeTileColors( buf.ReadString(), colors );
 	texture_stretch = buf.ReadVec2f();
 	texture_stretch_at_edges = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile layer" );
+	}
 }
 
 void TileState::tile_indices_t::Deserialize( types::Buffer buf ) {
-	center = buf.ReadInt();
-	left = buf.ReadInt();
-	top = buf.ReadInt();
-	right = buf.ReadInt();
-	bottom = buf.ReadInt();
+	center = buf.ReadInt< types::mesh::index_t >( "tile center vertex index" );
+	left = buf.ReadInt< types::mesh::index_t >( "tile left vertex index" );
+	top = buf.ReadInt< types::mesh::index_t >( "tile top vertex index" );
+	right = buf.ReadInt< types::mesh::index_t >( "tile right vertex index" );
+	bottom = buf.ReadInt< types::mesh::index_t >( "tile bottom vertex index" );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile indices" );
+	}
 }
 
 void TileState::tile_surfaces_t::Deserialize( types::Buffer buf ) {
-	left_top = buf.ReadInt();
-	top_right = buf.ReadInt();
-	right_bottom = buf.ReadInt();
-	bottom_left = buf.ReadInt();
+	left_top = buf.ReadInt< types::mesh::surface_id_t >( "tile left-top surface id" );
+	top_right = buf.ReadInt< types::mesh::surface_id_t >( "tile top-right surface id" );
+	right_bottom = buf.ReadInt< types::mesh::surface_id_t >( "tile right-bottom surface id" );
+	bottom_left = buf.ReadInt< types::mesh::surface_id_t >( "tile bottom-left surface id" );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tile surfaces" );
+	}
 }
 
 }

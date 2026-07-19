@@ -1,7 +1,9 @@
 #include "Map.h"
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
+#include <utility>
 
 #include "game/backend/Game.h"
 #include "game/backend/settings/Settings.h"
@@ -224,6 +226,12 @@ void Map::Deserialize( types::Buffer buf ) {
 	ASSERT( !m_map_state, "map state already set" );
 	NEW( m_map_state, MapState );
 	m_map_state->Deserialize( buf.ReadString() );
+	if (
+		m_map_state->dimensions.x != m_tiles->GetWidth() ||
+		m_map_state->dimensions.y != m_tiles->GetHeight()
+	) {
+		THROW( "serialized map-state dimensions do not match tiles" );
+	}
 
 	InitTextureAndMesh();
 	m_meshes.terrain->Deserialize( buf.ReadString() );
@@ -233,19 +241,40 @@ void Map::Deserialize( types::Buffer buf ) {
 	size_t sz = buf.ReadCollectionSize( "map sprite actor" );
 	m_sprite_actors.clear();
 	for ( size_t i = 0 ; i < sz ; i++ ) {
-		m_sprite_actors[ buf.ReadString() ] = DeserializeSpriteActor( buf.ReadString() );
+		const auto actor = DeserializeSpriteActor( buf.ReadString() );
+		const auto key = buf.ReadString();
+		if ( key.empty() || !m_sprite_actors.emplace( key, actor ).second ) {
+			THROW( "invalid or duplicate serialized map sprite actor key" );
+		}
 	}
 
 	sz = buf.ReadCollectionSize( "map sprite instance" );
 	m_sprite_instances.clear();
+	size_t max_sprite_instance_id = 0;
 	for ( size_t i = 0 ; i < sz ; i++ ) {
-		m_sprite_instances[ buf.ReadInt() ] = {
-			buf.ReadString(),
-			buf.ReadVec3()
-		};
+		const auto actor_key = buf.ReadString();
+		const auto coords = buf.ReadVec3();
+		const auto instance_id = buf.ReadInt< size_t >( "map sprite instance id" );
+		if ( m_sprite_actors.find( actor_key ) == m_sprite_actors.end() ) {
+			THROW( "serialized map sprite instance references an unknown actor" );
+		}
+		if ( !std::isfinite( coords.x ) || !std::isfinite( coords.y ) || !std::isfinite( coords.z ) ) {
+			THROW( "invalid serialized map sprite instance coordinates" );
+		}
+		if ( !m_sprite_instances.emplace( instance_id, std::make_pair( actor_key, coords ) ).second ) {
+			THROW( "duplicate serialized map sprite instance id" );
+		}
+		max_sprite_instance_id = std::max( max_sprite_instance_id, instance_id );
 	}
 
-	m_next_sprite_instance_id = buf.ReadInt();
+	const auto next_sprite_instance_id = buf.ReadInt< size_t >( "next map sprite instance id" );
+	if ( next_sprite_instance_id == 0 || ( !m_sprite_instances.empty() && next_sprite_instance_id <= max_sprite_instance_id ) ) {
+		THROW( "invalid next map sprite instance id" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized map" );
+	}
+	m_next_sprite_instance_id = next_sprite_instance_id;
 
 	m_sprite_actors_to_add.clear();
 	m_sprite_instances_to_remove.clear();
@@ -578,6 +607,12 @@ const sprite_actor_t Map::DeserializeSpriteActor( types::Buffer buf ) const {
 	const auto name = buf.ReadString();
 	const auto tex_coords = buf.ReadVec2u();
 	const auto z_index = buf.ReadFloat();
+	if ( name.empty() || !std::isfinite( z_index ) ) {
+		THROW( "invalid serialized map sprite actor" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized map sprite actor" );
+	}
 	return sprite_actor_t{
 		name,
 		tex_coords,

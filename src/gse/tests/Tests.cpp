@@ -31,6 +31,7 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
+#include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
@@ -214,6 +215,27 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.m_bases_render.scale_x == source.m_bases_render.scale_x, "faction base scale changed" );
 				GT_ASSERT( restored.m_base_names.land == source.m_base_names.land, "faction land base names changed" );
 				GT_ASSERT( restored.m_base_names.water == source.m_base_names.water, "faction water base names changed" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"map state rejects invalid dimensions",
+			GT() {
+				types::Buffer serialized;
+				serialized.WriteBool( false );
+				serialized.WriteVec2f( { 0.0f, 0.0f } );
+				serialized.WriteVec2u( { UINT32_MAX, UINT32_MAX } );
+				serialized.WriteVec2f( { 1.0f, 1.0f } );
+
+				bool rejected_dimensions = false;
+				try {
+					game::backend::map::MapState state;
+					state.Deserialize( serialized );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_dimensions = true;
+				}
+				GT_ASSERT( rejected_dimensions, "oversized map-state dimensions accepted" );
 				GT_OK();
 			}
 		);
