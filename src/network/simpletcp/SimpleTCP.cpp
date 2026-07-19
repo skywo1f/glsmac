@@ -26,8 +26,8 @@
 namespace network {
 namespace simpletcp {
 
-SimpleTCP::SimpleTCP()
-	: Network() {
+SimpleTCP::SimpleTCP( const uint16_t port )
+	: Network( port ) {
 
 }
 
@@ -60,7 +60,7 @@ MT_Response SimpleTCP::ListenStart() {
 
 	ASSERT( m_server.listening_sockets.empty(), "some connection socket(s) already active" );
 
-	Log( (std::string)"Starting server on port " + std::to_string( GLSMAC_PORT ) );
+	Log( (std::string)"Starting server on port " + std::to_string( m_port ) );
 
 	addrinfo hints, * res, * p;
 	memset( &hints, 0, sizeof( hints ) );
@@ -69,7 +69,7 @@ MT_Response SimpleTCP::ListenStart() {
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	m_tmp.tmpint = getaddrinfo( nullptr, std::to_string( GLSMAC_PORT ).c_str(), &hints, &res );
+	m_tmp.tmpint = getaddrinfo( nullptr, std::to_string( m_port ).c_str(), &hints, &res );
 	if ( m_tmp.tmpint != 0 ) {
 		return Error( (std::string)"Failed to getaddrinfo: " + gai_strerror( m_tmp.tmpint ) );
 	}
@@ -130,7 +130,7 @@ MT_Response SimpleTCP::ListenStart() {
 	freeaddrinfo( res );
 
 	if ( m_server.listening_sockets.empty() ) {
-		return Error( "Failed to listen on port " + std::to_string( GLSMAC_PORT ) );
+		return Error( "Failed to listen on port " + std::to_string( m_port ) );
 	}
 
 	m_tmp.event.Clear();
@@ -170,7 +170,7 @@ MT_Response SimpleTCP::Connect( const std::string& remote_address, MT_CANCELABLE
 
 	ASSERT( m_client.socket.fd == 0, "connection socket already active" );
 
-	Log( (std::string)"Connecting to " + remote_address + " port " + std::to_string( GLSMAC_PORT ) );
+	Log( (std::string)"Connecting to " + remote_address + " port " + std::to_string( m_port ) );
 
 	addrinfo hints, * p;
 	memset( &hints, 0, sizeof( hints ) );
@@ -178,7 +178,7 @@ MT_Response SimpleTCP::Connect( const std::string& remote_address, MT_CANCELABLE
 	hints.ai_socktype = SOCK_STREAM;
 	hints.ai_flags = AI_PASSIVE;
 
-	m_tmp.tmpint = getaddrinfo( remote_address.c_str(), std::to_string( GLSMAC_PORT ).c_str(), &hints, &p );
+	m_tmp.tmpint = getaddrinfo( remote_address.c_str(), std::to_string( m_port ).c_str(), &hints, &p );
 	if ( m_tmp.tmpint != 0 ) {
 		return Error( (std::string)"Failed to getaddrinfo: " + gai_strerror( m_tmp.tmpint ) );
 	}

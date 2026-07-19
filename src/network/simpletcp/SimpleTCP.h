@@ -16,7 +16,7 @@ namespace simpletcp {
 
 CLASS( SimpleTCP, Network )
 
-	SimpleTCP();
+	explicit SimpleTCP( const uint16_t port = 4888 );
 
 	void Start() override;
 	void Stop() override;

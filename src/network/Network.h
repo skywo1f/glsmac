@@ -15,6 +15,7 @@ class Packet;
 namespace network {
 
 CLASS( Network, MTModule )
+	explicit Network( const uint16_t port = 4888 );
 
 	common::mt_id_t MT_Connect( const connection_mode_t connect_mode, const std::string& remote_address = "" );
 	common::mt_id_t MT_Disconnect();
@@ -34,8 +35,8 @@ CLASS( Network, MTModule )
 
 protected:
 
-	static const int GLSMAC_PORT = 4888;
 	static const int GLSMAC_MAX_INCOMING_CONNECTIONS = 64;
+	const uint16_t m_port;
 
 	// should be sufficient to fit any packet
 	static const int BUFFER_SIZE = 65536;

@@ -320,6 +320,15 @@ Config::Config( const std::string& path )
 		}
 	);
 	m_manager->AddRule(
+		"port", "PORT", "TCP/IP port for hosting or joining games (default: 4888)", AH( this ) {
+			long int port = 0;
+			if ( !util::String::ParseInt( value, port ) || port < 1 || port > 65535 ) {
+				Error( "--port value must be a number from 1 to 65535" );
+			}
+			m_network_port = static_cast< uint16_t >( port );
+		}
+	);
+	m_manager->AddRule(
 		"maxips", "IPS", "Maximum allowed IPS (iterations per second, determine FPS, default: 500)", AH( this ) {
 			m_launch_flags |= LF_MAXIPS;
 			long int maxips = 0;
@@ -545,6 +554,10 @@ const std::string& Config::GetWorldScript() const {
 
 const uint16_t Config::GetMaxIPS() const {
 	return m_maxips;
+}
+
+const uint16_t Config::GetNetworkPort() const {
+	return m_network_port;
 }
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )

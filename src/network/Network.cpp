@@ -4,6 +4,11 @@
 
 namespace network {
 
+Network::Network( const uint16_t port )
+	: m_port( port ) {
+	ASSERT( m_port > 0, "network port is zero" );
+}
+
 void Network::Start() {
 	m_is_running = true;
 }

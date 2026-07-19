@@ -221,7 +221,7 @@ int main( const int argc, char* const argv[] ) {
 	title += "-portable";
 #endif
 
-	network::simpletcp::SimpleTCP network;
+	network::simpletcp::SimpleTCP network( config.GetNetworkPort() );
 	scheduler::Simple scheduler;
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )

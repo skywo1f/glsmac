@@ -105,6 +105,7 @@ CLASS( Config, common::Module )
 	const std::string& GetMainScript() const;
 	const std::string& GetWorldScript() const;
 	const uint16_t GetMaxIPS() const;
+	const uint16_t GetNetworkPort() const;
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
@@ -152,6 +153,7 @@ private:
 	std::string m_mainscript = "main";
 	std::string m_worldscript = "default";
 	uint16_t m_maxips = 500;
+	uint16_t m_network_port = 4888;
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 

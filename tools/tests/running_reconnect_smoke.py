@@ -67,6 +67,7 @@ def run(args):
 
     common = [
         "--smacpath", str(smac_path),
+        "--port", str(args.port),
         "--skipintro",
         "--nosound",
         "--windowed",
