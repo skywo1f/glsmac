@@ -12,6 +12,10 @@
 	let rejected_event_count = 0;
 	let client_event_probe_complete = false;
 	let client_worker_probe_complete = false;
+	let client_movement_probe_complete = false;
+	let client_movement_unit_id = 0;
+	let client_movement_target_x = 0;
+	let client_movement_target_y = 0;
 
 	glsmac.on('configure_state', (e) => {
 		if (lobby_timer_started) {
@@ -72,6 +76,80 @@
 			return null;
 		};
 
+		const get_client_player_id = () => {
+			return game.is_master() ? 1 : game.get_player().id;
+		};
+
+		const find_starting_unit = (player_id) => {
+			const base = find_base_for_player(player_id);
+			if (base == null) {
+				return null;
+			}
+			for (unit of base.get_tile().get_units()) {
+				if (unit.owner == player_id) {
+					return unit;
+				}
+			}
+			return null;
+		};
+
+		const find_movement_target = (unit) => {
+			const source = unit.get_tile();
+			const candidates = [
+				source.get_N(),
+				source.get_NE(),
+				source.get_E(),
+				source.get_SE(),
+				source.get_S(),
+				source.get_SW(),
+				source.get_W(),
+				source.get_NW(),
+			];
+			for (tile of candidates) {
+				if (tile == source) {
+					continue;
+				}
+				if (tile.is_locked()) {
+					continue;
+				}
+				if (unit.is_land && tile.is_water) {
+					continue;
+				}
+				if (unit.is_water && tile.is_land) {
+					continue;
+				}
+				let has_foreign_unit = false;
+				for (other of tile.get_units()) {
+					if (other.owner != unit.owner) {
+						has_foreign_unit = true;
+						break;
+					}
+				}
+				if (!has_foreign_unit) {
+					return tile;
+				}
+			}
+			return null;
+		};
+
+		const prepare_client_movement_probe = () => {
+			if (client_movement_unit_id != 0) {
+				return true;
+			}
+			const unit = find_starting_unit(get_client_player_id());
+			if (unit == null) {
+				return false;
+			}
+			const target = find_movement_target(unit);
+			if (target == null) {
+				return false;
+			}
+			client_movement_unit_id = unit.id;
+			client_movement_target_x = target.x;
+			client_movement_target_y = target.y;
+			return true;
+		};
+
 		game.register_event('multiplayer_smoke_accept_once', {
 			validate: (e) => {
 				if (e.caller == 0) {
@@ -106,6 +184,49 @@
 				rejected_event_count = e.applied.previous;
 			},
 		});
+
+		const run_client_movement_probe = () => {
+			if (!prepare_client_movement_probe()) {
+				return false;
+			}
+			const unit = game.get_um().get_unit(client_movement_unit_id);
+			const target = game.get_tm().get_tile(
+				client_movement_target_x,
+				client_movement_target_y
+			);
+			const movement_before = unit.movement;
+			game.event('move_unit', {
+				unit: unit,
+				tile: target,
+			});
+
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (unit.get_tile() == target) {
+					if (!unit.moved_this_turn || unit.movement >= movement_before) {
+						#print(
+							'MULTIPLAYER_SMOKE_FAIL_CLIENT: movement state was not consumed (' +
+							#to_string(movement_before) + ' -> ' + #to_string(unit.movement) +
+							', moved=' + #to_string(unit.moved_this_turn) + ')'
+						);
+						glsmac.exit();
+						return false;
+					}
+					client_movement_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_MOVEMENT_PASS_CLIENT');
+					game.event('complete_turn', {});
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: movement probe timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+			return true;
+		};
 
 		const run_client_worker_probe = () => {
 			const player_id = game.get_player().id;
@@ -155,7 +276,10 @@
 					}
 					client_worker_probe_complete = true;
 					#print('MULTIPLAYER_SMOKE_WORKER_REASSIGN_PASS_CLIENT');
-					game.event('complete_turn', {});
+					if (!run_client_movement_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: movement probe could not start');
+						glsmac.exit();
+					}
 					return false;
 				}
 				if (wait_ticks >= 100) {
@@ -183,6 +307,11 @@
 				!game.get_um().has_unit(1)
 			) {
 				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': synchronized game state is incomplete');
+				glsmac.exit();
+				return;
+			}
+			if (!prepare_client_movement_probe()) {
+				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': client movement probe could not be prepared');
 				glsmac.exit();
 				return;
 			}
@@ -221,16 +350,24 @@
 				}
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
-				const client_base = find_base_for_player(
-					game.is_master() ? 1 : game.get_player().id
-				);
+				const client_player_id = get_client_player_id();
+				const client_base = find_base_for_player(client_player_id);
+				let client_unit = null;
+				if (game.get_um().has_unit(client_movement_unit_id)) {
+					client_unit = game.get_um().get_unit(client_movement_unit_id);
+				}
 				if (
 					accepted_event_count != 1 ||
 					rejected_event_count != 0 ||
 					(!game.is_master() && !client_event_probe_complete) ||
 					(!game.is_master() && !client_worker_probe_complete) ||
+					(!game.is_master() && !client_movement_probe_complete) ||
 					client_base == null ||
-					#sizeof(client_base.get_worked_tiles()) != 0
+					#sizeof(client_base.get_worked_tiles()) != 0 ||
+					client_unit == null ||
+					client_unit.owner != client_player_id ||
+					client_unit.get_tile().x != client_movement_target_x ||
+					client_unit.get_tile().y != client_movement_target_y
 				) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +

@@ -1638,7 +1638,9 @@ void Game::Initialize(
 												auto* unit = um->GetUnit( selected_unit->GetId() );
 												const auto& c = tile->GetCoords();
 												auto* dst_tile = game->GetMap()->GetTile( c.x, c.y );
-												ASSERT( unit, "unit not found" );
+												if ( !unit ) {
+													return;
+												}
 												game->Event(
 													GSE_CALL, "move_unit", {
 														{ "unit", unit->Wrap( GSE_CALL ) },
@@ -1649,9 +1651,13 @@ void Game::Initialize(
 											else {
 												// attack
 												auto* attacker = um->GetUnit( selected_unit->GetId() );
-												ASSERT( attacker, "attacker unit not found" );
+												if ( !attacker ) {
+													return;
+												}
 												auto* defender = um->GetUnit( foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId() );
-												ASSERT( attacker, "defender unit not found" );
+												if ( !defender ) {
+													return;
+												}
 												game->Event(
 													GSE_CALL, "attack_unit", {
 														{ "attacker", attacker->Wrap( GSE_CALL ) },

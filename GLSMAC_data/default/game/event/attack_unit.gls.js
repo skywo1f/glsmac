@@ -65,7 +65,10 @@ return {
 
 	validate: (e) => {
 		if (e.data.attacker.owner != e.caller) {
-			return 'Unit can only be ordered to attack by it\'s owner';
+			return 'Unit can only be ordered to attack by its owner';
+		}
+		if (e.data.defender.owner == e.data.attacker.owner) {
+			return 'Unit cannot attack a friendly unit';
 		}
 
 		const attacker_tile = e.data.attacker.get_tile();
@@ -92,7 +95,7 @@ return {
 			return 'Defender tile is same as attacker tile';
 		}
 		if (!attacker_tile.is_adjactent_to(defender_tile)) {
-			return 'Defender tile is not adjactent to attacker tile';
+			return 'Defender tile is not adjacent to attacker tile';
 		}
 		if (e.data.attacker.is_land && defender_tile.is_water) {
 			// TODO: marine

@@ -6,6 +6,16 @@ const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
 const defender_tile = {x: 4, y: 4};
 
+test.assert(
+	attack_unit.validate({
+		caller: owner.id,
+		data: {
+			attacker: {owner: owner.id},
+			defender: {owner: owner.id},
+		},
+	}) == 'Unit cannot attack a friendly unit'
+);
+
 const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => {
 	return {
 		id: id,
