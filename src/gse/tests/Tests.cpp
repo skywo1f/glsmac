@@ -33,6 +33,7 @@
 #include "game/backend/faction/Faction.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
+#include "game/backend/settings/Settings.h"
 #include "game/backend/slot/Slot.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
@@ -132,6 +133,64 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_oversized_write = true;
 				}
 				GT_ASSERT( rejected_oversized_write, "oversized buffer field write accepted" );
+
+				bool rejected_noncanonical_bool = false;
+				try {
+					types::Buffer invalid_bool;
+					invalid_bool.WriteBool( false );
+					const size_t value_offset = sizeof( uint8_t ) + sizeof( uint32_t );
+					invalid_bool.data[ value_offset ] = 2;
+					invalid_bool.data[ invalid_bool.lenw - 1 ] = 2;
+					invalid_bool.ReadBool();
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_noncanonical_bool = true;
+				}
+				GT_ASSERT( rejected_noncanonical_bool, "noncanonical serialized boolean accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"settings serialization validation",
+			GT() {
+				using game::backend::settings::MapSettings;
+
+				types::Buffer invalid_map;
+				invalid_map.WriteInt( MapSettings::MT_CUSTOM );
+				invalid_map.WriteString( "" );
+				invalid_map.WriteInt( 112 );
+				invalid_map.WriteInt( 56 );
+				invalid_map.WriteFloat( 0.4f );
+				invalid_map.WriteFloat( 0.75f );
+				invalid_map.WriteFloat( 1.5f );
+				invalid_map.WriteFloat( 0.5f );
+
+				MapSettings settings;
+				bool rejected_invalid_fraction = false;
+				try {
+					settings.Deserialize( invalid_map );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_fraction = true;
+				}
+				GT_ASSERT( rejected_invalid_fraction, "invalid map fraction accepted" );
+				GT_ASSERT( settings.type == MapSettings::MT_RANDOM, "invalid map settings partially applied" );
+
+				types::Buffer invalid_local;
+				invalid_local.WriteInt( 99 );
+				invalid_local.WriteInt( game::backend::settings::LocalSettings::NT_NONE );
+				invalid_local.WriteInt( game::backend::settings::LocalSettings::NR_NONE );
+				invalid_local.WriteString( "player" );
+				invalid_local.WriteString( "127.0.0.1" );
+				bool rejected_invalid_mode = false;
+				try {
+					game::backend::settings::LocalSettings local;
+					local.Deserialize( invalid_local );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_mode = true;
+				}
+				GT_ASSERT( rejected_invalid_mode, "invalid local game mode accepted" );
 				GT_OK();
 			}
 		);

@@ -66,6 +66,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 		EC_ABORTED = 2,
 		EC_MAPFILE_FORMAT_ERROR = 3,
 		EC_INVALID_MAP_DIMENSIONS = 4,
+		EC_INVALID_MAP_PARAMETERS = 5,
 	};
 
 	const error_code_t Generate( settings::MapSettings* map_settings, MT_CANCELABLE );

@@ -24,6 +24,9 @@ Buffer::Buffer( const std::string& val ) {
 	data = lenw > 0
 		? (data_t*)malloc( allocated_len )
 		: nullptr;
+	if ( lenw > 0 && !data ) {
+		THROW( "unable to allocate buffer ( " + std::to_string( allocated_len ) + " bytes )" );
+	}
 	if ( lenw > 0 ) {
 		memcpy( data, val.data(), lenw );
 	}
@@ -45,6 +48,9 @@ Buffer::Buffer( const Buffer& other ) {
 	lenr = other.lenr;
 	if ( other.data ) {
 		data_t* newptr = (data_t*)malloc( allocated_len );
+		if ( !newptr ) {
+			THROW( "unable to copy buffer ( " + std::to_string( allocated_len ) + " bytes )" );
+		}
 		data = newptr;
 		memcpy( data, other.data, lenw );
 	}
@@ -80,6 +86,9 @@ Buffer& Buffer::operator=( const Buffer& other ) {
 		data_t* new_data = nullptr;
 		if ( other.data ) {
 			new_data = (data_t*)malloc( other.allocated_len );
+			if ( !new_data ) {
+				THROW( "unable to assign buffer ( " + std::to_string( other.allocated_len ) + " bytes )" );
+			}
 			memcpy( new_data, other.data, other.lenw );
 		}
 		if ( data ) {
@@ -219,6 +228,9 @@ char* Buffer::ReadImpl( type_t need_type, char* s, uint32_t* sz, const uint32_t 
 
 	if ( s == nullptr && *sz > 0 ) {
 		s = (char*)malloc( *sz );
+		if ( !s ) {
+			THROW( "unable to allocate serialized field ( " + std::to_string( *sz ) + " bytes )" );
+		}
 	}
 	if ( *sz > 0 ) {
 		memcpy( s, read_ptr, *sz );
@@ -239,10 +251,13 @@ void Buffer::WriteBool( const bool val ) {
 }
 
 const bool Buffer::ReadBool() {
-	bool boolval = false;
+	uint8_t boolval = 0;
 	uint32_t sz = 0;
 	ReadImpl( T_BOOL, (char*)&boolval, &sz, sizeof( boolval ) );
-	return boolval;
+	if ( boolval > 1 ) {
+		THROW( "invalid serialized boolean: " + std::to_string( boolval ) );
+	}
+	return boolval == 1;
 }
 
 void Buffer::WriteInt( const long long int val ) {

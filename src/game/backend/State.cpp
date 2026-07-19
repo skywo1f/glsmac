@@ -213,8 +213,13 @@ const types::Buffer State::Serialize() const {
 }
 
 void State::Deserialize( types::Buffer buf ) {
-	m_settings.global.Deserialize( buf.ReadString() );
-	m_fm->Deserialize( buf.ReadString() );
+	const auto serialized_global_settings = buf.ReadString();
+	const auto serialized_factions = buf.ReadString();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized backend state" );
+	}
+	m_settings.global.Deserialize( types::Buffer( serialized_global_settings ) );
+	m_fm->Deserialize( types::Buffer( serialized_factions ) );
 }
 
 void State::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {

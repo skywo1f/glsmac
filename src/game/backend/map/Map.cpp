@@ -286,7 +286,8 @@ const std::string& Map::GetErrorString( const error_code_t& code ) {
 	static const std::unordered_map< error_code_t, const std::string > m_error_code_strings = {
 		{ EC_UNKNOWN,                "Unknown error" },
 		{ EC_MAPFILE_FORMAT_ERROR,   "Invalid map file format" },
-		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be even values of at least 4 with area no larger than Huge Planet (180x90)" }
+		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be even values of at least 4 with area no larger than Huge Planet (180x90)" },
+		{ EC_INVALID_MAP_PARAMETERS, "Map generation values must be finite numbers from 0 to 1" }
 	};
 
 	auto it = m_error_code_strings.find( code );
@@ -735,6 +736,14 @@ const Map::error_code_t Map::Generate( settings::MapSettings* map_settings, MT_C
 		static_cast< uint64_t >( map_settings->size_x ) * static_cast< uint64_t >( map_settings->size_y ) > settings::MAP_MAX_AREA
 	) {
 		return EC_INVALID_MAP_DIMENSIONS;
+	}
+	if (
+		!std::isfinite( map_settings->ocean_coverage ) || map_settings->ocean_coverage < 0.0f || map_settings->ocean_coverage > 1.0f ||
+		!std::isfinite( map_settings->erosive_forces ) || map_settings->erosive_forces < 0.0f || map_settings->erosive_forces > 1.0f ||
+		!std::isfinite( map_settings->native_lifeforms ) || map_settings->native_lifeforms < 0.0f || map_settings->native_lifeforms > 1.0f ||
+		!std::isfinite( map_settings->cloud_cover ) || map_settings->cloud_cover < 0.0f || map_settings->cloud_cover > 1.0f
+	) {
+		return EC_INVALID_MAP_PARAMETERS;
 	}
 	Log( "Generating map of size " + std::to_string( map_settings->size_x ) + "x" + std::to_string( map_settings->size_y ) );
 	ASSERT( !m_tiles, "tiles already set" );
