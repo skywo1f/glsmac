@@ -70,12 +70,15 @@ void State::Iterate() {
 				m_connection->SetState( nullptr );
 				m_connection = nullptr;
 			}
-			for ( auto& player : m_players ) {
-				DELETE( player );
+			// World objects and queued frontend work retain slot and player references until the coordinated reset.
+			if ( !m_game || !m_game->IsStarted() ) {
+				for ( auto& player : m_players ) {
+					DELETE( player );
+				}
+				m_players.clear();
+				m_slots->Clear();
+				m_cid_slots.clear();
 			}
-			m_players.clear();
-			m_slots->Clear();
-			m_cid_slots.clear();
 		}
 	}
 }

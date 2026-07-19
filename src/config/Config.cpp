@@ -179,9 +179,9 @@ Config::Config( const std::string& path )
 	);
 	const std::string s_quickstart_argument_missing = "Quickstart-related options can only be used after --quickstart argument!";
 	m_manager->AddRule(
-		"quickstart-seed", "SEED", "Generate map with specific seed (A:B:C:D)", AH( this, s_quickstart_argument_missing ) {
-			if ( !HasLaunchFlag( LF_QUICKSTART ) ) {
-				Error( s_quickstart_argument_missing );
+		"quickstart-seed", "SEED", "Generate map with specific seed (A:B:C:D)", AH( this ) {
+			if ( !HasLaunchFlag( LF_QUICKSTART ) && !HasLaunchFlag( LF_HOST ) ) {
+				Error( "Map seed can only be used after --quickstart or --host argument!" );
 			}
 			try {
 				m_quickstart_seed = util::random::Random::GetStateFromString( value );

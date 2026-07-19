@@ -7,6 +7,7 @@ import time
 
 from multiplayer_smoke import (
     LIFECYCLE_WARNING,
+    MAP_SEED,
     launch,
     prepare_output,
     print_tail,
@@ -76,6 +77,7 @@ def run(args):
         str(executable),
         "--prefix", str(output_dir / "host"),
         "--host",
+        "--quickstart-seed", MAP_SEED,
         "--gamename", "ReconnectSmoke",
         "--playername", "Host",
         "--mainscript", "../tests/_multiplayer_running_reconnect",
@@ -174,6 +176,7 @@ def run(args):
     initial_text = read_log(initial_stdout)
     resumed_text = read_log(resumed_stdout)
     host_error_text = read_log(host_stderr)
+    initial_error_text = read_log(initial_stderr)
     resumed_error_text = read_log(resumed_stderr)
     host_exit = None if host is None else host.returncode
     resumed_exit = None if resumed_client is None else resumed_client.returncode
@@ -188,7 +191,14 @@ def run(args):
     lifecycle_warning = LIFECYCLE_WARNING in host_text or LIFECYCLE_WARNING in resumed_text
     sanitizer_error = any(
         "AddressSanitizer" in text
-        for text in (host_text, initial_text, resumed_text)
+        for text in (
+            host_text,
+            initial_text,
+            resumed_text,
+            host_error_text,
+            initial_error_text,
+            resumed_error_text,
+        )
     )
 
     print("TimedOut: {}".format(timed_out))
@@ -220,6 +230,7 @@ def run(args):
         print_tail("INITIAL CLIENT STDOUT", initial_text)
         print_tail("RESUMED CLIENT STDOUT", resumed_text)
         print_tail("HOST STDERR", host_error_text)
+        print_tail("INITIAL CLIENT STDERR", initial_error_text)
         print_tail("RESUMED CLIENT STDERR", resumed_error_text)
     return 0 if success else 1
 

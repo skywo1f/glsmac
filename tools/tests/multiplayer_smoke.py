@@ -17,6 +17,7 @@ FAIL_MARKER = "MULTIPLAYER_SMOKE_FAIL_"
 LIFECYCLE_WARNING = "WARNING: connection destroyed while still disconnecting!"
 LOBBY_PROBE_READY = "MULTIPLAYER_LOBBY_PROBE_CONNECTED"
 BUFFER_SIZE = 65536
+MAP_SEED = "2717637413:2797703573:4189968696:1409582894"
 
 
 def parse_args():
@@ -244,6 +245,7 @@ def run(args):
         str(executable),
         "--prefix", str(output_dir / "host"),
         "--host",
+        "--quickstart-seed", MAP_SEED,
         "--gamename", "SmokeTest",
         "--playername", "Host",
         "--mainscript", "../tests/_multiplayer_runtime_smoke",
@@ -350,7 +352,10 @@ def run(args):
     client_pass = PASS_CLIENT in client_text
     explicit_failure = FAIL_MARKER in host_text or FAIL_MARKER in client_text
     lifecycle_warning = LIFECYCLE_WARNING in host_text or LIFECYCLE_WARNING in client_text
-    sanitizer_error = "AddressSanitizer" in host_text or "AddressSanitizer" in client_text
+    sanitizer_error = any(
+        "AddressSanitizer" in text
+        for text in (host_text, client_text, host_error_text, client_error_text)
+    )
 
     print("TimedOut: {}".format(timed_out))
     print("PeerExitTimedOut: {}".format(peer_exit_timed_out))
