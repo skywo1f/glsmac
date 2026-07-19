@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <unordered_set>
 #include <utility>
 
 #include "game/backend/Game.h"
@@ -219,11 +220,12 @@ const types::Buffer Map::Serialize() const {
 
 void Map::Deserialize( types::Buffer buf ) {
 
-	ASSERT( !m_tiles, "tiles already set" );
+	if ( m_tiles || m_map_state ) {
+		THROW( "cannot deserialize over an initialized map" );
+	}
 	NEW( m_tiles, tile::Tiles, this );
 	m_tiles->Deserialize( buf.ReadString() );
 
-	ASSERT( !m_map_state, "map state already set" );
 	NEW( m_map_state, MapState );
 	m_map_state->Deserialize( buf.ReadString() );
 	if (
@@ -258,6 +260,9 @@ void Map::Deserialize( types::Buffer buf ) {
 		if ( m_sprite_actors.find( actor_key ) == m_sprite_actors.end() ) {
 			THROW( "serialized map sprite instance references an unknown actor" );
 		}
+		if ( instance_id == 0 ) {
+			THROW( "serialized map sprite instance has an invalid id" );
+		}
 		if ( !std::isfinite( coords.x ) || !std::isfinite( coords.y ) || !std::isfinite( coords.z ) ) {
 			THROW( "invalid serialized map sprite instance coordinates" );
 		}
@@ -273,6 +278,39 @@ void Map::Deserialize( types::Buffer buf ) {
 	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized map" );
+	}
+
+	const auto terrain_vertex_count = m_meshes.terrain->GetVertexCount();
+	const auto terrain_surface_count = m_meshes.terrain->GetSurfaceCount();
+	const auto data_vertex_count = m_meshes.terrain_data->GetVertexCount();
+	std::unordered_set< size_t > referenced_sprite_instances;
+	for ( size_t y = 0 ; y < m_map_state->dimensions.y ; y++ ) {
+		for ( size_t x = y & 1 ; x < m_map_state->dimensions.x ; x += 2 ) {
+			const auto* const tile_state = m_map_state->At( x, y );
+			tile_state->ValidateMeshReferences(
+				terrain_vertex_count,
+				terrain_surface_count,
+				data_vertex_count
+			);
+			for ( const auto& sprite : tile_state->sprites ) {
+				const auto actor_it = m_sprite_actors.find( sprite.actor );
+				const auto instance_it = m_sprite_instances.find( sprite.instance );
+				if (
+					actor_it == m_sprite_actors.end() ||
+					instance_it == m_sprite_instances.end() ||
+					instance_it->second.first != sprite.actor ||
+					actor_it->second.name != sprite.name ||
+					actor_it->second.tex_coords.x != sprite.tex_coords.x ||
+					actor_it->second.tex_coords.y != sprite.tex_coords.y ||
+					!referenced_sprite_instances.insert( sprite.instance ).second
+				) {
+					THROW( "serialized tile sprite does not match the restored map sprite tables" );
+				}
+			}
+		}
+	}
+	if ( referenced_sprite_instances.size() != m_sprite_instances.size() ) {
+		THROW( "serialized map contains unreferenced sprite instances" );
 	}
 	m_next_sprite_instance_id = next_sprite_instance_id;
 

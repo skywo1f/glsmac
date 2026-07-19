@@ -1,5 +1,7 @@
 #include "Tests.h"
 
+#include <array>
+#include <limits>
 #include <memory>
 #include <utility>
 
@@ -38,13 +40,16 @@
 #include "game/backend/base/PopDef.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
+#include "game/backend/map/tile/TileState.h"
 #include "game/backend/map/tile/Tiles.h"
 #include "game/backend/settings/Settings.h"
 #include "game/backend/slot/Slot.h"
 #include "game/backend/resource/Resource.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
+#include "types/mesh/Mesh.h"
 #include "types/Packet.h"
+#include "types/texture/Texture.h"
 
 namespace gse {
 namespace tests {
@@ -483,6 +488,139 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejects_grid( make_grid( make_first_grid_tile( 0, 1, 4 ) ) ),
 					"conflicting shared tile elevations accepted"
 				);
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"render state serialization validation",
+			GT() {
+				using namespace types::mesh;
+				using game::backend::map::tile::ELEVATION_MAX;
+				using game::backend::map::tile::TileState;
+
+				const std::array< coord_t, 9 > valid_vertices = {
+					0.0f, 0.0f, 0.0f,
+					1.0f, 0.0f, 0.0f,
+					0.0f, 1.0f, 0.0f,
+				};
+				const std::array< index_t, 3 > valid_indices = { 0, 1, 2 };
+				const auto make_mesh = [](
+					const std::array< coord_t, 9 >& vertices,
+					const std::array< index_t, 3 >& indices
+				) {
+					types::Buffer serialized;
+					serialized.WriteInt( Mesh::MT_DATA );
+					serialized.WriteInt( Mesh::DT_BARE );
+					serialized.WriteInt( 3 );
+					serialized.WriteInt( 3 );
+					serialized.WriteData(
+						vertices.data(),
+						static_cast< uint32_t >( vertices.size() * sizeof( coord_t ) )
+					);
+					serialized.WriteInt( 3 );
+					serialized.WriteInt( 1 );
+					serialized.WriteInt( 1 );
+					serialized.WriteData(
+						indices.data(),
+						static_cast< uint32_t >( indices.size() * sizeof( index_t ) )
+					);
+					serialized.WriteBool( true );
+					return serialized;
+				};
+
+				Mesh restored_mesh( Mesh::MT_DATA, Mesh::DT_BARE, Mesh::VERTEX_COORD_SIZE, 3, 1 );
+				restored_mesh.Deserialize( make_mesh( valid_vertices, valid_indices ) );
+				types::Vec3 restored_vertex;
+				restored_mesh.GetVertexCoord( 1, &restored_vertex );
+				GT_ASSERT( restored_vertex.x == 1.0f, "valid mesh vertex changed" );
+				const auto restored_mesh_before_invalid_data = restored_mesh.Serialize().ToString();
+
+				auto nonfinite_vertices = valid_vertices;
+				nonfinite_vertices[ 0 ] = ( std::numeric_limits< coord_t >::quiet_NaN )();
+				bool rejected_nonfinite_mesh = false;
+				try {
+					restored_mesh.Deserialize( make_mesh( nonfinite_vertices, valid_indices ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_mesh = true;
+				}
+				GT_ASSERT( rejected_nonfinite_mesh, "non-finite mesh vertex accepted" );
+
+				auto overflowing_indices = valid_indices;
+				overflowing_indices[ 2 ] = 3;
+				bool rejected_overflowing_mesh_index = false;
+				try {
+					restored_mesh.Deserialize( make_mesh( valid_vertices, overflowing_indices ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_overflowing_mesh_index = true;
+				}
+				GT_ASSERT( rejected_overflowing_mesh_index, "out-of-bounds mesh index accepted" );
+				GT_ASSERT(
+					restored_mesh.Serialize().ToString() == restored_mesh_before_invalid_data,
+					"invalid mesh data was partially applied"
+				);
+
+				types::texture::Texture texture( 2, 1 );
+				const auto texture_before_invalid_data = texture.Serialize().ToString();
+				types::Buffer invalid_texture;
+				invalid_texture.WriteString( "" );
+				invalid_texture.WriteInt( texture.GetWidth() );
+				invalid_texture.WriteInt( texture.GetHeight() );
+				invalid_texture.WriteFloat( ( std::numeric_limits< float >::quiet_NaN )() );
+				invalid_texture.WriteInt( 4 );
+				invalid_texture.WriteInt( texture.GetBitmapSize() );
+				invalid_texture.WriteData(
+					texture.GetBitmap(),
+					static_cast< uint32_t >( texture.GetBitmapSize() )
+				);
+				invalid_texture.WriteBool( false );
+				bool rejected_nonfinite_texture = false;
+				try {
+					texture.Deserialize( std::move( invalid_texture ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_texture = true;
+				}
+				GT_ASSERT( rejected_nonfinite_texture, "non-finite texture aspect ratio accepted" );
+				GT_ASSERT(
+					texture.Serialize().ToString() == texture_before_invalid_data,
+					"invalid texture data was partially applied"
+				);
+
+				TileState::tile_elevations_t invalid_elevations = { 0, 0, 0, 0, ELEVATION_MAX + 1 };
+				TileState::tile_elevations_t restored_elevations = {};
+				bool rejected_invalid_elevations = false;
+				try {
+					restored_elevations.Deserialize( invalid_elevations.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_elevations = true;
+				}
+				GT_ASSERT( rejected_invalid_elevations, "invalid tile-state elevation accepted" );
+
+				TileState::tile_layer_t invalid_layer = {};
+				invalid_layer.texture_stretch.x = ( std::numeric_limits< float >::quiet_NaN )();
+				TileState::tile_layer_t restored_layer = {};
+				bool rejected_nonfinite_layer = false;
+				try {
+					restored_layer.Deserialize( invalid_layer.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_layer = true;
+				}
+				GT_ASSERT( rejected_nonfinite_layer, "non-finite tile layer accepted" );
+
+				TileState tile_state = {};
+				tile_state.layers[ 0 ].indices.center = 3;
+				bool rejected_mesh_reference = false;
+				try {
+					tile_state.ValidateMeshReferences( 3, 1, 3 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_mesh_reference = true;
+				}
+				GT_ASSERT( rejected_mesh_reference, "out-of-bounds tile mesh reference accepted" );
 				GT_OK();
 			}
 		);

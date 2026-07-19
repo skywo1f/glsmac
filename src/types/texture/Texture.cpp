@@ -1012,6 +1012,9 @@ void Texture::Deserialize( types::Buffer buf ) {
 	}
 
 	const auto aspect_ratio = buf.ReadFloat();
+	if ( !std::isfinite( aspect_ratio ) || aspect_ratio != m_aspect_ratio ) {
+		THROW( "texture read aspect ratio mismatch" );
+	}
 	const auto bpp = buf.ReadInt();
 	if ( bpp != m_bpp ) {
 		THROW( "texture read bpp mismatch ( " + std::to_string( bpp ) + " != " + std::to_string( m_bpp ) + " )" );

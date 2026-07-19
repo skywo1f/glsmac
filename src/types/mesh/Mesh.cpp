@@ -1,4 +1,6 @@
 #include <cstring>
+#include <cmath>
+#include <limits>
 #include <memory>
 
 #include "Mesh.h"
@@ -169,42 +171,48 @@ const types::Buffer Mesh::Serialize() const {
 
 void Mesh::Deserialize( types::Buffer buf ) {
 
-	auto type = (type_t)buf.ReadInt();
+	const auto type = buf.ReadInt();
 	if ( type != m_type ) {
 		THROW( "mesh type mismatch" );
 	}
 
-	auto data_type = (data_type_t)buf.ReadInt();
+	const auto data_type = buf.ReadInt();
 	if ( data_type != m_data_type ) {
 		THROW( "mesh data type mismatch" );
 	}
 
-	const auto vertex_count = buf.ReadInt();
-	if ( vertex_count < 0 || static_cast< unsigned long long >( vertex_count ) != m_vertex_count ) {
+	const auto vertex_count = buf.ReadInt< index_t >( "mesh vertex count" );
+	if ( vertex_count != m_vertex_count ) {
 		THROW( "mesh read vertex count mismatch ( " + std::to_string( vertex_count ) + " != " + std::to_string( m_vertex_count ) + " )" );
 	}
-	const auto vertex_i = buf.ReadInt();
-	if ( vertex_i < 0 || static_cast< unsigned long long >( vertex_i ) > m_vertex_count ) {
+	const auto vertex_i = buf.ReadInt< index_t >( "mesh vertex position" );
+	if ( vertex_i > m_vertex_count ) {
 		THROW( "mesh read vertex position overflow" );
+	}
+	if ( GetVertexDataSize() > ( std::numeric_limits< uint32_t >::max )() ) {
+		THROW( "serialized mesh vertex data exceeds buffer capacity" );
 	}
 	std::unique_ptr< uint8_t, decltype( &free ) > vertex_data(
 		(uint8_t*)buf.ReadData( static_cast< uint32_t >( GetVertexDataSize() ) ),
 		&free
 	);
 
-	const auto index_count = buf.ReadInt();
-	if ( index_count < 0 || static_cast< unsigned long long >( index_count ) != m_index_count ) {
+	const auto index_count = buf.ReadInt< index_t >( "mesh index count" );
+	if ( index_count != m_index_count ) {
 		THROW( "mesh read index count mismatch ( " + std::to_string( index_count ) + " != " + std::to_string( m_index_count ) + " )" );
 	}
 
-	const auto surface_count = buf.ReadInt();
-	if ( surface_count < 0 || static_cast< unsigned long long >( surface_count ) != m_surface_count ) {
+	const auto surface_count = buf.ReadInt< surface_id_t >( "mesh surface count" );
+	if ( surface_count != m_surface_count ) {
 		THROW( "mesh read surface count mismatch ( " + std::to_string( surface_count ) + " != " + std::to_string( m_surface_count ) + " )" );
 	}
 
-	const auto surface_i = buf.ReadInt();
-	if ( surface_i < 0 || static_cast< unsigned long long >( surface_i ) > m_surface_count ) {
+	const auto surface_i = buf.ReadInt< surface_id_t >( "mesh surface position" );
+	if ( surface_i > m_surface_count ) {
 		THROW( "mesh read surface position overflow" );
+	}
+	if ( GetIndexDataSize() > ( std::numeric_limits< uint32_t >::max )() ) {
+		THROW( "serialized mesh index data exceeds buffer capacity" );
 	}
 	std::unique_ptr< uint8_t, decltype( &free ) > index_data(
 		(uint8_t*)buf.ReadData( static_cast< uint32_t >( GetIndexDataSize() ) ),
@@ -215,11 +223,29 @@ void Mesh::Deserialize( types::Buffer buf ) {
 		THROW( "unexpected data after serialized mesh" );
 	}
 
+	const auto* const vertex_values = reinterpret_cast< const coord_t* >( vertex_data.get() );
+	const size_t finite_values_per_vertex = m_data_type == DT_DATA
+		? VERTEX_COORD_SIZE
+		: VERTEX_SIZE;
+	for ( size_t vertex = 0 ; vertex < m_vertex_count ; vertex++ ) {
+		for ( size_t component = 0 ; component < finite_values_per_vertex ; component++ ) {
+			if ( !std::isfinite( vertex_values[ vertex * VERTEX_SIZE + component ] ) ) {
+				THROW( "serialized mesh contains a non-finite vertex value" );
+			}
+		}
+	}
+	const auto* const indices = reinterpret_cast< const index_t* >( index_data.get() );
+	for ( size_t i = 0 ; i < m_index_count ; i++ ) {
+		if ( indices[ i ] >= m_vertex_count ) {
+			THROW( "serialized mesh contains an out-of-bounds vertex index" );
+		}
+	}
+
 	free( m_vertex_data );
 	free( m_index_data );
-	m_vertex_i = static_cast< index_t >( vertex_i );
+	m_vertex_i = vertex_i;
 	m_vertex_data = vertex_data.release();
-	m_surface_i = static_cast< surface_id_t >( surface_i );
+	m_surface_i = surface_i;
 	m_index_data = index_data.release();
 	m_is_final = is_final;
 
