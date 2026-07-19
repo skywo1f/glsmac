@@ -124,19 +124,31 @@ Buffer& Buffer::operator=( Buffer&& other ) noexcept {
 }
 
 void Buffer::Alloc( uint32_t size ) {
+	if ( size > ( std::numeric_limits< uint32_t >::max )() - lenw ) {
+		THROW( "buffer allocation size overflow" );
+	}
 	const uint32_t new_size = lenw + size;
 	if ( new_size > allocated_len ) {
-		while ( new_size > allocated_len ) {
-			allocated_len += BUFFER_ALLOC_CHUNK;
-		}
+		const uint64_t rounded_size =
+			( static_cast< uint64_t >( new_size ) + BUFFER_ALLOC_CHUNK - 1 ) /
+			BUFFER_ALLOC_CHUNK * BUFFER_ALLOC_CHUNK;
+		const uint32_t new_allocated_len = rounded_size > ( std::numeric_limits< uint32_t >::max )()
+			? ( std::numeric_limits< uint32_t >::max )()
+			: static_cast< uint32_t >( rounded_size );
+		data_t* new_data = nullptr;
 		if ( data ) {
-			//Log( "Reallocating " + to_string( allocated_len ) + " bytes" );
-			data = (data_t*)realloc( data, allocated_len );
+			//Log( "Reallocating " + to_string( new_allocated_len ) + " bytes" );
+			new_data = (data_t*)realloc( data, new_allocated_len );
 		}
 		else {
-			//Log( "Allocating " + to_string( allocated_len ) + " bytes" );
-			data = (data_t*)malloc( allocated_len );
+			//Log( "Allocating " + to_string( new_allocated_len ) + " bytes" );
+			new_data = (data_t*)malloc( new_allocated_len );
 		}
+		if ( !new_data ) {
+			THROW( "unable to allocate buffer ( " + std::to_string( new_allocated_len ) + " bytes )" );
+		}
+		data = new_data;
+		allocated_len = new_allocated_len;
 		dw = ptr( data, lenw, 0 );
 		dr = ptr( data, lenr, 0 );
 	}
@@ -148,7 +160,14 @@ void Buffer::WriteImpl( type_t type, const char* s, const uint32_t sz ) {
 	ASSERT( type > T_NONE && type < T_MAX, "invalid buffer write type " + std::to_string( type ) );
 	//Log( "Writing " + to_string( sz ) + " bytes (type=" + to_string( type ) + ")" );
 	checksum_t c = 0;
-	Alloc( sizeof( type ) + sizeof( sz ) + sz + sizeof( c ) );
+	const uint64_t total_size = sizeof( type ) + sizeof( sz ) + static_cast< uint64_t >( sz ) + sizeof( c );
+	if ( total_size > ( std::numeric_limits< uint32_t >::max )() ) {
+		THROW( "serialized buffer field is too large" );
+	}
+	if ( sz > 0 && !s ) {
+		THROW( "serialized buffer field data is null" );
+	}
+	Alloc( static_cast< uint32_t >( total_size ) );
 	memcpy( dw, &type, sizeof( type ) );
 	dw += sizeof( type );
 	memcpy( dw, &sz, sizeof( sz ) );
@@ -259,7 +278,10 @@ const float Buffer::ReadFloat() {
 }
 
 void Buffer::WriteString( const std::string& val ) {
-	WriteImpl( T_STRING, val.data(), val.size() );
+	if ( val.size() > ( std::numeric_limits< uint32_t >::max )() ) {
+		THROW( "serialized string is too large" );
+	}
+	WriteImpl( T_STRING, val.data(), static_cast< uint32_t >( val.size() ) );
 }
 
 const std::string Buffer::ReadString() {

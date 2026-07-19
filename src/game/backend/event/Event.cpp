@@ -84,16 +84,25 @@ const types::Buffer Event::Serialize() {
 Event* const Event::Deserialize( Game* const game, const source_t source, GSE_CALLABLE, types::Buffer buffer ) {
 	const auto id = buffer.ReadString();
 	const auto name = buffer.ReadString();
-	const auto caller = buffer.ReadInt();
+	const auto caller = buffer.ReadInt< size_t >( "event caller" );
 	gse::value::object_properties_t data = {};
-	const auto sz = buffer.ReadInt();
-	for ( auto i = 0 ; i < sz ; i++ ) {
+	const auto sz = buffer.ReadCollectionSize( "event data property" );
+	for ( size_t i = 0 ; i < sz ; i++ ) {
 		const auto k = buffer.ReadString();
-		data.insert( { k, gse::Value::Deserialize( GSE_CALL, &buffer, game ) } );
+		if ( !data.insert( { k, gse::Value::Deserialize( GSE_CALL, &buffer, game ) } ).second ) {
+			THROW( "duplicate serialized event data property: " + k );
+		}
+	}
+	gse::Value* resolved = nullptr;
+	if ( buffer.ReadBool() ) {
+		resolved = gse::Value::Deserialize( GSE_CALL, &buffer, game );
+	}
+	if ( buffer.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized event" );
 	}
 	auto* event = new Event( game, source, caller, GSE_CALL, name, data, id );
-	if ( buffer.ReadBool() ) {
-		event->SetResolved( gse::Value::Deserialize( GSE_CALL, &buffer, game ) );
+	if ( resolved ) {
+		event->SetResolved( resolved );
 	}
 	return event;
 }

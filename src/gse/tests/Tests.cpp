@@ -33,8 +33,10 @@
 #include "game/backend/faction/Faction.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
+#include "game/backend/slot/Slot.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
+#include "types/Packet.h"
 
 namespace gse {
 namespace tests {
@@ -119,6 +121,51 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_data_size_mismatch = true;
 				}
 				GT_ASSERT( rejected_data_size_mismatch, "buffer data size mismatch accepted" );
+
+				bool rejected_oversized_write = false;
+				try {
+					const uint8_t value = 0;
+					types::Buffer oversized_write;
+					oversized_write.WriteData( &value, UINT32_MAX );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_oversized_write = true;
+				}
+				GT_ASSERT( rejected_oversized_write, "oversized buffer field write accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"network integer validation",
+			GT() {
+				bool rejected_negative_slot = false;
+				try {
+					types::Buffer serialized_packet;
+					serialized_packet.WriteInt( types::Packet::PT_PLAYERS );
+					serialized_packet.WriteInt( -1 );
+					serialized_packet.WriteString( "" );
+					types::Packet packet( types::Packet::PT_NONE );
+					packet.Deserialize( serialized_packet );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_slot = true;
+				}
+				GT_ASSERT( rejected_negative_slot, "negative packet slot accepted" );
+
+				bool rejected_slot_flags = false;
+				try {
+					types::Buffer serialized_slot;
+					serialized_slot.WriteInt( game::backend::slot::Slot::SS_PLAYER );
+					serialized_slot.WriteString( "" );
+					serialized_slot.WriteInt( 0x80 );
+					serialized_slot.WriteString( "" );
+					game::backend::slot::Slot slot( 0, nullptr );
+					slot.Deserialize( serialized_slot );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_slot_flags = true;
+				}
+				GT_ASSERT( rejected_slot_flags, "unknown slot player flags accepted" );
 				GT_OK();
 			}
 		);

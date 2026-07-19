@@ -130,7 +130,7 @@ void Packet::Deserialize( types::Buffer buf ) {
 			break;
 		}
 		case PT_PLAYERS: {
-			data.num = buf.ReadInt(); // assigned slot num
+			data.num = buf.ReadInt< size_t >( "assigned player slot" );
 			data.str = buf.ReadString(); // serialized slots
 			break;
 		}
@@ -143,17 +143,17 @@ void Packet::Deserialize( types::Buffer buf ) {
 			break;
 		}
 		case PT_SLOT_UPDATE: {
-			data.num = buf.ReadInt(); // player slot num
+			data.num = buf.ReadInt< size_t >( "player slot update index" );
 			data.str = buf.ReadString(); // serialized slot
 			break;
 		}
 		case PT_UPDATE_FLAGS: {
-			udata.flags.flags = buf.ReadInt();
+			udata.flags.flags = buf.ReadInt< size_t >( "player flags" );
 			break;
 		}
 		case PT_FLAGS_UPDATE: {
-			udata.flags.slot_num = buf.ReadInt();
-			udata.flags.flags = buf.ReadInt();
+			udata.flags.slot_num = buf.ReadInt< size_t >( "player flags slot" );
+			udata.flags.flags = buf.ReadInt< size_t >( "player flags" );
 			break;
 		}
 		case PT_KICK: {
@@ -177,17 +177,17 @@ void Packet::Deserialize( types::Buffer buf ) {
 			break;
 		}
 		case PT_DOWNLOAD_RESPONSE: {
-			data.num = buf.ReadInt(); // total size of serialized data
+			data.num = buf.ReadInt< size_t >( "download size" );
 			break;
 		}
 		case PT_DOWNLOAD_NEXT_CHUNK_REQUEST: {
-			udata.download.offset = buf.ReadInt();
-			udata.download.size = buf.ReadInt();
+			udata.download.offset = buf.ReadInt< size_t >( "download chunk offset" );
+			udata.download.size = buf.ReadInt< size_t >( "download chunk size" );
 			break;
 		}
 		case PT_DOWNLOAD_NEXT_CHUNK_RESPONSE: {
-			udata.download.offset = buf.ReadInt();
-			udata.download.size = buf.ReadInt();
+			udata.download.offset = buf.ReadInt< size_t >( "download chunk offset" );
+			udata.download.size = buf.ReadInt< size_t >( "download chunk size" );
 			data.str = buf.ReadString(); // serialized chunk
 			break;
 		}

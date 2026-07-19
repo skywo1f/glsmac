@@ -52,20 +52,23 @@ const types::Buffer Slots::Serialize() const {
 
 void Slots::Deserialize( types::Buffer buf ) {
 	ASSERT( m_slots.empty(), "deserialize on non-empty slots" );
-	const auto count = buf.ReadInt();
-	if ( count < 0 || count > MAX_SERIALIZED_SLOTS ) {
+	const auto count = buf.ReadInt< size_t >( "slot count" );
+	if ( count > MAX_SERIALIZED_SLOTS ) {
 		THROW( "invalid serialized slot count: " + std::to_string( count ) );
 	}
-	Resize( static_cast< size_t >( count ) );
+	Resize( count );
 
 	for ( auto& slot : m_slots ) {
 		slot.Deserialize( buf.ReadString() );
 	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized slots" );
+	}
 }
 
 void Slots::DeserializeUpdate( types::Buffer buf ) {
-	const auto count = buf.ReadInt();
-	if ( count < 0 || static_cast< size_t >( count ) != m_slots.size() ) {
+	const auto count = buf.ReadInt< size_t >( "slot update count" );
+	if ( count != m_slots.size() ) {
 		THROW( "serialized slot update count mismatch" );
 	}
 
@@ -77,6 +80,9 @@ void Slots::DeserializeUpdate( types::Buffer buf ) {
 			THROW( "serialized slot update state mismatch" );
 		}
 		slot.Deserialize( types::Buffer( serialized_slot ) );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized slot update" );
 	}
 }
 
