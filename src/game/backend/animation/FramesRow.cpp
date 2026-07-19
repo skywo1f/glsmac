@@ -98,6 +98,7 @@ FramesRow* FramesRow::Deserialize(
 	const auto max_u16 = static_cast< long long >( std::numeric_limits< uint16_t >::max() );
 	const auto max_u8 = static_cast< long long >( std::numeric_limits< uint8_t >::max() );
 	if (
+		id.empty() || file.empty() ||
 		row_x < 0 || row_x > max_u16 || row_y < 0 || row_y > max_u16 ||
 		frame_width < 1 || frame_width > max_u16 ||
 		frame_height < 1 || frame_height > max_u16 ||

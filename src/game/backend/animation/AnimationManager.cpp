@@ -2,6 +2,8 @@
 
 #include <cmath>
 #include <limits>
+#include <memory>
+#include <unordered_set>
 
 #include "game/backend/Game.h"
 #include "Def.h"
@@ -59,7 +61,9 @@ void AnimationManager::Clear() {
 void AnimationManager::DefineAnimation( animation::Def* def ) {
 	Log( "Defining animation ('" + def->m_id + "')" );
 
-	ASSERT( m_animation_defs.find( def->m_id ) == m_animation_defs.end(), "animation definition already exists" );
+	if ( m_animation_defs.find( def->m_id ) != m_animation_defs.end() ) {
+		THROW( "animation definition already exists: " + def->m_id );
+	}
 
 	// backend doesn't need any animation details, just keep track of it's existence for validations
 	m_animation_defs.insert(
@@ -77,9 +81,14 @@ void AnimationManager::DefineAnimation( animation::Def* def ) {
 void AnimationManager::UndefineAnimation( const std::string& id ) {
 	Log( "Undefining animation ('" + id + "')" );
 
-	ASSERT( m_animation_defs.find( id ) != m_animation_defs.end(), "animation definition not found" );
+	const auto it = m_animation_defs.find( id );
+	if ( it == m_animation_defs.end() ) {
+		THROW( "animation definition not found: " + id );
+	}
 
-	m_animation_defs.erase( id );
+	auto* const def = it->second;
+	m_animation_defs.erase( it );
+	delete def;
 
 	auto fr = FrontendRequest( FrontendRequest::FR_ANIMATION_UNDEFINE );
 	NEW( fr.data.animation_undefine.animation_id, std::string, id );
@@ -351,16 +360,41 @@ void AnimationManager::Serialize( types::Buffer& buf ) const {
 }
 
 void AnimationManager::Deserialize( types::Buffer& buf ) {
-	ASSERT( m_animation_defs.empty(), "animation defs not empty" );
-	size_t sz = buf.ReadCollectionSize( "animation definition" );
-	Log( "Unserializing " + std::to_string( sz ) + " animation defs" );
-	m_animation_defs.reserve( sz );
-	for ( size_t i = 0 ; i < sz ; i++ ) {
-		const auto name = buf.ReadString();
-		auto b = types::Buffer( buf.ReadString() );
-		DefineAnimation( animation::Def::Deserialize( b ) );
+	if ( !m_animation_defs.empty() ) {
+		THROW( "cannot deserialize animations into a non-empty manager" );
 	}
-	m_next_running_animation_id = buf.ReadInt();
+	const size_t sz = buf.ReadCollectionSize( "animation definition" );
+	Log( "Unserializing " + std::to_string( sz ) + " animation defs" );
+	std::vector< std::unique_ptr< animation::Def > > definitions = {};
+	definitions.reserve( sz );
+	std::unordered_set< std::string > definition_ids = {};
+	for ( size_t i = 0 ; i < sz ; i++ ) {
+		const auto id = buf.ReadString();
+		auto b = types::Buffer( buf.ReadString() );
+		auto definition = std::unique_ptr< animation::Def >( animation::Def::Deserialize( b ) );
+		if ( b.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized animation definition" );
+		}
+		if ( id != definition->m_id ) {
+			THROW( "serialized animation definition id mismatch" );
+		}
+		if ( !definition_ids.insert( id ).second ) {
+			THROW( "duplicate serialized animation definition: " + id );
+		}
+		definitions.push_back( std::move( definition ) );
+	}
+	const auto next_running_animation_id = buf.ReadInt< size_t >( "next running animation id" );
+	if ( next_running_animation_id == ( std::numeric_limits< size_t >::max )() ) {
+		THROW( "serialized next running animation id cannot be incremented" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized animation manager" );
+	}
+	m_animation_defs.reserve( definitions.size() );
+	for ( auto& definition : definitions ) {
+		DefineAnimation( definition.release() );
+	}
+	m_next_running_animation_id = next_running_animation_id;
 	Log( "Restored next animation id: " + std::to_string( m_next_running_animation_id ) );
 }
 

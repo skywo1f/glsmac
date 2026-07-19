@@ -33,11 +33,13 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
+#include "game/backend/animation/Def.h"
 #include "game/backend/base/PopDef.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
 #include "game/backend/settings/Settings.h"
 #include "game/backend/slot/Slot.h"
+#include "game/backend/resource/Resource.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
 #include "types/Packet.h"
@@ -232,7 +234,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 			}
 		);
 		task->AddTest(
-			"base definition validation",
+			"snapshot definition validation",
 			GT() {
 				bool rejected_unknown_pop_flags = false;
 				try {
@@ -256,6 +258,54 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_unknown_pop_flags = true;
 				}
 				GT_ASSERT( rejected_unknown_pop_flags, "unknown base population flags accepted" );
+
+				bool rejected_invalid_resource_coordinates = false;
+				try {
+					types::Buffer resource;
+					resource.WriteString( "NUTRIENTS" );
+					resource.WriteString( "Nutrients" );
+					resource.WriteString( "newicons.pcx" );
+					resource.WriteInt( 1 );
+					resource.WriteInt( -1 );
+					resource.WriteInt( 0 );
+					resource.WriteInt( 20 );
+					resource.WriteInt( 20 );
+					std::unique_ptr< game::backend::resource::Resource > parsed(
+						game::backend::resource::Resource::Deserialize( resource )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_resource_coordinates = true;
+				}
+				GT_ASSERT( rejected_invalid_resource_coordinates, "invalid resource coordinates accepted" );
+
+				bool rejected_impossible_animation_timing = false;
+				try {
+					types::Buffer animation;
+					animation.WriteString( "MOVE" );
+					animation.WriteInt( game::backend::animation::AT_FRAMES_ROW );
+					animation.WriteFloat( 1.0f );
+					animation.WriteFloat( 1.0f );
+					animation.WriteInt( 1 );
+					animation.WriteString( "" );
+					animation.WriteString( "animations.pcx" );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 32 );
+					animation.WriteInt( 32 );
+					animation.WriteInt( 16 );
+					animation.WriteInt( 16 );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 2 );
+					animation.WriteInt( 2 );
+					std::unique_ptr< game::backend::animation::Def > parsed(
+						game::backend::animation::Def::Deserialize( animation )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_impossible_animation_timing = true;
+				}
+				GT_ASSERT( rejected_impossible_animation_timing, "impossible animation timing accepted" );
 				GT_OK();
 			}
 		);

@@ -1971,7 +1971,10 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 								}
 
 								// get turn info
-								const auto turn_id = buf.ReadInt();
+								const auto turn_id = buf.ReadInt< size_t >( "snapshot turn id" );
+								if ( buf.GetRemaining() != 0 ) {
+									THROW( "unexpected data after serialized world snapshot" );
+								}
 								if ( turn_id > 0 ) {
 									MTModule::Log( "Received turn ID: " + std::to_string( turn_id ) );
 									RestoreTurn( turn_id );

@@ -52,6 +52,9 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 	const auto scale_y = buf.ReadFloat();
 	const auto duration_value = buf.ReadInt();
 	const auto sound_file = buf.ReadString();
+	if ( id.empty() ) {
+		THROW( "serialized animation definition id is empty" );
+	}
 	if ( type_value != AT_FRAMES_ROW ) {
 		THROW( "unknown def type on read: " + std::to_string( type_value ) );
 	}
