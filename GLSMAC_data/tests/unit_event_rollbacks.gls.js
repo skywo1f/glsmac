@@ -208,6 +208,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let move_calls = 0;
 	let stopped_animations_id = 0;
 	let tiles_locked = true;
+	let base_owner_changes = 0;
+	const attacker_owner = {id: owner.id};
+	const defender_owner = {id: 2};
 	const src_tile = {
 		is_land: true,
 		is_water: false,
@@ -239,6 +242,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		is_water: false,
 		movement: 0.0,
 		moved_this_turn: true,
+		get_owner: () => {
+			return attacker_owner;
+		},
 		get_tile: () => {
 			return current_tile;
 		},
@@ -275,20 +281,34 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	destination_units = [{owner: 2, health: 0.0}];
 	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
 	destination_units = [];
-	destination_base = {};
-	test.assert(#is_defined(advance_unit_after_combat.validate(event)));
-	destination_base = null;
+	let current_base_owner = defender_owner;
+	destination_base = {
+		get_owner: () => {
+			return current_base_owner;
+		},
+		set_owner: (new_owner) => {
+			base_owner_changes++;
+			current_base_owner = new_owner;
+		},
+	};
+	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
 
 	event.applied = advance_unit_after_combat.apply(event);
 	test.assert(event.applied.orig_tile == src_tile);
+	test.assert(event.applied.base == destination_base);
+	test.assert(event.applied.orig_base_owner == defender_owner);
 	test.assert(stopped_animations_id == 73);
 	test.assert(current_tile == dst_tile);
 	test.assert(move_calls == 1);
+	test.assert(current_base_owner == attacker_owner);
+	test.assert(base_owner_changes == 1);
 	test.assert(unit.movement == 0.0);
 	test.assert(unit.moved_this_turn == true);
 	advance_unit_after_combat.rollback(event);
 	test.assert(current_tile == src_tile);
 	test.assert(move_calls == 2);
+	test.assert(current_base_owner == defender_owner);
+	test.assert(base_owner_changes == 2);
 }
 
 {

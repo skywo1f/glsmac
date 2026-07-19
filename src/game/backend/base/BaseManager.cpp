@@ -225,6 +225,7 @@ void BaseManager::PushUpdates() {
 				auto fr = FrontendRequest( FrontendRequest::FR_BASE_SPAWN );
 				fr.data.base_spawn.base_id = base->m_id;
 				fr.data.base_spawn.slot_index = base->m_owner->GetIndex();
+				NEW( fr.data.base_spawn.faction_id, std::string, base->m_faction->m_id );
 				const auto* tile = base->GetTile();
 				fr.data.base_spawn.tile_coords = {
 					tile->coord.x,

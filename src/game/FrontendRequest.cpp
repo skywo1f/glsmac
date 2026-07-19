@@ -75,6 +75,7 @@ FrontendRequest::FrontendRequest( const FrontendRequest& other )
 		}
 		case FR_BASE_SPAWN: {
 			NEW( data.base_spawn.name, std::string, *other.data.base_spawn.name );
+			NEW( data.base_spawn.faction_id, std::string, *other.data.base_spawn.faction_id );
 			break;
 		}
 		case FR_BASE_UPDATE: {
@@ -167,6 +168,7 @@ FrontendRequest::~FrontendRequest() {
 		}
 		case FR_BASE_SPAWN: {
 			DELETE( data.base_spawn.name );
+			DELETE( data.base_spawn.faction_id );
 			break;
 		}
 		case FR_BASE_UPDATE: {

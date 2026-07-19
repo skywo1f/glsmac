@@ -5,10 +5,12 @@
 
 	let map_size_requested = false;
 	let ready_requested = false;
+	let ready_retry_ticks = 0;
 	let game_configured = false;
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
 	const defeated_snapshot_unit_id = 3;
+	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 
 	glsmac.on('configure_state', (e) => {
 		#async(100, () => {
@@ -32,8 +34,10 @@
 
 			const me = game.get_player();
 			if (!me.is_ready()) {
-				if (!ready_requested) {
+				ready_retry_ticks++;
+				if (!ready_requested || ready_retry_ticks >= 10) {
 					ready_requested = true;
+					ready_retry_ticks = 0;
 					game.event('ready_or_not', {
 						ready: true,
 					});
@@ -41,6 +45,7 @@
 			}
 			else {
 				ready_requested = false;
+				ready_retry_ticks = 0;
 			}
 			return !game_configured;
 		});
@@ -141,6 +146,22 @@
 						glsmac.exit();
 						return;
 					}
+					let conquest_tile = null;
+					for (tile of client_base.get_unworked_tiles()) {
+						if (tile.get_base() == null) {
+							conquest_tile = tile;
+							break;
+						}
+					}
+					if (conquest_tile == null) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: conquest probe tile is missing');
+						glsmac.exit();
+						return;
+					}
+					const conquered_base = game.get_bm().spawn_base(game.get_player(), conquest_tile, {
+						name: conquered_snapshot_base_name,
+					});
+					conquered_base.set_owner(client_base.get_owner());
 					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
 					const defeated_unit = game.get_um().spawn_unit({

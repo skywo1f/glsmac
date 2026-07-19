@@ -20,6 +20,7 @@ namespace game {
 namespace backend {
 
 class Game;
+class Player;
 namespace slot {
 class Slot;
 }
@@ -55,6 +56,7 @@ public:
 	const Game* const GetGame() const;
 
 	Pop* const AddPop( const Pop& pop );
+	void SetOwner( GSE_CALLABLE, Player* owner );
 	void RemovePop( GSE_CALLABLE, const size_t pop_id );
 	void ChangePopType( GSE_CALLABLE, const size_t pop_id, const std::string& def_id );
 	void WorkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile );

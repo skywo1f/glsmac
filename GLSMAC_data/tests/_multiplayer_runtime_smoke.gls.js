@@ -6,6 +6,7 @@
 	let lobby_timer_started = false;
 	let map_size_requested = false;
 	let ready_requested = false;
+	let ready_retry_ticks = 0;
 	let game_configured = false;
 	let exit_scheduled = false;
 	let accepted_event_count = 0;
@@ -16,6 +17,7 @@
 	let client_immediate_movement_probe_complete = false;
 	let client_combat_probe_complete = false;
 	let client_immediate_combat_probe_complete = false;
+	let client_base_capture_probe_complete = false;
 	let client_movement_unit_id = 0;
 	let client_movement_target_x = 0;
 	let client_movement_target_y = 0;
@@ -23,6 +25,7 @@
 	let client_combat_target_y = 0;
 	let combat_defender_id = 0;
 	let combat_defender_spawn_requested = false;
+	const combat_base_name = 'Multiplayer Capture Probe';
 
 	glsmac.on('configure_state', (e) => {
 		if (lobby_timer_started) {
@@ -52,8 +55,10 @@
 
 			const me = game.get_player();
 			if (!me.is_ready()) {
-				if (!ready_requested) {
+				ready_retry_ticks++;
+				if (!ready_requested || ready_retry_ticks >= 10) {
 					ready_requested = true;
+					ready_retry_ticks = 0;
 					#print('MULTIPLAYER_SMOKE_READY_REQUESTED');
 					game.event('ready_or_not', {
 						ready: true,
@@ -62,6 +67,7 @@
 			}
 			else {
 				ready_requested = false;
+				ready_retry_ticks = 0;
 			}
 			return !game_configured;
 		});
@@ -77,6 +83,15 @@
 		const find_base_for_player = (player_id) => {
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == player_id) {
+					return base;
+				}
+			}
+			return null;
+		};
+
+		const find_base_by_name = (name) => {
+			for (base of game.get_bm().get_bases()) {
+				if (base.name == name) {
 					return base;
 				}
 			}
@@ -155,7 +170,8 @@
 				if (tile == source || tile == movement_target || tile.is_locked()) {
 					continue;
 				}
-				if (tile.get_base() != null) {
+				const tile_base = tile.get_base();
+				if (tile_base != null && tile_base.name != combat_base_name) {
 					continue;
 				}
 				if (unit.is_land && tile.is_water) {
@@ -233,12 +249,18 @@
 				unit: attacker,
 				movement: 3.0,
 			});
+			const combat_tile = game.get_tm().get_tile(
+				client_combat_target_x,
+				client_combat_target_y
+			);
+			game.event('spawn_base', {
+				owner: game.get_player(0),
+				tile: combat_tile,
+				name: combat_base_name,
+			});
 			game.event('spawn_unit', {
 				owner: game.get_player(0),
-				tile: game.get_tm().get_tile(
-					client_combat_target_x,
-					client_combat_target_y
-				),
+				tile: combat_tile,
 				type: attacker.def,
 				health: 0.1,
 				morale: 0,
@@ -345,6 +367,18 @@
 							attacker_tile.x == client_combat_target_x &&
 							attacker_tile.y == client_combat_target_y
 						) {
+							const captured_base = attacker_tile.get_base();
+							if (
+								captured_base == null ||
+								captured_base.name != combat_base_name ||
+								captured_base.get_owner().id != get_client_player_id()
+							) {
+								#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat base was not captured');
+								glsmac.exit();
+								return false;
+							}
+							client_base_capture_probe_complete = true;
+							#print('MULTIPLAYER_SMOKE_BASE_CAPTURE_PASS_CLIENT');
 							#print('MULTIPLAYER_SMOKE_POST_COMBAT_ADVANCE_PASS_CLIENT');
 							finish_combat_probe();
 							return false;
@@ -572,6 +606,7 @@
 			else if (turn_id == 2 && !exit_scheduled) {
 				const client_player_id = get_client_player_id();
 				const client_base = find_base_for_player(client_player_id);
+				const captured_base = find_base_by_name(combat_base_name);
 				let client_unit = null;
 				if (game.get_um().has_unit(client_movement_unit_id)) {
 					client_unit = game.get_um().get_unit(client_movement_unit_id);
@@ -603,7 +638,10 @@
 					(!game.is_master() && !client_movement_probe_complete) ||
 					(!game.is_master() && !client_immediate_combat_probe_complete) ||
 					(!game.is_master() && !client_combat_probe_complete) ||
+					(!game.is_master() && !client_base_capture_probe_complete) ||
 					client_base == null ||
+					captured_base == null ||
+					captured_base.get_owner().id != client_player_id ||
 					#sizeof(client_base.get_worked_tiles()) != 0 ||
 					combat_defender_id == 0 ||
 					(client_unit != null && combat_defender != null) ||

@@ -27,9 +27,6 @@ return {
 		if (unit.is_water && dst_tile.is_land) {
 			return 'Water unit cannot advance into a land tile';
 		}
-		if (dst_tile.get_base() != null) {
-			return 'Post-combat base capture is not implemented';
-		}
 		for (other of dst_tile.get_units()) {
 			if (other.owner != unit.owner && other.health > 0.0) {
 				return 'Post-combat destination still contains a foreign unit';
@@ -39,11 +36,17 @@ return {
 
 	apply: (e) => {
 		const unit = e.data.unit;
+		const base = e.data.tile.get_base();
 		const applied = {
 			orig_tile: unit.get_tile(),
+			base: base,
+			orig_base_owner: base == null ? null : base.get_owner(),
 		};
 		e.game.am.stop_animations(e.data.animations_id);
 		unit.move_to_tile(e.data.tile, () => {});
+		if (base != null && applied.orig_base_owner.id != unit.owner) {
+			base.set_owner(unit.get_owner());
+		}
 		return applied;
 	},
 
@@ -51,6 +54,12 @@ return {
 		const unit = e.data.unit;
 		if (unit.get_tile() != e.applied.orig_tile) {
 			unit.move_to_tile(e.applied.orig_tile, () => {});
+		}
+		if (
+			e.applied.base != null &&
+			e.applied.base.get_owner().id != e.applied.orig_base_owner.id
+		) {
+			e.applied.base.set_owner(e.applied.orig_base_owner);
 		}
 	},
 

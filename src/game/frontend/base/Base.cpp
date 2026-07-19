@@ -30,6 +30,7 @@ Base::Base(
 	const size_t id,
 	const std::string& name,
 	Slot* slot,
+	faction::Faction* faction,
 	tile::Tile* tile,
 	const bool is_owned,
 	const types::Vec3& render_coords,
@@ -37,9 +38,11 @@ Base::Base(
 )
 	: TileObject( TOT_BASE, tile )
 	, m_bm( bm )
+	, m_slot_badges( m_bm->GetSlotBadges( slot->GetIndex() ) )
 	, m_id( id )
 	, m_name( name )
-	, m_faction( slot->GetFaction() )
+	, m_owner( slot )
+	, m_faction( faction )
 	, m_render(
 		{
 			render_coords,
@@ -49,9 +52,8 @@ Base::Base(
 			0,
 		}
 	)
-	, m_is_owned( is_owned )
 	, m_is_guarded( !m_tile->GetUnits().empty() )
-	, m_slot_badges( m_bm->GetSlotBadges( slot->GetIndex() ) ) {
+	, m_is_owned( is_owned ) {
 	UpdateMeshTex( m_render_data.base, GetSprite()->instanced_sprite );
 	m_render.badge.def = m_slot_badges->GetBaseBadgeSprite( m_render.badge.pops_count, m_is_guarded );
 	UpdateMeshTex( m_render_data.badge, m_render.badge.def->instanced_sprite );
@@ -78,10 +80,8 @@ const std::string& Base::GetName() const {
 	return m_name;
 }
 
-void Base::SetName( const std::string& name ) {
-	if ( m_name != name ) {
-		m_name = name;
-	}
+Slot* const Base::GetOwner() const {
+	return m_owner;
 }
 
 faction::Faction* const Base::GetFaction() const {
@@ -113,14 +113,26 @@ void Base::Show() {
 
 		if ( m_render.badge.pops_count != m_pops.size() ) {
 			m_render.badge.pops_count = m_pops.size();
-			UpdateMeshTex( m_render_data.base, GetSprite()->instanced_sprite );
-			m_render.badge.def = m_slot_badges->GetBaseBadgeSprite( m_render.badge.pops_count, m_is_guarded );
+			auto* const sprite = GetSprite();
+			if ( m_render.sprite && m_render.sprite != sprite ) {
+				m_render.instance_id = 0;
+			}
+			UpdateMeshTex( m_render_data.base, sprite->instanced_sprite );
+			auto* const badge = m_slot_badges->GetBaseBadgeSprite( m_render.badge.pops_count, m_is_guarded );
+			if ( m_render.badge.def != badge ) {
+				m_render.badge.instance_id = 0;
+			}
+			m_render.badge.def = badge;
 			UpdateMeshTex( m_render_data.badge, m_render.badge.def->instanced_sprite );
 		}
 
 		const auto& c = m_render.coords;
 
-		m_render.sprite = GetSprite();
+		auto* const sprite = GetSprite();
+		if ( m_render.sprite && m_render.sprite != sprite ) {
+			m_render.instance_id = 0;
+		}
+		m_render.sprite = sprite;
 
 		if ( !m_render.instance_id ) {
 			m_render.instance_id = m_render.sprite->next_instance_id++;
@@ -161,8 +173,8 @@ void Base::Update() {
 	if ( is_guarded != m_is_guarded ) {
 		if ( m_render.is_rendered ) {
 			HideBadge();
-			m_render.badge.instance_id = 0;
 		}
+		m_render.badge.instance_id = 0;
 		m_is_guarded = is_guarded;
 		m_render.badge.def = m_slot_badges->GetBaseBadgeSprite( m_pops.size(), m_is_guarded );
 		UpdateMeshTex( m_render_data.badge, m_render.badge.def->instanced_sprite );
@@ -199,6 +211,43 @@ void Base::ShowBadge() {
 
 void Base::HideBadge() {
 	m_render.badge.def->instanced_sprite->actor->RemoveInstance( m_render.badge.instance_id );
+}
+
+void Base::SetState( const std::string& name, Slot* owner, faction::Faction* faction, const bool is_owned ) {
+	ASSERT( owner, "base owner is null" );
+	ASSERT( faction, "base faction is null" );
+	if ( m_name == name && m_owner == owner && m_faction == faction && m_is_owned == is_owned ) {
+		return;
+	}
+
+	const bool was_rendered = m_render.is_rendered;
+	const bool owner_changed = m_owner != owner;
+	const bool faction_changed = m_faction != faction;
+	Hide();
+
+	if ( m_name != name || owner_changed ) {
+		m_name = name;
+		delete m_render.name_sprite;
+		m_render.name_sprite = m_bm->CreateNameText( m_name, owner->GetFaction() );
+	}
+	if ( owner_changed ) {
+		m_owner = owner;
+		m_slot_badges = m_bm->GetSlotBadges( owner->GetIndex() );
+		m_render.badge.instance_id = 0;
+		m_render.badge.def = m_slot_badges->GetBaseBadgeSprite( m_pops.size(), m_is_guarded );
+		UpdateMeshTex( m_render_data.badge, m_render.badge.def->instanced_sprite );
+	}
+	if ( faction_changed ) {
+		m_faction = faction;
+		m_render.sprite = nullptr;
+		m_render.instance_id = 0;
+		UpdateMeshTex( m_render_data.base, GetSprite()->instanced_sprite );
+	}
+	m_is_owned = is_owned;
+
+	if ( was_rendered ) {
+		Show();
+	}
 }
 
 void Base::UpdateMeshTex( meshtex_t& meshtex, const sprite::InstancedSprite* sprite ) {

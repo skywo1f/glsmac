@@ -195,6 +195,7 @@ public:
 		struct {
 			size_t base_id;
 			size_t slot_index;
+			const std::string* faction_id;
 			struct {
 				size_t x;
 				size_t y;

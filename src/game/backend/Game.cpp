@@ -1049,8 +1049,9 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 				for ( const auto& r : *request.data.send_backend_requests.requests ) {
 					switch ( r.type ) {
 						case BackendRequest::BR_ANIMATION_FINISHED: {
-							gc_space->Accumulate( this, [ this, &r ] () {
-								m_am->FinishAnimation( r.data.animation_finished.animation_id );
+							const auto animation_id = r.data.animation_finished.animation_id;
+							gc_space->Accumulate( this, [ this, animation_id ] () {
+								m_am->FinishAnimation( animation_id );
 							});
 							break;
 						}

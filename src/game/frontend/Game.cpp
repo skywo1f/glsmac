@@ -893,8 +893,10 @@ void Game::ShowAnimation( AnimationDef* def, const size_t animation_id, const ty
 }
 
 void Game::AbortAnimation( const size_t animation_id ) {
-	const auto& it = m_animations.find( animation_id );
-	ASSERT( it != m_animations.end(), "animation id not found" );
+	const auto it = m_animations.find( animation_id );
+	if ( it == m_animations.end() ) {
+		return;
+	}
 	delete it->second;
 	m_animations.erase( it );
 }
@@ -1175,9 +1177,12 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.base_spawn;
 			const auto& tc = d.tile_coords;
 			const auto& rc = d.render_coords;
+			auto* const faction = m_fm->GetFactionById( *d.faction_id );
+			ASSERT( faction, "base faction not found: " + *d.faction_id );
 			m_bm->SpawnBase(
 				d.base_id,
 				d.slot_index,
+				faction,
 				{
 					tc.x,
 					tc.y
@@ -1199,11 +1204,8 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.base_update;
 			auto* base = m_bm->GetBaseById( d.base_id );
 			ASSERT( base, "base is null" );
-			base->SetName( *d.name );
-			// TODO: update slot index
-			if ( base->GetFaction()->m_id != *d.faction_id ) {
-				THROW( "TODO: UPDATE FACTION" );
-			}
+			auto* const faction = m_fm->GetFactionById( *d.faction_id );
+			ASSERT( faction, "base faction not found: " + *d.faction_id );
 			base::Base::pops_t pops = {};
 			pops.reserve( d.pops->size() );
 			for ( const auto& pop : *d.pops ) {
@@ -1216,6 +1218,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				);
 			}
 			base->SetPops( pops );
+			m_bm->UpdateBase( base, d.slot_index, faction, *d.name );
 			m_bm->RefreshBase( base );
 			break;
 		}

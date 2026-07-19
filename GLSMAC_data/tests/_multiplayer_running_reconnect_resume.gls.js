@@ -6,6 +6,7 @@
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
 	const defeated_snapshot_unit_id = 3;
+	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
@@ -28,6 +29,19 @@
 			}
 			if (base == null) {
 				return 'base is missing';
+			}
+			let conquered_base = null;
+			for (candidate of game.get_bm().get_bases()) {
+				if (candidate.name == conquered_snapshot_base_name) {
+					conquered_base = candidate;
+					break;
+				}
+			}
+			if (conquered_base == null) {
+				return 'conquered base is missing';
+			}
+			if (conquered_base.get_owner().id != game.get_player().id) {
+				return 'conquered base owner was not restored';
 			}
 			const accumulated_nutrients = base.get('accumulated_nutrients');
 			if (!#is_defined(accumulated_nutrients)) {
@@ -91,6 +105,7 @@
 					return;
 				}
 				#print('RUNNING_RECONNECT_BASE_STATE_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_CONQUERED_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});

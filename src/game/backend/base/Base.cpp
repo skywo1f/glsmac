@@ -82,6 +82,28 @@ Pop* const Base::AddPop( const Pop& pop ) {
 	return &m_pops.at( pop.m_id );
 }
 
+void Base::SetOwner( GSE_CALLABLE, Player* owner ) {
+	if ( !owner || !owner->GetSlot() ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "base owner has no player slot" );
+	}
+	auto* const owner_slot = owner->GetSlot();
+	auto* const slots = m_game->GetState()->m_slots;
+	if (
+		owner_slot->GetIndex() >= slots->GetCount() ||
+		&slots->GetSlot( owner_slot->GetIndex() ) != owner_slot ||
+		owner_slot->GetState() != slot::Slot::SS_PLAYER ||
+		owner_slot->GetPlayer() != owner ||
+		!owner->GetFaction()
+	) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "base owner is not an active player in this game" );
+	}
+	if ( m_owner != owner_slot ) {
+		m_owner = owner_slot;
+		m_game->GetBM()->RefreshBase( this );
+		TriggerUpdate();
+	}
+}
+
 void Base::RemovePop( GSE_CALLABLE, const size_t pop_id ) {
 	const auto it = m_pops.find( pop_id );
 	if ( it == m_pops.end() ) {
@@ -211,8 +233,11 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	const auto faction_id = buf.ReadString();
 	auto* faction = game->GetFaction( faction_id );
 	auto* const owner_faction = slot->GetPlayer()->GetFaction();
-	if ( !faction || !owner_faction || owner_faction->m_id != faction_id ) {
-		THROW( "serialized base faction does not match its owner" );
+	if ( !faction ) {
+		THROW( "serialized base faction does not exist: " + faction_id );
+	}
+	if ( !owner_faction ) {
+		THROW( "serialized base owner has no faction" );
 	}
 	const auto pos_x = buf.ReadInt< size_t >( "base tile x" );
 	const auto pos_y = buf.ReadInt< size_t >( "base tile y" );
@@ -304,6 +329,19 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	WRAPIMPL_CUSTOM_SETTERS
+	{
+		"set_owner",
+		NATIVE_CALL( this ) {
+
+			m_game->CheckRW( GSE_CALL );
+
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE_UNWRAP( owner, 0, Player );
+			SetOwner( GSE_CALL, owner );
+
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"work_pop_tile",
 		NATIVE_CALL( this ) {
