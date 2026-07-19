@@ -496,8 +496,10 @@ Value* const Value::New( const Value* value ) {
 		case VT_ARRAYRANGEREF:
 		case VT_OBJECTREF:
 		case VT_VALUEREF: {
-			// no need to keep ref to old value if it's a copy
-			return Deref();
+			auto* const dereferenced = Deref();
+			return dereferenced->type == VT_PTR
+				? dereferenced->Clone()
+				: dereferenced;
 		}
 		case VT_RANGE: {
 			const auto* range = (value::Range*)value;

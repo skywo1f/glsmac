@@ -83,9 +83,9 @@ Connection::~Connection() {
 		m_network->MT_Cancel( m_mt_ids.events );
 		m_mt_ids.events = 0;
 	}
-	/* if ( m_state ) {
+	if ( m_state ) {
 		m_state->DetachConnection();
-	}*/
+	}
 	ClearPending();
 }
 
