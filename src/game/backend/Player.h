@@ -35,6 +35,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		const std::string& difficulty_level
 	);
 	Player( const Player* const other );
+	~Player() override;
 
 	const std::string& GetPlayerName() const;
 	const std::string GetFullName() const;
@@ -77,9 +78,12 @@ private:
 	size_t m_slotnum = 0;
 
 	faction::Faction* m_faction = {};
+	bool m_owns_faction = false;
 	std::string m_difficulty_level = "";
 
 	bool m_is_turn_completed = false;
+
+	void ReleaseOwnedFaction();
 };
 
 }

@@ -238,13 +238,13 @@ const long long int Buffer::ReadInt() {
 }
 
 const size_t Buffer::ReadCollectionSize( const std::string& name ) {
-	const auto count = ReadInt();
+	const auto count = ReadInt< size_t >( name + " count" );
 	const size_t min_element_size = sizeof( type_t ) + sizeof( uint32_t ) + sizeof( checksum_t );
 	const size_t max_count = GetRemaining() / min_element_size;
-	if ( count < 0 || static_cast< unsigned long long >( count ) > max_count ) {
+	if ( count > max_count ) {
 		THROW( "invalid serialized " + name + " count: " + std::to_string( count ) );
 	}
-	return static_cast< size_t >( count );
+	return count;
 }
 
 void Buffer::WriteFloat( const float val ) {

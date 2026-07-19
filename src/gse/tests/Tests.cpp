@@ -30,6 +30,7 @@
 #include "gse/value/String.h"
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
+#include "game/backend/faction/Faction.h"
 #include "game/backend/map/tile/Tile.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
@@ -182,6 +183,37 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.features == source.features, "tile features changed" );
 				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
 				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"faction serialization round trip",
+			GT() {
+				using game::backend::faction::Faction;
+
+				Faction source( "CARETAKERS", "Caretakers" );
+				source.m_flags = Faction::FF_NAVAL | Faction::FF_PROGENITOR;
+				source.m_colors.text = types::Color::FromRGBA( 0x10203040 );
+				source.m_colors.text_shadow = types::Color::FromRGBA( 0x50607080 );
+				source.m_colors.border = types::Color::FromRGBA( 0x90a0b0c0 );
+				source.m_bases_render = { "caretake.pcx", 1, 2, 100, 75, 50, 37, 1, 0.75f, 1.25f };
+				source.m_base_names.land = { "Alpha Prime", "Tau Ceti" };
+				source.m_base_names.water = { "Deep Home" };
+
+				Faction restored;
+				restored.Deserialize( source.Serialize() );
+
+				GT_ASSERT( restored.m_id == source.m_id, "faction id changed" );
+				GT_ASSERT( restored.m_name == source.m_name, "faction name changed" );
+				GT_ASSERT( restored.m_flags == source.m_flags, "faction flags changed" );
+				GT_ASSERT( restored.m_colors.text.GetRGBA() == source.m_colors.text.GetRGBA(), "faction text color changed" );
+				GT_ASSERT( restored.m_colors.text_shadow.GetRGBA() == source.m_colors.text_shadow.GetRGBA(), "faction shadow color changed" );
+				GT_ASSERT( restored.m_colors.border.GetRGBA() == source.m_colors.border.GetRGBA(), "faction border color changed" );
+				GT_ASSERT( restored.m_bases_render.file == source.m_bases_render.file, "faction base sprite changed" );
+				GT_ASSERT( restored.m_bases_render.cell_width == source.m_bases_render.cell_width, "faction base cell width changed" );
+				GT_ASSERT( restored.m_bases_render.scale_x == source.m_bases_render.scale_x, "faction base scale changed" );
+				GT_ASSERT( restored.m_base_names.land == source.m_base_names.land, "faction land base names changed" );
+				GT_ASSERT( restored.m_base_names.water == source.m_base_names.water, "faction water base names changed" );
 				GT_OK();
 			}
 		);

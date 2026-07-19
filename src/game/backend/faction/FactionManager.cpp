@@ -1,5 +1,7 @@
 #include "FactionManager.h"
 
+#include <memory>
+
 #include "Faction.h"
 
 #include "gse/callable/Native.h"
@@ -245,9 +247,19 @@ void FactionManager::Deserialize( types::Buffer buf ) {
 	const size_t factions_count = buf.ReadCollectionSize( "faction" );
 	for ( size_t i = 0 ; i < factions_count ; i++ ) {
 		const auto faction_id = buf.ReadString();
-		ASSERT( m_factions.find( faction_id ) == m_factions.end(), "duplicate faction id" );
-		m_factions.insert({ faction_id, { new Faction(), ++m_next_faction_idx }}).first->second.faction->Deserialize( buf.ReadString() );
+		if ( faction_id.empty() || m_factions.find( faction_id ) != m_factions.end() ) {
+			THROW( "invalid or duplicate serialized faction id: " + faction_id );
+		}
+		auto faction = std::make_unique< Faction >();
+		faction->Deserialize( buf.ReadString() );
+		if ( faction->m_id != faction_id ) {
+			THROW( "serialized faction id mismatch" );
+		}
+		m_factions.insert({ faction_id, { faction.release(), ++m_next_faction_idx }});
 		m_factions_order.insert( { m_next_faction_idx, faction_id } );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized factions" );
 	}
 }
 

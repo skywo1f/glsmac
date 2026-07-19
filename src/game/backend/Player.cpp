@@ -1,5 +1,7 @@
 #include "Player.h"
 
+#include <memory>
+
 #include "game/backend/faction/Faction.h"
 #include "game/backend/slot/Slot.h"
 #include "game/backend/State.h"
@@ -30,7 +32,18 @@ Player::Player(
 	, m_difficulty_level( difficulty_level ) {}
 
 Player::Player( const Player* const other ) {
-	*this = *other;
+	m_is_connected = other->m_is_connected;
+	m_name = other->m_name;
+	m_role = other->m_role;
+	m_slot = other->m_slot;
+	m_slotnum = other->m_slotnum;
+	m_faction = other->m_faction;
+	m_difficulty_level = other->m_difficulty_level;
+	m_is_turn_completed = other->m_is_turn_completed;
+}
+
+Player::~Player() {
+	ReleaseOwnedFaction();
 }
 
 const std::string& Player::GetPlayerName() const {
@@ -57,11 +70,14 @@ const bool Player::IsConnected() const {
 
 void Player::SetFaction( faction::Faction* faction ) {
 	// TODO: validate?
-	m_faction = faction;
+	if ( m_faction != faction ) {
+		ReleaseOwnedFaction();
+		m_faction = faction;
+	}
 }
 
 void Player::ClearFaction() {
-	m_faction = nullptr;
+	ReleaseOwnedFaction();
 }
 
 faction::Faction* Player::GetFaction() {
@@ -169,7 +185,7 @@ WRAPIMPL_BEGIN( Player )
 					if ( !faction ) {
 						GSE_ERROR( gse::EC.GAME_ERROR, "Faction not found: " + faction_id );
 					}
-					m_faction = faction;
+					SetFaction( faction );
 
 					return VALUE( gse::value::Undefined );
 				} )
@@ -181,7 +197,7 @@ WRAPIMPL_BEGIN( Player )
 					game->CheckRW( GSE_CALL );
 
 					N_EXPECT_ARGS( 0 );
-					m_faction = nullptr;
+					ClearFaction();
 
 					return VALUE( gse::value::Undefined );
 				} )
@@ -212,16 +228,38 @@ const types::Buffer Player::Serialize() const {
 
 void Player::Deserialize( types::Buffer buf ) {
 
-	m_name = buf.ReadString();
-	m_role = (role_t)buf.ReadInt();
-	m_faction = {};
-	if ( buf.ReadBool() ) {
-		m_faction = new faction::Faction();
-		m_faction->Deserialize( buf.ReadString() );
+	const auto name = buf.ReadString();
+	const auto serialized_role = buf.ReadInt();
+	if ( serialized_role < PR_NONE || serialized_role > PR_PLAYER ) {
+		THROW( "invalid serialized player role: " + std::to_string( serialized_role ) );
 	}
-	m_difficulty_level = buf.ReadString();
-	m_is_turn_completed = buf.ReadBool();
+	std::unique_ptr< faction::Faction > faction;
+	if ( buf.ReadBool() ) {
+		faction = std::make_unique< faction::Faction >();
+		faction->Deserialize( buf.ReadString() );
+	}
+	const auto difficulty_level = buf.ReadString();
+	const auto is_turn_completed = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized player" );
+	}
 
+	ReleaseOwnedFaction();
+	m_name = name;
+	m_role = static_cast< role_t >( serialized_role );
+	m_faction = faction.release();
+	m_owns_faction = m_faction != nullptr;
+	m_difficulty_level = difficulty_level;
+	m_is_turn_completed = is_turn_completed;
+
+}
+
+void Player::ReleaseOwnedFaction() {
+	if ( m_owns_faction ) {
+		delete m_faction;
+	}
+	m_faction = nullptr;
+	m_owns_faction = false;
 }
 
 WRAPIMPL_SERIALIZE( Player )

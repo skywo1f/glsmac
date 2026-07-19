@@ -1,5 +1,8 @@
 #include "Faction.h"
 
+#include <cmath>
+#include <utility>
+
 #include "types/texture/Texture.h"
 #include "gse/value/String.h"
 #include "gse/value/Bool.h"
@@ -27,6 +30,7 @@ const types::Buffer Faction::Serialize() const {
 
 	buf.WriteString( m_id );
 	buf.WriteString( m_name );
+	buf.WriteInt( m_flags );
 
 	buf.WriteColor( m_colors.text );
 	buf.WriteColor( m_colors.text_shadow );
@@ -43,28 +47,72 @@ const types::Buffer Faction::Serialize() const {
 	buf.WriteFloat( m_bases_render.scale_x );
 	buf.WriteFloat( m_bases_render.scale_y );
 
+	buf.WriteInt( m_base_names.land.size() );
+	for ( const auto& name : m_base_names.land ) {
+		buf.WriteString( name );
+	}
+	buf.WriteInt( m_base_names.water.size() );
+	for ( const auto& name : m_base_names.water ) {
+		buf.WriteString( name );
+	}
+
 	return buf;
 }
 
 void Faction::Deserialize( types::Buffer buf ) {
 
-	m_id = buf.ReadString();
-	m_name = buf.ReadString();
+	const auto id = buf.ReadString();
+	const auto name = buf.ReadString();
+	const auto flags = buf.ReadInt< faction_flag_t >( "faction flags" );
+	if ( flags > FF_ALL ) {
+		THROW( "invalid serialized faction flags: " + std::to_string( flags ) );
+	}
 
-	buf.ReadColor( m_colors.text );
-	buf.ReadColor( m_colors.text_shadow );
-	buf.ReadColor( m_colors.border );
+	types::Color text;
+	types::Color text_shadow;
+	types::Color border;
+	buf.ReadColor( text );
+	buf.ReadColor( text_shadow );
+	buf.ReadColor( border );
 
-	m_bases_render.file = buf.ReadString();
-	m_bases_render.grid_x = buf.ReadInt();
-	m_bases_render.grid_y = buf.ReadInt();
-	m_bases_render.cell_width = buf.ReadInt();
-	m_bases_render.cell_height = buf.ReadInt();
-	m_bases_render.cell_cx = buf.ReadInt();
-	m_bases_render.cell_cy = buf.ReadInt();
-	m_bases_render.cell_padding = buf.ReadInt();
-	m_bases_render.scale_x = buf.ReadFloat();
-	m_bases_render.scale_y = buf.ReadFloat();
+	bases_render_info_t bases_render = {};
+	bases_render.file = buf.ReadString();
+	bases_render.grid_x = buf.ReadInt< size_t >( "faction base render grid x" );
+	bases_render.grid_y = buf.ReadInt< size_t >( "faction base render grid y" );
+	bases_render.cell_width = buf.ReadInt< size_t >( "faction base render cell width" );
+	bases_render.cell_height = buf.ReadInt< size_t >( "faction base render cell height" );
+	bases_render.cell_cx = buf.ReadInt< size_t >( "faction base render center x" );
+	bases_render.cell_cy = buf.ReadInt< size_t >( "faction base render center y" );
+	bases_render.cell_padding = buf.ReadInt< size_t >( "faction base render padding" );
+	bases_render.scale_x = buf.ReadFloat();
+	bases_render.scale_y = buf.ReadFloat();
+	if ( !std::isfinite( bases_render.scale_x ) || !std::isfinite( bases_render.scale_y ) ) {
+		THROW( "invalid serialized faction base render scale" );
+	}
+
+	std::vector< std::string > land_names;
+	const auto land_names_count = buf.ReadCollectionSize( "faction land base name" );
+	land_names.reserve( land_names_count );
+	for ( size_t i = 0 ; i < land_names_count ; i++ ) {
+		land_names.push_back( buf.ReadString() );
+	}
+	std::vector< std::string > water_names;
+	const auto water_names_count = buf.ReadCollectionSize( "faction water base name" );
+	water_names.reserve( water_names_count );
+	for ( size_t i = 0 ; i < water_names_count ; i++ ) {
+		water_names.push_back( buf.ReadString() );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized faction" );
+	}
+
+	m_id = id;
+	m_name = name;
+	m_flags = flags;
+	m_colors = { text, text_shadow, border };
+	m_bases_render = bases_render;
+	m_base_names.land = std::move( land_names );
+	m_base_names.water = std::move( water_names );
 
 }
 
