@@ -315,7 +315,7 @@ const bool Unit::CanMove() const {
 	return m_movement >= backend::unit::Unit::MINIMUM_MOVEMENT_TO_KEEP;
 }
 
-void Unit::SetTile( tile::Tile* dst_tile ) {
+void Unit::SetTile( tile::Tile* dst_tile, const bool update_render ) {
 	ASSERT( m_tile, "source tile not set" );
 	ASSERT( dst_tile, "destination tile not set" );
 
@@ -325,7 +325,9 @@ void Unit::SetTile( tile::Tile* dst_tile ) {
 
 	m_tile->AddUnit( this );
 
-	UpdateFromTile();
+	if ( update_render ) {
+		UpdateFromTile();
+	}
 }
 
 void Unit::MoveToTile( tile::Tile* dst_tile ) {

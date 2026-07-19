@@ -106,6 +106,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	};
 	let current_tile = src_tile;
 	let move_calls = 0;
+	let pending_move_callback = null;
 	const unit = {
 		movement: 0.5,
 		moved_this_turn: false,
@@ -115,7 +116,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		move_to_tile: (tile, oncomplete) => {
 			move_calls++;
 			current_tile = tile;
-			oncomplete();
+			pending_move_callback = oncomplete;
 		},
 	};
 	const failed_event = {
@@ -154,9 +155,18 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(successful_event.applied.movement_started == true);
 	test.assert(successful_event.applied.orig.movement == 1.5);
 	test.assert(successful_event.applied.orig.moved_this_turn == false);
+	test.assert(successful_event.data.unit.movement == 0.5);
+	test.assert(successful_event.data.unit.moved_this_turn == true);
+	test.assert(pending_move_callback != null);
+	pending_move_callback();
+	pending_move_callback = null;
 	move_unit.rollback(successful_event);
 	test.assert(move_calls == 2);
 	test.assert(current_tile == src_tile);
+	test.assert(successful_event.data.unit.movement == 1.5);
+	test.assert(successful_event.data.unit.moved_this_turn == false);
+	test.assert(pending_move_callback != null);
+	pending_move_callback();
 }
 
 {

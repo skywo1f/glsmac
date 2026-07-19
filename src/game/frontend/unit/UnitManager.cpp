@@ -53,7 +53,7 @@ void UnitManager::Iterate() {
 			if ( unit == m_selected_unit ) {
 				m_game->SetSelectedTile( tile );
 			}
-			unit->SetTile( tile );
+			unit->UpdateFromTile();
 			m_game->RefreshSelectedTileIf( tile, m_selected_unit );
 			m_game->SendAnimationFinished( it->second.animation_id );
 			it = m_moving_units.erase( it );
@@ -195,7 +195,7 @@ void UnitManager::MoveUnit( Unit* unit, tile::Tile* dst_tile, const size_t anima
 		if ( unit == m_selected_unit ) {
 			m_game->SetSelectedTile( tile );
 		}
-		unit->SetTile( tile );
+		unit->UpdateFromTile();
 		m_game->RefreshSelectedTileIf( tile, m_selected_unit );
 		m_game->SendAnimationFinished( it->second.animation_id );
 		m_moving_units.erase( it );
@@ -209,10 +209,10 @@ void UnitManager::MoveUnit( Unit* unit, tile::Tile* dst_tile, const size_t anima
 			}
 		}
 	);
-	src_tile->RemoveUnit( unit );
-	m_game->RefreshSelectedTileIf( src_tile, m_selected_unit );
 	m_game->SetSelectedTile( dst_tile );
 	unit->MoveToTile( dst_tile );
+	unit->SetTile( dst_tile, false );
+	m_game->RefreshSelectedTileIf( src_tile, m_selected_unit );
 }
 
 Unit* UnitManager::GetSelectedUnit() const {

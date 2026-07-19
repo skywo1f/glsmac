@@ -101,7 +101,7 @@ public:
 	void SetHealth( const backend::unit::health_t health );
 	const bool CanMove() const;
 
-	void SetTile( tile::Tile* dst_tile );
+	void SetTile( tile::Tile* dst_tile, const bool update_render = true );
 	void MoveToTile( tile::Tile* dst_tile );
 
 	const bool IsMoving() const;

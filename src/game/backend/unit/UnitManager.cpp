@@ -685,15 +685,14 @@ const std::string* UnitManager::MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::t
 		dst_tile->coord.y
 	};
 	fr.data.unit_move.running_animation_id = unit->m_animation_id = am->AddAnimationCallback(
-		[ this, tm, tiles_to_lock, on_complete, unit, dst_tile, ctx, gc_space, ep, si ]( const size_t animation_id ) {
+		[ this, tm, tiles_to_lock, on_complete, unit ]( const size_t animation_id ) {
 			ASSERT( unit->m_animation_id, "animation id gone" );
 			unit->m_animation_id = 0;
 			tm->UnlockTiles( m_game->GetSlotNum(), tiles_to_lock );
-			gse::ExecutionPointer ep2 = ep;
-			unit->SetTile( gc_space, ctx, si, ep2 , dst_tile );
 			on_complete();
 		}
 	);
+	unit->SetTile( GSE_CALL, dst_tile );
 	m_game->AddFrontendRequest( fr );
 
 	return nullptr; // no error

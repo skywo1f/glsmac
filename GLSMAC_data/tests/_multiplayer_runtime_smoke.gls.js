@@ -13,6 +13,7 @@
 	let client_event_probe_complete = false;
 	let client_worker_probe_complete = false;
 	let client_movement_probe_complete = false;
+	let client_immediate_movement_probe_complete = false;
 	let client_combat_probe_complete = false;
 	let client_immediate_combat_probe_complete = false;
 	let client_movement_unit_id = 0;
@@ -368,11 +369,12 @@
 				client_movement_target_x,
 				client_movement_target_y
 			);
+			const source = unit.get_tile();
 
 			let phase = 'wait_for_movement';
 			let movement_before = 0.0;
 			let wait_ticks = 0;
-			#async(100, () => {
+			#async(10, () => {
 				wait_ticks++;
 				if (phase == 'wait_for_movement' && unit.movement >= 3.0) {
 					movement_before = unit.movement;
@@ -380,18 +382,34 @@
 						unit: unit,
 						tile: target,
 					});
-					phase = 'movement';
+					phase = 'wait_for_movement_apply';
 				}
-				else if (phase == 'movement' && unit.get_tile() == target) {
-					if (!unit.moved_this_turn || unit.movement >= movement_before) {
+				else if (
+					phase == 'wait_for_movement_apply' &&
+					(source.is_locked() || target.is_locked())
+				) {
+					if (
+						unit.get_tile() != target ||
+						!unit.moved_this_turn ||
+						unit.movement >= movement_before
+					) {
 						#print(
-							'MULTIPLAYER_SMOKE_FAIL_CLIENT: movement state was not consumed (' +
+							'MULTIPLAYER_SMOKE_FAIL_CLIENT: movement state waited for animation completion (' +
 							#to_string(movement_before) + ' -> ' + #to_string(unit.movement) +
 							', moved=' + #to_string(unit.moved_this_turn) + ')'
 						);
 						glsmac.exit();
 						return false;
 					}
+					client_immediate_movement_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_IMMEDIATE_MOVEMENT_PASS_CLIENT');
+					phase = 'movement';
+				}
+				else if (
+					phase == 'movement' &&
+					!source.is_locked() &&
+					!target.is_locked()
+				) {
 					client_movement_probe_complete = true;
 					#print('MULTIPLAYER_SMOKE_MOVEMENT_PASS_CLIENT');
 					if (!run_client_combat_probe()) {
@@ -400,7 +418,7 @@
 					}
 					return false;
 				}
-				if (wait_ticks >= 100) {
+				if (wait_ticks >= 1000) {
 					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: movement probe timed out in ' + phase);
 					glsmac.exit();
 					return false;
@@ -566,6 +584,7 @@
 					rejected_event_count != 0 ||
 					(!game.is_master() && !client_event_probe_complete) ||
 					(!game.is_master() && !client_worker_probe_complete) ||
+					(!game.is_master() && !client_immediate_movement_probe_complete) ||
 					(!game.is_master() && !client_movement_probe_complete) ||
 					(!game.is_master() && !client_immediate_combat_probe_complete) ||
 					(!game.is_master() && !client_combat_probe_complete) ||

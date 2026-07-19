@@ -138,7 +138,8 @@ return {
 		};
 
 		if (e.resolved.is_movement_successful) {
-			unit.move_to_tile(dst_tile, finish_movement);
+			unit.move_to_tile(dst_tile, () => {});
+			finish_movement();
 		} else {
 			// No native move is started on a failed roll, so update state synchronously.
 			if (movement >= movement_cost) {
@@ -157,14 +158,10 @@ return {
 		const unit = e.data.unit;
 		const orig = e.applied.orig;
 		if (e.applied.movement_started) {
-			unit.move_to_tile(orig.tile, () => {
-				unit.movement = orig.movement;
-				unit.moved_this_turn = orig.moved_this_turn;
-			});
-		} else {
-			unit.movement = orig.movement;
-			unit.moved_this_turn = orig.moved_this_turn;
+			unit.move_to_tile(orig.tile, () => {});
 		}
+		unit.movement = orig.movement;
+		unit.moved_this_turn = orig.moved_this_turn;
 	},
 
 };
