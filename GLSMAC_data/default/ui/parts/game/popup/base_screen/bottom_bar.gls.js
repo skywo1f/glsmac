@@ -78,11 +78,23 @@ return {
 	set: (data) => {
 		const base = data.base;
 		const production = base.get_production();
+		const queue = base.get_production_queue();
 		const pending = this.p.game.get('f_base_get_pending_production')(base);
-		let candidates = [];
+		let definitions = [];
 		for (def of this.p.game.get_um().get_unit_defs()) {
-			if (base.can_produce(def.id)) {
-				candidates :+def;
+			definitions :+def;
+		}
+		for (def of this.p.game.get_bm().get_facility_defs()) {
+			definitions :+def;
+		}
+		let set_candidates = [];
+		let queue_candidates = [];
+		for (def of definitions) {
+			if (base.can_set_production(def.production_kind, def.id)) {
+				set_candidates :+def;
+			}
+			if (base.can_queue_production(def.production_kind, def.id)) {
+				queue_candidates :+def;
 			}
 		}
 
@@ -107,7 +119,9 @@ return {
 		this.parts.queue.set({
 			base: base,
 			production: production,
-			candidates: candidates,
+			queue: queue,
+			set_candidates: set_candidates,
+			queue_candidates: queue_candidates,
 		});
 
 		this.parts.middle_area.set({

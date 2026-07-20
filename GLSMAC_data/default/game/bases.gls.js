@@ -206,6 +206,11 @@ return (game) => {
 		for (tile of e.base.get_worked_tiles()) {
 			f_add_tile(tile);
 		}
+		for (facility of e.base.get_facilities()) {
+			result.NUTRIENTS = result.NUTRIENTS + facility.nutrient_bonus;
+			result.MINERALS = result.MINERALS + facility.mineral_bonus;
+			result.ENERGY = result.ENERGY + facility.energy_bonus;
+		}
 
 		return result;
 	});
@@ -218,6 +223,9 @@ return (game) => {
 		};
 
 		// TODO: supported units
+		for (facility of e.base.get_facilities()) {
+			result.ENERGY = result.ENERGY + facility.energy_maintenance;
+		}
 
 		return result;
 	});

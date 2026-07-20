@@ -13,6 +13,12 @@
 		const game = e.game;
 		let handled_turns = {};
 
+		const get_snapshot_production_ids = (base) => {
+			return base.get_tile().is_water
+				? ['SeaLurk', 'SeaLurk']
+				: ['SporeLauncher', 'MindWorms'];
+		};
+
 		const get_base_state_error = () => {
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
@@ -31,17 +37,47 @@
 			if (base == null) {
 				return 'base is missing';
 			}
-			const expected_production_id = base.get_tile().is_water ? 'SeaLurk' : 'SporeLauncher';
+			const expected_production_ids = get_snapshot_production_ids(base);
 			const production = base.get_production();
+			const production_queue = base.get_production_queue();
 			if (!#is_defined(production)) {
 				return 'production target is missing';
 			}
-			if (production.id != expected_production_id || production.mineral_cost <= 0) {
+			if (
+				production.production_kind != 'unit' ||
+				production.id != expected_production_ids[0] ||
+				production.mineral_cost <= 0 ||
+				#sizeof(production_queue) != 2
+			) {
 				return 'production target is invalid';
+			}
+			for (let i = 0; i < #sizeof(production_queue); i++) {
+				if (
+					production_queue[i].production_kind != 'unit' ||
+					production_queue[i].id != expected_production_ids[i]
+				) {
+					return 'production queue entry ' + #to_string(i) + ' is invalid';
+				}
+			}
+			const facilities = base.get_facilities();
+			if (!base.has_facility('RecyclingTanks') || #sizeof(facilities) != 1) {
+				return 'built Recycling Tanks state is missing';
+			}
+			const recycling_tanks = facilities[0];
+			if (
+				recycling_tanks.id != 'RecyclingTanks' ||
+				recycling_tanks.production_kind != 'facility' ||
+				recycling_tanks.mineral_cost != 40 ||
+				recycling_tanks.nutrient_bonus != 1 ||
+				recycling_tanks.mineral_bonus != 1 ||
+				recycling_tanks.energy_bonus != 1
+			) {
+				return 'built Recycling Tanks definition is invalid';
 			}
 			const expected_snapshot_minerals =
 				initial_mineral_stamp +
-				base.get_tile().get_resources(base.get_owner()).MINERALS;
+					base.get_tile().get_resources(base.get_owner()).MINERALS +
+					recycling_tanks.mineral_bonus;
 			if (base.get_accumulated_minerals() != expected_snapshot_minerals) {
 				return
 					'accumulated minerals are ' + #to_string(base.get_accumulated_minerals()) +
@@ -66,8 +102,9 @@
 			}
 			const expected_snapshot_nutrients =
 				initial_nutrient_stamp +
-				base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
-				game.get('map_growth_base');
+					base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
+					game.get('map_growth_base') +
+					recycling_tanks.nutrient_bonus;
 			if (accumulated_nutrients != expected_snapshot_nutrients) {
 				return
 					'accumulated nutrients are ' + #to_string(accumulated_nutrients) +

@@ -37,6 +37,7 @@
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
 #include "game/backend/animation/Def.h"
+#include "game/backend/base/FacilityDef.h"
 #include "game/backend/base/PopDef.h"
 #include "game/backend/map/MapState.h"
 #include "game/backend/map/tile/Tile.h"
@@ -266,6 +267,25 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_unknown_pop_flags = true;
 				}
 				GT_ASSERT( rejected_unknown_pop_flags, "unknown base population flags accepted" );
+
+				bool rejected_negative_facility_cost = false;
+				try {
+					types::Buffer facility_def;
+					facility_def.WriteString( "TEST_FACILITY" );
+					facility_def.WriteString( "Test Facility" );
+					facility_def.WriteInt( -1 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					std::unique_ptr< game::backend::base::FacilityDef > parsed(
+						game::backend::base::FacilityDef::Deserialize( facility_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_facility_cost = true;
+				}
+				GT_ASSERT( rejected_negative_facility_cost, "negative facility mineral cost accepted" );
 
 				bool rejected_negative_unit_cost = false;
 				try {

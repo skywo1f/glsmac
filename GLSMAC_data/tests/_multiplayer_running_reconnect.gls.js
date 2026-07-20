@@ -77,8 +77,48 @@
 			return null;
 		};
 
-		const get_snapshot_production_id = (base) => {
-			return base.get_tile().is_water ? 'SeaLurk' : 'SporeLauncher';
+		const get_snapshot_production_ids = (base) => {
+			return base.get_tile().is_water
+				? ['SeaLurk', 'SeaLurk']
+				: ['SporeLauncher', 'MindWorms'];
+		};
+
+		const get_production_state_error = (base) => {
+			const expected_ids = get_snapshot_production_ids(base);
+			const production = base.get_production();
+			const queue = base.get_production_queue();
+			if (!#is_defined(production)) {
+				return 'production target is missing';
+			}
+			if (
+				production.production_kind != 'unit' ||
+				production.id != expected_ids[0] ||
+				production.mineral_cost <= 0 ||
+				#sizeof(queue) != 2
+			) {
+				return 'production target or queue size is invalid';
+			}
+			for (let i = 0; i < #sizeof(queue); i++) {
+				if (queue[i].production_kind != 'unit' || queue[i].id != expected_ids[i]) {
+					return 'production queue entry ' + #to_string(i) + ' is invalid';
+				}
+			}
+			const facilities = base.get_facilities();
+			if (!base.has_facility('RecyclingTanks') || #sizeof(facilities) != 1) {
+				return 'built Recycling Tanks state is missing';
+			}
+			const recycling_tanks = facilities[0];
+			if (
+				recycling_tanks.id != 'RecyclingTanks' ||
+				recycling_tanks.production_kind != 'facility' ||
+				recycling_tanks.mineral_cost != 40 ||
+				recycling_tanks.nutrient_bonus != 1 ||
+				recycling_tanks.mineral_bonus != 1 ||
+				recycling_tanks.energy_bonus != 1
+			) {
+				return 'built Recycling Tanks definition is invalid';
+			}
+			return #undefined;
 		};
 
 		const get_base_state_error = (player_id) => {
@@ -89,14 +129,19 @@
 			if (base == null) {
 				return 'base is missing';
 			}
+			const production_state_error = get_production_state_error(base);
+			if (#is_defined(production_state_error)) {
+				return production_state_error;
+			}
 			const accumulated_nutrients = base.get('accumulated_nutrients');
 			if (!#is_defined(accumulated_nutrients)) {
 				return 'accumulated nutrients are missing';
 			}
 			const expected_snapshot_nutrients =
 				initial_nutrient_stamp +
-				base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
-				game.get('map_growth_base');
+					base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
+					game.get('map_growth_base') +
+					game.get_bm().get_facility_def('RecyclingTanks').nutrient_bonus;
 			if (accumulated_nutrients != expected_snapshot_nutrients) {
 				return
 					'accumulated nutrients are ' + #to_string(accumulated_nutrients) +
@@ -169,7 +214,12 @@
 					conquered_base.set_owner(client_base.get_owner());
 					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
-					client_base.set_production(get_snapshot_production_id(client_base));
+					const production_ids = get_snapshot_production_ids(client_base);
+					client_base.add_facility('RecyclingTanks');
+					client_base.set_production_queue([
+						{kind: 'unit', id: production_ids[0]},
+						{kind: 'unit', id: production_ids[1]},
+					]);
 					client_base.set_accumulated_minerals(initial_mineral_stamp);
 					const defeated_unit = game.get_um().spawn_unit({
 						def: 'MindWorms',

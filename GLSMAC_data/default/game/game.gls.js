@@ -2,6 +2,7 @@ return (glsmac) => {
 
 	// TODO: refactor these into modules
 	const factions = #include('../factions');
+	const facilities = #include('../facilities');
 	const resources = #include('../resources');
 	const units = #include('../units');
 
@@ -42,6 +43,7 @@ return (glsmac) => {
 
 			resources.define(game);
 			units.define(game);
+			facilities.define(game);
 
 			const worldscript = #is_defined(glsmac.config.worldscript) ? glsmac.config.worldscript : 'default';
 			game.on('create_world', (e) => {

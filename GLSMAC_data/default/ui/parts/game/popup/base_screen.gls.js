@@ -143,7 +143,11 @@ return {
 			ecodamage: 0, // TODO
 		});
 
-		this.sections.facilities.set([]);
+		let facility_names = [];
+		for (facility of base.get_facilities()) {
+			facility_names :+facility.name;
+		}
+		this.sections.facilities.set(facility_names);
 
 		const resource_data = {
 			nutrients: {

@@ -113,7 +113,14 @@ return {
 
 				f_line(object.name, 14, 'center');
 
-				f_line('Producing:', 14, 'left'); // TODO
+				const production = object.get_production();
+				f_line(
+					#is_defined(production)
+						? 'Producing: ' + production.name
+						: 'Producing: Nothing',
+					14,
+					'left'
+				);
 
 				break;
 			}

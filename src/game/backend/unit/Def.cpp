@@ -80,6 +80,10 @@ WRAPIMPL_BEGIN( Def )
 				VALUE( gse::value::String, , m_name )
 			},
 			{
+				"production_kind",
+				VALUE( gse::value::String, , "unit" )
+			},
+			{
 				"type",
 				VALUE( gse::value::String, , "static" ) // TODO
 			},

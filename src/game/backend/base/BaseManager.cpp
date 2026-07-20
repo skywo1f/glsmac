@@ -12,6 +12,7 @@
 #include "game/backend/faction/Faction.h"
 
 #include "Base.h"
+#include "FacilityDef.h"
 #include "PopDef.h"
 
 #include "gse/context/Context.h"
@@ -34,6 +35,10 @@ BaseManager::~BaseManager() {
 }
 
 void BaseManager::Clear() {
+	for ( auto& it : m_facility_defs ) {
+		delete it.second;
+	}
+	m_facility_defs.clear();
 	for ( auto& it : m_base_popdefs ) {
 		delete it.second;
 	}
@@ -50,6 +55,13 @@ void BaseManager::Clear() {
 		std::lock_guard guard( m_updated_bases_mutex );
 		m_updated_bases.clear();
 	}
+}
+
+base::FacilityDef* BaseManager::GetFacilityDef( const std::string& id ) const {
+	const auto& it = m_facility_defs.find( id );
+	return it == m_facility_defs.end()
+		? nullptr
+		: it->second;
 }
 
 base::PopDef* BaseManager::GetPopDef( const std::string& id ) const {
@@ -99,6 +111,27 @@ void BaseManager::UndefinePop( const std::string& id ) {
 	auto fr = FrontendRequest( FrontendRequest::FR_BASE_POP_UNDEFINE );
 	NEW( fr.data.base_pop_undefine.id, std::string, id );
 	m_game->AddFrontendRequest( fr );
+}
+
+void BaseManager::DefineFacility( base::FacilityDef* facility_def ) {
+	if ( !facility_def ) {
+		THROW( "cannot define a null base facility" );
+	}
+	Log( "Defining base facility ('" + facility_def->m_id + "')" );
+	if ( m_facility_defs.find( facility_def->m_id ) != m_facility_defs.end() ) {
+		THROW( "Base facility def '" + facility_def->m_id + "' already exists" );
+	}
+	m_facility_defs.insert( { facility_def->m_id, facility_def } );
+}
+
+void BaseManager::UndefineFacility( const std::string& id ) {
+	Log( "Undefining base facility ('" + id + "')" );
+	const auto it = m_facility_defs.find( id );
+	if ( it == m_facility_defs.end() ) {
+		THROW( "Base facility def '" + id + "' does not exist" );
+	}
+	delete it->second;
+	m_facility_defs.erase( it );
 }
 
 void BaseManager::SpawnBase( GSE_CALLABLE, base::Base* base ) {
@@ -208,6 +241,10 @@ const BaseManager::popdefs_t& BaseManager::GetBasePopDefs() const {
 	return m_base_popdefs;
 }
 
+const BaseManager::facilitydefs_t& BaseManager::GetFacilityDefs() const {
+	return m_facility_defs;
+}
+
 void BaseManager::ProcessUnprocessed( GSE_CALLABLE ) {
 	for ( auto& it : m_unprocessed_bases ) {
 		SpawnBase( GSE_CALL, base::Base::Deserialize( GSE_CALL, it, m_game ) );
@@ -270,6 +307,99 @@ void BaseManager::PushUpdates() {
 WRAPIMPL_BEGIN( BaseManager )
 	WRAPIMPL_PROPS
 	WRAPIMPL_TRIGGERS
+		{
+			"define_facility",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE( id, 0, String );
+				N_GETVALUE( def, 1, Object );
+				N_GETPROP( name, def, "name", String );
+				N_GETPROP( mineral_cost, def, "mineral_cost", Int );
+				N_GETPROP_OPT( int64_t, nutrient_bonus, def, "nutrient_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, mineral_bonus, def, "mineral_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, energy_bonus, def, "energy_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, energy_maintenance, def, "energy_maintenance", Int, 0 );
+				if (
+					id.empty() ||
+					name.empty() ||
+					mineral_cost <= 0 ||
+					mineral_cost > base::FacilityDef::MAX_MINERAL_COST ||
+					nutrient_bonus < 0 ||
+					nutrient_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					mineral_bonus < 0 ||
+					mineral_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					energy_bonus < 0 ||
+					energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					energy_maintenance < 0 ||
+					energy_maintenance > base::FacilityDef::MAX_ENERGY_MAINTENANCE
+				) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
+				}
+				if ( m_facility_defs.find( id ) != m_facility_defs.end() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Base facility def '" + id + "' already exists" );
+				}
+				DefineFacility( new base::FacilityDef(
+					id,
+					name,
+					mineral_cost,
+					nutrient_bonus,
+					mineral_bonus,
+					energy_bonus,
+					energy_maintenance
+				) );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"undefine_facility",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( id, 0, String );
+				if ( m_facility_defs.find( id ) == m_facility_defs.end() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Base facility def '" + id + "' does not exist" );
+				}
+				UndefineFacility( id );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"get_facility_def",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( id, 0, String );
+				auto* const def = GetFacilityDef( id );
+				if ( !def ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Base facility def '" + id + "' does not exist" );
+				}
+				return def->Wrap( GSE_CALL );
+			} )
+		},
+		{
+			"get_facility_defs",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				std::vector< base::FacilityDef* > defs = {};
+				defs.reserve( m_facility_defs.size() );
+				for ( const auto& it : m_facility_defs ) {
+					defs.push_back( it.second );
+				}
+				std::sort(
+					defs.begin(),
+					defs.end(),
+					[]( const base::FacilityDef* left, const base::FacilityDef* right ) {
+						return left->m_id < right->m_id;
+					}
+				);
+				gse::value::array_elements_t result = {};
+				result.reserve( defs.size() );
+				for ( auto* const def : defs ) {
+					result.push_back( def->Wrap( GSE_CALL ) );
+				}
+				return VALUE( gse::value::Array,, result );
+			} )
+		},
 		{
 			"define_pop",
 			NATIVE_CALL( this ) {
@@ -383,6 +513,10 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETVALUE( info, 2, Object );
 				N_GETPROP_OPT( std::string, name, info, "name", String, "" );
 				N_GETPROP_OPT( std::string, production_unit_id, info, "production", String, "" );
+				base::Base::production_queue_t production_queue = {};
+				if ( !production_unit_id.empty() ) {
+					production_queue.push_back( { base::Base::PK_UNIT, production_unit_id } );
+				}
 
 				if ( arguments.size() > 3 ) {
 					// N_GET_CALLABLE( on_spawn, 3 ); not used???
@@ -397,7 +531,7 @@ WRAPIMPL_BEGIN( BaseManager )
 					name,
 					{},
 					1,
-					production_unit_id
+					production_queue
 				);
 
 				SpawnBase( GSE_CALL, base );
@@ -457,6 +591,18 @@ void BaseManager::TriggerUpdates( GSE_CALLABLE ) {
 }
 
 void BaseManager::Serialize( types::Buffer& buf ) const {
+	Log( "Serializing " + std::to_string( m_facility_defs.size() ) + " base facility defs" );
+	buf.WriteInt( m_facility_defs.size() );
+	std::vector< std::string > facility_ids = {};
+	facility_ids.reserve( m_facility_defs.size() );
+	for ( const auto& it : m_facility_defs ) {
+		facility_ids.push_back( it.first );
+	}
+	std::sort( facility_ids.begin(), facility_ids.end() );
+	for ( const auto& id : facility_ids ) {
+		buf.WriteString( id );
+		buf.WriteString( base::FacilityDef::Serialize( m_facility_defs.at( id ) ).ToString() );
+	}
 
 	Log( "Serializing " + std::to_string( m_base_popdefs.size() ) + " base pop defs" );
 	buf.WriteInt( m_base_popdefs.size() );
@@ -476,11 +622,30 @@ void BaseManager::Serialize( types::Buffer& buf ) const {
 }
 
 void BaseManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
-	if ( !m_base_popdefs.empty() || !m_bases.empty() || !m_unprocessed_bases.empty() ) {
+	if ( !m_facility_defs.empty() || !m_base_popdefs.empty() || !m_bases.empty() || !m_unprocessed_bases.empty() ) {
 		THROW( "cannot deserialize bases into a non-empty manager" );
 	}
 
-	size_t sz = buf.ReadCollectionSize( "base population definition" );
+	size_t sz = buf.ReadCollectionSize( "base facility definition" );
+	m_facility_defs.reserve( sz );
+	Log( "Unserializing " + std::to_string( sz ) + " base facility defs" );
+	for ( size_t i = 0 ; i < sz ; i++ ) {
+		const auto id = buf.ReadString();
+		auto b = types::Buffer( buf.ReadString() );
+		auto facility_def = std::unique_ptr< base::FacilityDef >( base::FacilityDef::Deserialize( b ) );
+		if ( b.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized base facility definition" );
+		}
+		if ( id != facility_def->m_id ) {
+			THROW( "serialized base facility definition id mismatch" );
+		}
+		if ( m_facility_defs.find( id ) != m_facility_defs.end() ) {
+			THROW( "duplicate serialized base facility definition: " + id );
+		}
+		DefineFacility( facility_def.release() );
+	}
+
+	sz = buf.ReadCollectionSize( "base population definition" );
 	m_base_popdefs.reserve( sz );
 	Log( "Unserializing " + std::to_string( sz ) + " base pop defs" );
 	for ( size_t i = 0 ; i < sz ; i++ ) {
@@ -547,6 +712,11 @@ void BaseManager::GetReachableObjects( std::unordered_set< Object* >& reachable_
 	gse::GCWrappable::GetReachableObjects( reachable_objects );
 
 	GC_DEBUG_BEGIN( "BaseManager" );
+	GC_DEBUG_BEGIN( "facilities" );
+	for ( const auto& it : m_facility_defs ) {
+		it.second->GetReachableObjects( reachable_objects );
+	}
+	GC_DEBUG_END();
 
 	GC_DEBUG_BEGIN( "bases" );
 	for ( const auto& it : m_bases ) {

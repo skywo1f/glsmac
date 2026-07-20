@@ -13,19 +13,19 @@ return {
 
 	validate: (e) => {
 		if (e.caller != e.data.base.get_owner().id) {
-			return 'Only base owner can change production';
+			return 'Only base owner can remove queued production';
 		}
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
-		if (!e.data.base.can_set_production(e.data.kind, e.data.id)) {
-			return 'Item cannot be produced at this base';
+		if (e.data.index < 0 || e.data.index >= #sizeof(e.data.base.get_production_queue())) {
+			return 'Production queue index is out of bounds';
 		}
 	},
 
 	apply: (e) => {
 		const old_queue = get_queue_specs(e.data.base);
-		e.data.base.set_production(e.data.kind, e.data.id);
+		e.data.base.remove_production(e.data.index);
 		return {
 			old_queue: old_queue,
 		};
