@@ -114,6 +114,18 @@
 
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
+				const research_state = game.get_player().get_research_state();
+				if (
+					!game.get_player().has_technology('CentauriEcology') ||
+					research_state.technologies != ['CentauriEcology'] ||
+					research_state.target != '' ||
+					research_state.progress != 0 ||
+					!base.can_set_production('unit', 'Former')
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Gaians did not receive their Centauri Ecology starting technology');
+					glsmac.exit();
+					return;
+				}
 				starting_pop_count = #sizeof(base.get_pops());
 				starting_base_unit_count = #sizeof(base.get_tile().get_units());
 				const production = base.get_production();
@@ -182,6 +194,7 @@
 					former_def.offense != 0 ||
 					former_def.defense != 1 ||
 					former_def.morale_set != 'STANDARD' ||
+					former_def.required_technology != 'CentauriEcology' ||
 					former_def.can_found_base ||
 					!former_def.can_terraform
 				) {

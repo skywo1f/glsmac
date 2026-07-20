@@ -206,6 +206,13 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 	if ( !def || def->m_mineral_cost <= 0 ) {
 		return false;
 	}
+	const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
+	if (
+		!def->m_required_technology.empty() &&
+		( !owner || !owner->HasTechnology( def->m_required_technology ) )
+	) {
+		return false;
+	}
 	switch ( def->GetMovementType() ) {
 		case unit::MT_LAND:
 			return !m_tile->is_water_tile;

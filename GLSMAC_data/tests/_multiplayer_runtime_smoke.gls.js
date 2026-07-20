@@ -105,6 +105,38 @@
 			return null;
 		};
 
+		const get_research_state_error = (player, expect_progress) => {
+			let starts_with_ecology = false;
+			for (id of player.get_faction().get_starting_technologies()) {
+				if (id == 'CentauriEcology') {
+					starts_with_ecology = true;
+				}
+			}
+			const state = player.get_research_state();
+			if (starts_with_ecology) {
+				if (
+					!player.has_technology('CentauriEcology') ||
+					state.target != '' ||
+					state.progress != 0
+				) {
+					return 'starting Centauri Ecology state is invalid';
+				}
+				return #undefined;
+			}
+			const base = find_base_for_player(player.id);
+			if (
+				player.has_technology('CentauriEcology') ||
+				state.technologies != [] ||
+				state.target != 'CentauriEcology' ||
+				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
+				base == null ||
+				base.can_set_production('unit', 'Former')
+			) {
+				return 'Centauri Ecology progress or Former production gate is invalid';
+			}
+			return #undefined;
+		};
+
 		const get_client_player_id = () => {
 			return game.is_master() ? 1 : game.get_player().id;
 		};
@@ -836,6 +868,20 @@
 
 			if (turn_id == 1) {
 				#print('MULTIPLAYER_SMOKE_' + role + ': synchronized turn 1');
+				if (game.get_um().get_unit_def('Former').required_technology != 'CentauriEcology') {
+					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': Former technology prerequisite is missing');
+					glsmac.exit();
+					return;
+				}
+				for (player of players) {
+					const research_error = get_research_state_error(player, !game.is_master());
+					if (#is_defined(research_error)) {
+						#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
+						glsmac.exit();
+						return;
+					}
+				}
+				#print('MULTIPLAYER_SMOKE_RESEARCH_INITIAL_PASS_' + role);
 				if (game.is_master()) {
 					if (!spawn_combat_defender()) {
 						#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat defender could not be spawned');
@@ -884,6 +930,15 @@
 				}
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
+				for (player of players) {
+					const research_error = get_research_state_error(player, true);
+					if (#is_defined(research_error)) {
+						#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
+						glsmac.exit();
+						return;
+					}
+				}
+				#print('MULTIPLAYER_SMOKE_RESEARCH_SYNC_PASS_' + role);
 				const client_player_id = get_client_player_id();
 				const client_base = find_base_for_player(client_player_id);
 				const captured_base = find_base_by_name(combat_base_name);

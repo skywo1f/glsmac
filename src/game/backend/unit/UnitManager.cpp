@@ -358,6 +358,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP( morale, unit_def, "morale", String );
 				N_GETPROP( unit_type, unit_def, "type", String );
 				N_GETPROP( mineral_cost, unit_def, "mineral_cost", Int );
+				N_GETPROP_OPT( std::string, required_technology, unit_def, "required_technology", String, "" );
 				N_GETPROP_OPT( bool, is_native, unit_def, "is_native", Bool, morale == "NATIVE" );
 				N_GETPROP_OPT( int64_t, offense, unit_def, "offense", Int, 1 );
 				N_GETPROP_OPT( int64_t, defense, unit_def, "defense", Int, 1 );
@@ -425,6 +426,7 @@ WRAPIMPL_BEGIN( UnitManager )
 							moraleset,
 							name,
 							mineral_cost,
+							required_technology,
 							is_native,
 							offense,
 							defense,

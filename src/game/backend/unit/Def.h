@@ -34,6 +34,7 @@ public:
 		const def_type_t type,
 		const std::string& name,
 		const int64_t mineral_cost,
+		const std::string& required_technology,
 		const bool is_native,
 		const int64_t offense,
 		const int64_t defense,
@@ -47,6 +48,7 @@ public:
 	const def_type_t m_type;
 	const std::string m_name;
 	const int64_t m_mineral_cost;
+	const std::string m_required_technology;
 	const bool m_is_native;
 	const int64_t m_offense;
 	const int64_t m_defense;

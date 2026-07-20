@@ -19,6 +19,7 @@ Def::Def(
 	const def_type_t type,
 	const std::string& name,
 	const int64_t mineral_cost,
+	const std::string& required_technology,
 	const bool is_native,
 	const int64_t offense,
 	const int64_t defense,
@@ -30,6 +31,7 @@ Def::Def(
 	, m_type( type )
 	, m_name( name )
 	, m_mineral_cost( mineral_cost )
+	, m_required_technology( required_technology )
 	, m_is_native( is_native )
 	, m_offense( offense )
 	, m_defense( defense )
@@ -57,6 +59,7 @@ const types::Buffer Def::Serialize( const Def* def ) {
 	buf.WriteString( def->m_moraleset->m_id );
 	buf.WriteString( def->m_name );
 	buf.WriteInt( def->m_mineral_cost );
+	buf.WriteString( def->m_required_technology );
 	buf.WriteBool( def->m_is_native );
 	buf.WriteInt( def->m_offense );
 	buf.WriteInt( def->m_defense );
@@ -79,6 +82,7 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 	const auto moraleset = buf.ReadString();
 	const auto name = buf.ReadString();
 	const auto mineral_cost = buf.ReadInt();
+	const auto required_technology = buf.ReadString();
 	const auto is_native = buf.ReadBool();
 	const auto offense = buf.ReadInt();
 	const auto defense = buf.ReadInt();
@@ -112,6 +116,7 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 				moraleset,
 				name,
 				mineral_cost,
+				required_technology,
 				is_native,
 				offense,
 				defense,
@@ -144,6 +149,10 @@ WRAPIMPL_BEGIN( Def )
 			{
 				"mineral_cost",
 				VALUE( gse::value::Int, , m_mineral_cost )
+			},
+			{
+				"required_technology",
+				VALUE( gse::value::String, , m_required_technology )
 			},
 			{
 				"morale_set",

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+#include <set>
 #include <string>
 
 #include "types/Serializable.h"
@@ -60,6 +62,20 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void CompleteTurn();
 	void UncompleteTurn();
 
+	using technologies_t = std::set< std::string >;
+	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
+	static constexpr size_t MAX_TECHNOLOGIES = 1024;
+
+	const technologies_t& GetTechnologies() const;
+	bool HasTechnology( const std::string& id ) const;
+	const std::string& GetResearchTarget() const;
+	int64_t GetResearchProgress() const;
+	void SetResearchState(
+		const technologies_t& technologies,
+		const std::string& target,
+		const int64_t progress
+	);
+
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
@@ -82,8 +98,17 @@ private:
 	std::string m_difficulty_level = "";
 
 	bool m_is_turn_completed = false;
+	technologies_t m_technologies = {};
+	std::string m_research_target = "";
+	int64_t m_research_progress = 0;
 
 	void ReleaseOwnedFaction();
+	static bool ValidateResearchState(
+		const technologies_t& technologies,
+		const std::string& target,
+		const int64_t progress,
+		std::string& error
+	);
 };
 
 }

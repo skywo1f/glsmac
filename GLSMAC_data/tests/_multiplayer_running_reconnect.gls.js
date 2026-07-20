@@ -91,6 +91,38 @@
 			return null;
 		};
 
+		const get_research_state_error = (player, expect_progress) => {
+			let starts_with_ecology = false;
+			for (id of player.get_faction().get_starting_technologies()) {
+				if (id == 'CentauriEcology') {
+					starts_with_ecology = true;
+				}
+			}
+			const state = player.get_research_state();
+			if (starts_with_ecology) {
+				if (
+					!player.has_technology('CentauriEcology') ||
+					state.target != '' ||
+					state.progress != 0
+				) {
+					return 'starting Centauri Ecology state is invalid';
+				}
+				return #undefined;
+			}
+			const base = find_base_for_player(player.id);
+			if (
+				player.has_technology('CentauriEcology') ||
+				state.technologies != [] ||
+				state.target != 'CentauriEcology' ||
+				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
+				base == null ||
+				base.can_set_production('unit', 'Former')
+			) {
+				return 'Centauri Ecology progress or Former production gate is invalid';
+			}
+			return #undefined;
+		};
+
 		const find_founding_site_coords = () => {
 			const tm = game.get_tm();
 			let result = null;
@@ -168,6 +200,7 @@
 			const def = former.get_def();
 			if (
 				def.id != 'Former' ||
+				def.required_technology != 'CentauriEcology' ||
 				def.is_native ||
 				def.offense != 0 ||
 				def.defense != 1 ||
@@ -413,6 +446,15 @@
 			}
 
 			if (turn_id == 1) {
+				for (player of game.get_players()) {
+					const research_error = get_research_state_error(player, !game.is_master());
+					if (#is_defined(research_error)) {
+						#print('RUNNING_RECONNECT_FAIL_' + role + ': ' + research_error);
+						glsmac.exit();
+						return;
+					}
+				}
+				#print('RUNNING_RECONNECT_RESEARCH_INITIAL_' + role);
 				if (game.is_master()) {
 					const client_base = find_base_for_player(get_remote_player_id());
 					if (client_base == null) {
@@ -504,6 +546,14 @@
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {
+				for (player of game.get_players()) {
+					const research_error = get_research_state_error(player, true);
+					if (#is_defined(research_error)) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: ' + research_error);
+						glsmac.exit();
+						return;
+					}
+				}
 				const terraform_state_error = get_terraform_state_error(
 					get_remote_player_id(),
 					3,
@@ -525,6 +575,7 @@
 					return;
 				}
 				exit_scheduled = true;
+				#print('RUNNING_RECONNECT_RESEARCH_RESUMED_HOST');
 				#print('RUNNING_RECONNECT_TERRAFORM_ADVANCED_HOST');
 				#print('RUNNING_RECONNECT_PASS_HOST');
 				#async(5000, () => {

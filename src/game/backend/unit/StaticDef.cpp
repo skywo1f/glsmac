@@ -50,6 +50,7 @@ StaticDef::StaticDef(
 	const MoraleSet* moraleset,
 	const std::string& name,
 	const int64_t mineral_cost,
+	const std::string& required_technology,
 	const bool is_native,
 	const int64_t offense,
 	const int64_t defense,
@@ -65,6 +66,7 @@ StaticDef::StaticDef(
 		DT_STATIC,
 		name,
 		mineral_cost,
+		required_technology,
 		is_native,
 		offense,
 		defense,
@@ -100,6 +102,7 @@ const std::string StaticDef::ToString( const std::string& prefix ) const {
 		TS_OBJ_PROP_STR( "id", m_id ) +
 		TS_OBJ_PROP_STR( "name", m_name ) +
 		TS_OBJ_PROP_NUM( "mineral_cost", m_mineral_cost ) +
+		TS_OBJ_PROP_STR( "required_technology", m_required_technology ) +
 		TS_OBJ_PROP_STR( "movement_type", GetMovementTypeString( m_movement_type ) ) +
 		TS_OBJ_PROP_NUM( "movement_per_turn", m_movement_per_turn ) +
 		TS_OBJ_PROP( "render", m_render->ToString( TS_PREFIX_NEXT ) ) +
@@ -118,6 +121,7 @@ StaticDef* StaticDef::Deserialize(
 	const std::string& moraleset_name,
 	const std::string& name,
 	const int64_t mineral_cost,
+	const std::string& required_technology,
 	const bool is_native,
 	const int64_t offense,
 	const int64_t defense,
@@ -145,6 +149,7 @@ StaticDef* StaticDef::Deserialize(
 		moraleset,
 		name,
 		mineral_cost,
+		required_technology,
 		is_native,
 		offense,
 		defense,

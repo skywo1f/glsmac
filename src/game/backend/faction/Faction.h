@@ -27,6 +27,7 @@ CLASS2( Faction, types::Serializable, gse::Wrappable )
 	std::string m_id = "";
 	std::string m_name = "";
 	faction_flag_t m_flags = FF_NONE;
+	std::vector< std::string > m_starting_technologies = {};
 
 	struct {
 		types::Color text = {};

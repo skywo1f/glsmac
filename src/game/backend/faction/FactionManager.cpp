@@ -1,6 +1,7 @@
 #include "FactionManager.h"
 
 #include <memory>
+#include <unordered_set>
 
 #include "Faction.h"
 
@@ -145,6 +146,24 @@ WRAPIMPL_BEGIN( FactionManager )
 				N_GETPROP_OPT_BOOL( is_progenitor, faction_def, "is_progenitor")
 				if ( is_progenitor ) {
 					faction->m_flags |= Faction::FF_PROGENITOR;
+				}
+				N_GETPROP_OPT(
+					gse::value::array_elements_t,
+					starting_technology_values,
+					faction_def,
+					"starting_technologies",
+					Array,
+					gse::value::array_elements_t()
+				);
+				std::unordered_set< std::string > starting_technology_ids = {};
+				faction->m_starting_technologies.reserve( starting_technology_values.size() );
+				for ( size_t i = 0 ; i < starting_technology_values.size() ; i++ ) {
+					N_GETELEMENT( technology_id, starting_technology_values, i, String );
+					if ( technology_id.empty() || !starting_technology_ids.insert( technology_id ).second ) {
+						delete faction;
+						GSE_ERROR( gse::EC.INVALID_CALL, "Faction starting technologies must be unique, non-empty strings" );
+					}
+					faction->m_starting_technologies.push_back( technology_id );
 				}
 
 				N_GETPROP( bases_def, faction_def, "bases", Object );

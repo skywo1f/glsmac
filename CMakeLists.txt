@@ -101,6 +101,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( RESEARCH_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/research-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${RESEARCH_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME research_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${RESEARCH_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_research_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "HIVE"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( research_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "RESEARCH_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "RESEARCH_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
 		IF ( Python3_Interpreter_FOUND )
 			SET( MULTIPLAYER_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/multiplayer-runtime-smoke" )

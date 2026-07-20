@@ -4,6 +4,7 @@ return (glsmac) => {
 	const factions = #include('../factions');
 	const facilities = #include('../facilities');
 	const resources = #include('../resources');
+	const technologies = #include('../technologies');
 	const units = #include('../units');
 
 	const modules = ['bases'];
@@ -40,6 +41,7 @@ return (glsmac) => {
 
 			units.configure(game);
 			resources.configure(game);
+			technologies.configure(game);
 
 			resources.define(game);
 			units.define(game);

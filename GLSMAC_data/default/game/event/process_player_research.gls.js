@@ -1,0 +1,74 @@
+return {
+
+	validate: (e) => {
+		if (e.caller != 0) {
+			return 'Only master is allowed to process research';
+		}
+		if (#typeof(e.data.technology) != 'Object') {
+			return 'Research technology must be an object';
+		}
+		if (#typeof(e.data.labs) != 'Int' || e.data.labs < 0) {
+			return 'Research labs must be a non-negative whole number';
+		}
+		if (#typeof(e.data.technology.id) != 'String' || e.data.technology.id == '') {
+			return 'Technology ID must be a non-empty string';
+		}
+		if (#typeof(e.data.technology.name) != 'String' || e.data.technology.name == '') {
+			return 'Technology name must be a non-empty string';
+		}
+		if (#typeof(e.data.technology.cost) != 'Int' || e.data.technology.cost <= 0) {
+			return 'Technology cost must be a positive whole number';
+		}
+		const state = e.data.player.get_research_state();
+		if (state.target != e.data.technology.id) {
+			return 'Technology is not the player\'s current research target';
+		}
+		if (state.progress >= e.data.technology.cost) {
+			return 'Research progress must remain below the technology cost';
+		}
+	},
+
+	apply: (e) => {
+		const previous = e.data.player.get_research_state();
+		let technologies = [];
+		for (id of previous.technologies) {
+			technologies :+id;
+		}
+		let target = previous.target;
+		let progress = previous.progress;
+		let completed = false;
+		if (e.data.labs >= e.data.technology.cost - progress) {
+			technologies :+e.data.technology.id;
+			target = '';
+			progress = 0;
+			completed = true;
+		} else {
+			progress += e.data.labs;
+		}
+		e.data.player.set_research_state({
+			technologies: technologies,
+			target: target,
+			progress: progress,
+		});
+		e.game.trigger('research_updated', {
+			player: e.data.player,
+		});
+		if (completed) {
+			e.game.message(
+				e.data.player.name + ' has discovered ' + e.data.technology.name + '.'
+			);
+		}
+		return {
+			state: previous,
+			completed: completed,
+		};
+	},
+
+	rollback: (e) => {
+		e.data.player.set_research_state(e.applied.state);
+		e.game.trigger('research_updated', {
+			player: e.data.player,
+		});
+	},
+
+};

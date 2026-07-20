@@ -36,6 +36,7 @@
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
+#include "game/backend/Player.h"
 #include "game/backend/animation/Def.h"
 #include "game/backend/base/FacilityDef.h"
 #include "game/backend/base/PopDef.h"
@@ -243,6 +244,75 @@ void AddTests( task::gsetests::GSETests* task ) {
 			}
 		);
 		task->AddTest(
+			"player research serialization validation",
+			GT() {
+				using game::backend::Player;
+
+				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
+				source.SetResearchState( { "CentauriEcology" }, "", 0 );
+				Player roundtrip( source.Serialize() );
+				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchProgress() == 0, "completed research progress was not serialized" );
+
+				const auto make_player = [](
+					const std::vector< std::string >& technologies,
+					const std::string& target,
+					const int64_t progress
+				) {
+					types::Buffer player;
+					player.WriteString( "Researcher" );
+					player.WriteInt( Player::PR_SINGLE );
+					player.WriteBool( false );
+					player.WriteString( "Citizen" );
+					player.WriteBool( false );
+					player.WriteInt( technologies.size() );
+					for ( const auto& id : technologies ) {
+						player.WriteString( id );
+					}
+					player.WriteString( target );
+					player.WriteInt( progress );
+					return player;
+				};
+
+				bool rejected_duplicate = false;
+				try {
+					Player invalid( make_player(
+						{ "CentauriEcology", "CentauriEcology" },
+						"",
+						0
+					) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate = true;
+				}
+				GT_ASSERT( rejected_duplicate, "duplicate player technology accepted" );
+
+				bool rejected_known_target = false;
+				try {
+					Player invalid( make_player(
+						{ "CentauriEcology" },
+						"CentauriEcology",
+						1
+					) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_known_target = true;
+				}
+				GT_ASSERT( rejected_known_target, "known technology accepted as research target" );
+
+				bool rejected_negative_progress = false;
+				try {
+					Player invalid( make_player( {}, "CentauriEcology", -1 ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_progress = true;
+				}
+				GT_ASSERT( rejected_negative_progress, "negative player research progress accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
 			"snapshot definition validation",
 			GT() {
 				bool rejected_unknown_pop_flags = false;
@@ -299,6 +369,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					unit_def.WriteString( "NATIVE" );
 					unit_def.WriteString( "Test Unit" );
 					unit_def.WriteInt( mineral_cost );
+					unit_def.WriteString( "" );
 					unit_def.WriteBool( false );
 					unit_def.WriteInt( offense );
 					unit_def.WriteInt( defense );
@@ -729,6 +800,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.m_bases_render = { "caretake.pcx", 1, 2, 100, 75, 50, 37, 1, 0.75f, 1.25f };
 				source.m_base_names.land = { "Alpha Prime", "Tau Ceti" };
 				source.m_base_names.water = { "Deep Home" };
+				source.m_starting_technologies = { "CentauriEcology" };
 
 				Faction restored;
 				restored.Deserialize( source.Serialize() );
@@ -744,6 +816,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.m_bases_render.scale_x == source.m_bases_render.scale_x, "faction base scale changed" );
 				GT_ASSERT( restored.m_base_names.land == source.m_base_names.land, "faction land base names changed" );
 				GT_ASSERT( restored.m_base_names.water == source.m_base_names.water, "faction water base names changed" );
+				GT_ASSERT(
+					restored.m_starting_technologies == source.m_starting_technologies,
+					"faction starting technologies changed"
+				);
+
+				source.m_starting_technologies.push_back( "CentauriEcology" );
+				bool rejected_duplicate_technology = false;
+				try {
+					Faction invalid;
+					invalid.Deserialize( source.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_technology = true;
+				}
+				GT_ASSERT( rejected_duplicate_technology, "duplicate faction starting technology accepted" );
 				GT_OK();
 			}
 		);

@@ -165,15 +165,16 @@ return {
 		};
 		this.sections.resources.set(resource_data);
 
-		const allocation_labs = 0.4;
+		const labs_data = game.get('f_technology_get_base_labs')(base);
+		const allocation_labs = labs_data.allocation;
 		const allocation_psych = 0.2;
 
 		const total_energy = resource_data.energy.profit - resource_data.energy.loss;
 		const energy_data = {
 			labs: {
 				allocation: allocation_labs,
-				value: #round(#to_float(total_energy) * allocation_labs),
-				bonus: 2,
+				value: labs_data.value,
+				bonus: labs_data.bonus,
 			},
 			psych: {
 				allocation: allocation_psych,

@@ -22,6 +22,47 @@
 				: ['SporeLauncher', 'MindWorms'];
 		};
 
+		const find_base_for_player = (player_id) => {
+			for (base of game.get_bm().get_bases()) {
+				if (base.get_owner().id == player_id) {
+					return base;
+				}
+			}
+			return null;
+		};
+
+		const get_research_state_error = (player) => {
+			let starts_with_ecology = false;
+			for (id of player.get_faction().get_starting_technologies()) {
+				if (id == 'CentauriEcology') {
+					starts_with_ecology = true;
+				}
+			}
+			const state = player.get_research_state();
+			if (starts_with_ecology) {
+				if (
+					!player.has_technology('CentauriEcology') ||
+					state.target != '' ||
+					state.progress != 0
+				) {
+					return 'starting Centauri Ecology state was not restored';
+				}
+				return #undefined;
+			}
+			const base = find_base_for_player(player.id);
+			if (
+				player.has_technology('CentauriEcology') ||
+				state.technologies != [] ||
+				state.target != 'CentauriEcology' ||
+				state.progress <= 0 ||
+				base == null ||
+				base.can_set_production('unit', 'Former')
+			) {
+				return 'Centauri Ecology progress or Former production gate was not restored';
+			}
+			return #undefined;
+		};
+
 		const get_terraform_state_error = (turns_remaining, moved_this_turn) => {
 			if (!game.get_um().has_unit(former_snapshot_unit_id)) {
 				return 'Former was not restored from the snapshot';
@@ -31,6 +72,7 @@
 			if (
 				former.owner != game.get_player().id ||
 				def.id != 'Former' ||
+				def.required_technology != 'CentauriEcology' ||
 				def.is_native ||
 				def.offense != 0 ||
 				def.defense != 1 ||
@@ -232,6 +274,14 @@
 			}
 
 			if (turn_id == 1) {
+				for (player of game.get_players()) {
+					const research_error = get_research_state_error(player);
+					if (#is_defined(research_error)) {
+						#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + research_error);
+						glsmac.exit();
+						return;
+					}
+				}
 				const base_state_error = get_base_state_error();
 				if (#is_defined(base_state_error)) {
 					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + base_state_error);
@@ -244,6 +294,7 @@
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_TERRAFORM_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_RESEARCH_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}

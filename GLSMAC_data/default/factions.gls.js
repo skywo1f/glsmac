@@ -1,5 +1,5 @@
 const factions = [
-	['Gaians', 'gaians', {}],
+	['Gaians', 'gaians', {starting_technologies: ['CentauriEcology']}],
 	['Hive', 'hive', {}],
 	['University', 'univ', {}],
 	['Morganites', 'morgan', {}],
@@ -10,9 +10,9 @@ const factions = [
 	['Pirates', 'pirates', {is_naval: true}],
 	['Drones', 'drone', {}],
 	['Angels', 'angels', {}],
-	['Planetcult', 'fungboy', {}],
-	['Caretakers', 'caretake', {is_progenitor: true}],
-	['Usurpers', 'usurper', {is_progenitor: true}],
+	['Planetcult', 'fungboy', {starting_technologies: ['CentauriEcology']}],
+	['Caretakers', 'caretake', {is_progenitor: true, starting_technologies: ['CentauriEcology']}],
+	['Usurpers', 'usurper', {is_progenitor: true, starting_technologies: ['CentauriEcology']}],
 ];
 
 return {

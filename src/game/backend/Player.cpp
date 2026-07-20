@@ -9,6 +9,9 @@
 
 #include "gse/value/String.h"
 #include "gse/value/Bool.h"
+#include "gse/value/Int.h"
+#include "gse/value/Array.h"
+#include "gse/value/Object.h"
 
 #include "engine/Engine.h"
 #include "Game.h"
@@ -40,6 +43,9 @@ Player::Player( const Player* const other ) {
 	m_faction = other->m_faction;
 	m_difficulty_level = other->m_difficulty_level;
 	m_is_turn_completed = other->m_is_turn_completed;
+	m_technologies = other->m_technologies;
+	m_research_target = other->m_research_target;
+	m_research_progress = other->m_research_progress;
 }
 
 Player::~Player() {
@@ -118,6 +124,36 @@ void Player::CompleteTurn() {
 
 void Player::UncompleteTurn() {
 	m_is_turn_completed = false;
+}
+
+const Player::technologies_t& Player::GetTechnologies() const {
+	return m_technologies;
+}
+
+bool Player::HasTechnology( const std::string& id ) const {
+	return !id.empty() && m_technologies.find( id ) != m_technologies.end();
+}
+
+const std::string& Player::GetResearchTarget() const {
+	return m_research_target;
+}
+
+int64_t Player::GetResearchProgress() const {
+	return m_research_progress;
+}
+
+void Player::SetResearchState(
+	const technologies_t& technologies,
+	const std::string& target,
+	const int64_t progress
+) {
+	std::string error;
+	if ( !ValidateResearchState( technologies, target, progress, error ) ) {
+		THROW( error );
+	}
+	m_technologies = technologies;
+	m_research_target = target;
+	m_research_progress = progress;
 }
 
 WRAPIMPL_BEGIN( Player )
@@ -206,6 +242,54 @@ WRAPIMPL_BEGIN( Player )
 				"is_master",
 				VALUE( gse::value::Bool, , m_role == PR_SINGLE || m_role == PR_HOST )
 			},
+			{
+				"get_research_state",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t technologies = {};
+					technologies.reserve( m_technologies.size() );
+					for ( const auto& id : m_technologies ) {
+						technologies.push_back( VALUE( gse::value::String, , id ) );
+					}
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "technologies", VALUE( gse::value::Array, , technologies ) },
+						{ "target", VALUE( gse::value::String, , m_research_target ) },
+						{ "progress", VALUE( gse::value::Int, , m_research_progress ) },
+					} );
+				} )
+			},
+			{
+				"set_research_state",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( state, 0, Object );
+					N_GETPROP( technology_values, state, "technologies", Array );
+					N_GETPROP( target, state, "target", String );
+					N_GETPROP( progress, state, "progress", Int );
+					technologies_t technologies = {};
+					for ( size_t i = 0 ; i < technology_values.size() ; i++ ) {
+						N_GETELEMENT( id, technology_values, i, String );
+						if ( id.empty() || !technologies.insert( id ).second ) {
+							GSE_ERROR( gse::EC.INVALID_CALL, "Research technologies must be unique, non-empty strings" );
+						}
+					}
+					std::string error;
+					if ( !ValidateResearchState( technologies, target, progress, error ) ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, error );
+					}
+					SetResearchState( technologies, target, progress );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"has_technology",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( id, 0, String );
+					return VALUE( gse::value::Bool, , HasTechnology( id ) );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -222,6 +306,12 @@ const types::Buffer Player::Serialize() const {
 	}
 	buf.WriteString( m_difficulty_level );
 	buf.WriteBool( m_is_turn_completed );
+	buf.WriteInt( m_technologies.size() );
+	for ( const auto& id : m_technologies ) {
+		buf.WriteString( id );
+	}
+	buf.WriteString( m_research_target );
+	buf.WriteInt( m_research_progress );
 
 	return buf;
 }
@@ -240,6 +330,23 @@ void Player::Deserialize( types::Buffer buf ) {
 	}
 	const auto difficulty_level = buf.ReadString();
 	const auto is_turn_completed = buf.ReadBool();
+	technologies_t technologies = {};
+	const auto technology_count = buf.ReadCollectionSize( "player technology" );
+	if ( technology_count > MAX_TECHNOLOGIES ) {
+		THROW( "invalid serialized player technology count" );
+	}
+	for ( size_t i = 0 ; i < technology_count ; i++ ) {
+		const auto id = buf.ReadString();
+		if ( id.empty() || !technologies.insert( id ).second ) {
+			THROW( "invalid or duplicate serialized player technology" );
+		}
+	}
+	const auto research_target = buf.ReadString();
+	const auto research_progress = buf.ReadInt();
+	std::string research_error;
+	if ( !ValidateResearchState( technologies, research_target, research_progress, research_error ) ) {
+		THROW( "invalid serialized player research state: " + research_error );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -251,6 +358,9 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_owns_faction = m_faction != nullptr;
 	m_difficulty_level = difficulty_level;
 	m_is_turn_completed = is_turn_completed;
+	m_technologies = std::move( technologies );
+	m_research_target = research_target;
+	m_research_progress = research_progress;
 
 }
 
@@ -260,6 +370,37 @@ void Player::ReleaseOwnedFaction() {
 	}
 	m_faction = nullptr;
 	m_owns_faction = false;
+}
+
+bool Player::ValidateResearchState(
+	const technologies_t& technologies,
+	const std::string& target,
+	const int64_t progress,
+	std::string& error
+) {
+	if ( technologies.size() > MAX_TECHNOLOGIES ) {
+		error = "Too many researched technologies";
+		return false;
+	}
+	for ( const auto& id : technologies ) {
+		if ( id.empty() ) {
+			error = "Researched technology IDs cannot be empty";
+			return false;
+		}
+	}
+	if ( !target.empty() && technologies.find( target ) != technologies.end() ) {
+		error = "Research target is already known";
+		return false;
+	}
+	if ( progress < 0 || progress > MAX_RESEARCH_PROGRESS ) {
+		error = "Research progress is out of range";
+		return false;
+	}
+	if ( target.empty() && progress != 0 ) {
+		error = "Research progress requires a target";
+		return false;
+	}
+	return true;
 }
 
 WRAPIMPL_SERIALIZE( Player )

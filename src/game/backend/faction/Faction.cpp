@@ -1,11 +1,13 @@
 #include "Faction.h"
 
 #include <cmath>
+#include <unordered_set>
 #include <utility>
 
 #include "types/texture/Texture.h"
 #include "gse/value/String.h"
 #include "gse/value/Bool.h"
+#include "gse/value/Array.h"
 #include "engine/Engine.h"
 #include "loader/texture/TextureLoader.h"
 #include "resource/ResourceManager.h"
@@ -55,6 +57,10 @@ const types::Buffer Faction::Serialize() const {
 	for ( const auto& name : m_base_names.water ) {
 		buf.WriteString( name );
 	}
+	buf.WriteInt( m_starting_technologies.size() );
+	for ( const auto& id : m_starting_technologies ) {
+		buf.WriteString( id );
+	}
 
 	return buf;
 }
@@ -102,6 +108,17 @@ void Faction::Deserialize( types::Buffer buf ) {
 	for ( size_t i = 0 ; i < water_names_count ; i++ ) {
 		water_names.push_back( buf.ReadString() );
 	}
+	std::vector< std::string > starting_technologies = {};
+	std::unordered_set< std::string > technology_ids = {};
+	const auto technology_count = buf.ReadCollectionSize( "faction starting technology" );
+	starting_technologies.reserve( technology_count );
+	for ( size_t i = 0 ; i < technology_count ; i++ ) {
+		const auto id = buf.ReadString();
+		if ( id.empty() || !technology_ids.insert( id ).second ) {
+			THROW( "invalid or duplicate serialized faction starting technology" );
+		}
+		starting_technologies.push_back( id );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized faction" );
 	}
@@ -113,6 +130,7 @@ void Faction::Deserialize( types::Buffer buf ) {
 	m_bases_render = bases_render;
 	m_base_names.land = std::move( land_names );
 	m_base_names.water = std::move( water_names );
+	m_starting_technologies = std::move( starting_technologies );
 
 }
 
@@ -137,6 +155,18 @@ WRAPIMPL_BEGIN( Faction )
 			{
 				"is_progenitor",
 				VALUE( gse::value::Bool, , m_flags & Faction::FF_PROGENITOR )
+			},
+			{
+				"get_starting_technologies",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t result = {};
+					result.reserve( m_starting_technologies.size() );
+					for ( const auto& id : m_starting_technologies ) {
+						result.push_back( VALUE( gse::value::String, , id ) );
+					}
+					return VALUE( gse::value::Array, , result );
+				} )
 			},
 		};
 WRAPIMPL_END_PTR()

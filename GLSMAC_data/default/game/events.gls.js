@@ -28,6 +28,8 @@ return (game) => {
 		'queue_base_production',
 		'remove_base_production',
 		'process_base_production',
+		'initialize_player_research',
+		'process_player_research',
 		'complete_turn',
 		'uncomplete_turn',
 		'advance_turn',
