@@ -18,6 +18,7 @@
 	let client_combat_probe_complete = false;
 	let client_immediate_combat_probe_complete = false;
 	let client_base_capture_probe_complete = false;
+	let client_base_founding_probe_complete = false;
 	let client_movement_unit_id = 0;
 	let client_movement_target_x = 0;
 	let client_movement_target_y = 0;
@@ -25,7 +26,9 @@
 	let client_combat_target_y = 0;
 	let combat_defender_id = 0;
 	let combat_defender_spawn_requested = false;
+	let colony_pod_spawn_requested = false;
 	const combat_base_name = 'Multiplayer Capture Probe';
+	const expansion_base_name = 'Multiplayer Expansion Probe';
 
 	glsmac.on('configure_state', (e) => {
 		if (lobby_timer_started) {
@@ -100,6 +103,160 @@
 
 		const get_client_player_id = () => {
 			return game.is_master() ? 1 : game.get_player().id;
+		};
+
+		const find_founding_site_coords = () => {
+			const tm = game.get_tm();
+			let result = null;
+			let reserved_combat_tile = null;
+			if (combat_defender_spawn_requested) {
+				reserved_combat_tile = tm.get_tile(
+					client_combat_target_x,
+					client_combat_target_y
+				);
+			}
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					const tile = tm.get_tile(x, y);
+					if (
+						!tile.is_land ||
+						tile.is_locked() ||
+						tile.get_base() != null ||
+						#sizeof(tile.get_units()) != 0
+					) {
+						continue;
+					}
+					if (
+						reserved_combat_tile != null &&
+						(tile == reserved_combat_tile || tile.is_adjactent_to(reserved_combat_tile))
+					) {
+						continue;
+					}
+					let is_adjacent_to_base = false;
+					for (nearby of tile.get_surrounding_tiles()) {
+						if (nearby.get_base() != null) {
+							is_adjacent_to_base = true;
+							break;
+						}
+					}
+					if (!is_adjacent_to_base) {
+						result = {x: x, y: y};
+						break;
+					}
+				}
+				if (result != null) {
+					break;
+				}
+			}
+			return result;
+		};
+
+		const find_client_colony_pod = () => {
+			const tm = game.get_tm();
+			let result_id = 0;
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					for (unit of tm.get_tile(x, y).get_units()) {
+						if (unit.owner == get_client_player_id() && unit.def == 'ColonyPod') {
+							result_id = unit.id;
+							break;
+						}
+					}
+					if (result_id != 0) {
+						break;
+					}
+				}
+				if (result_id != 0) {
+					break;
+				}
+			}
+			return result_id == 0 ? null : game.get_um().get_unit(result_id);
+		};
+
+		const spawn_colony_probe = () => {
+			if (colony_pod_spawn_requested) {
+				return true;
+			}
+			const site_coords = find_founding_site_coords();
+			if (site_coords == null) {
+				return false;
+			}
+			game.event('spawn_unit', {
+				owner: game.get_player(get_client_player_id()),
+				tile: game.get_tm().get_tile(site_coords.x, site_coords.y),
+				type: 'ColonyPod',
+				health: 1.0,
+				morale: 2,
+			});
+			colony_pod_spawn_requested = true;
+			return true;
+		};
+
+		const run_client_founding_probe = () => {
+			let founding_requested = false;
+			let colony_pod_id = 0;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (!founding_requested) {
+					const colony_pod = find_client_colony_pod();
+					if (colony_pod != null) {
+						const def = colony_pod.get_def();
+						if (
+							def.is_native ||
+							def.offense != 0 ||
+							def.defense != 1 ||
+							def.morale_set != 'STANDARD' ||
+							!def.can_found_base
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: Colony Pod definition is invalid');
+							glsmac.exit();
+							return false;
+						}
+						colony_pod_id = colony_pod.id;
+						founding_requested = true;
+						game.event('found_base', {
+							unit: colony_pod,
+							name: expansion_base_name,
+						});
+					}
+				}
+				else {
+					const expansion_base = find_base_by_name(expansion_base_name);
+					if (expansion_base != null) {
+						const production = expansion_base.get_production();
+						if (
+							game.get_um().has_unit(colony_pod_id) ||
+							expansion_base.get_owner().id != get_client_player_id() ||
+							#sizeof(expansion_base.get_pops()) != 1 ||
+							#sizeof(expansion_base.get_worked_tiles()) != 1 ||
+							!#is_defined(production) ||
+							production.id != 'ScoutPatrol'
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: founded base state is invalid');
+							glsmac.exit();
+							return false;
+						}
+						client_base_founding_probe_complete = true;
+						#print('MULTIPLAYER_SMOKE_BASE_FOUNDING_PASS_CLIENT');
+						game.event('complete_turn', {});
+						return false;
+					}
+				}
+				if (wait_ticks >= 200) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: colony founding timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+			return true;
 		};
 
 		const find_starting_unit = (player_id) => {
@@ -337,7 +494,7 @@
 			const finish_combat_probe = () => {
 				client_combat_probe_complete = true;
 				#print('MULTIPLAYER_SMOKE_COMBAT_PASS_CLIENT');
-				game.event('complete_turn', {});
+				run_client_founding_probe();
 			};
 			#async(100, () => {
 				wait_ticks++;
@@ -573,6 +730,11 @@
 						glsmac.exit();
 						return;
 					}
+					if (!spawn_colony_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: colony probe could not be spawned');
+						glsmac.exit();
+						return;
+					}
 					game.event('complete_turn', {});
 				}
 				else {
@@ -607,6 +769,7 @@
 				const client_player_id = get_client_player_id();
 				const client_base = find_base_for_player(client_player_id);
 				const captured_base = find_base_by_name(combat_base_name);
+				const expansion_base = find_base_by_name(expansion_base_name);
 				let client_unit = null;
 				if (game.get_um().has_unit(client_movement_unit_id)) {
 					client_unit = game.get_um().get_unit(client_movement_unit_id);
@@ -629,6 +792,16 @@
 						combat_defender.get_tile().x != client_combat_target_x ||
 						combat_defender.get_tile().y != client_combat_target_y;
 				}
+				let expansion_base_invalid = true;
+				if (expansion_base != null) {
+					const production = expansion_base.get_production();
+					expansion_base_invalid =
+						expansion_base.get_owner().id != client_player_id ||
+						#sizeof(expansion_base.get_pops()) != 1 ||
+						#sizeof(expansion_base.get_worked_tiles()) != 1 ||
+						!#is_defined(production) ||
+						production.id != 'ScoutPatrol';
+				}
 				if (
 					accepted_event_count != 1 ||
 					rejected_event_count != 0 ||
@@ -639,6 +812,7 @@
 					(!game.is_master() && !client_immediate_combat_probe_complete) ||
 					(!game.is_master() && !client_combat_probe_complete) ||
 					(!game.is_master() && !client_base_capture_probe_complete) ||
+					(!game.is_master() && !client_base_founding_probe_complete) ||
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||
@@ -646,7 +820,9 @@
 					combat_defender_id == 0 ||
 					(client_unit != null && combat_defender != null) ||
 					client_unit_invalid ||
-					combat_defender_invalid
+					combat_defender_invalid ||
+					expansion_base_invalid ||
+					find_client_colony_pod() != null
 				) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +

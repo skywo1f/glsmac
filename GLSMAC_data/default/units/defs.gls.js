@@ -1,5 +1,17 @@
 const moralesets = [
 	{
+		id: 'STANDARD',
+		data: [
+			{name: 'Very Green'},
+			{name: 'Green'},
+			{name: 'Disciplined'},
+			{name: 'Hardened'},
+			{name: 'Veteran'},
+			{name: 'Commando'},
+			{name: 'Elite'},
+		]
+	},
+	{
 		id: 'NATIVE',
 		data: [
 			{name: 'Hatchling'},
@@ -19,6 +31,9 @@ const native_lifeform = (id, name, mineral_cost, movement_type, movement_per_tur
 		data: {
 			name: name,
 			mineral_cost: mineral_cost,
+			is_native: true,
+			offense: 1,
+			defense: 1,
 			morale: 'NATIVE',
 			type: 'static',
 			movement_type: movement_type,
@@ -35,7 +50,35 @@ const native_lifeform = (id, name, mineral_cost, movement_type, movement_per_tur
 	};
 };
 
+const conventional_unit = (id, name, mineral_cost, offense, defense, sprite_x, sprite_y, can_found_base) => {
+	return {
+		id: id,
+		data: {
+			name: name,
+			mineral_cost: mineral_cost,
+			is_native: false,
+			offense: offense,
+			defense: defense,
+			can_found_base: can_found_base,
+			morale: 'STANDARD',
+			type: 'static',
+			movement_type: 'land',
+			movement_per_turn: 1,
+			render: {
+				type: 'sprite',
+				file: 'units.pcx',
+				x: sprite_x, y: sprite_y,
+				w: 100, h: 75,
+				cx: sprite_x + 51, cy: sprite_y + 51,
+			},
+		},
+	};
+};
+
 const units = [
+	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
+	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false),
+	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true),
 	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79),
 	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233),
 	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310),

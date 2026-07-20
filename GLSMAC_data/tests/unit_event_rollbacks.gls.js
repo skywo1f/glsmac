@@ -6,6 +6,11 @@ const move_unit = #include('../default/game/event/move_unit');
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
 const defender_tile = {x: 4, y: 4};
+const native_def = {
+	is_native: true,
+	offense: 1,
+	defense: 1,
+};
 
 test.assert(
 	attack_unit.validate({
@@ -38,17 +43,74 @@ test.assert(
 				morale: 3,
 				health: 0.1,
 				is_land: false,
+				get_def: () => {
+					return native_def;
+				},
 			},
 			defender: {
 				morale: 3,
 				health: 0.1,
 				is_land: false,
+				get_def: () => {
+					return native_def;
+				},
 			},
 		},
 	});
 	test.assert(random_index == 3);
 	test.assert(#sizeof(resolved.sequence) == 1);
 	test.assert(resolved.sequence[0][0] == true);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
+
+{
+	const attack_def = {
+		is_native: false,
+		offense: 4,
+		defense: 1,
+	};
+	const defense_def = {
+		is_native: false,
+		offense: 1,
+		defense: 2,
+	};
+	const random_state = {
+		index: 0,
+		max_values: [],
+	};
+	const random_values = [0.4, 0.0, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_state.max_values :+max;
+					const index = random_state.index;
+					random_state.index = index + 1;
+					return random_values[index];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 2,
+				health: 0.1,
+				get_def: () => {
+					return attack_def;
+				},
+			},
+			defender: {
+				morale: 2,
+				health: 0.1,
+				get_def: () => {
+					return defense_def;
+				},
+			},
+		},
+	});
+	test.assert(random_state.index == 3);
+	test.assert(random_state.max_values[0] == 0.4);
+	test.assert(random_state.max_values[1] == 0.2);
 	test.assert(resolved.attacker_dead == false);
 	test.assert(resolved.defender_dead == true);
 }
@@ -64,6 +126,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		moved_this_turn: moved_this_turn,
 		get_tile: () => {
 			return tile;
+		},
+		get_def: () => {
+			return native_def;
 		},
 	};
 };

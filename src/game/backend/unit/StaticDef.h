@@ -22,6 +22,11 @@ public:
 		const MoraleSet* moraleset,
 		const std::string& name,
 		const int64_t mineral_cost,
+		const bool is_native,
+		const int64_t offense,
+		const int64_t defense,
+		const bool can_found_base,
+		const bool can_terraform,
 		const movement_type_t movement_type,
 		const movement_t movement_per_turn,
 		const Render* render
@@ -50,7 +55,12 @@ private:
 		const std::string& id,
 		const std::string& moraleset_name,
 		const std::string& name,
-		const int64_t mineral_cost
+		const int64_t mineral_cost,
+		const bool is_native,
+		const int64_t offense,
+		const int64_t defense,
+		const bool can_found_base,
+		const bool can_terraform
 	);
 
 };

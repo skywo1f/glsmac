@@ -75,8 +75,8 @@ return (game) => {
 		});
 		tiles_with_bases :+tile;
 
-		// spawn "scout patrol"
-		let type = 'MindWorms';
+		// spawn scout patrol (naval starts keep a sea-native stand-in for now)
+		let type = 'ScoutPatrol';
 		if (faction.is_naval) {
 			type = 'SeaLurk';
 		}

@@ -356,8 +356,22 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP( morale, unit_def, "morale", String );
 				N_GETPROP( unit_type, unit_def, "type", String );
 				N_GETPROP( mineral_cost, unit_def, "mineral_cost", Int );
+				N_GETPROP_OPT( bool, is_native, unit_def, "is_native", Bool, morale == "NATIVE" );
+				N_GETPROP_OPT( int64_t, offense, unit_def, "offense", Int, 1 );
+				N_GETPROP_OPT( int64_t, defense, unit_def, "defense", Int, 1 );
+				N_GETPROP_OPT_BOOL( can_found_base, unit_def, "can_found_base" );
+				N_GETPROP_OPT_BOOL( can_terraform, unit_def, "can_terraform" );
 				if ( mineral_cost < 0 || mineral_cost > unit::Def::MAX_MINERAL_COST ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit mineral cost: " + std::to_string( mineral_cost ) );
+				}
+				if (
+					offense < 0 ||
+					offense > unit::Def::MAX_COMBAT_STRENGTH ||
+					defense <= 0 ||
+					defense > unit::Def::MAX_COMBAT_STRENGTH ||
+					( can_found_base && can_terraform )
+				) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit combat or capability values: " + id );
 				}
 
 				if ( m_unit_defs.find( id ) != m_unit_defs.end() ) {
@@ -382,7 +396,13 @@ WRAPIMPL_BEGIN( UnitManager )
 					else {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid movement type: " + movement_type_str + ". Specify one of: land water air immovable");
 					}
+					if ( ( can_found_base || can_terraform ) && movement_type != unit::MT_LAND ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Founding and terraforming capabilities require a land unit: " + id );
+					}
 					N_GETPROP( movement_per_turn, unit_def, "movement_per_turn", Int );
+					if ( movement_per_turn < 0 ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit movement per turn: " + id );
+					}
 					N_GETPROP( render_def, unit_def, "render", Object );
 					N_GETPROP( render_type, render_def, "type", String );
 					if ( render_type == "sprite" ) {
@@ -403,6 +423,11 @@ WRAPIMPL_BEGIN( UnitManager )
 							moraleset,
 							name,
 							mineral_cost,
+							is_native,
+							offense,
+							defense,
+							can_found_base,
+							can_terraform,
 							movement_type,
 							movement_per_turn,
 							new unit::SpriteRender(

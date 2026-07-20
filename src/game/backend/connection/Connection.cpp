@@ -424,10 +424,19 @@ void Connection::Disconnect( const std::string& reason ) {
 void Connection::ProcessPending( const bool send_allowed ) {
 	if ( !m_pending_game_events.empty() ) {
 		if ( send_allowed ) {
-			SendGameEvents( m_pending_game_events );
+			FlushPendingGameEvents();
+			return;
 		}
 		m_pending_game_events.clear();
 	}
+}
+
+void Connection::FlushPendingGameEvents() {
+	if ( m_pending_game_events.empty() ) {
+		return;
+	}
+	SendGameEvents( m_pending_game_events );
+	m_pending_game_events.clear();
 }
 
 void Connection::ClearPending() {

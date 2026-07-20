@@ -26,13 +26,19 @@ class Def : public gse::Wrappable {
 public:
 
 	static constexpr int64_t MAX_MINERAL_COST = 1000000;
+	static constexpr int64_t MAX_COMBAT_STRENGTH = 1000000;
 
 	Def(
 		const std::string& id,
 		const MoraleSet* moraleset,
 		const def_type_t type,
 		const std::string& name,
-		const int64_t mineral_cost
+		const int64_t mineral_cost,
+		const bool is_native,
+		const int64_t offense,
+		const int64_t defense,
+		const bool can_found_base,
+		const bool can_terraform
 	);
 	virtual ~Def() = default;
 
@@ -41,6 +47,11 @@ public:
 	const def_type_t m_type;
 	const std::string m_name;
 	const int64_t m_mineral_cost;
+	const bool m_is_native;
+	const int64_t m_offense;
+	const int64_t m_defense;
+	const bool m_can_found_base;
+	const bool m_can_terraform;
 
 	virtual const movement_type_t GetMovementType() const = 0;
 

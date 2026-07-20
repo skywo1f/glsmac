@@ -50,14 +50,41 @@ StaticDef::StaticDef(
 	const MoraleSet* moraleset,
 	const std::string& name,
 	const int64_t mineral_cost,
+	const bool is_native,
+	const int64_t offense,
+	const int64_t defense,
+	const bool can_found_base,
+	const bool can_terraform,
 	const movement_type_t movement_type,
 	const movement_t movement_per_turn,
 	const Render* render
 )
-	: Def( id, moraleset, DT_STATIC, name, mineral_cost )
+	: Def(
+		id,
+		moraleset,
+		DT_STATIC,
+		name,
+		mineral_cost,
+		is_native,
+		offense,
+		defense,
+		can_found_base,
+		can_terraform
+	)
 	, m_movement_type( movement_type )
 	, m_movement_per_turn( movement_per_turn )
-	, m_render( render ) {}
+	, m_render( render ) {
+	if (
+		m_movement_type < MT_IMMOVABLE ||
+		m_movement_type > MT_AIR ||
+		!std::isfinite( m_movement_per_turn ) ||
+		m_movement_per_turn < 0.0f ||
+		!m_render ||
+		( ( m_can_found_base || m_can_terraform ) && m_movement_type != MT_LAND )
+	) {
+		THROW( "invalid static unit definition: " + m_id );
+	}
+}
 
 StaticDef::~StaticDef() {
 	delete m_render;
@@ -90,7 +117,12 @@ StaticDef* StaticDef::Deserialize(
 	const std::string& id,
 	const std::string& moraleset_name,
 	const std::string& name,
-	const int64_t mineral_cost
+	const int64_t mineral_cost,
+	const bool is_native,
+	const int64_t offense,
+	const int64_t defense,
+	const bool can_found_base,
+	const bool can_terraform
 ) {
 	const auto serialized_movement_type = buf.ReadInt();
 	const auto movement_per_turn = buf.ReadFloat();
@@ -99,6 +131,9 @@ StaticDef* StaticDef::Deserialize(
 	}
 	if ( !std::isfinite( movement_per_turn ) || movement_per_turn < 0.0f ) {
 		THROW( "invalid serialized unit movement per turn" );
+	}
+	if ( ( can_found_base || can_terraform ) && serialized_movement_type != MT_LAND ) {
+		THROW( "serialized founding and terraforming capabilities require a land unit" );
 	}
 	const auto* moraleset = g_engine->GetGame()->GetUM()->GetMoraleSet( moraleset_name );
 	if ( !moraleset ) {
@@ -110,6 +145,11 @@ StaticDef* StaticDef::Deserialize(
 		moraleset,
 		name,
 		mineral_cost,
+		is_native,
+		offense,
+		defense,
+		can_found_base,
+		can_terraform,
 		static_cast< movement_type_t >( serialized_movement_type ),
 		movement_per_turn,
 		render.release()

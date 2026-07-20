@@ -7,15 +7,17 @@
 	let starting_base_unit_count = 0;
 	let starting_intake = #undefined;
 	let queued_unit_id = #undefined;
-	let state_verified = false;
+	let lifecycle_verified = false;
+	let expansion_verified = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 	const lifecycle_base_name = 'Runtime Smoke Base';
+	const expansion_base_name = 'Runtime Expansion Base';
 
 	const finish_if_ready = () => {
-		if (state_verified && ui_started && !exit_scheduled) {
+		if (lifecycle_verified && expansion_verified && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RUNTIME_SMOKE_PASS: reached turn 3 with facility, unit, and base state intact');
+			#print('RUNTIME_SMOKE_PASS: reached turn 3 with production, lifecycle, and expansion state intact');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -24,6 +26,43 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+
+		const find_founding_site_coords = () => {
+			const tm = game.get_tm();
+			let result = null;
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					const tile = tm.get_tile(x, y);
+					if (!tile.is_land) {
+						continue;
+					}
+					if (tile.is_locked() || tile.get_base() != null) {
+						continue;
+					}
+					if (#sizeof(tile.get_units()) != 0) {
+						continue;
+					}
+					let is_adjacent_to_base = false;
+					for (nearby of tile.get_surrounding_tiles()) {
+						if (nearby.get_base() != null) {
+							is_adjacent_to_base = true;
+							break;
+						}
+					}
+					if (!is_adjacent_to_base) {
+						result = {x: x, y: y};
+						break;
+					}
+				}
+				if (result != null) {
+					break;
+				}
+			}
+			return result;
+		};
 
 		game.register_event('runtime_smoke_replace_base', {
 			validate: (e) => {
@@ -173,11 +212,28 @@
 				}
 
 				const old_base_id = lifecycle_base.id;
+				const founding_site_coords = find_founding_site_coords();
+				if (founding_site_coords == null) {
+					#print('RUNTIME_SMOKE_FAIL: no legal colony founding site is available');
+					glsmac.exit();
+					return;
+				}
+				const founding_site = game.get_tm().get_tile(
+					founding_site_coords.x,
+					founding_site_coords.y
+				);
 				game.event('runtime_smoke_replace_base', {
 					base_id: old_base_id,
 					owner: lifecycle_base.get_owner(),
 					tile: lifecycle_base.get_tile(),
 					name: lifecycle_base.name,
+				});
+				game.event('spawn_unit', {
+					owner: game.get_player(),
+					tile: founding_site,
+					type: 'ColonyPod',
+					health: 1.0,
+					morale: 2,
 				});
 
 				let wait_ticks = 0;
@@ -186,13 +242,75 @@
 					for (base of game.get_bm().get_bases()) {
 						if (base.name == lifecycle_base_name && base.id != old_base_id) {
 							#print('RUNTIME_SMOKE_BASE_LIFECYCLE_PASS');
-							state_verified = true;
+							lifecycle_verified = true;
 							finish_if_ready();
 							return false;
 						}
 					}
 					if (wait_ticks >= 100) {
 						#print('RUNTIME_SMOKE_FAIL: named base was not reusable after despawn');
+						glsmac.exit();
+						return false;
+					}
+					return true;
+				});
+
+				let founding_requested = false;
+				let founding_wait_ticks = 0;
+				let colony_pod_id = 0;
+				#async(100, () => {
+					founding_wait_ticks++;
+					if (!founding_requested) {
+						for (unit of founding_site.get_units()) {
+							if (unit.owner == game.get_player().id && unit.def == 'ColonyPod') {
+								const def = unit.get_def();
+								if (
+									def.is_native ||
+									def.offense != 0 ||
+									def.defense != 1 ||
+									def.morale_set != 'STANDARD' ||
+									!def.can_found_base
+								) {
+									#print('RUNTIME_SMOKE_FAIL: Colony Pod definition metadata is invalid');
+									glsmac.exit();
+									return false;
+								}
+								colony_pod_id = unit.id;
+								founding_requested = true;
+								game.event('found_base', {
+									unit: unit,
+									name: expansion_base_name,
+								});
+								break;
+							}
+						}
+					}
+					else {
+						for (base of game.get_bm().get_bases()) {
+							if (base.name == expansion_base_name) {
+								const production = base.get_production();
+								if (
+									game.get_um().has_unit(colony_pod_id) ||
+									base.get_owner().id != game.get_player().id ||
+									base.get_tile() != founding_site ||
+									#sizeof(base.get_pops()) != 1 ||
+									#sizeof(base.get_worked_tiles()) != 1 ||
+									!#is_defined(production) ||
+									production.id != 'ScoutPatrol'
+								) {
+									#print('RUNTIME_SMOKE_FAIL: founded base state is invalid');
+									glsmac.exit();
+									return false;
+								}
+								#print('RUNTIME_SMOKE_BASE_FOUNDING_PASS');
+								expansion_verified = true;
+								finish_if_ready();
+								return false;
+							}
+						}
+					}
+					if (founding_wait_ticks >= 100) {
+						#print('RUNTIME_SMOKE_FAIL: colony founding timed out');
 						glsmac.exit();
 						return false;
 					}

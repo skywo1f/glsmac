@@ -11,7 +11,9 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
+	const expansion_snapshot_unit_id = 4;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
+	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 
 	glsmac.on('configure_state', (e) => {
 		#async(100, () => {
@@ -67,6 +69,15 @@
 			return null;
 		};
 
+		const find_base_by_name = (name) => {
+			for (base of game.get_bm().get_bases()) {
+				if (base.name == name) {
+					return base;
+				}
+			}
+			return null;
+		};
+
 		const get_remote_player_id = () => {
 			const local_player_id = game.get_player().id;
 			for (player of game.get_players()) {
@@ -75,6 +86,131 @@
 				}
 			}
 			return null;
+		};
+
+		const find_founding_site_coords = () => {
+			const tm = game.get_tm();
+			let result = null;
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					const tile = tm.get_tile(x, y);
+					if (
+						!tile.is_land ||
+						tile.is_locked() ||
+						tile.get_base() != null ||
+						#sizeof(tile.get_units()) != 0
+					) {
+						continue;
+					}
+					let is_adjacent_to_base = false;
+					for (nearby of tile.get_surrounding_tiles()) {
+						if (nearby.get_base() != null) {
+							is_adjacent_to_base = true;
+							break;
+						}
+					}
+					if (!is_adjacent_to_base) {
+						result = {x: x, y: y};
+						break;
+					}
+				}
+				if (result != null) {
+					break;
+				}
+			}
+			return result;
+		};
+
+		const find_local_colony_pod = () => {
+			const tm = game.get_tm();
+			let result_id = 0;
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					for (unit of tm.get_tile(x, y).get_units()) {
+						if (unit.owner == game.get_player().id && unit.def == 'ColonyPod') {
+							result_id = unit.id;
+							break;
+						}
+					}
+					if (result_id != 0) {
+						break;
+					}
+				}
+				if (result_id != 0) {
+					break;
+				}
+			}
+			return result_id == 0 ? null : game.get_um().get_unit(result_id);
+		};
+
+		const run_initial_founding_probe = () => {
+			let founding_requested = false;
+			let colony_pod_id = 0;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (!founding_requested) {
+					const colony_pod = find_local_colony_pod();
+					if (colony_pod != null) {
+						if (colony_pod.id != expansion_snapshot_unit_id) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: unexpected Colony Pod id');
+							glsmac.exit();
+							return false;
+						}
+						const def = colony_pod.get_def();
+						if (
+							def.is_native ||
+							def.offense != 0 ||
+							def.defense != 1 ||
+							def.morale_set != 'STANDARD' ||
+							!def.can_found_base
+						) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: Colony Pod definition is invalid');
+							glsmac.exit();
+							return false;
+						}
+						colony_pod_id = colony_pod.id;
+						founding_requested = true;
+						game.event('found_base', {
+							unit: colony_pod,
+							name: expansion_snapshot_base_name,
+						});
+					}
+				}
+				else {
+					const expansion_base = find_base_by_name(expansion_snapshot_base_name);
+					if (expansion_base != null) {
+						const production = expansion_base.get_production();
+						if (
+							game.get_um().has_unit(colony_pod_id) ||
+							expansion_base.get_owner().id != game.get_player().id ||
+							#sizeof(expansion_base.get_pops()) != 1 ||
+							#sizeof(expansion_base.get_worked_tiles()) != 1 ||
+							!#is_defined(production) ||
+							production.id != 'ScoutPatrol'
+						) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: founded base state is invalid');
+							glsmac.exit();
+							return false;
+						}
+						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_DROP_READY');
+						return false;
+					}
+				}
+				if (wait_ticks >= 200) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: colony founding timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
 		};
 
 		const get_snapshot_production_ids = (base) => {
@@ -234,6 +370,22 @@
 						return;
 					}
 					defeated_unit.health = 0.0;
+					const founding_site_coords = find_founding_site_coords();
+					if (founding_site_coords == null) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: colony founding site is missing');
+						glsmac.exit();
+						return;
+					}
+					game.event('spawn_unit', {
+						owner: client_base.get_owner(),
+						tile: game.get_tm().get_tile(
+							founding_site_coords.x,
+							founding_site_coords.y
+						),
+						type: 'ColonyPod',
+						health: 1.0,
+						morale: 2,
+					});
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});
 				}
@@ -245,7 +397,7 @@
 						return;
 					}
 					#print('RUNNING_RECONNECT_BASE_STATE_INITIAL_CLIENT');
-					#print('RUNNING_RECONNECT_DROP_READY');
+					run_initial_founding_probe();
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {

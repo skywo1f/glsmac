@@ -7,7 +7,9 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
+	const expansion_snapshot_unit_id = 4;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
+	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
@@ -23,9 +25,23 @@
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
 			}
+			if (game.get_um().has_unit(expansion_snapshot_unit_id)) {
+				return 'consumed Colony Pod was restored from the snapshot';
+			}
 			const restored_unit = game.get_um().get_unit(1);
 			if (restored_unit.get_def().id != restored_unit.def) {
 				return 'unit definition link is inconsistent';
+			}
+			const colony_pod_def = game.get_um().get_unit_def('ColonyPod');
+			if (
+				colony_pod_def.is_native ||
+				colony_pod_def.offense != 0 ||
+				colony_pod_def.defense != 1 ||
+				colony_pod_def.morale_set != 'STANDARD' ||
+				!colony_pod_def.can_found_base ||
+				colony_pod_def.can_terraform
+			) {
+				return 'Colony Pod definition metadata was not restored';
 			}
 			let base = null;
 			for (candidate of game.get_bm().get_bases()) {
@@ -96,6 +112,26 @@
 			if (conquered_base.get_owner().id != game.get_player().id) {
 				return 'conquered base owner was not restored';
 			}
+			let expansion_base = null;
+			for (candidate of game.get_bm().get_bases()) {
+				if (candidate.name == expansion_snapshot_base_name) {
+					expansion_base = candidate;
+					break;
+				}
+			}
+			if (expansion_base == null) {
+				return 'founded expansion base is missing';
+			}
+			const expansion_production = expansion_base.get_production();
+			if (
+				expansion_base.get_owner().id != game.get_player().id ||
+				#sizeof(expansion_base.get_pops()) != 1 ||
+				#sizeof(expansion_base.get_worked_tiles()) != 1 ||
+				!#is_defined(expansion_production) ||
+				expansion_production.id != 'ScoutPatrol'
+			) {
+				return 'founded expansion base state was not restored';
+			}
 			const accumulated_nutrients = base.get('accumulated_nutrients');
 			if (!#is_defined(accumulated_nutrients)) {
 				return 'accumulated nutrients are missing';
@@ -160,6 +196,7 @@
 				}
 				#print('RUNNING_RECONNECT_BASE_STATE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_CONQUERED_BASE_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_EXPANSION_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');

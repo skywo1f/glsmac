@@ -35,7 +35,7 @@ def parse_args():
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--workdir", type=Path, default=Path.cwd())
     parser.add_argument("--timeout", type=float, default=90.0)
-    parser.add_argument("--phase-timeout", type=float, default=30.0)
+    parser.add_argument("--phase-timeout", type=float, default=60.0)
     parser.add_argument("--peer-exit-timeout", type=float, default=10.0)
     parser.add_argument("--port", type=int, default=4888)
     return parser.parse_args()
@@ -125,7 +125,7 @@ def run(args):
             initial_client, initial_stdout, DROP_READY, args.phase_timeout
         ):
             raise RuntimeError(
-                "initial client did not reach running turn one (exit={})".format(
+                "initial client did not complete colony founding (exit={})".format(
                     initial_client.poll()
                 )
             )

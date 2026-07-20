@@ -287,14 +287,30 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				GT_ASSERT( rejected_negative_facility_cost, "negative facility mineral cost accepted" );
 
-				bool rejected_negative_unit_cost = false;
-				try {
+				const auto make_unit_def = [](
+					const int64_t mineral_cost,
+					const int64_t offense,
+					const int64_t defense,
+					const bool can_found_base,
+					const bool can_terraform
+				) {
 					types::Buffer unit_def;
 					unit_def.WriteString( "TEST" );
 					unit_def.WriteString( "NATIVE" );
 					unit_def.WriteString( "Test Unit" );
-					unit_def.WriteInt( -1 );
+					unit_def.WriteInt( mineral_cost );
+					unit_def.WriteBool( false );
+					unit_def.WriteInt( offense );
+					unit_def.WriteInt( defense );
+					unit_def.WriteBool( can_found_base );
+					unit_def.WriteBool( can_terraform );
 					unit_def.WriteInt( game::backend::unit::DT_STATIC );
+					return unit_def;
+				};
+
+				bool rejected_negative_unit_cost = false;
+				try {
+					auto unit_def = make_unit_def( -1, 1, 1, false, false );
 					std::unique_ptr< game::backend::unit::Def > parsed(
 						game::backend::unit::Def::Deserialize( unit_def )
 					);
@@ -303,6 +319,44 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_negative_unit_cost = true;
 				}
 				GT_ASSERT( rejected_negative_unit_cost, "negative unit mineral cost accepted" );
+
+				bool rejected_invalid_unit_strength = false;
+				try {
+					auto unit_def = make_unit_def( 10, 1, 0, false, false );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_unit_strength = true;
+				}
+				GT_ASSERT( rejected_invalid_unit_strength, "invalid unit combat strength accepted" );
+
+				bool rejected_conflicting_unit_capabilities = false;
+				try {
+					auto unit_def = make_unit_def( 10, 1, 1, true, true );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_conflicting_unit_capabilities = true;
+				}
+				GT_ASSERT( rejected_conflicting_unit_capabilities, "conflicting unit capabilities accepted" );
+
+				bool rejected_water_colony_unit = false;
+				try {
+					auto unit_def = make_unit_def( 10, 0, 1, true, false );
+					unit_def.WriteInt( game::backend::unit::MT_WATER );
+					unit_def.WriteFloat( 1.0f );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_water_colony_unit = true;
+				}
+				GT_ASSERT( rejected_water_colony_unit, "water colony unit capability accepted" );
 
 				bool rejected_invalid_resource_coordinates = false;
 				try {

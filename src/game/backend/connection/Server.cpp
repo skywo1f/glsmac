@@ -325,6 +325,9 @@ void Server::ProcessEvent( const network::Event& event ) {
 							break;
 						}
 						if ( m_on_download_request ) {
+							// Pending events have already changed the authoritative world. Flush
+							// them before taking the snapshot so they are not replayed after it.
+							FlushPendingGameEvents();
 							m_download_data[ event.cid ] = download_data_t{ // override previous request
 								0,
 								m_on_download_request()

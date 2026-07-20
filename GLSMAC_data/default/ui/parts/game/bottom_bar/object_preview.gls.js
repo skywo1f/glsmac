@@ -2,7 +2,7 @@ return {
 
 	get_morale: (type, value) => {
 		if (!#is_defined(this.moralesets[type])) {
-			this.moralesets[type] = this.um.get_moraleset('NATIVE');
+			this.moralesets[type] = this.um.get_moraleset(type);
 		}
 		if (value >= #sizeof(this.moralesets[type])) {
 			#print('Morale not found: ' + type + '/' + #to_string(value));
@@ -68,6 +68,8 @@ return {
 
 		if (object == null) {
 			this.lines = #undefined;
+			this.action_unit = null;
+			this.action_button.hide();
 			return;
 		}
 
@@ -101,15 +103,25 @@ return {
 
 				f_line(this.p.get_stats_str(object), 14, 'center');
 
-				f_line(this.get_morale('NATIVE', object.morale), 14, 'left');
+				f_line(this.get_morale(def.morale_set, object.morale), 14, 'left');
 
 				if (!object.is_immovable) {
 					f_line('Moves: ' + this.format_movement(object.movement), 14, 'left');
 				}
 
+				if (def.can_found_base) {
+					this.action_unit = object;
+					this.action_button.show();
+				} else {
+					this.action_unit = null;
+					this.action_button.hide();
+				}
+
 				break;
 			}
 			case 'Base': {
+				this.action_unit = null;
+				this.action_button.hide();
 
 				f_line(object.name, 14, 'center');
 
@@ -140,6 +152,7 @@ return {
 		this.preview = null;
 		this.last_object_class = null;
 		this.moralesets = {};
+		this.action_unit = null;
 
 		this.p = p;
 		this.um = p.game.get_um();
@@ -161,6 +174,21 @@ return {
 		});
 		this.frame = frame_outer.panel({
 			class: 'bottombar-panel-inner',
+		});
+		this.action_button = this.frame.button({
+			class: 'bottombar-menu-button',
+			align: 'bottom center',
+			bottom: 3,
+			text: 'BUILD BASE',
+		});
+		this.action_button.hide();
+		this.action_button.on('click', (e) => {
+			if (this.action_unit != null) {
+				p.game.event('found_base', {
+					unit: this.action_unit,
+				});
+			}
+			return true;
 		});
 
 		p.map.on('unit_preview', (e) => {

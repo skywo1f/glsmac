@@ -36,29 +36,31 @@ const restore_unit = (e, backup) => {
 };
 
 const get_unit_attack_power = (unit) => {
-	const is_native = true; // TODO: non-native units
-	if (is_native) {
+	const def = unit.get_def();
+	if (def.is_native) {
 		// TODO: proper logic
 		let power = #to_float(unit.morale + 1) / 7.0;
 		if (unit.is_land) {
 			power *= 3.0;
 		}
-		return power;
+		return power * unit.health;
 	}
-	// TODO: non-native
+	const morale_multiplier = 0.75 + #to_float(unit.morale) * 0.125;
+	return #to_float(def.offense) * morale_multiplier * unit.health;
 };
 
 const get_unit_defence_power = (unit) => {
-	const is_native = true; // TODO: non-native units
-	if (is_native) {
+	const def = unit.get_def();
+	if (def.is_native) {
 		// TODO: proper logic
 		let power = #to_float(unit.morale + 1) / 7.0;
 		if (unit.is_land) {
 			power *= 2.0;
 		}
-		return power;
+		return power * unit.health;
 	}
-	// TODO: non-native
+	const morale_multiplier = 0.75 + #to_float(unit.morale) * 0.125;
+	return #to_float(def.defense) * morale_multiplier * unit.health;
 };
 
 return {
@@ -110,6 +112,9 @@ return {
 		}
 
 		let attacker_def = e.data.attacker.get_def();
+		if (attacker_def.offense <= 0) {
+			return 'Noncombat units cannot attack';
+		}
 		if (attacker_def.id == 'SporeLauncher') {
 			// TODO: bombardments
 			return 'Artillery units can\'t attack directly';

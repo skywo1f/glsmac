@@ -1604,6 +1604,25 @@ void Game::Initialize(
 									}
 									break;
 								}
+								case input::K_B: {
+									auto* selected_unit = m_um->GetSelectedUnit();
+									if ( selected_unit ) {
+										m_glsmac->WithGSE(
+											[ &game, &selected_unit ]( GSE_CALLABLE ) {
+												auto* unit = game->GetUM()->GetUnit( selected_unit->GetId() );
+												if ( !unit || !unit->m_def->m_can_found_base ) {
+													return;
+												}
+												game->Event(
+													GSE_CALL, "found_base", {
+														{ "unit", unit->Wrap( GSE_CALL ) },
+													}
+												);
+											}
+										);
+									}
+									break;
+								}
 								case input::K_ENTER: {
 									if ( m_turn_status == backend::turn::TS_TURN_COMPLETE ) {
 										CompleteTurn();

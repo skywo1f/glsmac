@@ -5,6 +5,7 @@
 #include "MoraleSet.h"
 
 #include "gse/value/Object.h"
+#include "gse/value/Bool.h"
 #include "gse/value/Int.h"
 #include "gse/value/String.h"
 
@@ -17,14 +18,37 @@ Def::Def(
 	const MoraleSet* moraleset,
 	const def_type_t type,
 	const std::string& name,
-	const int64_t mineral_cost
+	const int64_t mineral_cost,
+	const bool is_native,
+	const int64_t offense,
+	const int64_t defense,
+	const bool can_found_base,
+	const bool can_terraform
 )
 	: m_id( id )
 	, m_moraleset( moraleset )
 	, m_type( type )
 	, m_name( name )
-	, m_mineral_cost( mineral_cost ) {
-	//
+	, m_mineral_cost( mineral_cost )
+	, m_is_native( is_native )
+	, m_offense( offense )
+	, m_defense( defense )
+	, m_can_found_base( can_found_base )
+	, m_can_terraform( can_terraform ) {
+	if (
+		m_id.empty() ||
+		m_name.empty() ||
+		!m_moraleset ||
+		m_mineral_cost < 0 ||
+		m_mineral_cost > MAX_MINERAL_COST ||
+		m_offense < 0 ||
+		m_offense > MAX_COMBAT_STRENGTH ||
+		m_defense <= 0 ||
+		m_defense > MAX_COMBAT_STRENGTH ||
+		( m_can_found_base && m_can_terraform )
+	) {
+		THROW( "invalid unit definition: " + m_id );
+	}
 }
 
 const types::Buffer Def::Serialize( const Def* def ) {
@@ -33,6 +57,11 @@ const types::Buffer Def::Serialize( const Def* def ) {
 	buf.WriteString( def->m_moraleset->m_id );
 	buf.WriteString( def->m_name );
 	buf.WriteInt( def->m_mineral_cost );
+	buf.WriteBool( def->m_is_native );
+	buf.WriteInt( def->m_offense );
+	buf.WriteInt( def->m_defense );
+	buf.WriteBool( def->m_can_found_base );
+	buf.WriteBool( def->m_can_terraform );
 	buf.WriteInt( def->m_type );
 	switch ( def->m_type ) {
 		case DT_STATIC: {
@@ -50,9 +79,14 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 	const auto moraleset = buf.ReadString();
 	const auto name = buf.ReadString();
 	const auto mineral_cost = buf.ReadInt();
+	const auto is_native = buf.ReadBool();
+	const auto offense = buf.ReadInt();
+	const auto defense = buf.ReadInt();
+	const auto can_found_base = buf.ReadBool();
+	const auto can_terraform = buf.ReadBool();
 	const auto serialized_type = buf.ReadInt();
-	if ( id.empty() || moraleset.empty() ) {
-		THROW( "serialized unit definition id or morale set is empty" );
+	if ( id.empty() || moraleset.empty() || name.empty() ) {
+		THROW( "serialized unit definition id, name, or morale set is empty" );
 	}
 	if ( serialized_type != DT_STATIC ) {
 		THROW( "unknown def type on read: " + std::to_string( serialized_type ) );
@@ -60,10 +94,30 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 	if ( mineral_cost < 0 || mineral_cost > MAX_MINERAL_COST ) {
 		THROW( "invalid serialized unit mineral cost" );
 	}
+	if (
+		offense < 0 ||
+		offense > MAX_COMBAT_STRENGTH ||
+		defense <= 0 ||
+		defense > MAX_COMBAT_STRENGTH ||
+		( can_found_base && can_terraform )
+	) {
+		THROW( "invalid serialized unit combat or capability values" );
+	}
 	const auto type = static_cast< def_type_t >( serialized_type );
 	switch ( type ) {
 		case DT_STATIC:
-			return StaticDef::Deserialize( buf, id, moraleset, name, mineral_cost );
+			return StaticDef::Deserialize(
+				buf,
+				id,
+				moraleset,
+				name,
+				mineral_cost,
+				is_native,
+				offense,
+				defense,
+				can_found_base,
+				can_terraform
+			);
 		default:
 			THROW( "unknown def type on read: " + std::to_string( type ) );
 	}
@@ -90,6 +144,30 @@ WRAPIMPL_BEGIN( Def )
 			{
 				"mineral_cost",
 				VALUE( gse::value::Int, , m_mineral_cost )
+			},
+			{
+				"morale_set",
+				VALUE( gse::value::String, , m_moraleset->m_id )
+			},
+			{
+				"is_native",
+				VALUE( gse::value::Bool, , m_is_native )
+			},
+			{
+				"offense",
+				VALUE( gse::value::Int, , m_offense )
+			},
+			{
+				"defense",
+				VALUE( gse::value::Int, , m_defense )
+			},
+			{
+				"can_found_base",
+				VALUE( gse::value::Bool, , m_can_found_base )
+			},
+			{
+				"can_terraform",
+				VALUE( gse::value::Bool, , m_can_terraform )
 			},
 		};
 WRAPIMPL_END_PTR()

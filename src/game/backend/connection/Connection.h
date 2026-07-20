@@ -132,6 +132,7 @@ protected:
 	void IgnoreCID( const network::cid_t cid );
 
 	virtual void SendGameEvents( const game_events_t& game_events ) = 0;
+	void FlushPendingGameEvents();
 
 private:
 	const network::connection_mode_t m_connection_mode = network::CM_NONE;

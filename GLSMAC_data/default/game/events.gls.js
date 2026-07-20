@@ -18,6 +18,7 @@ return (game) => {
 		'define_base_pop',
 		'define_base_facility',
 		'spawn_base',
+		'found_base',
 		'add_base_pop',
 		'remove_base_pop',
 		'process_base_growth',
