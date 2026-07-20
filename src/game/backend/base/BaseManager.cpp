@@ -382,6 +382,7 @@ WRAPIMPL_BEGIN( BaseManager )
 
 				N_GETVALUE( info, 2, Object );
 				N_GETPROP_OPT( std::string, name, info, "name", String, "" );
+				N_GETPROP_OPT( std::string, production_unit_id, info, "production", String, "" );
 
 				if ( arguments.size() > 3 ) {
 					// N_GET_CALLABLE( on_spawn, 3 ); not used???
@@ -394,7 +395,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					owner->GetFaction(),
 					tile,
 					name,
-					{}
+					{},
+					1,
+					production_unit_id
 				);
 
 				SpawnBase( GSE_CALL, base );

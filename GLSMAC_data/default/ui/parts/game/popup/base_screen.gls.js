@@ -143,9 +143,7 @@ return {
 			ecodamage: 0, // TODO
 		});
 
-		this.sections.facilities.set([
-			'Recycling Tanks',
-		]);
+		this.sections.facilities.set([]);
 
 		const resource_data = {
 			nutrients: {

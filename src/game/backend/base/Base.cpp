@@ -26,6 +26,8 @@
 #include "PopDef.h"
 #include "game/backend/Random.h"
 #include "game/backend/resource/ResourceManager.h"
+#include "game/backend/unit/Def.h"
+#include "game/backend/unit/UnitManager.h"
 
 namespace game {
 namespace backend {
@@ -49,7 +51,9 @@ Base::Base(
 	map::tile::Tile* tile,
 	const std::string& name,
 	const pops_t& pops,
-	const size_t next_pop_id
+	const size_t next_pop_id,
+	const std::string& production_unit_id,
+	const int64_t accumulated_minerals
 )
 	: MapObject( game->GetMap(), tile )
 	, m_game( game )
@@ -58,7 +62,18 @@ Base::Base(
 	, m_faction( faction )
 	, m_name( name )
 	, m_pops( pops )
+	, m_production_unit_id( production_unit_id )
+	, m_accumulated_minerals( accumulated_minerals )
 	, m_next_pop_id( next_pop_id ) {
+	if ( m_accumulated_minerals < 0 || m_accumulated_minerals > MAX_ACCUMULATED_MINERALS ) {
+		THROW( "invalid base accumulated mineral count" );
+	}
+	if ( !m_production_unit_id.empty() ) {
+		auto* const def = m_game->GetUM()->GetUnitDef( m_production_unit_id );
+		if ( !CanProduceUnit( def ) ) {
+			THROW( "invalid base production unit: " + m_production_unit_id );
+		}
+	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
 	}
@@ -167,6 +182,60 @@ void Base::UnworkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const t
 	TriggerUpdate();
 }
 
+unit::Def* Base::GetProductionUnit() const {
+	return m_production_unit_id.empty()
+		? nullptr
+		: m_game->GetUM()->GetUnitDef( m_production_unit_id );
+}
+
+bool Base::CanProduceUnit( const unit::Def* def ) const {
+	if ( !def || def->m_mineral_cost <= 0 ) {
+		return false;
+	}
+	switch ( def->GetMovementType() ) {
+		case unit::MT_LAND:
+			return !m_tile->is_water_tile;
+		case unit::MT_WATER:
+			return m_tile->is_water_tile;
+		case unit::MT_AIR:
+			return true;
+		case unit::MT_IMMOVABLE:
+			return false;
+	}
+	return false;
+}
+
+void Base::SetProductionUnit( GSE_CALLABLE, const std::string& def_id ) {
+	auto* const def = m_game->GetUM()->GetUnitDef( def_id );
+	if ( !def ) {
+		GSE_ERROR( gse::EC.INVALID_DEFINITION, "Unknown unit type: " + def_id );
+	}
+	if ( !CanProduceUnit( def ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Unit cannot be produced at this base: " + def_id );
+	}
+	if ( m_production_unit_id != def_id ) {
+		m_production_unit_id = def_id;
+		TriggerUpdate();
+	}
+}
+
+void Base::ClearProductionUnit() {
+	if ( !m_production_unit_id.empty() ) {
+		m_production_unit_id.clear();
+		TriggerUpdate();
+	}
+}
+
+void Base::SetAccumulatedMinerals( GSE_CALLABLE, const int64_t minerals ) {
+	if ( minerals < 0 || minerals > MAX_ACCUMULATED_MINERALS ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid accumulated mineral count: " + std::to_string( minerals ) );
+	}
+	if ( m_accumulated_minerals != minerals ) {
+		m_accumulated_minerals = minerals;
+		TriggerUpdate();
+	}
+}
+
 const types::Buffer Base::Serialize( const Base* base ) {
 	types::Buffer buf;
 	std::unordered_set< map::tile::Tile* > pop_worked_tiles = {};
@@ -210,6 +279,14 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		}
 		buf.WriteInt( ( (gse::value::Int*)accumulated_nutrients )->value );
 	}
+	if ( base->m_accumulated_minerals < 0 || base->m_accumulated_minerals > MAX_ACCUMULATED_MINERALS ) {
+		THROW( "invalid base accumulated mineral count" );
+	}
+	if ( !base->m_production_unit_id.empty() && !base->CanProduceUnit( base->GetProductionUnit() ) ) {
+		THROW( "invalid base production unit: " + base->m_production_unit_id );
+	}
+	buf.WriteString( base->m_production_unit_id );
+	buf.WriteInt( base->m_accumulated_minerals );
 	return buf;
 }
 
@@ -296,10 +373,26 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	}
 	const bool has_accumulated_nutrients = buf.ReadBool();
 	const auto accumulated_nutrients = has_accumulated_nutrients ? buf.ReadInt() : 0;
+	const auto production_unit_id = buf.ReadString();
+	const auto accumulated_minerals = buf.ReadInt< int64_t >( "base accumulated minerals" );
+	if ( accumulated_minerals < 0 || accumulated_minerals > MAX_ACCUMULATED_MINERALS ) {
+		THROW( "invalid serialized base accumulated mineral count" );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
-	auto base = std::make_unique< Base >( game, id, slot, faction, tile, name, pops, next_pop_id );
+	auto base = std::make_unique< Base >(
+		game,
+		id,
+		slot,
+		faction,
+		tile,
+		name,
+		pops,
+		next_pop_id,
+		production_unit_id,
+		accumulated_minerals
+	);
 	if ( has_accumulated_nutrients ) {
 		base->CustomSet(
 			"accumulated_nutrients",
@@ -329,6 +422,64 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	WRAPIMPL_CUSTOM_SETTERS
+	{
+		"get_production",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			auto* const def = GetProductionUnit();
+			return def
+				? def->Wrap( GSE_CALL )
+				: VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"can_produce",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( def_id, 0, String );
+			return VALUE(
+				gse::value::Bool,
+				,
+				CanProduceUnit( m_game->GetUM()->GetUnitDef( def_id ) )
+			);
+		} )
+	},
+	{
+		"set_production",
+		NATIVE_CALL( this ) {
+			m_game->CheckRW( GSE_CALL );
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( def_id, 0, String );
+			SetProductionUnit( GSE_CALL, def_id );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"clear_production",
+		NATIVE_CALL( this ) {
+			m_game->CheckRW( GSE_CALL );
+			N_EXPECT_ARGS( 0 );
+			ClearProductionUnit();
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"get_accumulated_minerals",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			return VALUE( gse::value::Int,, m_accumulated_minerals );
+		} )
+	},
+	{
+		"set_accumulated_minerals",
+		NATIVE_CALL( this ) {
+			m_game->CheckRW( GSE_CALL );
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( minerals, 0, Int );
+			SetAccumulatedMinerals( GSE_CALL, minerals );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"set_owner",
 		NATIVE_CALL( this ) {
@@ -541,6 +692,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 WRAPIMPL_DYNAMIC_SETTERS( Base )
 WRAPIMPL_DYNAMIC_ON_SET( Base )
+	TriggerUpdate();
 WRAPIMPL_DYNAMIC_END()
 
 UNWRAPIMPL_PTR( Base )

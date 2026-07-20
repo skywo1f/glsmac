@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <vector>
 #include <string>
 
@@ -27,6 +28,9 @@ class Slot;
 namespace faction {
 class Faction;
 }
+namespace unit {
+class Def;
+}
 namespace map::tile {
 class Tile;
 }
@@ -35,6 +39,8 @@ namespace base {
 
 class Base : public gse::Wrappable, public MapObject, public ResourceRelated {
 public:
+
+	static constexpr int64_t MAX_ACCUMULATED_MINERALS = 1000000000;
 
 	static const size_t GetNextId();
 	static const void SetNextId( const size_t id );
@@ -49,7 +55,9 @@ public:
 		map::tile::Tile* tile,
 		const std::string& name,
 		const pops_t& pops,
-		const size_t next_pop_id = 1
+		const size_t next_pop_id = 1,
+		const std::string& production_unit_id = "",
+		const int64_t accumulated_minerals = 0
 	);
 	virtual ~Base() = default;
 
@@ -61,12 +69,19 @@ public:
 	void ChangePopType( GSE_CALLABLE, const size_t pop_id, const std::string& def_id );
 	void WorkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile );
 	void UnworkPopTile( GSE_CALLABLE, Pop* const pop, map::tile::Tile* const tile );
+	unit::Def* GetProductionUnit() const;
+	bool CanProduceUnit( const unit::Def* def ) const;
+	void SetProductionUnit( GSE_CALLABLE, const std::string& def_id );
+	void ClearProductionUnit();
+	void SetAccumulatedMinerals( GSE_CALLABLE, const int64_t minerals );
 
 	const size_t m_id;
 	slot::Slot* m_owner;
 	faction::Faction* m_faction;
 	std::string m_name;
 	pops_t m_pops;
+	std::string m_production_unit_id;
+	int64_t m_accumulated_minerals;
 
 	static const types::Buffer Serialize( const Base* base );
 	static Base* Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game );

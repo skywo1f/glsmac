@@ -20,6 +20,8 @@ return (game) => {
 		'add_base_pop',
 		'remove_base_pop',
 		'process_base_growth',
+		'set_base_production',
+		'process_base_production',
 		'complete_turn',
 		'uncomplete_turn',
 		'advance_turn',

@@ -76,23 +76,44 @@ return {
 	},
 
 	set: (data) => {
+		const base = data.base;
+		const production = base.get_production();
+		const pending = this.p.game.get('f_base_get_pending_production')(base);
+		let candidates = [];
+		for (def of this.p.game.get_um().get_unit_defs()) {
+			if (base.can_produce(def.id)) {
+				candidates :+def;
+			}
+		}
 
-		this.parts.production.set({
-			rows: 3,
-			columns: 10,
-			filled: 8,
-			pending: 4,
+		if (#is_defined(production)) {
+			this.parts.production.set({
+				name: production.name,
+				rows: #max(#ceil(#to_float(production.mineral_cost) / 10.0), 1),
+				columns: 10,
+				filled: #min(base.get_accumulated_minerals(), production.mineral_cost),
+				pending: pending,
+			});
+		} else {
+			this.parts.production.set({
+				name: 'NOTHING',
+				rows: 1,
+				columns: 10,
+				filled: 0,
+				pending: 0,
+			});
+		}
+
+		this.parts.queue.set({
+			base: base,
+			production: production,
+			candidates: candidates,
 		});
 
-		this.parts.queue.set([
-			'Mind Worms',
-			'Recreation Commons',
-		]);
-
 		this.parts.middle_area.set({
-			name: data.base.name,
-			owner: data.base.get_owner(),
-			pops: data.base.get_pops(),
+			name: base.name,
+			owner: base.get_owner(),
+			pops: base.get_pops(),
 		});
 
 	},

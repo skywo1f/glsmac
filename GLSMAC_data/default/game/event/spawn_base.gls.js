@@ -7,11 +7,16 @@ return {
 	},
 
 	apply: (e) => {
-		let info = {};
+		const owner = e.data.owner;
+		let info = {
+			production: #is_defined(e.data.production)
+				? e.data.production
+				: (e.data.tile.is_water ? 'SeaLurk' : 'MindWorms'),
+		};
 		if (#is_defined(e.data.name)) {
 			info.name = e.data.name;
 		}
-		const base = e.game.bm.spawn_base(e.data.owner, e.data.tile, info);
+		const base = e.game.bm.spawn_base(owner, e.data.tile, info);
 
 		return {
 			base: base,

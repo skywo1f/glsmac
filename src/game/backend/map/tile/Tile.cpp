@@ -223,7 +223,9 @@ base::Pop* Tile::GetWorkingPop() const {
 	if ( !value ) {
 		return nullptr;
 	}
-	auto* const dereferenced = value->Deref();
+	auto* const dereferenced = value->type == gse::VT_OBJECT
+		? value
+		: value->Deref();
 	if (
 		dereferenced->type != gse::VT_OBJECT ||
 		( (gse::value::Object*)dereferenced )->object_class != base::Pop::WRAP_CLASS

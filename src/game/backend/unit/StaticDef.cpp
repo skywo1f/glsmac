@@ -49,11 +49,12 @@ StaticDef::StaticDef(
 	const std::string& id,
 	const MoraleSet* moraleset,
 	const std::string& name,
+	const int64_t mineral_cost,
 	const movement_type_t movement_type,
 	const movement_t movement_per_turn,
 	const Render* render
 )
-	: Def( id, moraleset, DT_STATIC, name )
+	: Def( id, moraleset, DT_STATIC, name, mineral_cost )
 	, m_movement_type( movement_type )
 	, m_movement_per_turn( movement_per_turn )
 	, m_render( render ) {}
@@ -71,6 +72,7 @@ const std::string StaticDef::ToString( const std::string& prefix ) const {
 		TS_OBJ_BEGIN( "StaticDef" ) +
 		TS_OBJ_PROP_STR( "id", m_id ) +
 		TS_OBJ_PROP_STR( "name", m_name ) +
+		TS_OBJ_PROP_NUM( "mineral_cost", m_mineral_cost ) +
 		TS_OBJ_PROP_STR( "movement_type", GetMovementTypeString( m_movement_type ) ) +
 		TS_OBJ_PROP_NUM( "movement_per_turn", m_movement_per_turn ) +
 		TS_OBJ_PROP( "render", m_render->ToString( TS_PREFIX_NEXT ) ) +
@@ -83,7 +85,13 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	Render::Serialize( buf, def->m_render );
 }
 
-StaticDef* StaticDef::Deserialize( types::Buffer& buf, const std::string& id, const std::string& moraleset_name, const std::string& name ) {
+StaticDef* StaticDef::Deserialize(
+	types::Buffer& buf,
+	const std::string& id,
+	const std::string& moraleset_name,
+	const std::string& name,
+	const int64_t mineral_cost
+) {
 	const auto serialized_movement_type = buf.ReadInt();
 	const auto movement_per_turn = buf.ReadFloat();
 	if ( serialized_movement_type < MT_IMMOVABLE || serialized_movement_type > MT_AIR ) {
@@ -101,6 +109,7 @@ StaticDef* StaticDef::Deserialize( types::Buffer& buf, const std::string& id, co
 		id,
 		moraleset,
 		name,
+		mineral_cost,
 		static_cast< movement_type_t >( serialized_movement_type ),
 		movement_per_turn,
 		render.release()

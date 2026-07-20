@@ -5,6 +5,7 @@
 
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
+	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 
@@ -29,6 +30,22 @@
 			}
 			if (base == null) {
 				return 'base is missing';
+			}
+			const expected_production_id = base.get_tile().is_water ? 'SeaLurk' : 'SporeLauncher';
+			const production = base.get_production();
+			if (!#is_defined(production)) {
+				return 'production target is missing';
+			}
+			if (production.id != expected_production_id || production.mineral_cost <= 0) {
+				return 'production target is invalid';
+			}
+			const expected_snapshot_minerals =
+				initial_mineral_stamp +
+				base.get_tile().get_resources(base.get_owner()).MINERALS;
+			if (base.get_accumulated_minerals() != expected_snapshot_minerals) {
+				return
+					'accumulated minerals are ' + #to_string(base.get_accumulated_minerals()) +
+					', expected ' + #to_string(expected_snapshot_minerals);
 			}
 			let conquered_base = null;
 			for (candidate of game.get_bm().get_bases()) {
@@ -107,13 +124,14 @@
 				#print('RUNNING_RECONNECT_BASE_STATE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_CONQUERED_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
 				exit_scheduled = true;
 				#print('RUNNING_RECONNECT_PASS_CLIENT');
-				#async(750, () => {
+				#async(3000, () => {
 					glsmac.exit();
 				});
 			}

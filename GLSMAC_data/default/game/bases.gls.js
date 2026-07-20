@@ -168,6 +168,12 @@ const pop_work_tile = (base, pop, tile) => {
 	base.work_pop_tile(pop, tile);
 };
 
+const get_pending_production = (base) => {
+	const intake = base.get_intake();
+	const consumption = base.get_consumption();
+	return #max(intake.MINERALS - consumption.MINERALS, 0);
+};
+
 const pop_unwork = (base, pop, new_type) => {
 	const tile = pop.get('worked_tile');
 	if (#is_defined(tile)) {
@@ -262,6 +268,7 @@ return (game) => {
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
+		game.set('f_base_get_pending_production', get_pending_production);
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);
 		game.set('f_base_pop_work_tile', pop_work_tile);
@@ -273,6 +280,9 @@ return (game) => {
 			if (game.is_master()) {
 				for (base of bm.get_bases()) {
 					game.event('process_base_growth', {
+						base: base,
+					});
+					game.event('process_base_production', {
 						base: base,
 					});
 				}

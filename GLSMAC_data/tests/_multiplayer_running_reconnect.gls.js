@@ -9,6 +9,7 @@
 	let game_configured = false;
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
+	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 
@@ -74,6 +75,10 @@
 				}
 			}
 			return null;
+		};
+
+		const get_snapshot_production_id = (base) => {
+			return base.get_tile().is_water ? 'SeaLurk' : 'SporeLauncher';
 		};
 
 		const get_base_state_error = (player_id) => {
@@ -164,6 +169,8 @@
 					conquered_base.set_owner(client_base.get_owner());
 					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
+					client_base.set_production(get_snapshot_production_id(client_base));
+					client_base.set_accumulated_minerals(initial_mineral_stamp);
 					const defeated_unit = game.get_um().spawn_unit({
 						def: 'MindWorms',
 						owner: client_base.get_owner(),
@@ -194,7 +201,7 @@
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {
 				exit_scheduled = true;
 				#print('RUNNING_RECONNECT_PASS_HOST');
-				#async(2000, () => {
+				#async(5000, () => {
 					glsmac.exit();
 				});
 			}

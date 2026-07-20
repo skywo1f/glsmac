@@ -355,6 +355,10 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP( name, unit_def, "name", String );
 				N_GETPROP( morale, unit_def, "morale", String );
 				N_GETPROP( unit_type, unit_def, "type", String );
+				N_GETPROP( mineral_cost, unit_def, "mineral_cost", Int );
+				if ( mineral_cost < 0 || mineral_cost > unit::Def::MAX_MINERAL_COST ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit mineral cost: " + std::to_string( mineral_cost ) );
+				}
 
 				if ( m_unit_defs.find( id ) != m_unit_defs.end() ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Unit def '" + id + "' already exists");
@@ -398,6 +402,7 @@ WRAPIMPL_BEGIN( UnitManager )
 							id,
 							moraleset,
 							name,
+							mineral_cost,
 							movement_type,
 							movement_per_turn,
 							new unit::SpriteRender(
@@ -441,6 +446,42 @@ WRAPIMPL_BEGIN( UnitManager )
 				UndefineUnit( id );
 
 				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"get_unit_def",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( id, 0, String );
+				auto* const def = GetUnitDef( id );
+				if ( !def ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Unit type '" + id + "' is not defined" );
+				}
+				return def->Wrap( GSE_CALL );
+			} )
+		},
+		{
+			"get_unit_defs",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				std::vector< unit::Def* > defs = {};
+				defs.reserve( m_unit_defs.size() );
+				for ( const auto& it : m_unit_defs ) {
+					defs.push_back( it.second );
+				}
+				std::sort(
+					defs.begin(),
+					defs.end(),
+					[]( const unit::Def* left, const unit::Def* right ) {
+						return left->m_id < right->m_id;
+					}
+				);
+				gse::value::array_elements_t result = {};
+				result.reserve( defs.size() );
+				for ( auto* const def : defs ) {
+					result.push_back( def->Wrap( GSE_CALL ) );
+				}
+				return VALUE( gse::value::Array,, result );
 			} )
 		},
 		{

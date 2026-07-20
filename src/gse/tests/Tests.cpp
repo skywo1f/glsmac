@@ -45,6 +45,7 @@
 #include "game/backend/settings/Settings.h"
 #include "game/backend/slot/Slot.h"
 #include "game/backend/resource/Resource.h"
+#include "game/backend/unit/Def.h"
 #include "types/Buffer.h"
 #include "types/Color.h"
 #include "types/mesh/Mesh.h"
@@ -265,6 +266,23 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_unknown_pop_flags = true;
 				}
 				GT_ASSERT( rejected_unknown_pop_flags, "unknown base population flags accepted" );
+
+				bool rejected_negative_unit_cost = false;
+				try {
+					types::Buffer unit_def;
+					unit_def.WriteString( "TEST" );
+					unit_def.WriteString( "NATIVE" );
+					unit_def.WriteString( "Test Unit" );
+					unit_def.WriteInt( -1 );
+					unit_def.WriteInt( game::backend::unit::DT_STATIC );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_unit_cost = true;
+				}
+				GT_ASSERT( rejected_negative_unit_cost, "negative unit mineral cost accepted" );
 
 				bool rejected_invalid_resource_coordinates = false;
 				try {

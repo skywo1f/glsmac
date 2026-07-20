@@ -13,11 +13,12 @@ const moralesets = [
 	},
 ];
 
-const native_lifeform = (id, name, movement_type, movement_per_turn, base_y) => {
+const native_lifeform = (id, name, mineral_cost, movement_type, movement_per_turn, base_y) => {
 	return {
 		id: id,
 		data: {
 			name: name,
+			mineral_cost: mineral_cost,
 			morale: 'NATIVE',
 			type: 'static',
 			movement_type: movement_type,
@@ -35,10 +36,10 @@ const native_lifeform = (id, name, movement_type, movement_per_turn, base_y) => 
 };
 
 const units = [
-	native_lifeform('FungalTower', 'Fungal Tower', 'immovable', 0, 79),
-	native_lifeform('MindWorms', 'Mind Worms', 'land', 1, 233),
-	native_lifeform('SeaLurk', 'Sea Lurk', 'water', 4, 310),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 'land', 1, 387),
+	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79),
+	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233),
+	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310),
+	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387),
 ];
 
 const result = {

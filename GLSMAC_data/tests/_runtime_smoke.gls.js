@@ -4,6 +4,7 @@
 	#include('../default/ui/ui')(glsmac);
 
 	let starting_pop_count = 0;
+	let starting_base_unit_count = 0;
 	let state_verified = false;
 	let ui_started = false;
 	let exit_scheduled = false;
@@ -61,6 +62,14 @@
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
 				starting_pop_count = #sizeof(base.get_pops());
+				starting_base_unit_count = #sizeof(base.get_tile().get_units());
+				const production = base.get_production();
+				if (!#is_defined(production) || production.mineral_cost <= 0) {
+					#print('RUNTIME_SMOKE_FAIL: starting base has no valid production');
+					glsmac.exit();
+					return;
+				}
+				base.set_accumulated_minerals(production.mineral_cost);
 				const unworked_tiles = base.get_unworked_tiles();
 				if (#sizeof(unworked_tiles) == 0) {
 					#print('RUNTIME_SMOKE_FAIL: no free tile for base lifecycle coverage');
@@ -88,12 +97,14 @@
 				if (
 					#sizeof(bases) == 0 ||
 					#sizeof(bases[0].get_pops()) <= starting_pop_count ||
-					!game.get_um().has_unit(1)
+					!game.get_um().has_unit(1) ||
+					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count
 				) {
 					#print('RUNTIME_SMOKE_FAIL: state did not survive turn advancement');
 					glsmac.exit();
 					return;
 				}
+				#print('RUNTIME_SMOKE_BASE_PRODUCTION_PASS');
 
 				let lifecycle_base = null;
 				for (base of bases) {

@@ -21,6 +21,7 @@ public:
 		const std::string& id,
 		const MoraleSet* moraleset,
 		const std::string& name,
+		const int64_t mineral_cost,
 		const movement_type_t movement_type,
 		const movement_t movement_per_turn,
 		const Render* render
@@ -44,7 +45,13 @@ private:
 	friend class Def;
 
 	static void Serialize( types::Buffer& buf, const StaticDef* def );
-	static StaticDef* Deserialize( types::Buffer& buf, const std::string& id, const std::string& moraleset_name, const std::string& name );
+	static StaticDef* Deserialize(
+		types::Buffer& buf,
+		const std::string& id,
+		const std::string& moraleset_name,
+		const std::string& name,
+		const int64_t mineral_cost
+	);
 
 };
 
