@@ -9,15 +9,20 @@
 	let queued_unit_id = #undefined;
 	let lifecycle_verified = false;
 	let expansion_verified = false;
+	let terraforming_verified = false;
+	let turn_three_advance_requested = false;
+	let former_id = 0;
+	let terraform_site = null;
+	let terraform_site_resources = null;
 	let ui_started = false;
 	let exit_scheduled = false;
 	const lifecycle_base_name = 'Runtime Smoke Base';
 	const expansion_base_name = 'Runtime Expansion Base';
 
 	const finish_if_ready = () => {
-		if (lifecycle_verified && expansion_verified && ui_started && !exit_scheduled) {
+		if (lifecycle_verified && expansion_verified && terraforming_verified && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RUNTIME_SMOKE_PASS: reached turn 3 with production, lifecycle, and expansion state intact');
+			#print('RUNTIME_SMOKE_PASS: reached turn 5 with production, lifecycle, expansion, and terraforming state intact');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -62,6 +67,13 @@
 				}
 			}
 			return result;
+		};
+
+		const advance_from_turn_three_if_ready = () => {
+			if (lifecycle_verified && expansion_verified && !turn_three_advance_requested) {
+				turn_three_advance_requested = true;
+				game.event('complete_turn', {});
+			}
 		};
 
 		game.register_event('runtime_smoke_replace_base', {
@@ -138,6 +150,63 @@
 					glsmac.exit();
 					return;
 				}
+				const lifecycle_tile = unworked_tiles[0];
+				for (candidate of unworked_tiles) {
+					if (
+						candidate != lifecycle_tile &&
+						candidate.is_land &&
+						!candidate.features.xenofungus &&
+						candidate.get_base() == null &&
+						#sizeof(candidate.get_units()) == 0
+					) {
+						terraform_site = candidate;
+						break;
+					}
+				}
+				if (terraform_site == null) {
+					#print('RUNTIME_SMOKE_FAIL: no legal Former test tile is available');
+					glsmac.exit();
+					return;
+				}
+				terraform_site_resources = terraform_site.get_resources();
+				const former = um.spawn_unit({
+					def: 'Former',
+					owner: game.get_player(),
+					tile: terraform_site,
+					morale: 2,
+					health: 1.0,
+				});
+				const former_def = former.get_def();
+				if (
+					former_def.is_native ||
+					former_def.offense != 0 ||
+					former_def.defense != 1 ||
+					former_def.morale_set != 'STANDARD' ||
+					former_def.can_found_base ||
+					!former_def.can_terraform
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Former definition metadata is invalid');
+					glsmac.exit();
+					return;
+				}
+				let unsupported_order_rejected = false;
+				try {
+					former.set_terraforming_order('road', 1);
+				} catch {
+					: (e) => {
+						unsupported_order_rejected = true;
+					}
+				}
+				if (
+					!unsupported_order_rejected ||
+					former.terraforming != 'none' ||
+					former.terraforming_turns_remaining != 0
+				) {
+					#print('RUNTIME_SMOKE_FAIL: unsupported native terraforming order was accepted');
+					glsmac.exit();
+					return;
+				}
+				former_id = former.id;
 
 				game.event('unit_skip_turn', {
 					unit: smoke_unit,
@@ -148,11 +217,15 @@
 				});
 				game.event('spawn_base', {
 					owner: game.get_player(),
-					tile: unworked_tiles[0],
+					tile: lifecycle_tile,
 					name: lifecycle_base_name,
 				});
+				game.event('terraform_tile', {
+					unit: former,
+					type: 'farm',
+				});
 				game.event('complete_turn', {});
-				#print('RUNTIME_SMOKE: queued facility, unit, base lifecycle, and turn events');
+				#print('RUNTIME_SMOKE: queued facility, unit, base lifecycle, terraforming, and turn events');
 			}
 			else if (turn_id == 2) {
 				const bases = game.get_bm().get_bases();
@@ -181,6 +254,18 @@
 					glsmac.exit();
 					return;
 				}
+				const former = game.get_um().get_unit(former_id);
+				if (
+					former.terraforming != 'farm' ||
+					former.terraforming_turns_remaining != 3 ||
+					former.movement != 0.0 ||
+					terraform_site.terraforming.farm
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Former order did not advance into turn 2');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_TERRAFORM_ORDER_PASS');
 				#print('RUNTIME_SMOKE_FACILITY_PRODUCTION_PASS');
 				base.set_accumulated_minerals(queue[0].mineral_cost);
 				game.event('complete_turn', {});
@@ -243,6 +328,7 @@
 						if (base.name == lifecycle_base_name && base.id != old_base_id) {
 							#print('RUNTIME_SMOKE_BASE_LIFECYCLE_PASS');
 							lifecycle_verified = true;
+							advance_from_turn_three_if_ready();
 							finish_if_ready();
 							return false;
 						}
@@ -304,6 +390,7 @@
 								}
 								#print('RUNTIME_SMOKE_BASE_FOUNDING_PASS');
 								expansion_verified = true;
+								advance_from_turn_three_if_ready();
 								finish_if_ready();
 								return false;
 							}
@@ -316,6 +403,39 @@
 					}
 					return true;
 				});
+			}
+			else if (turn_id == 4) {
+				const former = game.get_um().get_unit(former_id);
+				if (
+					former.terraforming != 'farm' ||
+					former.terraforming_turns_remaining != 1 ||
+					terraform_site.terraforming.farm
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Former order did not advance into turn 4');
+					glsmac.exit();
+					return;
+				}
+				game.event('complete_turn', {});
+			}
+			else if (turn_id == 5) {
+				const former = game.get_um().get_unit(former_id);
+				const updated_resources = terraform_site.get_resources();
+				if (
+					former.terraforming != 'none' ||
+					former.terraforming_turns_remaining != 0 ||
+					former.movement != former.get_def().movement_per_turn ||
+					!terraform_site.terraforming.farm ||
+					updated_resources.NUTRIENTS != terraform_site_resources.NUTRIENTS + 1 ||
+					updated_resources.MINERALS != terraform_site_resources.MINERALS ||
+					updated_resources.ENERGY != terraform_site_resources.ENERGY
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Farm completion or resource yields are invalid');
+					glsmac.exit();
+					return;
+				}
+				terraforming_verified = true;
+				#print('RUNTIME_SMOKE_TERRAFORMING_PASS');
+				finish_if_ready();
 			}
 		});
 	});

@@ -627,6 +627,68 @@ const size_t Map::GetHeight() const {
 	return m_tiles->GetHeight();
 }
 
+void Map::RefreshTile( tile::Tile* tile ) {
+	ASSERT( tile, "cannot refresh a null tile" );
+	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
+	ASSERT( GetTile( tile->coord.x, tile->coord.y ) == tile, "tile does not belong to map" );
+	ASSERT( !tile->is_water_tile, "live sea tile refresh is not implemented" );
+
+	const auto random_state = GetRandom()->GetState();
+	try {
+		m_current_tile = tile;
+		m_current_ts = GetTileState( tile );
+		module::LandSurface( this ).GenerateTile( m_current_tile, m_current_ts, m_map_state );
+		module::Sprites( this ).GenerateTile( m_current_tile, m_current_ts, m_map_state );
+	}
+	catch ( ... ) {
+		m_current_tile = nullptr;
+		m_current_ts = nullptr;
+		GetRandom()->SetState( random_state );
+		throw;
+	}
+	m_current_tile = nullptr;
+	m_current_ts = nullptr;
+	GetRandom()->SetState( random_state );
+
+	const auto texture_position = GetTextureAtlasPosition( tile->coord.x, tile->coord.y, tile::LAYER_LAND );
+	const auto& texture_dimensions = s_consts.tc.texture_pcx.dimensions;
+	types::texture::Texture texture_patch(
+		"TerrainTilePatch",
+		texture_dimensions.x,
+		texture_dimensions.y
+	);
+	texture_patch.AddFrom(
+		m_textures.terrain,
+		types::texture::AM_DEFAULT,
+		texture_position.x,
+		texture_position.y,
+		texture_position.x + texture_dimensions.x - 1,
+		texture_position.y + texture_dimensions.y - 1
+	);
+
+	auto fr = FrontendRequest( FrontendRequest::FR_UPDATE_TILES );
+	NEW( fr.data.update_tiles.tile_updates, FrontendRequest::tile_updates_t, {
+		{ tile, GetTileState( tile ) },
+	} );
+	NEW( fr.data.update_tiles.sprite_actors, FrontendRequest::tile_sprite_actors_t, m_sprite_actors_to_add );
+	NEW( fr.data.update_tiles.sprite_removals, FrontendRequest::tile_sprite_removals_t, m_sprite_instances_to_remove );
+	NEW( fr.data.update_tiles.sprite_additions, FrontendRequest::tile_sprite_additions_t, m_sprite_instances_to_add );
+	NEW(
+		fr.data.update_tiles.serialized_terrain_texture_patch,
+		std::string,
+		texture_patch.Serialize().ToString()
+	);
+	fr.data.update_tiles.terrain_texture_x = texture_position.x;
+	fr.data.update_tiles.terrain_texture_y = texture_position.y;
+	fr.data.update_tiles.terrain_texture_width = texture_dimensions.x;
+	fr.data.update_tiles.terrain_texture_height = texture_dimensions.y;
+	m_game->AddFrontendRequest( fr );
+
+	m_sprite_actors_to_add.clear();
+	m_sprite_instances_to_remove.clear();
+	m_sprite_instances_to_add.clear();
+}
+
 tile::Tiles* Map::GetTilesPtr() const {
 	ASSERT( m_tiles, "tiles not set" );
 	return m_tiles;
@@ -706,6 +768,10 @@ const size_t Map::AddTerrainSpriteActorInstance( const std::string& key, const t
 void Map::RemoveTerrainSpriteActorInstance( const std::string& key, const size_t instance_id ) {
 	ASSERT( m_sprite_actors.find( key ) != m_sprite_actors.end(), "actor not found" );
 	ASSERT( m_sprite_instances_to_remove.find( instance_id ) == m_sprite_instances_to_remove.end(), "instance already pending removal" );
+	const auto& instance_it = m_sprite_instances.find( instance_id );
+	ASSERT( instance_it != m_sprite_instances.end(), "instance not found" );
+	ASSERT( instance_it->second.first == key, "instance actor mismatch" );
+	m_sprite_instances.erase( instance_it );
 	m_sprite_instances_to_remove.insert(
 		{
 			instance_id,
@@ -892,6 +958,9 @@ const Map::error_code_t Map::Initialize( MT_CANCELABLE ) {
 	MT_RETIFV( EC_ABORTED );
 
 	m_map_state->first_run = false;
+	m_sprite_actors_to_add.clear();
+	m_sprite_instances_to_remove.clear();
+	m_sprite_instances_to_add.clear();
 
 	m_current_tile = nullptr;
 	m_current_ts = nullptr;

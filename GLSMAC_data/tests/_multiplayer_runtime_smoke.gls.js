@@ -19,6 +19,7 @@
 	let client_immediate_combat_probe_complete = false;
 	let client_base_capture_probe_complete = false;
 	let client_base_founding_probe_complete = false;
+	let client_terraform_probe_complete = false;
 	let client_movement_unit_id = 0;
 	let client_movement_target_x = 0;
 	let client_movement_target_y = 0;
@@ -27,6 +28,8 @@
 	let combat_defender_id = 0;
 	let combat_defender_spawn_requested = false;
 	let colony_pod_spawn_requested = false;
+	let former_spawn_requested = false;
+	let terraform_site_coords = null;
 	const combat_base_name = 'Multiplayer Capture Probe';
 	const expansion_base_name = 'Multiplayer Expansion Probe';
 
@@ -49,10 +52,11 @@
 				game.event('game_settings', {
 					changes: [
 						['planet_size', '20x10'],
+						['native_lifeforms', 0.0],
 					],
 				});
 			}
-			if (map.size_x != 20 || map.size_y != 10) {
+			if (map.size_x != 20 || map.size_y != 10 || map.native_lifeforms != 0.0) {
 				return true;
 			}
 
@@ -130,6 +134,14 @@
 						continue;
 					}
 					if (
+						terraform_site_coords == null &&
+						!tile.features.monolith &&
+						!tile.features.xenofungus
+					) {
+						terraform_site_coords = {x: x, y: y};
+						continue;
+					}
+					if (
 						reserved_combat_tile != null &&
 						(tile == reserved_combat_tile || tile.is_adjactent_to(reserved_combat_tile))
 					) {
@@ -177,6 +189,106 @@
 				}
 			}
 			return result_id == 0 ? null : game.get_um().get_unit(result_id);
+		};
+
+		const find_client_former = () => {
+			const tm = game.get_tm();
+			let result_id = 0;
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = 0; x < tm.get_map_width(); x++) {
+					if (x % 2 != y % 2) {
+						continue;
+					}
+					for (unit of tm.get_tile(x, y).get_units()) {
+						if (unit.owner == get_client_player_id() && unit.def == 'Former') {
+							result_id = unit.id;
+							break;
+						}
+					}
+					if (result_id != 0) {
+						break;
+					}
+				}
+				if (result_id != 0) {
+					break;
+				}
+			}
+			return result_id == 0 ? null : game.get_um().get_unit(result_id);
+		};
+
+		const spawn_terraform_probe = () => {
+			if (former_spawn_requested) {
+				return true;
+			}
+			if (terraform_site_coords == null) {
+				return false;
+			}
+			game.event('spawn_unit', {
+				owner: game.get_player(get_client_player_id()),
+				tile: game.get_tm().get_tile(terraform_site_coords.x, terraform_site_coords.y),
+				type: 'Former',
+				health: 1.0,
+				morale: 2,
+			});
+			former_spawn_requested = true;
+			return true;
+		};
+
+		const run_client_terraform_probe = () => {
+			let order_requested = false;
+			let former_id = 0;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (!order_requested) {
+					const former = find_client_former();
+					if (former != null) {
+						const def = former.get_def();
+						if (
+							def.is_native ||
+							def.offense != 0 ||
+							def.defense != 1 ||
+							def.morale_set != 'STANDARD' ||
+							def.can_found_base ||
+							!def.can_terraform
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: Former definition is invalid');
+							glsmac.exit();
+							return false;
+						}
+						former_id = former.id;
+						order_requested = true;
+						game.event('terraform_tile', {
+							unit: former,
+							type: 'farm',
+						});
+					}
+				}
+				else if (game.get_um().has_unit(former_id)) {
+					const former = game.get_um().get_unit(former_id);
+					if (former.terraforming == 'farm') {
+						if (
+							former.terraforming_turns_remaining != 4 ||
+							former.movement != 0.0 ||
+							former.get_tile().terraforming.farm
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: accepted Former order is invalid');
+							glsmac.exit();
+							return false;
+						}
+						client_terraform_probe_complete = true;
+						#print('MULTIPLAYER_SMOKE_TERRAFORM_ORDER_PASS_CLIENT');
+						return false;
+					}
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: terraforming order timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+			return true;
 		};
 
 		const spawn_colony_probe = () => {
@@ -735,9 +847,15 @@
 						glsmac.exit();
 						return;
 					}
+					if (!spawn_terraform_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: Former probe could not be spawned');
+						glsmac.exit();
+						return;
+					}
 					game.event('complete_turn', {});
 				}
 				else {
+					run_client_terraform_probe();
 					game.event('multiplayer_smoke_accept_once', {});
 					game.event('multiplayer_smoke_reject_and_rollback', {});
 					let wait_ticks = 0;
@@ -770,6 +888,7 @@
 				const client_base = find_base_for_player(client_player_id);
 				const captured_base = find_base_by_name(combat_base_name);
 				const expansion_base = find_base_by_name(expansion_base_name);
+				const client_former = find_client_former();
 				let client_unit = null;
 				if (game.get_um().has_unit(client_movement_unit_id)) {
 					client_unit = game.get_um().get_unit(client_movement_unit_id);
@@ -813,6 +932,7 @@
 					(!game.is_master() && !client_combat_probe_complete) ||
 					(!game.is_master() && !client_base_capture_probe_complete) ||
 					(!game.is_master() && !client_base_founding_probe_complete) ||
+					(!game.is_master() && !client_terraform_probe_complete) ||
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||
@@ -822,7 +942,12 @@
 					client_unit_invalid ||
 					combat_defender_invalid ||
 					expansion_base_invalid ||
-					find_client_colony_pod() != null
+					find_client_colony_pod() != null ||
+					client_former == null ||
+					client_former.terraforming != 'farm' ||
+					client_former.terraforming_turns_remaining != 3 ||
+					client_former.movement != 0.0 ||
+					client_former.get_tile().terraforming.farm
 				) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +
@@ -832,6 +957,7 @@
 					glsmac.exit();
 					return;
 				}
+				#print('MULTIPLAYER_SMOKE_TERRAFORM_SYNC_PASS_' + role);
 				exit_scheduled = true;
 				#print('MULTIPLAYER_SMOKE_PASS_' + role + ': reached synchronized turn 2 with two players');
 				#async(game.is_master() ? 2500 : 1000, () => {

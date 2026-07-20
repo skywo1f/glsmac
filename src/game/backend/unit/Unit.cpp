@@ -14,14 +14,41 @@
 #include "game/backend/slot/Slot.h"
 #include "game/backend/slot/Slots.h"
 #include "game/backend/map/Map.h"
+#include "game/backend/map/tile/Tile.h"
 #include "MoraleSet.h"
 #include "StaticDef.h"
 #include "UnitManager.h"
 #include "gse/ExecutionPointer.h"
+#include "util/String.h"
 
 namespace game {
 namespace backend {
 namespace unit {
+
+static const bool IsValidTerraformingOrder(
+	const Def* const def,
+	const map::tile::Tile* const tile,
+	const map::tile::terraforming_t terraforming,
+	const uint16_t turns_remaining
+) {
+	const bool is_supported_order =
+		terraforming == map::tile::TERRAFORMING_FARM ||
+		terraforming == map::tile::TERRAFORMING_MINE ||
+		terraforming == map::tile::TERRAFORMING_SOLAR;
+	return
+		(
+			terraforming == map::tile::TERRAFORMING_NONE &&
+			turns_remaining == 0
+		) ||
+		(
+			is_supported_order &&
+			turns_remaining > 0 &&
+			turns_remaining <= Unit::MAX_TERRAFORMING_TURNS &&
+			def->m_can_terraform &&
+			tile &&
+			!tile->is_water_tile
+		);
+}
 
 static size_t next_id = 1;
 const size_t Unit::GetNextId() {
@@ -41,7 +68,9 @@ Unit::Unit(
 	const movement_t movement,
 	const morale_t morale,
 	const health_t health,
-	const bool moved_this_turn
+	const bool moved_this_turn,
+	const map::tile::terraforming_t terraforming,
+	const uint16_t terraforming_turns_remaining
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -51,7 +80,12 @@ Unit::Unit(
 	, m_movement( movement )
 	, m_morale( morale )
 	, m_health( health )
-	, m_moved_this_turn( moved_this_turn ) {
+	, m_moved_this_turn( moved_this_turn )
+	, m_terraforming( terraforming )
+	, m_terraforming_turns_remaining( terraforming_turns_remaining ) {
+	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
+		THROW( "invalid unit terraforming order" );
+	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
 	}
@@ -83,6 +117,22 @@ void Unit::SetTile( GSE_CALLABLE, map::tile::Tile* tile ) {
 	m_tile = tile;
 }
 
+void Unit::SetTerraformingOrder(
+	GSE_CALLABLE,
+	const map::tile::terraforming_t terraforming,
+	const uint16_t turns_remaining
+) {
+	m_um->m_game->CheckRW( GSE_CALL );
+	if ( !IsValidTerraformingOrder( m_def, m_tile, terraforming, turns_remaining ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit terraforming order" );
+	}
+	if ( m_terraforming != terraforming || m_terraforming_turns_remaining != turns_remaining ) {
+		m_terraforming = terraforming;
+		m_terraforming_turns_remaining = turns_remaining;
+		m_um->RefreshUnit( GSE_CALL, this );
+	}
+}
+
 const types::Buffer Unit::Serialize( const Unit* unit ) {
 	types::Buffer buf;
 	buf.WriteInt( unit->m_id );
@@ -94,6 +144,8 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_morale );
 	buf.WriteFloat( unit->m_health );
 	buf.WriteBool( unit->m_moved_this_turn );
+	buf.WriteInt( unit->m_terraforming );
+	buf.WriteInt( unit->m_terraforming_turns_remaining );
 	return buf;
 }
 
@@ -135,6 +187,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto morale = buf.ReadInt< morale_t >( "unit morale" );
 	const auto health = buf.ReadFloat();
 	const auto moved_this_turn = buf.ReadBool();
+	const auto terraforming = buf.ReadInt< map::tile::terraforming_t >( "unit terraforming order" );
+	const auto terraforming_turns_remaining = buf.ReadInt< uint16_t >( "unit terraforming turns remaining" );
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -151,7 +205,23 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	if ( !std::isfinite( health ) || health <= 0.0f || health > StaticDef::HEALTH_MAX ) {
 		THROW( "invalid serialized unit health" );
 	}
-	return new Unit( GSE_CALL, um, id, def, slot, tile, movement, morale, health, moved_this_turn );
+	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
+		THROW( "invalid serialized unit terraforming order" );
+	}
+	return new Unit(
+		GSE_CALL,
+		um,
+		id,
+		def,
+		slot,
+		tile,
+		movement,
+		morale,
+		health,
+		moved_this_turn,
+		terraforming,
+		terraforming_turns_remaining
+	);
 }
 
 WRAPIMPL_SERIALIZE( Unit )
@@ -179,6 +249,8 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_PTR( "morale", m_morale )
 	WRAPIMPL_GET_PTR( "health", m_health )
 	WRAPIMPL_GET_PTR( "moved_this_turn", m_moved_this_turn )
+	WRAPIMPL_GET_CUSTOM( "terraforming", String, map::tile::Tile::GetTerraformingString( m_terraforming ) )
+	WRAPIMPL_GET_CUSTOM( "terraforming_turns_remaining", Int, m_terraforming_turns_remaining )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
 	WRAPIMPL_GET_CUSTOM( "is_water", Bool, m_def->GetMovementType() == MT_WATER )
@@ -206,6 +278,24 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 				m_um->Unpersist( on_complete );
 				delete errmsg;
 			}
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"set_terraforming_order",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 2 );
+			N_GETVALUE( terraforming_name, 0, String );
+			N_GETVALUE( turns_remaining, 1, Int );
+			const auto terraforming = map::tile::Tile::GetTerraformingFromString( terraforming_name );
+			if (
+				( terraforming == map::tile::TERRAFORMING_NONE && util::String::GetLowerCase( terraforming_name ) != "none" ) ||
+				turns_remaining < 0 ||
+				turns_remaining > MAX_TERRAFORMING_TURNS
+			) {
+				GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit terraforming order" );
+			}
+			SetTerraformingOrder( GSE_CALL, terraforming, static_cast< uint16_t >( turns_remaining ) );
 			return VALUE( gse::value::Undefined );
 		} )
 	},

@@ -12,6 +12,7 @@
 	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
+	const former_snapshot_unit_id = 5;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 
@@ -28,10 +29,11 @@
 				game.event('game_settings', {
 					changes: [
 						['planet_size', '20x10'],
+						['native_lifeforms', 0.0],
 					],
 				});
 			}
-			if (map.size_x != 20 || map.size_y != 10) {
+			if (map.size_x != 20 || map.size_y != 10 || map.native_lifeforms != 0.0) {
 				return true;
 			}
 
@@ -59,6 +61,7 @@
 		const game = e.game;
 		const role = game.is_master() ? 'HOST' : 'CLIENT';
 		let handled_turns = {};
+		let terraform_site_coords = null;
 
 		const find_base_for_player = (player_id) => {
 			for (base of game.get_bm().get_bases()) {
@@ -105,6 +108,14 @@
 					) {
 						continue;
 					}
+					if (
+						terraform_site_coords == null &&
+						!tile.features.monolith &&
+						!tile.features.xenofungus
+					) {
+						terraform_site_coords = {x: x, y: y};
+						continue;
+					}
 					let is_adjacent_to_base = false;
 					for (nearby of tile.get_surrounding_tiles()) {
 						if (nearby.get_base() != null) {
@@ -149,12 +160,75 @@
 			return result_id == 0 ? null : game.get_um().get_unit(result_id);
 		};
 
+		const get_terraform_state_error = (owner_id, turns_remaining, moved_this_turn) => {
+			if (!game.get_um().has_unit(former_snapshot_unit_id)) {
+				return 'Former is missing';
+			}
+			const former = game.get_um().get_unit(former_snapshot_unit_id);
+			const def = former.get_def();
+			if (
+				def.id != 'Former' ||
+				def.is_native ||
+				def.offense != 0 ||
+				def.defense != 1 ||
+				def.morale_set != 'STANDARD' ||
+				def.can_found_base ||
+				!def.can_terraform
+			) {
+				return 'Former definition metadata is invalid';
+			}
+			const tile = former.get_tile();
+			if (
+				former.owner != owner_id ||
+				!tile.is_land ||
+				tile.get_base() != null ||
+				tile.features.monolith ||
+				tile.features.xenofungus ||
+				tile.terraforming.farm
+			) {
+				return 'Former owner or tile state is invalid';
+			}
+			if (
+				former.terraforming != 'farm' ||
+				former.terraforming_turns_remaining != turns_remaining ||
+				former.movement != 0.0 ||
+				former.moved_this_turn != moved_this_turn
+			) {
+				return 'Former order state is invalid';
+			}
+			return #undefined;
+		};
+
 		const run_initial_founding_probe = () => {
 			let founding_requested = false;
+			let terraform_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
 				wait_ticks++;
+				if (!terraform_requested && game.get_um().has_unit(former_snapshot_unit_id)) {
+					const former = game.get_um().get_unit(former_snapshot_unit_id);
+					const def = former.get_def();
+					if (
+						former.owner != game.get_player().id ||
+						def.id != 'Former' ||
+						def.is_native ||
+						def.offense != 0 ||
+						def.defense != 1 ||
+						def.morale_set != 'STANDARD' ||
+						def.can_found_base ||
+						!def.can_terraform
+					) {
+						#print('RUNNING_RECONNECT_FAIL_CLIENT: Former definition is invalid');
+						glsmac.exit();
+						return false;
+					}
+					terraform_requested = true;
+					game.event('terraform_tile', {
+						unit: former,
+						type: 'farm',
+					});
+				}
 				if (!founding_requested) {
 					const colony_pod = find_local_colony_pod();
 					if (colony_pod != null) {
@@ -183,9 +257,12 @@
 						});
 					}
 				}
-				else {
+				if (founding_requested && terraform_requested) {
 					const expansion_base = find_base_by_name(expansion_snapshot_base_name);
-					if (expansion_base != null) {
+					const former = game.get_um().has_unit(former_snapshot_unit_id)
+						? game.get_um().get_unit(former_snapshot_unit_id)
+						: null;
+					if (expansion_base != null && former != null && former.terraforming == 'farm') {
 						const production = expansion_base.get_production();
 						if (
 							game.get_um().has_unit(colony_pod_id) ||
@@ -199,7 +276,18 @@
 							glsmac.exit();
 							return false;
 						}
+						const terraform_state_error = get_terraform_state_error(
+							game.get_player().id,
+							4,
+							true
+						);
+						if (#is_defined(terraform_state_error)) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + terraform_state_error);
+							glsmac.exit();
+							return false;
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;
 					}
@@ -386,6 +474,21 @@
 						health: 1.0,
 						morale: 2,
 					});
+					if (terraform_site_coords == null) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: terraforming site is missing');
+						glsmac.exit();
+						return;
+					}
+					game.event('spawn_unit', {
+						owner: client_base.get_owner(),
+						tile: game.get_tm().get_tile(
+							terraform_site_coords.x,
+							terraform_site_coords.y
+						),
+						type: 'Former',
+						health: 1.0,
+						morale: 2,
+					});
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});
 				}
@@ -401,7 +504,28 @@
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {
+				const terraform_state_error = get_terraform_state_error(
+					get_remote_player_id(),
+					3,
+					false
+				);
+				if (#is_defined(terraform_state_error)) {
+					#print('RUNNING_RECONNECT_FAIL_HOST: ' + terraform_state_error);
+					glsmac.exit();
+					return;
+				}
+				const former_tile = game.get_um().get_unit(former_snapshot_unit_id).get_tile();
+				if (
+					terraform_site_coords == null ||
+					former_tile.x != terraform_site_coords.x ||
+					former_tile.y != terraform_site_coords.y
+				) {
+					#print('RUNNING_RECONNECT_FAIL_HOST: Former tile changed after reconnect');
+					glsmac.exit();
+					return;
+				}
 				exit_scheduled = true;
+				#print('RUNNING_RECONNECT_TERRAFORM_ADVANCED_HOST');
 				#print('RUNNING_RECONNECT_PASS_HOST');
 				#async(5000, () => {
 					glsmac.exit();

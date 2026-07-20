@@ -433,6 +433,7 @@ private:
 	void ProcessEvents();
 
 private:
+	friend class map::Map;
 	friend class map::tile::TileManager;
 	friend class resource::ResourceManager;
 	friend class unit::UnitManager;

@@ -119,6 +119,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 
 	const size_t GetWidth() const;
 	const size_t GetHeight() const;
+	void RefreshTile( tile::Tile* tile );
 
 	// be careful using this
 	tile::Tiles* GetTilesPtr() const;

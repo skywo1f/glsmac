@@ -108,6 +108,7 @@ let movement = 0.75;
 const unit = {
 	owner: 1,
 	movement: movement,
+	terraforming: 'none',
 	get_tile: () => {
 		return {
 			is_locked: () => {

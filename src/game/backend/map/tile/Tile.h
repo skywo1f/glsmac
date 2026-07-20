@@ -108,6 +108,9 @@ public:
 	void Deserialize( types::Buffer data );
 
 	const std::string ToString() const;
+	static terraforming_t GetTerraformingFromString( const std::string& name );
+	static const std::string& GetTerraformingString( const terraforming_t value );
+	void SetTerraforming( GSE_CALLABLE, const terraforming_t value );
 
 	WRAPDEFS_PTR( Tile );
 
@@ -132,6 +135,7 @@ private:
 
 	gse::Value* const GetFeatures( GSE_CALLABLE ) const;
 	gse::Value* const GetBonuses( GSE_CALLABLE ) const;
+	gse::Value* const GetTerraformings( GSE_CALLABLE ) const;
 
 };
 

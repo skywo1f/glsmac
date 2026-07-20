@@ -34,6 +34,12 @@ const result = {
 				} else {
 					result.NUTRIENTS = 1;
 				}
+				if (e.tile.terraforming.farm) {
+					result.NUTRIENTS = result.NUTRIENTS + 1;
+				}
+				if (e.tile.is_land && e.tile.terraforming.mine) {
+					result.NUTRIENTS = #max(result.NUTRIENTS - 1, 0);
+				}
 				if (e.tile.bonuses.nutrient) {
 					result.NUTRIENTS = result.NUTRIENTS + 2;
 				}
@@ -47,8 +53,9 @@ const result = {
 					if (e.tile.rockiness > 1) {
 						result.MINERALS = 1;
 					}
-				} else {
-
+				}
+				if (e.tile.terraforming.mine) {
+					result.MINERALS = result.MINERALS + 1;
 				}
 				if (e.tile.bonuses.minerals) {
 					result.MINERALS = result.MINERALS + 2;
@@ -60,12 +67,18 @@ const result = {
 			// energy
 			if (!e.tile.features.xenofungus) {
 				if (e.tile.is_land) {
-					//result.ENERGY = e.tile.elevation / 1000; // only with solar collector
 					if (e.tile.features.river) {
 						result.ENERGY = result.ENERGY + 1; // TODO: fix += with properties
 					}
 				} else {
 					result.ENERGY = 1;
+				}
+				if (e.tile.terraforming.solar) {
+					if (e.tile.is_land) {
+						result.ENERGY = result.ENERGY + #max(#floor(#to_float(e.tile.elevation) / 1000.0), 0) + 1;
+					} else {
+						result.ENERGY = result.ENERGY + 2;
+					}
 				}
 				if (e.tile.bonuses.energy) {
 					result.ENERGY = result.ENERGY + 2;

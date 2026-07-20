@@ -42,6 +42,19 @@ const std::unordered_map< direction_t, std::string > Tile::s_direction_str = {
 #undef X
 };
 
+static const std::unordered_map< std::string, terraforming_t > s_terraforming_by_name = {
+#define X_TERRAFORMING( _x, _i ) { util::String::GetLowerCase( #_x ), TERRAFORMING_ ## _x },
+	X_TERRAFORMINGS
+#undef X_TERRAFORMING
+};
+
+static const std::unordered_map< terraforming_t, std::string > s_terraforming_names = {
+	{ TERRAFORMING_NONE, "none" },
+#define X_TERRAFORMING( _x, _i ) { TERRAFORMING_ ## _x, util::String::GetLowerCase( #_x ) },
+	X_TERRAFORMINGS
+#undef X_TERRAFORMING
+};
+
 const std::string& Tile::GetDirectionString( const direction_t direction ) {
 	const auto& s = s_direction_str.find( direction );
 	ASSERT( s != s_direction_str.end(), "unknown direction: " + std::to_string( direction ) );
@@ -214,6 +227,50 @@ const std::string Tile::ToString() const {
 	return "@[ " + std::to_string( coord.x ) + " " + std::to_string( coord.y ) + " ]";
 }
 
+terraforming_t Tile::GetTerraformingFromString( const std::string& name ) {
+	if ( util::String::GetLowerCase( name ) == "none" ) {
+		return TERRAFORMING_NONE;
+	}
+	const auto& it = s_terraforming_by_name.find( util::String::GetLowerCase( name ) );
+	return it == s_terraforming_by_name.end()
+		? TERRAFORMING_NONE
+		: it->second;
+}
+
+const std::string& Tile::GetTerraformingString( const terraforming_t value ) {
+	const auto& it = s_terraforming_names.find( value );
+	if ( it == s_terraforming_names.end() ) {
+		THROW( "unknown single terraforming value: " + std::to_string( value ) );
+	}
+	return it->second;
+}
+
+void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
+	if ( value & static_cast< terraforming_t >( ~TERRAFORMING_ALL ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile terraforming value: " + std::to_string( value ) );
+	}
+	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+	if ( terraforming != value ) {
+		terraforming = value;
+		for ( auto* const wrapobj : m_wrapobjs ) {
+			const auto& property_it = wrapobj->value.find( "terraforming" );
+			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no terraforming property" );
+			ASSERT( property_it->second->type == gse::VT_OBJECT, "tile terraforming property is not an object" );
+			const auto* const wrapped_terraforming = (gse::value::Object*)property_it->second;
+#define X_TERRAFORMING( _x, _i ) \
+			{ \
+				const auto& flag_it = wrapped_terraforming->value.find( util::String::GetLowerCase( #_x ) ); \
+				ASSERT( flag_it != wrapped_terraforming->value.end(), "tile wrapper has no terraforming flag" ); \
+				ASSERT( flag_it->second->type == gse::VT_BOOL, "tile terraforming flag is not a bool" ); \
+				( (gse::value::Bool*)flag_it->second )->value = ( terraforming & TERRAFORMING_ ## _x ) != 0; \
+			}
+			X_TERRAFORMINGS
+#undef X_TERRAFORMING
+		}
+		tiles->GetMap()->RefreshTile( this );
+	}
+}
+
 bool Tile::HasWorkingPopLink() const {
 	return const_cast< Tile* >( this )->CustomHas( "working_pop" );
 }
@@ -339,6 +396,29 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{ "features", GetFeatures( GSE_CALL ) },
 		{ "bonuses", GetBonuses( GSE_CALL ) },
+		{ "terraforming", GetTerraformings( GSE_CALL ) },
+		{
+			"update_terraforming",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( changes, 0, Object );
+				auto updated = terraforming;
+				for ( const auto& change : changes ) {
+					const auto flag = GetTerraformingFromString( change.first );
+					if ( flag == TERRAFORMING_NONE || change.second->type != gse::VT_BOOL ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid terraforming update: " + change.first );
+					}
+					if ( ( (gse::value::Bool*)change.second )->value ) {
+						updated |= flag;
+					}
+					else {
+						updated &= static_cast< terraforming_t >( ~flag );
+					}
+				}
+				SetTerraforming( GSE_CALL, updated );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
 		{
 			"get_units",
 			NATIVE_CALL( this ) {
@@ -428,6 +508,18 @@ gse::Value* const Tile::GetBonuses( GSE_CALLABLE ) const {
 	);
 	X_BONUSES
 #undef X_BONUS
+	return VALUE( gse::value::Object,, GSE_CALL_NOGC, result );
+}
+
+gse::Value* const Tile::GetTerraformings( GSE_CALLABLE ) const {
+	gse::value::object_properties_t result = {};
+#define X_TERRAFORMING( _x, _i ) \
+	result.insert_or_assign( \
+		util::String::GetLowerCase( #_x ), \
+		VALUE( gse::value::Bool,, terraforming & TERRAFORMING_ ## _x ) \
+	);
+	X_TERRAFORMINGS
+#undef X_TERRAFORMING
 	return VALUE( gse::value::Object,, GSE_CALL_NOGC, result );
 }
 

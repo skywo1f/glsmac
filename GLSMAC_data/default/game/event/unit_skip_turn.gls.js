@@ -11,6 +11,9 @@ return {
 		if (unit.get_tile().is_locked()) {
 			return 'Unit tile is locked';
 		}
+		if (unit.terraforming != 'none') {
+			return 'Cancel the unit\'s terraforming order before skipping';
+		}
 		if (unit.movement <= 0.0) {
 			return 'Unit is out of moves';
 		}

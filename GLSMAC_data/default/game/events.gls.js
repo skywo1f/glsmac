@@ -15,6 +15,8 @@ return (game) => {
 		'attack_unit',
 		'advance_unit_after_combat',
 		'unit_skip_turn',
+		'terraform_tile',
+		'cancel_terraform',
 		'define_base_pop',
 		'define_base_facility',
 		'spawn_base',

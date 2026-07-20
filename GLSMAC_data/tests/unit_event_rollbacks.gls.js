@@ -116,7 +116,8 @@ test.assert(
 }
 
 const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => {
-	return {
+	let unit = null;
+	unit = {
 		id: id,
 		def: def,
 		owner: owner.id,
@@ -124,13 +125,20 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		morale: morale,
 		health: health,
 		moved_this_turn: moved_this_turn,
+		terraforming: 'none',
+		terraforming_turns_remaining: 0,
 		get_tile: () => {
 			return tile;
 		},
 		get_def: () => {
 			return native_def;
 		},
+		set_terraforming_order: (type, turns) => {
+			unit.terraforming = type;
+			unit.terraforming_turns_remaining = turns;
+		},
 	};
+	return unit;
 };
 
 {

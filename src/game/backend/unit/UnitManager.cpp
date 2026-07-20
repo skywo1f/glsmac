@@ -22,7 +22,9 @@
 #include "gse/value/Bool.h"
 #include "gse/value/Float.h"
 #include "gse/value/Array.h"
+#include "game/backend/map/tile/Tile.h"
 #include "game/backend/map/tile/TileManager.h"
+#include "util/String.h"
 
 namespace game {
 namespace backend {
@@ -546,6 +548,16 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_UNWRAP( tile, obj, "tile", map::tile::Tile );
 				N_GETPROP( morale, obj, "morale", Int );
 				N_GETPROP( health, obj, "health", Float );
+				N_GETPROP_OPT( std::string, terraforming_name, obj, "terraforming", String, "none" );
+				N_GETPROP_OPT( int64_t, terraforming_turns_remaining, obj, "terraforming_turns_remaining", Int, 0 );
+				const auto terraforming = map::tile::Tile::GetTerraformingFromString( terraforming_name );
+				if (
+					( terraforming == map::tile::TERRAFORMING_NONE && util::String::GetLowerCase( terraforming_name ) != "none" ) ||
+					terraforming_turns_remaining < 0 ||
+					terraforming_turns_remaining > unit::Unit::MAX_TERRAFORMING_TURNS
+				) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit terraforming order" );
+				}
 
 				auto* def = GetUnitDef( def_name );
 				if ( !def ) {
@@ -563,7 +575,9 @@ WRAPIMPL_BEGIN( UnitManager )
 					staticdef->m_movement_per_turn,
 					morale,
 					health,
-					false
+					false,
+					terraforming,
+					static_cast< uint16_t >( terraforming_turns_remaining )
 				);
 				SpawnUnit( GSE_CALL, unit );
 				return unit->Wrap( GSE_CALL );

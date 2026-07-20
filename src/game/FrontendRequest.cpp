@@ -30,6 +30,14 @@ FrontendRequest::FrontendRequest( const FrontendRequest& other )
 		}
 		case FR_UPDATE_TILES: {
 			NEW( data.update_tiles.tile_updates, tile_updates_t, *other.data.update_tiles.tile_updates );
+			NEW( data.update_tiles.sprite_actors, tile_sprite_actors_t, *other.data.update_tiles.sprite_actors );
+			NEW( data.update_tiles.sprite_removals, tile_sprite_removals_t, *other.data.update_tiles.sprite_removals );
+			NEW( data.update_tiles.sprite_additions, tile_sprite_additions_t, *other.data.update_tiles.sprite_additions );
+			NEW(
+				data.update_tiles.serialized_terrain_texture_patch,
+				std::string,
+				*other.data.update_tiles.serialized_terrain_texture_patch
+			);
 			break;
 		}
 		case FR_FACTION_DEFINE: {
@@ -123,6 +131,10 @@ FrontendRequest::~FrontendRequest() {
 		}
 		case FR_UPDATE_TILES: {
 			DELETE( data.update_tiles.tile_updates );
+			DELETE( data.update_tiles.sprite_actors );
+			DELETE( data.update_tiles.sprite_removals );
+			DELETE( data.update_tiles.sprite_additions );
+			DELETE( data.update_tiles.serialized_terrain_texture_patch );
 			break;
 		}
 		case FR_FACTION_DEFINE: {

@@ -219,7 +219,14 @@ void Game::Iterate() {
 			m_response_map_data->map_height = m_map->GetHeight();
 
 			ASSERT( m_map->m_textures.terrain, "map terrain texture not generated" );
-			m_response_map_data->terrain_texture = m_map->m_textures.terrain;
+			NEW(
+				m_response_map_data->terrain_texture,
+				types::texture::Texture,
+				m_map->m_textures.terrain->GetWidth(),
+				m_map->m_textures.terrain->GetHeight(),
+				m_map->m_textures.terrain->GetFlags()
+			);
+			m_response_map_data->terrain_texture->Deserialize( m_map->m_textures.terrain->Serialize() );
 
 			ASSERT( m_map->m_meshes.terrain, "map terrain mesh not generated" );
 			m_response_map_data->terrain_mesh = m_map->m_meshes.terrain;
@@ -991,8 +998,8 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 				response.result = R_SUCCESS;
 				response.data.get_map_data = m_response_map_data;
 				m_response_map_data = nullptr;
-				// ownership transferred to frontend
-				m_map->m_textures.terrain = nullptr;
+				// render resources are transferred to the frontend; the backend keeps its
+				// CPU terrain texture so live tile updates can be generated safely.
 				m_map->m_meshes.terrain = nullptr;
 				m_map->m_meshes.terrain_data = nullptr;
 			}

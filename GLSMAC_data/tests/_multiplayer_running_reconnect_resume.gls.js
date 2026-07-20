@@ -8,6 +8,7 @@
 	const initial_mineral_stamp = 23;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
+	const former_snapshot_unit_id = 5;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 
@@ -21,6 +22,45 @@
 				: ['SporeLauncher', 'MindWorms'];
 		};
 
+		const get_terraform_state_error = (turns_remaining, moved_this_turn) => {
+			if (!game.get_um().has_unit(former_snapshot_unit_id)) {
+				return 'Former was not restored from the snapshot';
+			}
+			const former = game.get_um().get_unit(former_snapshot_unit_id);
+			const def = former.get_def();
+			if (
+				former.owner != game.get_player().id ||
+				def.id != 'Former' ||
+				def.is_native ||
+				def.offense != 0 ||
+				def.defense != 1 ||
+				def.morale_set != 'STANDARD' ||
+				def.can_found_base ||
+				!def.can_terraform
+			) {
+				return 'Former definition or owner was not restored';
+			}
+			const tile = former.get_tile();
+			if (
+				!tile.is_land ||
+				tile.get_base() != null ||
+				tile.features.monolith ||
+				tile.features.xenofungus ||
+				tile.terraforming.farm
+			) {
+				return 'Former tile state was not restored';
+			}
+			if (
+				former.terraforming != 'farm' ||
+				former.terraforming_turns_remaining != turns_remaining ||
+				former.movement != 0.0 ||
+				former.moved_this_turn != moved_this_turn
+			) {
+				return 'Former order state was not restored';
+			}
+			return #undefined;
+		};
+
 		const get_base_state_error = () => {
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
@@ -31,6 +71,10 @@
 			const restored_unit = game.get_um().get_unit(1);
 			if (restored_unit.get_def().id != restored_unit.def) {
 				return 'unit definition link is inconsistent';
+			}
+			const terraform_state_error = get_terraform_state_error(4, true);
+			if (#is_defined(terraform_state_error)) {
+				return terraform_state_error;
 			}
 			const colony_pod_def = game.get_um().get_unit_def('ColonyPod');
 			if (
@@ -199,11 +243,19 @@
 				#print('RUNNING_RECONNECT_EXPANSION_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_TERRAFORM_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
+				const terraform_state_error = get_terraform_state_error(3, false);
+				if (#is_defined(terraform_state_error)) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + terraform_state_error);
+					glsmac.exit();
+					return;
+				}
 				exit_scheduled = true;
+				#print('RUNNING_RECONNECT_TERRAFORM_ADVANCED_CLIENT');
 				#print('RUNNING_RECONNECT_PASS_CLIENT');
 				#async(3000, () => {
 					glsmac.exit();

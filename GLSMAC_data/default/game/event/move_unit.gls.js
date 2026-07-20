@@ -62,6 +62,9 @@ return {
 		if (e.data.unit.is_immovable) {
 			return 'Unit is immovable';
 		}
+		if (e.data.unit.terraforming != 'none') {
+			return 'Cancel the unit\'s terraforming order before moving';
+		}
 		if (e.data.unit.movement <= 0.0) {
 			return 'Unit is out of moves';
 		}

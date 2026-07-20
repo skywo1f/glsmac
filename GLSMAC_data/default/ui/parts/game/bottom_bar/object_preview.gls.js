@@ -15,6 +15,12 @@ return {
 		return #to_string(#to_float(#round(movement * 100.0)) / 100.0);
 	},
 
+	close_terraform_menu: () => {
+		this.terraform_menu.hide();
+		this.terraform_menu_open = false;
+		this.action_button.active = false;
+	},
+
 	set_image: (object) => {
 		if (object == null) {
 			if (this.last_object_class != null) {
@@ -69,6 +75,8 @@ return {
 		if (object == null) {
 			this.lines = #undefined;
 			this.action_unit = null;
+			this.action_mode = null;
+			this.close_terraform_menu();
 			this.action_button.hide();
 			return;
 		}
@@ -98,6 +106,7 @@ return {
 		switch (#classof(object)) {
 			case 'Unit': {
 				const def = object.get_def();
+				const is_owned = object.owner == this.p.game.get_player().id;
 
 				f_line(def.name, 16, 'center');
 
@@ -109,11 +118,41 @@ return {
 					f_line('Moves: ' + this.format_movement(object.movement), 14, 'left');
 				}
 
-				if (def.can_found_base) {
+				if (object.terraforming != 'none') {
+					const names = {
+						farm: 'Farm',
+						mine: 'Mine',
+						solar: 'Solar Collector',
+					};
+					f_line(
+						names[object.terraforming] + ': ' +
+						#to_string(object.terraforming_turns_remaining) + ' turns',
+						14,
+						'left'
+					);
+				}
+
+				if (is_owned && def.can_found_base) {
 					this.action_unit = object;
+					this.action_mode = 'found_base';
+					this.action_button.text = 'BUILD BASE';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (is_owned && def.can_terraform) {
+					this.action_unit = object;
+					if (object.terraforming == 'none') {
+						this.action_mode = 'terraform';
+						this.action_button.text = 'TERRAFORM';
+					} else {
+						this.action_mode = 'cancel_terraform';
+						this.action_button.text = 'CANCEL ORDER';
+						this.close_terraform_menu();
+					}
 					this.action_button.show();
 				} else {
 					this.action_unit = null;
+					this.action_mode = null;
+					this.close_terraform_menu();
 					this.action_button.hide();
 				}
 
@@ -121,6 +160,8 @@ return {
 			}
 			case 'Base': {
 				this.action_unit = null;
+				this.action_mode = null;
+				this.close_terraform_menu();
 				this.action_button.hide();
 
 				f_line(object.name, 14, 'center');
@@ -153,6 +194,8 @@ return {
 		this.last_object_class = null;
 		this.moralesets = {};
 		this.action_unit = null;
+		this.action_mode = null;
+		this.terraform_menu_open = false;
 
 		this.p = p;
 		this.um = p.game.get_um();
@@ -183,12 +226,93 @@ return {
 		});
 		this.action_button.hide();
 		this.action_button.on('click', (e) => {
-			if (this.action_unit != null) {
+			if (this.action_unit == null) {
+				return true;
+			}
+			if (this.action_mode == 'found_base') {
 				p.game.event('found_base', {
 					unit: this.action_unit,
 				});
+			} else if (this.action_mode == 'cancel_terraform') {
+				p.game.event('cancel_terraform', {
+					unit: this.action_unit,
+				});
+			} else if (this.action_mode == 'terraform') {
+				if (this.terraform_menu_open) {
+					this.close_terraform_menu();
+				} else {
+					this.terraform_menu.show();
+					this.terraform_menu_open = true;
+					this.action_button.active = true;
+				}
 			}
 			return true;
+		});
+
+		this.terraform_menu = p.ui.root.panel({
+			class: 'game-menu',
+			zindex: 0.95,
+			align: 'bottom left',
+			left: 6,
+			bottom: 256,
+			height: 54,
+		});
+		this.terraform_menu.surface({class: 'game-menu-top-border'});
+		this.terraform_menu.surface({class: 'game-menu-bottom-border'});
+		let terraform_top = 0;
+		for (entry of [
+			{type: 'farm', label: 'Farm (4 turns)'},
+			{type: 'mine', label: 'Mine (8 turns)'},
+			{type: 'solar', label: 'Solar (4 turns)'},
+		]) {
+			const terraform_entry = entry;
+			const button = this.terraform_menu.button({
+				class: 'game-menu-item',
+				text: terraform_entry.label,
+				top: terraform_top,
+			});
+			button.on('click', (e) => {
+				if (this.action_unit != null && this.action_mode == 'terraform') {
+					p.game.event('terraform_tile', {
+						unit: this.action_unit,
+						type: terraform_entry.type,
+					});
+				}
+				this.close_terraform_menu();
+				return true;
+			});
+			terraform_top += 18;
+		}
+		this.terraform_menu.hide();
+
+		this.frame.on('keydown', (e) => {
+			if (
+				p.modules.popup.is_shown() ||
+				this.action_unit == null ||
+				e.modifiers != {}
+			) {
+				return false;
+			}
+			if (this.action_mode == 'cancel_terraform' && e.code == 'C') {
+				p.game.event('cancel_terraform', {unit: this.action_unit});
+				return true;
+			}
+			if (this.action_mode == 'terraform') {
+				let type = null;
+				if (e.code == 'F') {
+					type = 'farm';
+				} else if (e.code == 'M') {
+					type = 'mine';
+				} else if (e.code == 'S') {
+					type = 'solar';
+				}
+				if (type != null) {
+					p.game.event('terraform_tile', {unit: this.action_unit, type: type});
+					this.close_terraform_menu();
+					return true;
+				}
+			}
+			return false;
 		});
 
 		p.map.on('unit_preview', (e) => {

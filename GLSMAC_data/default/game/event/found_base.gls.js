@@ -10,6 +10,8 @@ const snapshot_unit = (unit) => {
 		morale: unit.morale,
 		health: unit.health,
 		moved_this_turn: unit.moved_this_turn,
+		terraforming: unit.terraforming,
+		terraforming_turns_remaining: unit.terraforming_turns_remaining,
 	};
 };
 
@@ -21,6 +23,8 @@ const restore_unit = (e, backup) => {
 		tile: e.game.tm.get_tile(backup.tile_x, backup.tile_y),
 		morale: backup.morale,
 		health: backup.health,
+		terraforming: backup.terraforming,
+		terraforming_turns_remaining: backup.terraforming_turns_remaining,
 	});
 	unit.movement = backup.movement;
 	unit.moved_this_turn = backup.moved_this_turn;

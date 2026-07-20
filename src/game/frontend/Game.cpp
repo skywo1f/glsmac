@@ -971,6 +971,46 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			break;
 		}
 		case FrontendRequest::FR_UPDATE_TILES: {
+			types::texture::Texture texture_patch(
+				request->data.update_tiles.terrain_texture_width,
+				request->data.update_tiles.terrain_texture_height
+			);
+			texture_patch.Deserialize( types::Buffer( *request->data.update_tiles.serialized_terrain_texture_patch ) );
+			ASSERT( !texture_patch.IsEmpty(), "tile terrain texture patch is empty" );
+			const auto texture_right = request->data.update_tiles.terrain_texture_x + texture_patch.GetWidth() - 1;
+			const auto texture_bottom = request->data.update_tiles.terrain_texture_y + texture_patch.GetHeight() - 1;
+			m_textures.terrain->AddFrom(
+				&texture_patch,
+				types::texture::AM_DEFAULT,
+				0,
+				0,
+				texture_patch.GetWidth() - 1,
+				texture_patch.GetHeight() - 1,
+				request->data.update_tiles.terrain_texture_x,
+				request->data.update_tiles.terrain_texture_y
+			);
+			m_textures.terrain->Update(
+				{
+					request->data.update_tiles.terrain_texture_x,
+					request->data.update_tiles.terrain_texture_y,
+					texture_right,
+					texture_bottom,
+				}
+			);
+			for ( const auto& actor : *request->data.update_tiles.sprite_actors ) {
+				GetTerrainInstancedSprite( actor.second );
+			}
+			for ( const auto& removal : *request->data.update_tiles.sprite_removals ) {
+				auto* actor = m_ism->GetInstancedSpriteByKey( removal.second )->actor;
+				ASSERT( actor, "tile sprite actor not found" );
+				actor->RemoveInstance( removal.first );
+			}
+			for ( const auto& addition : *request->data.update_tiles.sprite_additions ) {
+				auto* actor = m_ism->GetInstancedSpriteByKey( addition.second.first )->actor;
+				ASSERT( actor, "tile sprite actor not found" );
+				ASSERT( !actor->HasInstance( addition.first ), "tile sprite instance already exists" );
+				actor->SetInstance( addition.first, addition.second.second );
+			}
 			const auto& tiles_data = *request->data.update_tiles.tile_updates;
 			for ( const auto& tile_data : tiles_data ) {
 				const auto& t = tile_data.first;
@@ -983,6 +1023,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				Log( "Updating tile: " + tile->GetCoords().ToString() );
 				tile->Update( *t, *ts );
 			}
+			RefreshSelectedTile( m_um->GetSelectedUnit() );
 			break;
 		}
 		case FrontendRequest::FR_TURN_STATUS: {

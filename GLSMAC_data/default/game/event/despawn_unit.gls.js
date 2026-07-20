@@ -19,6 +19,8 @@ return {
 			morale: unit.morale,
 			health: unit.health,
 			moved_this_turn: unit.moved_this_turn,
+			terraforming: unit.terraforming,
+			terraforming_turns_remaining: unit.terraforming_turns_remaining,
 		};
 		e.game.um.despawn_unit(unit);
 		return {
@@ -35,6 +37,8 @@ return {
 			tile: e.game.tm.get_tile(u.tile_x, u.tile_y),
 			morale: u.morale,
 			health: u.health,
+			terraforming: u.terraforming,
+			terraforming_turns_remaining: u.terraforming_turns_remaining,
 		});
 		unit.movement = u.movement;
 		unit.moved_this_turn = u.moved_this_turn;
