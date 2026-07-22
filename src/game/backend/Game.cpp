@@ -25,6 +25,7 @@
 #include "gse/value/Int.h"
 #include "gse/value/Undefined.h"
 #include "gse/value/Array.h"
+#include "gse/value/Null.h"
 #include "map/tile/TileManager.h"
 #include "map/tile/Tiles.h"
 #include "map/MapState.h"
@@ -513,6 +514,10 @@ void Game::ClearEvents() {
 }
 
 void Game::Event( GSE_CALLABLE, const std::string& name, const gse::value::object_properties_t& args ) {
+	if ( IsGameOver() && name != "chat_message" ) {
+		MTModule::Log( "Event rejected: Game has ended" );
+		return;
+	}
 	{
 		std::lock_guard guard( m_event_handlers_mutex );
 		const auto& it = m_event_handlers.find( name );
@@ -597,6 +602,52 @@ WRAPIMPL_BEGIN( Game )
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUE( gse::value::Int,, m_current_turn.GetId() + 2100 /* TODO: better way to define starting year? */ );
+			} )
+		},
+		{
+			"is_game_over",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				return VALUE( gse::value::Bool, , IsGameOver() );
+			} )
+		},
+		{
+			"get_victory_state",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+					{ "type", VALUE( gse::value::String, , GetVictoryTypeString( m_victory_state.type ) ) },
+					{ "winner", VALUE( gse::value::Int, , IsGameOver() ? static_cast< int64_t >( m_victory_state.winner_slot ) : -1 ) },
+					{ "turn", VALUE( gse::value::Int, , m_victory_state.turn_id ) },
+				} );
+			} )
+		},
+		{
+			"get_conquest_winner",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				auto* const winner = GetConquestWinner();
+				return winner
+					? winner->Wrap( GSE_CALL )
+					: VALUE( gse::value::Null );
+			} )
+		},
+		{
+			"declare_victory",
+			NATIVE_CALL( this ) {
+				CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE( type_name, 0, String );
+				N_GETVALUE( winner_slot, 1, Int );
+				victory_type_t type = VT_NONE;
+				if ( !ParseVictoryType( type_name, type ) || type == VT_NONE ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unsupported victory type: " + type_name );
+				}
+				if ( winner_slot < 0 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Victory winner slot cannot be negative" );
+				}
+				DeclareVictory( GSE_CALL, type, static_cast< size_t >( winner_slot ) );
+				return VALUE( gse::value::Undefined );
 			} )
 		},
 		{
@@ -1204,6 +1255,98 @@ const size_t Game::GetTurnId() const {
 	return m_current_turn.GetId();
 }
 
+const bool Game::IsGameOver() const {
+	return m_victory_state.type != VT_NONE;
+}
+
+const Game::victory_state_t& Game::GetVictoryState() const {
+	return m_victory_state;
+}
+
+Player* Game::GetConquestWinner() const {
+	if ( m_current_turn.GetId() == 0 || !m_state || !m_bm || !m_um ) {
+		return nullptr;
+	}
+
+	size_t active_player_count = 0;
+	std::unordered_set< size_t > surviving_slots = {};
+	const auto& slots = m_state->m_slots->GetSlots();
+	for ( const auto& slot : slots ) {
+		if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+			active_player_count++;
+		}
+	}
+	if ( active_player_count < 2 ) {
+		return nullptr;
+	}
+
+	for ( const auto& it : m_bm->GetBases() ) {
+		const auto* const owner = it.second->m_owner;
+		if ( owner && owner->GetState() == slot::Slot::SS_PLAYER ) {
+			surviving_slots.insert( owner->GetIndex() );
+		}
+	}
+	for ( const auto& it : m_um->GetUnits() ) {
+		const auto* const unit = it.second;
+		if (
+			unit->m_health > 0.0f &&
+			unit->m_def &&
+			unit->m_def->m_can_found_base &&
+			unit->m_owner &&
+			unit->m_owner->GetState() == slot::Slot::SS_PLAYER
+		) {
+			surviving_slots.insert( unit->m_owner->GetIndex() );
+		}
+	}
+
+	if ( surviving_slots.size() != 1 ) {
+		return nullptr;
+	}
+	const auto winner_slot = *surviving_slots.begin();
+	if ( winner_slot >= slots.size() ) {
+		return nullptr;
+	}
+	const auto& winner = slots.at( winner_slot );
+	return winner.GetState() == slot::Slot::SS_PLAYER
+		? winner.GetPlayer()
+		: nullptr;
+}
+
+void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t winner_slot ) {
+	if ( IsGameOver() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Game already has a winner" );
+	}
+	if ( type != VT_CONQUEST ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Unsupported victory type" );
+	}
+	auto* const expected_winner = GetConquestWinner();
+	if ( !expected_winner || !expected_winner->GetSlot() || expected_winner->GetSlot()->GetIndex() != winner_slot ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Player has not met the conquest victory condition" );
+	}
+
+	m_victory_state = { type, winner_slot, m_current_turn.GetId() };
+}
+
+const std::string Game::GetVictoryTypeString( const victory_type_t type ) {
+	switch ( type ) {
+		case VT_NONE:
+			return "";
+		case VT_CONQUEST:
+			return "conquest";
+		default:
+			THROW( "Unknown victory type: " + std::to_string( type ) );
+	}
+}
+
+const bool Game::ParseVictoryType( const std::string& value, victory_type_t& result ) {
+	if ( value == "conquest" ) {
+		result = VT_CONQUEST;
+		return true;
+	}
+	result = VT_NONE;
+	return value.empty();
+}
+
 const bool Game::IsTurnCompleted( const size_t slot_num ) const {
 	const auto& slot = m_state->m_slots->GetSlot( slot_num );
 	ASSERT( slot.GetState() == slot::Slot::SS_PLAYER, "slot is not player" );
@@ -1501,6 +1644,9 @@ void Game::ProcessEvents() {
 				if ( event->HasInvalidatedReferences() ) {
 					errptr = new std::string( "Event references an object that no longer exists" );
 				}
+				else if ( IsGameOver() && event->GetEventName() != "chat_message" ) {
+					errptr = new std::string( "Game has ended" );
+				}
 				else if ( handler ) {
 					errptr = handler->Validate( GSE_CALL, fargs );
 				}
@@ -1774,6 +1920,12 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 					// send turn info
 					MTModule::Log( "Sending turn ID: " + std::to_string( m_current_turn.GetId() ) );
 					buf.WriteInt( m_current_turn.GetId() );
+					buf.WriteBool( IsGameOver() );
+					if ( IsGameOver() ) {
+						buf.WriteString( GetVictoryTypeString( m_victory_state.type ) );
+						buf.WriteInt( m_victory_state.winner_slot );
+						buf.WriteInt( m_victory_state.turn_id );
+					}
 
 					return buf.ToString();
 				};
@@ -1978,14 +2130,32 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 									m_am->Deserialize( ab );
 								}
 
-								// get turn info
+								// get turn and terminal game info
 								const auto turn_id = buf.ReadInt< size_t >( "snapshot turn id" );
+								const auto has_victory = buf.ReadBool();
+								victory_type_t victory_type = VT_NONE;
+								size_t winner_slot = 0;
+								size_t victory_turn = 0;
+								if ( has_victory ) {
+									const auto victory_type_name = buf.ReadString();
+									if ( !ParseVictoryType( victory_type_name, victory_type ) || victory_type == VT_NONE ) {
+										THROW( "invalid world snapshot victory type" );
+									}
+									winner_slot = buf.ReadInt< size_t >( "snapshot victory winner slot" );
+									victory_turn = buf.ReadInt< size_t >( "snapshot victory turn" );
+									if ( victory_turn == 0 || victory_turn != turn_id ) {
+										THROW( "invalid world snapshot victory turn" );
+									}
+								}
 								if ( buf.GetRemaining() != 0 ) {
 									THROW( "unexpected data after serialized world snapshot" );
 								}
 								if ( turn_id > 0 ) {
 									MTModule::Log( "Received turn ID: " + std::to_string( turn_id ) );
 									RestoreTurn( turn_id );
+								}
+								if ( has_victory ) {
+									DeclareVictory( GSE_CALL, victory_type, winner_slot );
 								}
 
 								m_game_state = GS_INITIALIZING;
@@ -2070,6 +2240,7 @@ void Game::ResetGame() {
 	m_pending_frontend_requests->clear();
 
 	m_current_turn.Reset();
+	m_victory_state = {};
 	m_is_turn_complete = false;
 
 	if ( m_state ) {
@@ -2083,6 +2254,9 @@ void Game::ResetGame() {
 }
 
 void Game::CheckTurnComplete() {
+	if ( IsGameOver() ) {
+		return;
+	}
 
 	bool is_turn_complete = true;
 

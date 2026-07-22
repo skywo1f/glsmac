@@ -7,7 +7,7 @@ return (glsmac) => {
 	const technologies = #include('../technologies');
 	const units = #include('../units');
 
-	const modules = ['bases'];
+	const modules = ['bases', 'conquest'];
 	let m = {};
 	for (module of modules) {
 		m[module] = #include(module);

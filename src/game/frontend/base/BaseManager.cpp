@@ -122,7 +122,6 @@ void BaseManager::SpawnBase(
 			base
 		}
 	);
-	AddToOwnerIndex( base );
 
 	RefreshBase( base );
 }
@@ -136,14 +135,7 @@ void BaseManager::UpdateBase(
 	ASSERT( base, "base is null" );
 	auto* const owner = m_game->GetSlot( slot_index );
 	const bool is_owned = slot_index == m_game->GetMySlotIndex();
-	if ( base->GetOwner() != owner ) {
-		RemoveFromOwnerIndex( base );
-		base->SetState( name, owner, faction, is_owned );
-		AddToOwnerIndex( base );
-	}
-	else {
-		base->SetState( name, owner, faction, is_owned );
-	}
+	base->SetState( name, owner, faction, is_owned );
 }
 
 void BaseManager::DespawnBase( const size_t base_id ) {
@@ -154,7 +146,6 @@ void BaseManager::DespawnBase( const size_t base_id ) {
 
 	m_bases.erase( it );
 	m_game->UpdateRelatedWidgets( ui::WT_BASE_PREVIEW, base_id, nullptr );
-	RemoveFromOwnerIndex( base );
 
 	delete base;
 
@@ -203,31 +194,57 @@ void BaseManager::SelectBase( Base* base ) {
 }
 
 Base* BaseManager::GetBaseBefore( Base* base ) const {
-	const auto& ids_it = m_owner_base_ids.find( base->GetOwner()->GetFaction() );
-	ASSERT( ids_it != m_owner_base_ids.end(), "owner base ids not found" );
-	const auto& ids = ids_it->second;
-	auto it = ids.find( base->GetId() );
-	ASSERT( it != ids.end(), "base not in faction ids" );
-	if ( it == ids.begin() ) {
-		it = ids.end();
+	ASSERT( base, "base is null" );
+	const auto* const faction = base->GetOwner()->GetFaction();
+	Base* previous = nullptr;
+	Base* last = nullptr;
+	bool found = false;
+	for ( const auto& it : m_bases ) {
+		auto* const candidate = it.second;
+		if ( candidate->GetOwner()->GetFaction() != faction ) {
+			continue;
+		}
+		found = found || candidate == base;
+		if ( !last || candidate->GetId() > last->GetId() ) {
+			last = candidate;
+		}
+		if (
+			candidate->GetId() < base->GetId()
+			&& ( !previous || candidate->GetId() > previous->GetId() )
+		) {
+			previous = candidate;
+		}
 	}
-	it--;
-	ASSERT( m_bases.find( *it ) != m_bases.end(), "base id not found" );
-	return m_bases.at( *it );
+	ASSERT( found, "base not found for owner" );
+	ASSERT( last, "owner has no bases" );
+	return previous ? previous : last;
 }
 
 Base* BaseManager::GetBaseAfter( Base* base ) const {
-	const auto& ids_it = m_owner_base_ids.find( base->GetOwner()->GetFaction() );
-	ASSERT( ids_it != m_owner_base_ids.end(), "owner base ids not found" );
-	const auto& ids = ids_it->second;
-	auto it = ids.find( base->GetId() );
-	ASSERT( it != ids.end(), "base not in faction ids" );
-	it++;
-	if ( it == ids.end() ) {
-		it = ids.begin();
+	ASSERT( base, "base is null" );
+	const auto* const faction = base->GetOwner()->GetFaction();
+	Base* next = nullptr;
+	Base* first = nullptr;
+	bool found = false;
+	for ( const auto& it : m_bases ) {
+		auto* const candidate = it.second;
+		if ( candidate->GetOwner()->GetFaction() != faction ) {
+			continue;
+		}
+		found = found || candidate == base;
+		if ( !first || candidate->GetId() < first->GetId() ) {
+			first = candidate;
+		}
+		if (
+			candidate->GetId() > base->GetId()
+			&& ( !next || candidate->GetId() < next->GetId() )
+		) {
+			next = candidate;
+		}
 	}
-	ASSERT( m_bases.find( *it ) != m_bases.end(), "base id not found" );
-	return m_bases.at( *it );
+	ASSERT( found, "base not found for owner" );
+	ASSERT( first, "owner has no bases" );
+	return next ? next : first;
 }
 
 text::InstancedFont* BaseManager::GetBadgeFont() const {
@@ -242,30 +259,6 @@ text::InstancedText* BaseManager::CreateNameText( const std::string& name, const
 		faction->m_colors.text,
 		faction->m_colors.text_shadow
 	);
-}
-
-void BaseManager::AddToOwnerIndex( Base* base ) {
-	auto* const faction = base->GetOwner()->GetFaction();
-	auto it = m_owner_base_ids.find( faction );
-	if ( it == m_owner_base_ids.end() ) {
-		it = m_owner_base_ids.insert(
-			{
-				faction,
-				{}
-			}
-		).first;
-	}
-	ASSERT( it->second.insert( base->GetId() ).second, "owner base id already exists" );
-}
-
-void BaseManager::RemoveFromOwnerIndex( Base* base ) {
-	auto* const faction = base->GetOwner()->GetFaction();
-	const auto& it = m_owner_base_ids.find( faction );
-	ASSERT( it != m_owner_base_ids.end(), "owner base ids not found" );
-	ASSERT( it->second.erase( base->GetId() ) == 1, "base id not found in owner index" );
-	if ( it->second.empty() ) {
-		m_owner_base_ids.erase( it );
-	}
 }
 
 }

@@ -85,6 +85,10 @@
 		const game = e.game;
 		const role = game.is_master() ? 'HOST' : 'CLIENT';
 		let handled_turns = {};
+		let client_conquest_ready = false;
+		let conquest_prepare_requested = false;
+		let post_victory_mutations = 0;
+		let victory_poll_started = false;
 		#print('MULTIPLAYER_SMOKE_CONFIGURE_' + role);
 
 		const find_base_for_player = (player_id) => {
@@ -626,6 +630,122 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_conquest_ready', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Only the client can signal conquest readiness';
+				}
+			},
+			apply: (e) => {
+				const previous = client_conquest_ready;
+				client_conquest_ready = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				client_conquest_ready = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_prepare_conquest', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can prepare conquest coverage';
+				}
+				if (#typeof(e.data.winner_id) != 'Int' || e.data.winner_id < 0) {
+					return 'Conquest probe winner ID is invalid';
+				}
+			},
+			apply: (e) => {
+				const winner = e.game.get_player(e.data.winner_id);
+				let owners = [];
+				for (base of e.game.get_bm().get_bases()) {
+					owners :+{base: base, owner: base.get_owner()};
+					if (base.get_owner().id != winner.id) {
+						base.set_owner(winner);
+					}
+				}
+				return {owners: owners};
+			},
+			rollback: (e) => {
+				for (entry of e.applied.owners) {
+					if (entry.base.get_owner().id != entry.owner.id) {
+						entry.base.set_owner(entry.owner);
+					}
+				}
+			},
+		});
+
+		game.register_event('multiplayer_smoke_mutate_after_victory', {
+			validate: (e) => {},
+			apply: (e) => {
+				const previous = post_victory_mutations;
+				post_victory_mutations++;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				post_victory_mutations = e.applied.previous;
+			},
+		});
+
+		const start_victory_poll = () => {
+			if (victory_poll_started) {
+				return;
+			}
+			victory_poll_started = true;
+			let phase = 'wait_for_victory';
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (phase == 'wait_for_victory') {
+					if (!game.is_game_over()) {
+						if (wait_ticks >= 100) {
+							#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': conquest victory timed out');
+							glsmac.exit();
+							return false;
+						}
+						return true;
+					}
+					const state = game.get_victory_state();
+					if (state != {type: 'conquest', winner: get_client_player_id(), turn: 2}) {
+						#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': synchronized victory state is invalid');
+						glsmac.exit();
+						return false;
+					}
+					game.event('multiplayer_smoke_mutate_after_victory', {});
+					phase = 'verify_terminal';
+					wait_ticks = 0;
+					return true;
+				}
+				if (post_victory_mutations != 0) {
+					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': game state changed after victory');
+					glsmac.exit();
+					return false;
+				}
+				if (wait_ticks < 5) {
+					return true;
+				}
+				const final_state = game.get_victory_state();
+				if (
+					!game.is_game_over() ||
+					game.get_turn() != 2 ||
+					final_state != {type: 'conquest', winner: get_client_player_id(), turn: 2}
+				) {
+					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': terminal state did not remain stable');
+					glsmac.exit();
+					return false;
+				}
+				#print('MULTIPLAYER_SMOKE_VICTORY_PASS_' + role);
+				if (!exit_scheduled) {
+					exit_scheduled = true;
+					#print('MULTIPLAYER_SMOKE_PASS_' + role + ': synchronized conquest victory is terminal');
+					#async(game.is_master() ? 2500 : 1000, () => {
+						glsmac.exit();
+					});
+				}
+				return false;
+			});
+		};
+
 		const run_client_combat_probe = () => {
 			let phase = 'wait_for_defender';
 			let wait_ticks = 0;
@@ -1013,11 +1133,34 @@
 					return;
 				}
 				#print('MULTIPLAYER_SMOKE_TERRAFORM_SYNC_PASS_' + role);
-				exit_scheduled = true;
-				#print('MULTIPLAYER_SMOKE_PASS_' + role + ': reached synchronized turn 2 with two players');
-				#async(game.is_master() ? 2500 : 1000, () => {
+				if (game.is_game_over() || game.get_conquest_winner() != null) {
+					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': conquest triggered before a faction was eliminated');
 					glsmac.exit();
-				});
+					return;
+				}
+				start_victory_poll();
+				if (game.is_master()) {
+					let wait_ticks = 0;
+					#async(100, () => {
+						wait_ticks++;
+						if (client_conquest_ready && !conquest_prepare_requested) {
+							conquest_prepare_requested = true;
+							game.event('multiplayer_smoke_prepare_conquest', {
+								winner_id: get_client_player_id(),
+							});
+							return false;
+						}
+						if (wait_ticks >= 100) {
+							#print('MULTIPLAYER_SMOKE_FAIL_HOST: client conquest readiness timed out');
+							glsmac.exit();
+							return false;
+						}
+						return true;
+					});
+				}
+				else {
+					game.event('multiplayer_smoke_conquest_ready', {});
+				}
 			}
 		};
 

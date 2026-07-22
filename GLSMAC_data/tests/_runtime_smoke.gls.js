@@ -104,6 +104,17 @@
 		game.on('turn', (e) => {
 			const turn_id = e.year - 2100;
 			if (turn_id == 1) {
+				const victory_state = game.get_victory_state();
+				if (
+					game.is_game_over() ||
+					game.get_conquest_winner() != null ||
+					victory_state != {type: '', winner: -1, turn: 0}
+				) {
+					#print('RUNTIME_SMOKE_FAIL: one-player game was treated as a conquest victory');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_SINGLE_PLAYER_CONQUEST_GUARD_PASS');
 				const um = game.get_um();
 				const bases = game.get_bm().get_bases();
 				if (!um.has_unit(1) || #sizeof(bases) == 0) {

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
@@ -332,6 +333,22 @@ public:
 	void UncompleteTurn( const size_t slot_num );
 	void AdvanceTurn( const size_t turn_id );
 
+	enum victory_type_t : uint8_t {
+		VT_NONE = 0,
+		VT_CONQUEST,
+	};
+	struct victory_state_t {
+		victory_type_t type = VT_NONE;
+		size_t winner_slot = 0;
+		size_t turn_id = 0;
+	};
+	const bool IsGameOver() const;
+	const victory_state_t& GetVictoryState() const;
+	Player* GetConquestWinner() const;
+	void DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t winner_slot );
+	static const std::string GetVictoryTypeString( const victory_type_t type );
+	static const bool ParseVictoryType( const std::string& value, victory_type_t& result );
+
 	void GlobalFinalizeTurn( GSE_CALLABLE );
 	void FirstTurn( GSE_CALLABLE );
 
@@ -393,6 +410,7 @@ private:
 	map::Map* m_old_map = nullptr; // to restore state, for example if loading of another map failed
 
 	turn::Turn m_current_turn = {};
+	victory_state_t m_victory_state = {};
 
 	bool m_is_turn_complete = false;
 	void RestoreTurn( const size_t turn_id );
