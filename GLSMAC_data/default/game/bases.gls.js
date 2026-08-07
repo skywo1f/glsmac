@@ -1,6 +1,84 @@
 const pops = #include('pops');
 
 const globals = {};
+const CONTENT_CITIZENS = 3;
+const PSYCH_PER_IMPROVEMENT = 2;
+const DOCTOR_PSYCH = 2;
+
+const is_rioting = (base) => {
+	let talents = 0;
+	let drones = 0;
+	for (pop of base.get_pops()) {
+		const type = pop.get_type();
+		if (type == 'TALENT') {
+			talents++;
+		} else if (type == 'DRONE') {
+			drones++;
+		} else if (type == 'DRONEPLUS') {
+			drones += 2;
+		}
+	}
+	return drones > talents;
+};
+
+const get_psych_state = (game, base) => {
+	let result = {
+		talents: 0,
+		drones: 0,
+		workers: 0,
+		specialists: 0,
+		psych: game.get('f_economy_get_base_psych')(game, base),
+		is_rioting: false,
+	};
+	for (pop of base.get_pops()) {
+		const type = pop.get_type();
+		if (type == 'TALENT') {
+			result.talents = result.talents + 1;
+		} else if (type == 'DRONE') {
+			result.drones = result.drones + 1;
+		} else if (type == 'DRONEPLUS') {
+			result.drones = result.drones + 2;
+		} else if (pop.has('worked_tile')) {
+			result.workers = result.workers + 1;
+		} else {
+			result.specialists = result.specialists + 1;
+		}
+	}
+	result.is_rioting = is_rioting(base);
+	return result;
+};
+
+const process_psych = (game, base, allocated_psych) => {
+	let laborer_count = 0;
+	let psych = allocated_psych;
+	for (pop of base.get_pops()) {
+		if (pop.has('worked_tile')) {
+			const type = laborer_count < CONTENT_CITIZENS ? 'WORKER' : 'DRONE';
+			pop.set_type(type);
+			laborer_count++;
+		} else if (pop.get_type() == 'DOCTOR') {
+			psych += DOCTOR_PSYCH;
+		}
+	}
+	for (pop of base.get_pops()) {
+		if (psych < PSYCH_PER_IMPROVEMENT) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
+			pop.set_type('WORKER');
+			psych -= PSYCH_PER_IMPROVEMENT;
+		}
+	}
+	for (pop of base.get_pops()) {
+		if (psych < PSYCH_PER_IMPROVEMENT) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
+			pop.set_type('TALENT');
+			psych -= PSYCH_PER_IMPROVEMENT;
+		}
+	}
+};
 
 const get_nutrients_for_growth = (game, base) => {
 	return globals.map_growth_base * (base.get_size() + 1);
@@ -307,7 +385,10 @@ const pop_work_tile = (base, pop, tile) => {
 	base.work_pop_tile(pop, tile);
 };
 
-const get_pending_production = (base) => {
+const get_pending_production = (game, base) => {
+	if (is_rioting(base)) {
+		return 0;
+	}
 	const intake = base.get_intake();
 	const consumption = base.get_consumption();
 	return #max(intake.MINERALS - consumption.MINERALS, 0);
@@ -415,9 +496,11 @@ return (game) => {
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
-		game.set('f_base_get_pending_production', get_pending_production);
+		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);
+		game.set('f_base_process_psych', process_psych);
+		game.set('f_base_get_psych', (base) => { return get_psych_state(game, base); });
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
@@ -428,8 +511,10 @@ return (game) => {
 			if (game.is_master()) {
 				globals.reserved_growth_tiles = {};
 				for (base of bm.get_bases()) {
+					const psych = game.get('f_economy_get_base_psych')(game, base);
 					game.event('process_base_growth', {
 						base: base,
+						psych: psych,
 					});
 					game.event('process_base_production', {
 						base: base,

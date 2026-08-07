@@ -165,7 +165,7 @@ return {
 		};
 		this.sections.resources.set(resource_data);
 
-		this.sections.energy.set(game.get('f_economy_get_base_allocation')(base));
+		this.sections.energy.set(game.get('f_economy_get_base_allocation')(game, base));
 
 		this.sections.middle_area.set({
 			base: base,

@@ -28,6 +28,10 @@ const get_base_economy = (game, base) => {
 	return economy.value + economy.bonus;
 };
 
+const get_base_psych = (game, base) => {
+	return get_base_allocation(game, base).psych.value;
+};
+
 const get_hurry_cost = (base) => {
 	const production = base.get_production();
 	if (!#is_defined(production)) {
@@ -89,6 +93,7 @@ return (game) => {
 	game.on('start', (e) => {
 		game.set('f_economy_get_base_allocation', get_base_allocation);
 		game.set('f_economy_get_base', get_base_economy);
+		game.set('f_economy_get_base_psych', get_base_psych);
 		game.set('f_economy_get_player', get_player_economy);
 		game.set('f_economy_get_hurry_cost', get_hurry_cost);
 		game.set('f_economy_get_liquidation_candidate', get_liquidation_candidate);
