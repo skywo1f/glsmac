@@ -29,6 +29,7 @@ class Game;
 }
 
 namespace game::backend {
+class Player;
 namespace faction {
 class Faction;
 }
@@ -103,6 +104,7 @@ private:
 	void RandomizeSettings( GSE_CALLABLE );
 
 	void AddSinglePlayerSlot( game::backend::faction::Faction* const faction );
+	game::backend::Player* AddAIPlayerSlot();
 	void StartGame( GSE_CALLABLE );
 
 	game::frontend::Game* m_game = nullptr;

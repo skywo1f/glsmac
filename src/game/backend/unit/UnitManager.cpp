@@ -536,6 +536,20 @@ WRAPIMPL_BEGIN( UnitManager )
 			} )
 		},
 		{
+			"get_units",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				gse::value::array_elements_t result = {};
+				result.reserve( m_units.size() );
+				for ( const auto& it : m_units ) {
+					if ( it.second->m_health > 0.0f ) {
+						result.push_back( it.second->Wrap( GSE_CALL ) );
+					}
+				}
+				return VALUE( gse::value::Array,, result );
+			} )
+		},
+		{
 			"spawn_unit",
 			NATIVE_CALL( this ) {
 

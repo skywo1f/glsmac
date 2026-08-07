@@ -116,6 +116,7 @@ return {
 		const unit = e.data.unit;
 		const src_tile = unit.get_tile();
 		const dst_tile = e.data.tile;
+		const dst_base = #is_defined(dst_tile.get_base) ? dst_tile.get_base() : null;
 
 		const movement = unit.movement;
 
@@ -124,6 +125,7 @@ return {
 				tile: src_tile,
 				movement: movement,
 				moved_this_turn: unit.moved_this_turn,
+				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,
 		};
@@ -142,6 +144,9 @@ return {
 
 		if (e.resolved.is_movement_successful) {
 			unit.move_to_tile(dst_tile, () => {});
+			if (dst_base != null && dst_base.get_owner().id != unit.owner) {
+				dst_base.set_owner(unit.get_owner());
+			}
 			finish_movement();
 		} else {
 			// No native move is started on a failed roll, so update state synchronously.
@@ -162,6 +167,10 @@ return {
 		const orig = e.applied.orig;
 		if (e.applied.movement_started) {
 			unit.move_to_tile(orig.tile, () => {});
+		}
+		const captured_base = #is_defined(e.data.tile.get_base) ? e.data.tile.get_base() : null;
+		if (captured_base != null && orig.base_owner != null && captured_base.get_owner().id != orig.base_owner.id) {
+			captured_base.set_owner(orig.base_owner);
 		}
 		unit.movement = orig.movement;
 		unit.moved_this_turn = orig.moved_this_turn;

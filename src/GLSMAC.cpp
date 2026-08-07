@@ -274,6 +274,22 @@ WRAPIMPL_BEGIN( GLSMAC )
 			} ),
 		},
 		{
+			"add_ai_player",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				if ( !m_state ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
+				}
+				if ( m_is_game_running ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Game is already running" );
+				}
+				if ( m_state->m_slots->GetSlots().empty() ) {
+					AddSinglePlayerSlot( nullptr );
+				}
+				return AddAIPlayerSlot()->Wrap( GSE_CALL );
+			} )
+		},
+		{
 			"start_game",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
@@ -534,6 +550,11 @@ void GLSMAC::Reset( GSE_CALLABLE ) {
 			}
 		}
 		AddSinglePlayerSlot( faction );
+		if ( c->HasLaunchFlag( config::Config::LF_QUICKSTART_AI ) ) {
+			for ( uint8_t i = 0 ; i < c->GetQuickstartAIPlayers() ; i++ ) {
+				AddAIPlayerSlot();
+			}
+		}
 		auto ep2 = ep;
 		StartGame( m_gc_space, ctx, si, ep2 );
 	}
@@ -601,6 +622,57 @@ void GLSMAC::AddSinglePlayerSlot( game::backend::faction::Faction* const faction
 	slot.SetPlayer( player, 0, "" );
 	slot.SetPlayerFlag( ::game::backend::slot::PF_READY );
 	slot.SetLinkedGSID( m_state->m_settings.local.account.GetGSID() );
+}
+
+game::backend::Player* GLSMAC::AddAIPlayerSlot() {
+	ASSERT( m_state, "game state is not initialized" );
+	if ( m_state->m_slots->GetSlots().empty() ) {
+		m_state->m_slots->Resize( 7 );
+	}
+
+	size_t slot_num = m_state->m_slots->GetCount();
+	for ( size_t i = 0 ; i < m_state->m_slots->GetCount() ; i++ ) {
+		if ( m_state->m_slots->GetSlot( i ).GetState() == game::backend::slot::Slot::SS_OPEN ) {
+			slot_num = i;
+			break;
+		}
+	}
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "no open slot is available for an AI player" );
+
+	game::backend::faction::Faction* faction = nullptr;
+	for ( auto* const candidate : m_state->GetFM()->GetAll() ) {
+		if ( candidate->m_flags & game::backend::faction::Faction::FF_NAVAL ) {
+			continue;
+		}
+		bool is_selected = false;
+		for ( const auto& slot : m_state->m_slots->GetSlots() ) {
+			if (
+				slot.GetState() == game::backend::slot::Slot::SS_PLAYER
+				&& slot.GetPlayer()->GetFaction() == candidate
+			) {
+				is_selected = true;
+				break;
+			}
+		}
+		if ( !is_selected ) {
+			faction = candidate;
+			break;
+		}
+	}
+	ASSERT( faction, "no land faction is available for an AI player" );
+
+	const auto& rules = m_state->m_settings.global.rules;
+	auto* const player = new game::backend::Player(
+		"AI " + std::to_string( slot_num ),
+		game::backend::Player::PR_AI,
+		faction,
+		rules.GetDefaultDifficultyLevel()
+	);
+	m_state->AddPlayer( player );
+	auto& slot = m_state->m_slots->GetSlot( slot_num );
+	slot.SetPlayer( player, 0, "AI" );
+	slot.SetPlayerFlag( game::backend::slot::PF_READY );
+	return player;
 }
 
 void GLSMAC::StartGame( GSE_CALLABLE ) {

@@ -255,6 +255,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchProgress() == 0, "completed research progress was not serialized" );
 
+				Player ai_source( "Computer", Player::PR_AI, nullptr, "Citizen" );
+				Player ai_roundtrip( ai_source.Serialize() );
+				GT_ASSERT( ai_roundtrip.IsAI(), "AI player role was not serialized" );
+
 				const auto make_player = [](
 					const std::vector< std::string >& technologies,
 					const std::string& target,

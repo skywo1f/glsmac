@@ -27,6 +27,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		PR_SINGLE,
 		PR_HOST,
 		PR_PLAYER,
+		PR_AI,
 	};
 
 	Player( types::Buffer buf );
@@ -57,6 +58,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	slot::Slot* GetSlot() const;
 
 	const role_t GetRole() const;
+	const bool IsAI() const;
 
 	const bool IsTurnCompleted() const;
 	void CompleteTurn();

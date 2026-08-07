@@ -320,6 +320,19 @@ Config::Config( const std::string& path )
 		}
 	);
 	m_manager->AddRule(
+		"quickstart-ai", "COUNT", "Add computer-controlled players", AH( this, s_quickstart_argument_missing ) {
+			if ( !HasLaunchFlag( LF_QUICKSTART ) ) {
+				Error( s_quickstart_argument_missing );
+			}
+			long int count = 0;
+			if ( !util::String::ParseInt( value, count ) || count < 1 || count > 6 ) {
+				Error( "Invalid --quickstart-ai value specified! Expected number ( 1 to 6 ), got: " + value );
+			}
+			m_quickstart_ai_players = static_cast< uint8_t >( count );
+			m_launch_flags |= LF_QUICKSTART_AI;
+		}
+	);
+	m_manager->AddRule(
 		"port", "PORT", "TCP/IP port for hosting or joining games (default: 4888)", AH( this ) {
 			long int port = 0;
 			if ( !util::String::ParseInt( value, port ) || port < 1 || port > 65535 ) {
@@ -534,6 +547,10 @@ const float Config::GetQuickstartMapCloudCover() const {
 
 const std::string& Config::GetQuickstartFaction() const {
 	return m_quickstart_faction;
+}
+
+const uint8_t Config::GetQuickstartAIPlayers() const {
+	return m_quickstart_ai_players;
 }
 
 const std::vector< std::string >& Config::GetModPaths() const {

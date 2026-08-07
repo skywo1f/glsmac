@@ -54,6 +54,7 @@ CLASS( Config, common::Module )
 		LF_MAXIPS = 1 << 20,
 		LF_SINGLE_THREAD = 1 << 21,
 		LF_VERBOSE = 1 << 22,
+		LF_QUICKSTART_AI = 1 << 23,
 	};
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
@@ -100,6 +101,7 @@ CLASS( Config, common::Module )
 	const float GetQuickstartMapNativeLifeforms() const;
 	const float GetQuickstartMapCloudCover() const;
 	const std::string& GetQuickstartFaction() const;
+	const uint8_t GetQuickstartAIPlayers() const;
 	const std::vector< std::string >& GetModPaths() const;
 	const std::string& GetJoinAddress() const;
 	const std::string& GetMainScript() const;
@@ -148,6 +150,7 @@ private:
 	float m_quickstart_map_native_lifeforms = 0.5f;
 	float m_quickstart_map_cloud_cover = 0.5f;
 	std::string m_quickstart_faction = "";
+	uint8_t m_quickstart_ai_players = 0;
 	std::vector< std::string > m_mod_paths = {};
 	std::string m_join_address = "";
 	std::string m_mainscript = "main";
