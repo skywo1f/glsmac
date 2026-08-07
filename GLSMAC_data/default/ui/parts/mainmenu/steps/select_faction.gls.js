@@ -11,7 +11,9 @@ return (i) => {
 		}
 		starting = true;
 		game.event('select_faction', {faction: faction_id});
-		i.glsmac.add_ai_player();
+		for (let opponent = 0; opponent < 6; opponent++) {
+			i.glsmac.add_ai_player();
+		}
 		i.glsmac.start_game();
 	};
 

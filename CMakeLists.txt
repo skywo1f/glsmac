@@ -150,6 +150,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( SEVEN_PLAYER_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/seven-player-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${SEVEN_PLAYER_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME seven_player_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${SEVEN_PLAYER_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_ai_runtime_smoke"
+			--quickstart
+			--quickstart-ai "6"
+			--quickstart-mapsize "40x20"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( seven_player_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "SEVEN_PLAYER_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "SEVEN_PLAYER_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
 		IF ( Python3_Interpreter_FOUND )
 			SET( MULTIPLAYER_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/multiplayer-runtime-smoke" )

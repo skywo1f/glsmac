@@ -31,6 +31,40 @@
 			}
 			const turn_id = e.year - 2100;
 			const players = game.get_players();
+			if (#sizeof(players) == 7) {
+				let ai_count = 0;
+				for (player of players) {
+					if (player.type == 'ai') {
+						ai_count++;
+					}
+
+					let faction_count = 0;
+					let base_count = 0;
+					for (other of players) {
+						if (other.get_faction().id == player.get_faction().id) {
+							faction_count++;
+						}
+					}
+					for (base of game.get_bm().get_bases()) {
+						if (base.get_owner().id == player.id) {
+							base_count++;
+						}
+					}
+					if (faction_count != 1 || base_count != 1) {
+						#print('SEVEN_PLAYER_RUNTIME_FAIL: invalid starting faction or base ownership');
+						glsmac.exit();
+						return;
+					}
+				}
+				if (ai_count != 6) {
+					#print('SEVEN_PLAYER_RUNTIME_FAIL: expected six computer opponents');
+					glsmac.exit();
+					return;
+				}
+				#print('SEVEN_PLAYER_RUNTIME_PASS: seven unique factions started with six computer opponents');
+				glsmac.exit();
+				return;
+			}
 			if (#sizeof(players) != 2) {
 				fail('expected two players, found ' + #to_string(#sizeof(players)));
 				return;
