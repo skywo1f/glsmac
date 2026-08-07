@@ -28,7 +28,7 @@ test.assert(
 );
 
 {
-	const random_values = [0.5, 0.5, 0.1];
+	const random_values = [0.1, 0.1];
 	let random_index = 0;
 	const resolved = attack_unit.resolve({
 		game: {
@@ -57,7 +57,7 @@ test.assert(
 			},
 		},
 	});
-	test.assert(random_index == 3);
+	test.assert(random_index == 2);
 	test.assert(#sizeof(resolved.sequence) == 1);
 	test.assert(resolved.sequence[0][0] == true);
 	test.assert(resolved.attacker_dead == false);
@@ -79,7 +79,7 @@ test.assert(
 		index: 0,
 		max_values: [],
 	};
-	const random_values = [0.4, 0.0, 0.1];
+	const random_values = [0.3, 0.1];
 	const resolved = attack_unit.resolve({
 		game: {
 			random: {
@@ -108,9 +108,50 @@ test.assert(
 			},
 		},
 	});
-	test.assert(random_state.index == 3);
-	test.assert(random_state.max_values[0] == 0.4);
-	test.assert(random_state.max_values[1] == 0.2);
+	test.assert(random_state.index == 2);
+	test.assert(random_state.max_values[0] == 0.6);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
+
+{
+	const conventional_def = {
+		is_native: false,
+		offense: 100,
+		defense: 100,
+	};
+	const random_state = {
+		index: 0,
+		max_values: [],
+	};
+	const random_values = [0.29, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_state.max_values :+max;
+					const index = random_state.index;
+					random_state.index = index + 1;
+					return random_values[index];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 2,
+				health: 0.1,
+				get_def: () => { return conventional_def; },
+			},
+			defender: {
+				morale: 2,
+				health: 0.1,
+				is_land: true,
+				get_def: () => { return native_def; },
+			},
+		},
+	});
+	test.assert(random_state.index == 2);
+	test.assert(random_state.max_values[0] == 0.5);
 	test.assert(resolved.attacker_dead == false);
 	test.assert(resolved.defender_dead == true);
 }

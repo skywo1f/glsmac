@@ -40,32 +40,23 @@ const restore_unit = (e, backup) => {
 	unit.moved_this_turn = backup.moved_this_turn;
 };
 
-const get_unit_attack_power = (unit) => {
-	const def = unit.get_def();
-	if (def.is_native) {
-		// TODO: proper logic
-		let power = #to_float(unit.morale + 1) / 7.0;
-		if (unit.is_land) {
-			power *= 3.0;
-		}
-		return power * unit.health;
-	}
-	const morale_multiplier = 0.75 + #to_float(unit.morale) * 0.125;
-	return #to_float(def.offense) * morale_multiplier * unit.health;
+const get_morale_multiplier = (unit) => {
+	return 0.75 + #to_float(unit.morale) * 0.125;
 };
 
-const get_unit_defence_power = (unit) => {
-	const def = unit.get_def();
-	if (def.is_native) {
-		// TODO: proper logic
-		let power = #to_float(unit.morale + 1) / 7.0;
-		if (unit.is_land) {
-			power *= 2.0;
-		}
-		return power * unit.health;
+const get_combat_powers = (attacker, defender) => {
+	const attacker_def = attacker.get_def();
+	const defender_def = defender.get_def();
+	let attack_strength = #to_float(attacker_def.offense);
+	let defence_strength = #to_float(defender_def.defense);
+	if (attacker_def.is_native || defender_def.is_native) {
+		attack_strength = defender.is_land ? 3.0 : 1.0;
+		defence_strength = defender.is_land ? 2.0 : 1.0;
 	}
-	const morale_multiplier = 0.75 + #to_float(unit.morale) * 0.125;
-	return #to_float(def.defense) * morale_multiplier * unit.health;
+	return {
+		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health,
+		defence: defence_strength * get_morale_multiplier(defender) * defender.health,
+	};
 };
 
 return {
@@ -134,17 +125,17 @@ return {
 		const attacker = e.data.attacker;
 		const defender = e.data.defender;
 
-		let attack_power = get_unit_attack_power(attacker);
-		let defence_power = get_unit_defence_power(defender);
+		const powers = get_combat_powers(attacker, defender);
+		const attack_power = powers.attack;
+		const defence_power = powers.defence;
 
 		let attacker_health = attacker.health;
 		let defender_health = defender.health;
 
 		let damage_sequence = [];
 		while (attacker_health > 0.0 && defender_health > 0.0) {
-			let attack_roll = e.game.random.get_float(0.0, attack_power);
-			let defence_roll = e.game.random.get_float(0.0, defence_power);
-			if (attack_roll >= defence_roll) {
+			const combat_roll = e.game.random.get_float(0.0, attack_power + defence_power);
+			if (combat_roll < attack_power) {
 				let damage = #min(defender_health, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
 				damage_sequence [] = [true, damage];
 				defender_health -= damage;
