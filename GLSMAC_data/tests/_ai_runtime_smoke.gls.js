@@ -86,6 +86,7 @@
 
 			let ai_bases = 0;
 			let populated_ai_bases = 0;
+			let garrisoned_ai_bases = 0;
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == ai_id) {
 					ai_bases++;
@@ -94,6 +95,12 @@
 					}
 					if (base.get_size() > 0) {
 						populated_ai_bases++;
+					}
+					for (unit of base.get_tile().get_units()) {
+						if (unit.owner == ai_id && unit.get_def().offense > 0) {
+							garrisoned_ai_bases++;
+							break;
+						}
 					}
 				}
 			}
@@ -106,7 +113,11 @@
 			}
 
 			let scout = null;
+			let ai_combat_units = 0;
 			for (unit of game.get_um().get_units()) {
+				if (unit.owner == ai_id && unit.get_def().offense > 0) {
+					ai_combat_units++;
+				}
 				if (unit.owner == ai_id && unit.get_def().id == 'Former') {
 					ai_built_former = true;
 					const former_tile = unit.get_tile();
@@ -143,9 +154,11 @@
 					!ai_built_road ||
 					!ai_completed_improvement ||
 					populated_ai_bases != ai_bases ||
+					garrisoned_ai_bases != ai_bases ||
+					ai_combat_units <= ai_bases ||
 					!ui_started
 				) {
-					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' bases=' + #to_string(ai_bases));
+					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
 					fail('AI did not complete movement, growth, expansion, Former production, and terraforming by turn sixteen');
 					return;
 				}

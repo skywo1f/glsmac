@@ -56,22 +56,29 @@ const can_enter = (unit, tile) => {
 const queue_production = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
-	let scout_count = 0;
 	for (unit of units) {
 		const id = unit.get_def().id;
 		if (id == 'Former') {
 			former_count++;
 		} else if (id == 'ColonyPod') {
 			colony_count++;
-		} else if (id == 'ScoutPatrol') {
-			scout_count++;
 		}
 	}
 
 	for (base of bases) {
 		let kind = null;
 		let id = null;
-		if (player.has_technology('CentauriEcology') && former_count < #sizeof(bases)) {
+		let has_garrison = false;
+		for (unit of base.get_tile().get_units()) {
+			if (unit.owner == player.id && unit.get_def().offense > 0) {
+				has_garrison = true;
+				break;
+			}
+		}
+		if (!has_garrison) {
+			kind = 'unit';
+			id = 'ScoutPatrol';
+		} else if (player.has_technology('CentauriEcology') && former_count < #sizeof(bases)) {
 			kind = 'unit';
 			id = 'Former';
 			former_count++;
@@ -82,10 +89,9 @@ const queue_production = (game, player, bases, units) => {
 		} else if (base.can_set_production('facility', 'RecyclingTanks')) {
 			kind = 'facility';
 			id = 'RecyclingTanks';
-		} else if (scout_count < #sizeof(bases)) {
+		} else {
 			kind = 'unit';
 			id = 'ScoutPatrol';
-			scout_count++;
 		}
 		const queue = base.get_production_queue();
 		if (id == null) {
@@ -166,14 +172,15 @@ const move_former = (game, player, unit) => {
 			return true;
 		}
 	}
+	const is_candidate = (candidate) => {
+		return can_enter(unit, candidate) &&
+			candidate.get_base() == null &&
+			!candidate.is_water &&
+			!candidate.features.monolith &&
+			!candidate.features.xenofungus;
+	};
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
-		if (
-			!can_enter(unit, candidate) ||
-			candidate.get_base() != null ||
-			candidate.is_water ||
-			candidate.features.monolith ||
-			candidate.features.xenofungus
-		) {
+		if (!is_candidate(candidate)) {
 			return 0 - 100000;
 		}
 		const resources = candidate.get_resources(player);
@@ -188,7 +195,7 @@ const move_former = (game, player, unit) => {
 		}
 		return score;
 	});
-	if (target != null && can_enter(unit, target)) {
+	if (target != null && is_candidate(target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
 		return true;
 	}
@@ -206,6 +213,18 @@ const move_combat = (game, player, unit, all_bases) => {
 				game.event_as(player.id, 'attack_unit', {attacker: unit, defender: enemy});
 				return 1000;
 			}
+		}
+	}
+	const current_base = tile.get_base();
+	if (current_base != null && current_base.get_owner().id == player.id) {
+		let defenders = 0;
+		for (other of tile.get_units()) {
+			if (other.owner == player.id && other.get_def().offense > 0) {
+				defenders++;
+			}
+		}
+		if (defenders <= 1) {
+			return 0;
 		}
 	}
 	let enemy_base = null;
