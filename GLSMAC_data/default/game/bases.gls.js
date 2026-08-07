@@ -201,8 +201,31 @@ const select_worker_tiles = (base, candidates, count) => {
 	return selected;
 };
 
-const rebalance_workers = (base) => {
+const get_stable_worker_count = (base, allocated_psych) => {
+	const population = #sizeof(base.get_pops());
+	let result = 0;
+	for (let workers = population; workers >= 0; workers--) {
+		const doctors = population - workers;
+		let improvements = #floor(
+			#to_float(allocated_psych + doctors * DOCTOR_PSYCH) /
+			#to_float(PSYCH_PER_IMPROVEMENT)
+		);
+		let drones = #max(workers - CONTENT_CITIZENS, 0);
+		const pacified = #min(drones, improvements);
+		drones -= pacified;
+		improvements -= pacified;
+		const talents = #min(workers - drones, improvements);
+		if (drones <= talents) {
+			result = workers;
+			break;
+		}
+	}
+	return result;
+};
+
+const rebalance_workers = (base, target_worker_count) => {
 	let workers = [];
+	let population = [];
 	let candidates = [];
 	let candidate_keys = {};
 	const add_candidate = (candidate_tile) => {
@@ -214,12 +237,14 @@ const rebalance_workers = (base) => {
 	};
 	let base_pop = null;
 	for (base_pop of base.get_pops()) {
+		population :+base_pop;
 		if (base_pop.has('worked_tile')) {
 			workers :+base_pop;
 		}
 	}
-	if (#sizeof(workers) == 0) {
-		return;
+	let desired_workers = #sizeof(workers);
+	if (#is_defined(target_worker_count)) {
+		desired_workers = #max(0, #min(target_worker_count, #sizeof(population)));
 	}
 	let worked_tile = null;
 	for (worked_tile of base.get_worked_tiles()) {
@@ -231,38 +256,54 @@ const rebalance_workers = (base) => {
 			add_candidate(available_tile);
 		}
 	}
-	const selected = select_worker_tiles(base, candidates, #sizeof(workers));
+	const selected = select_worker_tiles(base, candidates, desired_workers);
 	let selected_keys = {};
-	let new_tiles = [];
 	let selected_tile = null;
 	for (selected_tile of selected) {
 		const key = #to_string(selected_tile.x) + '_' + #to_string(selected_tile.y);
 		selected_keys[key] = true;
+	}
+	let displaced = [];
+	let specialists = [];
+	for (base_pop of population) {
+		if (base_pop.has('worked_tile')) {
+			const worker_tile = base_pop.get('worked_tile');
+			const key = #to_string(worker_tile.x) + '_' + #to_string(worker_tile.y);
+			if (!#is_defined(selected_keys[key])) {
+				displaced :+base_pop;
+			}
+		} else {
+			specialists :+base_pop;
+		}
+	}
+	let new_tiles = [];
+	for (selected_tile of selected) {
 		if (!base.is_tile_worked(selected_tile)) {
 			new_tiles :+selected_tile;
 		}
 	}
-	let displaced = [];
-	let worker = null;
-	for (worker of workers) {
-		const worker_tile = worker.get('worked_tile');
-		const key = #to_string(worker_tile.x) + '_' + #to_string(worker_tile.y);
-		if (!#is_defined(selected_keys[key])) {
-			displaced :+worker;
+	let tile_index = 0;
+	for (base_pop of displaced) {
+		if (tile_index < #sizeof(new_tiles)) {
+			pop_work_tile(base, base_pop, new_tiles[tile_index]);
+			tile_index++;
+		} else {
+			pop_unwork(base, base_pop, 'DOCTOR');
 		}
 	}
-	for (let i = 0; i < #sizeof(displaced); i++) {
-		if (i < #sizeof(new_tiles)) {
-			pop_work_tile(base, displaced[i], new_tiles[i]);
+	for (base_pop of specialists) {
+		if (tile_index < #sizeof(new_tiles)) {
+			pop_work_tile(base, base_pop, new_tiles[tile_index]);
+			tile_index++;
 		} else {
-			pop_unwork(base, displaced[i], 'DOCTOR');
+			base_pop.set_type('DOCTOR');
 		}
 	}
 };
 
-const process_growth = (game, base) => {
+const process_growth = (game, base, allocated_psych) => {
 	if (base.get_owner().type == 'ai') {
-		rebalance_workers(base);
+		rebalance_workers(base, get_stable_worker_count(base, allocated_psych));
 	}
 	let grow = false;
 
@@ -505,6 +546,7 @@ return (game) => {
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
 		game.set('f_base_rebalance_workers', rebalance_workers);
+		game.set('f_base_get_stable_worker_count', get_stable_worker_count);
 
 		// new turn, process all bases
 		game.on('turn', (e) => {

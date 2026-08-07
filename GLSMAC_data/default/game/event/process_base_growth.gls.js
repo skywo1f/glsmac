@@ -10,7 +10,7 @@ return {
 	},
 
 	apply: (e) => {
-		e.game.get('f_base_process_growth')(e.game, e.data.base);
+		e.game.get('f_base_process_growth')(e.game, e.data.base, e.data.psych);
 		e.game.get('f_base_process_psych')(e.game, e.data.base, e.data.psych);
 	},
 

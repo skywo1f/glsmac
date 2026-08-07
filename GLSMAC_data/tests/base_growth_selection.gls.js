@@ -141,11 +141,13 @@ test.assert(#sizeof(events) == 0);
 test.assert(accumulated_nutrients == 0);
 
 let worker_tile = mineral_tile;
+let worker_type = 'WORKER';
 const worker = {
 	id: 1,
 	has: (key) => { return key == 'worked_tile' && #is_defined(worker_tile); },
 	get: (key) => { return key == 'worked_tile' ? worker_tile : #undefined; },
-	set_type: (type) => { test.assert(type == 'WORKER'); },
+	get_type: () => { return worker_type; },
+	set_type: (type) => { worker_type = type; },
 };
 mineral_tile.set_working_pop(worker);
 nutrient_tile.set_working_pop(#undefined);
@@ -155,7 +157,9 @@ const rebalance_base = {
 	get_owner: () => { return owner; },
 	get_size: () => { return 2; },
 	get_intake: () => {
-		const resources = worker_tile.get_resources(owner);
+		const resources = #is_defined(worker_tile)
+			? worker_tile.get_resources(owner)
+			: {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0};
 		return {NUTRIENTS: 2 + resources.NUTRIENTS, MINERALS: resources.MINERALS, ENERGY: resources.ENERGY};
 	},
 	get_consumption: () => { return {NUTRIENTS: 4, MINERALS: 0, ENERGY: 0}; },
@@ -182,3 +186,13 @@ values.f_base_rebalance_workers(rebalance_base);
 test.assert(worker_tile == nutrient_tile);
 test.assert(worked_tiles == [nutrient_tile]);
 test.assert(rebalance_base.get_intake().NUTRIENTS == rebalance_base.get_consumption().NUTRIENTS);
+
+values.f_base_rebalance_workers(rebalance_base, 0);
+test.assert(!#is_defined(worker_tile));
+test.assert(#sizeof(worked_tiles) == 0);
+test.assert(worker_type == 'DOCTOR');
+
+values.f_base_rebalance_workers(rebalance_base, 1);
+test.assert(worker_tile == mineral_tile);
+test.assert(worked_tiles == [mineral_tile]);
+test.assert(worker_type == 'WORKER');

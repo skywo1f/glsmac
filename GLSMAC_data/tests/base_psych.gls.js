@@ -34,6 +34,13 @@ const game = {
 define_bases(game);
 callbacks.start({});
 
+const population_base = {
+	get_pops: () => { return [1, 2, 3, 4, 5, 6]; },
+};
+test.assert(values.f_base_get_stable_worker_count(population_base, 0) == 4);
+test.assert(values.f_base_get_stable_worker_count(population_base, 2) == 5);
+test.assert(values.f_base_get_stable_worker_count(population_base, 10) == 6);
+
 const make_pop = (initial_type, worked) => {
 	let type = initial_type;
 	return {
