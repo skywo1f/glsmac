@@ -6,6 +6,12 @@ const move_unit = #include('../default/game/event/move_unit');
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
 const defender_tile = {x: 4, y: 4};
+const open_combat_tile = {
+	rockiness: 1,
+	features: {xenofungus: false},
+	terraforming: {bunker: false},
+	get_base: () => { return null; },
+};
 const native_def = {
 	is_native: true,
 	offense: 1,
@@ -42,7 +48,9 @@ test.assert(
 			attacker: {
 				morale: 3,
 				health: 0.1,
+				movement: 1.0,
 				is_land: false,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => {
 					return native_def;
 				},
@@ -51,6 +59,7 @@ test.assert(
 				morale: 3,
 				health: 0.1,
 				is_land: false,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => {
 					return native_def;
 				},
@@ -95,6 +104,9 @@ test.assert(
 			attacker: {
 				morale: 2,
 				health: 0.1,
+				movement: 1.0,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => {
 					return attack_def;
 				},
@@ -102,6 +114,8 @@ test.assert(
 			defender: {
 				morale: 2,
 				health: 0.1,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => {
 					return defense_def;
 				},
@@ -140,18 +154,160 @@ test.assert(
 			attacker: {
 				morale: 2,
 				health: 0.1,
+				movement: 1.0,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => { return conventional_def; },
 			},
 			defender: {
 				morale: 2,
 				health: 0.1,
 				is_land: true,
+				get_tile: () => { return open_combat_tile; },
 				get_def: () => { return native_def; },
 			},
 		},
 	});
 	test.assert(random_state.index == 2);
 	test.assert(random_state.max_values[0] == 0.5);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
+
+{
+	const conventional_def = {
+		is_native: false,
+		offense: 4,
+		defense: 2,
+	};
+	const fungus_tile = {
+		rockiness: 1,
+		features: {xenofungus: true},
+		terraforming: {bunker: false},
+		get_base: () => { return null; },
+	};
+	const random_state = {index: 0, max_values: []};
+	const random_values = [0.44, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_state.max_values :+max;
+					const index = random_state.index;
+					random_state.index = index + 1;
+					return random_values[index];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 2,
+				health: 0.1,
+				movement: 0.5,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
+				get_def: () => { return native_def; },
+			},
+			defender: {
+				morale: 2,
+				health: 0.1,
+				is_land: true,
+				get_tile: () => { return fungus_tile; },
+				get_def: () => { return conventional_def; },
+			},
+		},
+	});
+	test.assert(random_state.max_values[0] > 0.649 && random_state.max_values[0] < 0.651);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
+
+{
+	const conventional_def = {
+		is_native: false,
+		offense: 4,
+		defense: 2,
+	};
+	const fortified_fungus = {
+		rockiness: 3,
+		features: {xenofungus: true},
+		terraforming: {bunker: false},
+		get_base: () => { return {id: 1}; },
+	};
+	const random_state = {index: 0, max_values: []};
+	const random_values = [0.39, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_state.max_values :+max;
+					const index = random_state.index;
+					random_state.index = index + 1;
+					return random_values[index];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 2,
+				health: 0.1,
+				movement: 1.0,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
+				get_def: () => { return conventional_def; },
+			},
+			defender: {
+				morale: 2,
+				health: 0.1,
+				is_land: true,
+				get_tile: () => { return fortified_fungus; },
+				get_def: () => { return conventional_def; },
+			},
+		},
+	});
+	test.assert(random_state.max_values[0] == 0.85);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+}
+
+{
+	const conventional_def = {
+		is_native: false,
+		offense: 4,
+		defense: 2,
+	};
+	const random_state = {index: 0, max_values: []};
+	const random_values = [0.19, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_state.max_values :+max;
+					const index = random_state.index;
+					random_state.index = index + 1;
+					return random_values[index];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 2,
+				health: 0.1,
+				movement: 0.5,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
+				get_def: () => { return conventional_def; },
+			},
+			defender: {
+				morale: 2,
+				health: 0.1,
+				is_land: true,
+				get_tile: () => { return open_combat_tile; },
+				get_def: () => { return conventional_def; },
+			},
+		},
+	});
+	test.assert(random_state.max_values[0] == 0.4);
 	test.assert(resolved.attacker_dead == false);
 	test.assert(resolved.defender_dead == true);
 }

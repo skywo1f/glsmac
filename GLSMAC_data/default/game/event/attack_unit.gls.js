@@ -53,9 +53,29 @@ const get_combat_powers = (attacker, defender) => {
 		attack_strength = defender.is_land ? 3.0 : 1.0;
 		defence_strength = defender.is_land ? 2.0 : 1.0;
 	}
+
+	let attack_modifier = 1.0;
+	let defence_modifier = 1.0;
+	const defender_tile = defender.get_tile();
+	if (defender_tile.rockiness >= 3) {
+		defence_modifier += 0.5;
+	}
+	if (defender_tile.features.xenofungus) {
+		if (attacker_def.is_native) {
+			attack_modifier += 0.5;
+		} else {
+			defence_modifier += 0.5;
+		}
+	}
+	if (defender_tile.get_base() != null || defender_tile.terraforming.bunker) {
+		defence_modifier += 0.25;
+	}
+	if (attacker.is_land && !attacker_def.is_native && attacker.movement < 1.0) {
+		attack_modifier *= attacker.movement;
+	}
 	return {
-		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health,
-		defence: defence_strength * get_morale_multiplier(defender) * defender.health,
+		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health * attack_modifier,
+		defence: defence_strength * get_morale_multiplier(defender) * defender.health * defence_modifier,
 	};
 };
 
