@@ -89,9 +89,15 @@ return {
 		e.game.um.despawn_unit(unit);
 
 		const pop = base.create_pop({type: 'WORKER'});
+		let unoccupied = [];
+		for (candidate of base.get_unworked_tiles()) {
+			if (candidate.get_base() == null && !candidate.has('working_pop')) {
+				unoccupied :+candidate;
+			}
+		}
 		const workable = e.game.get('f_base_find_best_or_worst_tiles')(
 			base,
-			base.get_unworked_tiles(),
+			unoccupied,
 			1,
 			1
 		);

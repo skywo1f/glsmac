@@ -1,7 +1,18 @@
 const found_base = #include('../default/game/event/found_base');
 
 const owner = {id: 1};
-const work_tile = {x: 8, y: 8};
+const work_tile = {
+	x: 8,
+	y: 8,
+	get_base: () => { return null; },
+	has: (key) => { return false; },
+};
+const occupied_work_tile = {
+	x: 9,
+	y: 8,
+	get_base: () => { return null; },
+	has: (key) => { return key == 'working_pop'; },
+};
 const validation_state = {
 	site_base: null,
 	nearby_base: null,
@@ -124,7 +135,7 @@ test.assert(#is_defined(found_base.resolve(validation_event)));
 			return state.created_pop;
 		},
 		get_unworked_tiles: () => {
-			return [work_tile];
+			return [occupied_work_tile, work_tile];
 		},
 	};
 
@@ -179,6 +190,7 @@ test.assert(#is_defined(found_base.resolve(validation_event)));
 			if (key == 'f_base_find_best_or_worst_tiles') {
 				return (value_base, tiles, count, modifier) => {
 					test.assert(value_base == base);
+					test.assert(#sizeof(tiles) == 1);
 					test.assert(tiles[0] == work_tile);
 					test.assert(count == 1);
 					test.assert(modifier == 1);

@@ -56,32 +56,49 @@ const can_enter = (unit, tile) => {
 const queue_production = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
+	let scout_count = 0;
 	for (unit of units) {
 		const id = unit.get_def().id;
 		if (id == 'Former') {
 			former_count++;
 		} else if (id == 'ColonyPod') {
 			colony_count++;
+		} else if (id == 'ScoutPatrol') {
+			scout_count++;
 		}
 	}
 
 	for (base of bases) {
-		if (#sizeof(base.get_production_queue()) > 0) {
-			continue;
-		}
-		let kind = 'unit';
-		let id = 'ScoutPatrol';
+		let kind = null;
+		let id = null;
 		if (player.has_technology('CentauriEcology') && former_count < #sizeof(bases)) {
+			kind = 'unit';
 			id = 'Former';
 			former_count++;
 		} else if (#sizeof(bases) + colony_count < 3) {
+			kind = 'unit';
 			id = 'ColonyPod';
 			colony_count++;
 		} else if (base.can_set_production('facility', 'RecyclingTanks')) {
 			kind = 'facility';
 			id = 'RecyclingTanks';
+		} else if (scout_count < #sizeof(bases)) {
+			kind = 'unit';
+			id = 'ScoutPatrol';
+			scout_count++;
 		}
-		game.event_as(player.id, 'set_base_production', {base: base, kind: kind, id: id});
+		const queue = base.get_production_queue();
+		if (id == null) {
+			if (#sizeof(queue) > 0) {
+				game.event_as(player.id, 'remove_base_production', {base: base, index: 0});
+			}
+		} else if (
+			#sizeof(queue) == 0 ||
+			queue[0].production_kind != kind ||
+			queue[0].id != id
+		) {
+			game.event_as(player.id, 'set_base_production', {base: base, kind: kind, id: id});
+		}
 	}
 };
 
@@ -104,9 +121,12 @@ const site_is_valid = (tile, owner) => {
 
 const move_colony = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return false;
+	}
 	if (site_is_valid(tile, player.id)) {
 		game.event_as(player.id, 'found_base', {unit: unit});
-		return;
+		return true;
 	}
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!can_enter(unit, candidate)) {
@@ -121,19 +141,24 @@ const move_colony = (game, player, unit, all_bases) => {
 	});
 	if (target != null && can_enter(unit, target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
+		return true;
 	}
+	return false;
 };
 
 const move_former = (game, player, unit) => {
 	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return false;
+	}
 	if (tile.get_base() == null && !tile.is_water && !tile.features.monolith && !tile.features.xenofungus) {
 		if (!tile.terraforming.farm) {
 			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'farm'});
-			return;
+			return true;
 		}
 		if (!tile.terraforming.mine && !tile.terraforming.solar) {
 			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'mine'});
-			return;
+			return true;
 		}
 	}
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
@@ -149,16 +174,21 @@ const move_former = (game, player, unit) => {
 	});
 	if (target != null && can_enter(unit, target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
+		return true;
 	}
+	return false;
 };
 
 const move_combat = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return 0;
+	}
 	for (nearby of tile.get_surrounding_tiles()) {
 		for (enemy of nearby.get_units()) {
 			if (enemy.owner != player.id) {
 				game.event_as(player.id, 'attack_unit', {attacker: unit, defender: enemy});
-				return;
+				return 1000;
 			}
 		}
 	}
@@ -185,42 +215,116 @@ const move_combat = (game, player, unit, all_bases) => {
 	});
 	if (target != null && can_enter(unit, target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
+		return 100;
 	}
+	return 0;
 };
 
-const play_turn = (game, player) => {
+const play_turn = (game, player, done) => {
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
-	const all_bases = game.get_bm().get_bases();
 	queue_production(game, player, bases, units);
-	for (unit of units) {
-		if (unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
-			continue;
+
+	let steps = 0;
+	let acted_units = {};
+	const play_next_action = () => {
+		if (!game.is_master() || game.is_game_over() || game.is_turn_complete(player.id)) {
+			done();
+			return;
 		}
-		const def = unit.get_def();
-		if (def.can_found_base) {
-			move_colony(game, player, unit, all_bases);
-		} else if (def.can_terraform) {
-			move_former(game, player, unit);
-		} else if (def.offense > 0) {
-			move_combat(game, player, unit, all_bases);
+		const current_units = owned_units(game, player);
+		const all_bases = game.get_bm().get_bases();
+		let action_started = false;
+		let action_delay = 100;
+		for (unit of current_units) {
+			const unit_key = #to_string(unit.id);
+			if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+				continue;
+			}
+			const def = unit.get_def();
+			if (def.can_found_base) {
+				action_started = move_colony(game, player, unit, all_bases);
+			}
+			if (action_started) {
+				acted_units[unit_key] = true;
+				break;
+			}
 		}
-	}
-	game.event_as(player.id, 'complete_turn', {});
+		if (!action_started) {
+			for (unit of current_units) {
+				const unit_key = #to_string(unit.id);
+				if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+					continue;
+				}
+				const def = unit.get_def();
+				if (def.can_terraform) {
+				action_started = move_former(game, player, unit);
+				}
+				if (action_started) {
+					acted_units[unit_key] = true;
+					break;
+				}
+			}
+		}
+		if (!action_started) {
+			for (unit of current_units) {
+				const unit_key = #to_string(unit.id);
+				if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+					continue;
+				}
+				if (unit.get_def().offense > 0) {
+					const combat_delay = move_combat(game, player, unit, all_bases);
+					if (combat_delay > 0) {
+						action_started = true;
+						action_delay = combat_delay;
+					}
+				}
+				if (action_started) {
+					acted_units[unit_key] = true;
+					break;
+				}
+			}
+		}
+		steps++;
+		if (action_started && steps < 100) {
+			#async(action_delay, play_next_action);
+			return;
+		}
+		game.event_as(player.id, 'complete_turn', {});
+		#async(100, done);
+	};
+	#async(100, play_next_action);
 };
 
 return (game) => {
 	game.on('start', (e) => {
 		let ui_started = false;
+		let ai_running = false;
 		const play_ai_players = () => {
-			if (!game.is_master() || game.is_game_over()) {
+			if (ai_running || !game.is_master() || game.is_game_over()) {
 				return;
 			}
+			let players = [];
 			for (player of game.get_players()) {
 				if (player.type == 'ai' && !game.is_turn_complete(player.id)) {
-					play_turn(game, player);
+					players :+player;
 				}
 			}
+			if (#sizeof(players) == 0) {
+				return;
+			}
+			ai_running = true;
+			let index = 0;
+			const play_next_player = () => {
+				if (index >= #sizeof(players)) {
+					ai_running = false;
+					return;
+				}
+				const player = players[index];
+				index++;
+				play_turn(game, player, play_next_player);
+			};
+			play_next_player();
 		};
 		game.on('start_ui', (e) => {
 			ui_started = true;
