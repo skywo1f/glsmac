@@ -42,10 +42,11 @@
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != '' ||
-					state.progress != 0
+					state.technologies != ['CentauriEcology'] ||
+					state.target != 'DoctrineMobility' ||
+					state.progress <= 0
 				) {
-					return 'starting Centauri Ecology state was not restored';
+					return 'starting Centauri Ecology progression was not restored';
 				}
 				return #undefined;
 			}

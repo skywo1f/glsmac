@@ -60,7 +60,8 @@ const conventional_unit = (
 	sprite_y,
 	can_found_base,
 	can_terraform,
-	required_technology
+	required_technology,
+	movement_per_turn
 ) => {
 	return {
 		id: id,
@@ -76,7 +77,7 @@ const conventional_unit = (
 			morale: 'STANDARD',
 			type: 'static',
 			movement_type: 'land',
-			movement_per_turn: 1,
+			movement_per_turn: movement_per_turn,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',
@@ -90,9 +91,10 @@ const conventional_unit = (
 
 const units = [
 	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
-	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, ''),
-	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, ''),
-	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology'),
+	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1),
+	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1),
+	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1),
+	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2),
 	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79),
 	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233),
 	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310),

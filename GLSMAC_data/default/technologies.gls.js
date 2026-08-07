@@ -6,7 +6,15 @@ const definitions = {
 		cost: 20,
 		prerequisites: [],
 	},
+	DoctrineMobility: {
+		id: 'DoctrineMobility',
+		name: 'Doctrine: Mobility',
+		cost: 30,
+		prerequisites: ['CentauriEcology'],
+	},
 };
+
+const technology_order = ['CentauriEcology', 'DoctrineMobility'];
 
 const get_definition = (id) => {
 	if (!#is_defined(definitions[id])) {
@@ -15,21 +23,40 @@ const get_definition = (id) => {
 	return definitions[id];
 };
 
+const get_next_target = (known) => {
+	let known_ids = {};
+	for (id of known) {
+		known_ids[id] = true;
+	}
+	for (id of technology_order) {
+		if (#is_defined(known_ids[id])) {
+			continue;
+		}
+		let available = true;
+		for (prerequisite of definitions[id].prerequisites) {
+			if (!#is_defined(known_ids[prerequisite])) {
+				available = false;
+				break;
+			}
+		}
+		if (available) {
+			return id;
+		}
+	}
+	return '';
+};
+
 const get_initial_state = (player) => {
 	let known = [];
-	let has_centauri_ecology = false;
 	for (id of player.get_faction().get_starting_technologies()) {
 		if (get_definition(id) == null) {
 			throw Error('Unknown starting technology: ' + id);
 		}
 		known :+id;
-		if (id == 'CentauriEcology') {
-			has_centauri_ecology = true;
-		}
 	}
 	return {
 		technologies: known,
-		target: has_centauri_ecology ? '' : 'CentauriEcology',
+		target: get_next_target(known),
 		progress: 0,
 	};
 };
@@ -62,6 +89,7 @@ const get_player_labs = (game, player) => {
 return {
 	definitions: definitions,
 	get_definition: get_definition,
+	get_next_target: get_next_target,
 	get_initial_state: get_initial_state,
 	get_base_labs: get_base_labs,
 	get_player_labs: get_player_labs,
@@ -69,6 +97,7 @@ return {
 	configure: (game) => {
 		game.on('start', (e) => {
 			game.set('f_technology_get_definition', get_definition);
+			game.set('f_technology_get_next_target', get_next_target);
 			game.set('f_technology_get_base_labs', get_base_labs);
 			game.set('f_technology_get_player_labs', get_player_labs);
 

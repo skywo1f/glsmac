@@ -7,7 +7,15 @@ test.assert(ecology.id == 'CentauriEcology');
 test.assert(ecology.name == 'Centauri Ecology');
 test.assert(ecology.cost == 20);
 test.assert(#sizeof(ecology.prerequisites) == 0);
+const mobility = technologies.get_definition('DoctrineMobility');
+test.assert(mobility.id == 'DoctrineMobility');
+test.assert(mobility.name == 'Doctrine: Mobility');
+test.assert(mobility.cost == 30);
+test.assert(mobility.prerequisites == ['CentauriEcology']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
+test.assert(technologies.get_next_target([]) == 'CentauriEcology');
+test.assert(technologies.get_next_target(['CentauriEcology']) == 'DoctrineMobility');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == '');
 
 const base = {
 	get_intake: () => {
@@ -41,6 +49,11 @@ test.assert(technologies.get_initial_state(make_initial_player([])) == {
 });
 test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology'])) == {
 	technologies: ['CentauriEcology'],
+	target: 'DoctrineMobility',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology', 'DoctrineMobility'])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility'],
 	target: '',
 	progress: 0,
 });
@@ -81,6 +94,10 @@ const game = {
 	},
 	message: (text) => {
 		messages :+text;
+	},
+	get: (key) => {
+		test.assert(key == 'f_technology_get_next_target');
+		return technologies.get_next_target;
 	},
 };
 
@@ -163,7 +180,7 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology'],
-	target: '',
+	target: 'DoctrineMobility',
 	progress: 0,
 });
 test.assert(messages == ['Researcher has discovered Centauri Ecology.']);
@@ -172,6 +189,32 @@ test.assert(research_state == {
 	technologies: [],
 	target: 'CentauriEcology',
 	progress: 7,
+});
+
+research_state = {
+	technologies: ['CentauriEcology'],
+	target: 'DoctrineMobility',
+	progress: 29,
+};
+event.data.technology = mobility;
+event.data.labs = 1;
+test.assert(!#is_defined(process_research.validate(event)));
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	target: '',
+	progress: 0,
+});
+test.assert(messages == [
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Doctrine: Mobility.',
+]);
+process_research.rollback(event);
+test.assert(research_state == {
+	technologies: ['CentauriEcology'],
+	target: 'DoctrineMobility',
+	progress: 29,
 });
 
 event.data.technology = {

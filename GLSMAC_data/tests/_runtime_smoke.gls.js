@@ -131,12 +131,16 @@
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
 				const research_state = game.get_player().get_research_state();
+				const rover = um.get_unit_def('ReconRover');
 				if (
 					!game.get_player().has_technology('CentauriEcology') ||
 					research_state.technologies != ['CentauriEcology'] ||
-					research_state.target != '' ||
+					research_state.target != 'DoctrineMobility' ||
 					research_state.progress != 0 ||
-					!base.can_set_production('unit', 'Former')
+					!base.can_set_production('unit', 'Former') ||
+					base.can_set_production('unit', 'ReconRover') ||
+					rover.required_technology != 'DoctrineMobility' ||
+					rover.movement_per_turn != 2.0
 				) {
 					#print('RUNTIME_SMOKE_FAIL: Gaians did not receive their Centauri Ecology starting technology');
 					glsmac.exit();

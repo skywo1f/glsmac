@@ -91,7 +91,7 @@ const queue_production = (game, player, bases, units) => {
 			id = 'RecyclingTanks';
 		} else {
 			kind = 'unit';
-			id = 'ScoutPatrol';
+			id = base.can_set_production('unit', 'ReconRover') ? 'ReconRover' : 'ScoutPatrol';
 		}
 		const queue = base.get_production_queue();
 		if (id == null) {
