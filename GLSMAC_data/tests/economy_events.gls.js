@@ -1,5 +1,6 @@
 const define_economy = #include('../default/game/economy');
 const process_player_economy = #include('../default/game/event/process_player_economy');
+const hurry_base_production = #include('../default/game/event/hurry_base_production');
 
 let player = null;
 player = {
@@ -27,7 +28,12 @@ const deficit_base = {
 let callbacks = {};
 let values = {
 	f_technology_get_base_labs: (base) => {
-		return {value: base == positive_base ? 4 : 0};
+		return {
+			allocation: 0.4,
+			value: base == positive_base ? 4 : 0,
+			bonus: 2,
+			total: base == positive_base ? 6 : 2,
+		};
 	},
 };
 let events = [];
@@ -46,6 +52,27 @@ callbacks.start({});
 test.assert(values.f_economy_get_base(game, positive_base) == 4);
 test.assert(values.f_economy_get_base(game, deficit_base) == 0 - 3);
 test.assert(values.f_economy_get_player(game, player) == 1);
+const deficit_allocation = values.f_economy_get_base_allocation(game, deficit_base);
+test.assert(deficit_allocation.economy.value == 0 - 3);
+test.assert(deficit_allocation.labs.value == 0);
+test.assert(deficit_allocation.psych.value == 0);
+
+let hurry_minerals = 10;
+let hurry_production = {production_kind: 'unit', mineral_cost: 20};
+const hurry_base = {
+	get_owner: () => { return player; },
+	get_production: () => { return hurry_production; },
+	get_accumulated_minerals: () => { return hurry_minerals; },
+	set_accumulated_minerals: (value) => { hurry_minerals = value; },
+};
+test.assert(values.f_economy_get_hurry_cost(hurry_base) == 25);
+hurry_minerals = 0;
+test.assert(values.f_economy_get_hurry_cost(hurry_base) == 120);
+hurry_minerals = 10;
+hurry_production = {production_kind: 'facility', mineral_cost: 40};
+test.assert(values.f_economy_get_hurry_cost(hurry_base) == 60);
+hurry_minerals = 40;
+test.assert(values.f_economy_get_hurry_cost(hurry_base) == 0);
 
 callbacks.turn({});
 test.assert(#sizeof(events) == 2);
@@ -79,3 +106,30 @@ event.data.energy_credits = 0 - 1;
 test.assert(#is_defined(process_player_economy.validate(event)));
 event.data.energy_credits = 1000000001;
 test.assert(#is_defined(process_player_economy.validate(event)));
+
+player.energy_credits = 100;
+hurry_minerals = 10;
+hurry_production = {production_kind: 'unit', mineral_cost: 20};
+let hurry_trigger_count = 0;
+const hurry_game = {
+	is_turn_complete: (player_id) => { return false; },
+	get: (key) => { return values[key]; },
+	trigger: (name, data) => { hurry_trigger_count++; },
+};
+let hurry_event = {caller: 1, game: hurry_game, data: {base: hurry_base}};
+test.assert(!#is_defined(hurry_base_production.validate(hurry_event)));
+hurry_event.applied = hurry_base_production.apply(hurry_event);
+test.assert(player.energy_credits == 75);
+test.assert(hurry_minerals == 20);
+test.assert(hurry_event.applied.energy_credits == 100);
+test.assert(hurry_event.applied.minerals == 10);
+hurry_base_production.rollback(hurry_event);
+test.assert(player.energy_credits == 100);
+test.assert(hurry_minerals == 10);
+test.assert(hurry_trigger_count == 2);
+
+hurry_event.caller = 2;
+test.assert(#is_defined(hurry_base_production.validate(hurry_event)));
+hurry_event.caller = 1;
+player.energy_credits = 24;
+test.assert(#is_defined(hurry_base_production.validate(hurry_event)));

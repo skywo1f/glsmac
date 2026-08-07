@@ -165,31 +165,12 @@ return {
 		};
 		this.sections.resources.set(resource_data);
 
-		const labs_data = game.get('f_technology_get_base_labs')(base);
-		const allocation_labs = labs_data.allocation;
-		const allocation_psych = 0.2;
-
-		const total_energy = resource_data.energy.profit - resource_data.energy.loss;
-		const energy_data = {
-			labs: {
-				allocation: allocation_labs,
-				value: labs_data.value,
-				bonus: labs_data.bonus,
-			},
-			psych: {
-				allocation: allocation_psych,
-				value: #round(#to_float(total_energy) * allocation_psych),
-				bonus: 0,
-			},
-		};
-		energy_data.economy = {
-			allocation: 1.0 - energy_data.labs.allocation - energy_data.psych.allocation,
-			value: total_energy - energy_data.labs.value - energy_data.psych.value,
-			bonus: 0,
-		};
-		this.sections.energy.set(energy_data);
+		this.sections.energy.set(game.get('f_economy_get_base_allocation')(base));
 
 		this.sections.middle_area.set({
+			base: base,
+		});
+		this.sections.buttons.set({
 			base: base,
 		});
 
