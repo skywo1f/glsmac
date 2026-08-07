@@ -412,6 +412,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	const unit = {
 		movement: 0.5,
 		moved_this_turn: false,
+		get_def: () => {
+			return {is_native: false};
+		},
 		get_tile: () => {
 			return current_tile;
 		},
@@ -469,6 +472,50 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(successful_event.data.unit.moved_this_turn == false);
 	test.assert(pending_move_callback != null);
 	pending_move_callback();
+}
+
+{
+	const src_tile = {
+		is_land: true,
+		is_water: false,
+		features: {river: false, xenofungus: false},
+		rockiness: 0,
+	};
+	const fungus_tile = {
+		is_land: true,
+		is_water: false,
+		features: {river: false, xenofungus: true},
+		rockiness: 0,
+	};
+	let random_max = 0.0;
+	const conventional = {
+		movement: 1.0,
+		get_def: () => { return {is_native: false}; },
+		get_tile: () => { return src_tile; },
+	};
+	const resolved = move_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_max = max;
+					return 2.0;
+				},
+			},
+		},
+		data: {unit: conventional, tile: fungus_tile},
+	});
+	test.assert(random_max == 3.0);
+	test.assert(resolved.is_movement_successful == false);
+
+	const native = {
+		movement: 1.0,
+		get_def: () => { return {is_native: true}; },
+		get_tile: () => { return src_tile; },
+	};
+	test.assert(move_unit.resolve({
+		game: {random: {get_float: () => { throw Error('native fungus movement should not roll'); }}},
+		data: {unit: native, tile: fungus_tile},
+	}).is_movement_successful == true);
 }
 
 {

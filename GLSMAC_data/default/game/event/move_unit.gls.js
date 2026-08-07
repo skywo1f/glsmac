@@ -1,5 +1,5 @@
 const get_movement_cost = (unit, src_tile, dst_tile) => {
-	const is_native = true; // TODO: non-native units
+	const is_native = unit.get_def().is_native;
 
 	if (
 		dst_tile.is_land &&
@@ -24,7 +24,7 @@ const get_movement_cost = (unit, src_tile, dst_tile) => {
 };
 
 const get_movement_aftercost = (unit, src_tile, dst_tile) => {
-	const is_native = true; // TODO: non-native units
+	const is_native = unit.get_def().is_native;
 	if (is_native && dst_tile.features.xenofungus) {
 		return 0.0;
 	}
