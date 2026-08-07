@@ -97,6 +97,11 @@
 		});
 
 		game.on('start_ui', (e) => {
+			if (game.get_player().difficulty_level != 'Transcend') {
+				#print('RUNTIME_SMOKE_FAIL: quickstart player difficulty was not preserved');
+				glsmac.exit();
+				return;
+			}
 			ui_started = true;
 			finish_if_ready();
 		});

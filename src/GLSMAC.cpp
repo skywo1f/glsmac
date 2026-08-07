@@ -625,12 +625,15 @@ void GLSMAC::RandomizeSettings( GSE_CALLABLE ) {
 void GLSMAC::AddSinglePlayerSlot( game::backend::faction::Faction* const faction ) {
 	m_state->m_slots->Resize( 7 ); // TODO: make dynamic?
 	const auto& rules = m_state->m_settings.global.rules;
+	const auto& difficulty_level = rules.m_difficulty_levels.GetString(
+		static_cast< int >( m_state->m_settings.global.difficulty_level )
+	);
 	m_state->m_settings.local.player_name = "Player";
 	NEWV( player, ::game::backend::Player,
 		m_state->m_settings.local.player_name,
 		::game::backend::Player::PR_SINGLE,
 		faction,
-		rules.GetDefaultDifficultyLevel() // TODO: make configurable
+		difficulty_level
 	);
 	m_state->AddPlayer( player );
 	size_t slot_num = 0; // player always has slot 0

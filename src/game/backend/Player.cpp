@@ -176,6 +176,10 @@ WRAPIMPL_BEGIN( Player )
 				VALUE( gse::value::String, , m_name )
 			},
 			{
+				"difficulty_level",
+				VALUE( gse::value::String, , m_difficulty_level )
+			},
+			{
 				"is_ready",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
