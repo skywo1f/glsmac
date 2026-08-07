@@ -128,6 +128,18 @@ test.assert(events[0].name == 'remove_base_pop');
 test.assert(events[0].data.base == base);
 test.assert(events[0].data.pop == mineral_pop);
 
+events = [];
+base_size = 1;
+intake_nutrients = 0;
+consumption_nutrients = 2;
+worked_tiles = [mineral_tile];
+pops = [mineral_pop];
+accumulated_nutrients = 0 - 1;
+
+values.f_base_process_growth(game, base);
+test.assert(#sizeof(events) == 0);
+test.assert(accumulated_nutrients == 0);
+
 let worker_tile = mineral_tile;
 const worker = {
 	id: 1,

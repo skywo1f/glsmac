@@ -194,6 +194,10 @@ const process_growth = (game, base) => {
 	}
 	accumulated += get_pending_growth(base);
 	if (accumulated < 0) {
+		if (base.get_size() <= 1) {
+			base.set('accumulated_nutrients', 0);
+			return;
+		}
 		if (!game.is_master()) {
 			return;
 		}
