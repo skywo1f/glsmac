@@ -783,12 +783,14 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 
 	event.data.attacker = active_attacker;
 	event.data.defender = active_defender;
+	active_attacker.movement = 2.0;
 	event.resolved = {
 		sequence: [[true, 0.9]],
 		attacker_dead: false,
 		defender_dead: true,
 	};
 	event.applied = attack_unit.apply(event);
+	test.assert(active_attacker.movement == 1.0);
 	test.assert(despawn_requests == 3);
 	test.assert(#sizeof(animations) == 2);
 	test.assert(#is_defined(animations[1].oncomplete));
@@ -799,6 +801,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(advance_data.tile == defender_tile);
 	test.assert(advance_data.animations_id == 73);
 	attack_unit.rollback(event);
+	test.assert(active_attacker.movement == 2.0);
 	test.assert(active_attacker.health == 0.8);
 	test.assert(active_defender.health == 0.9);
 }

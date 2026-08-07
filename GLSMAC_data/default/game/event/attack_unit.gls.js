@@ -186,7 +186,7 @@ return {
 			},
 		};
 
-		attacker.movement = 0.0; // TODO: rovers etc
+		attacker.movement = #max(0.0, attacker.movement - 1.0);
 		attacker.moved_this_turn = true;
 
 		let animations = [];
