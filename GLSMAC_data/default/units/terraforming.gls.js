@@ -12,17 +12,17 @@ const orders = {
 	farm: {
 		name: 'Farm',
 		turns: 4,
-		changes: {farm: true},
+		changes: {forest: false, farm: true},
 	},
 	mine: {
 		name: 'Mine',
 		turns: 8,
-		changes: {mine: true, solar: false},
+		changes: {forest: false, mine: true, solar: false},
 	},
 	solar: {
 		name: 'Solar Collector',
 		turns: 4,
-		changes: {solar: true, mine: false},
+		changes: {forest: false, solar: true, mine: false},
 	},
 };
 

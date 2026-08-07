@@ -9,6 +9,8 @@
 	let ai_expanded = false;
 	let ai_built_former = false;
 	let ai_terraformed = false;
+	let ai_built_road = false;
+	let ai_completed_improvement = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
@@ -108,8 +110,14 @@
 				if (unit.owner == ai_id && unit.get_def().id == 'Former') {
 					ai_built_former = true;
 					const former_tile = unit.get_tile();
-					if (unit.terraforming != 'none' || former_tile.terraforming.farm || former_tile.terraforming.mine) {
+					if (unit.terraforming != 'none' || former_tile.terraforming.road || former_tile.terraforming.forest || former_tile.terraforming.farm || former_tile.terraforming.mine || former_tile.terraforming.solar) {
 						ai_terraformed = true;
+					}
+					if (former_tile.terraforming.road) {
+						ai_built_road = true;
+					}
+					if (former_tile.terraforming.forest || former_tile.terraforming.farm) {
+						ai_completed_improvement = true;
 					}
 				}
 				if (scout == null && unit.owner == ai_id && unit.get_def().id == 'ScoutPatrol') {
@@ -132,10 +140,12 @@
 					!ai_expanded ||
 					!ai_built_former ||
 					!ai_terraformed ||
+					!ai_built_road ||
+					!ai_completed_improvement ||
 					populated_ai_bases != ai_bases ||
 					!ui_started
 				) {
-					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' bases=' + #to_string(ai_bases));
+					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' bases=' + #to_string(ai_bases));
 					fail('AI did not complete movement, growth, expansion, Former production, and terraforming by turn sixteen');
 					return;
 				}

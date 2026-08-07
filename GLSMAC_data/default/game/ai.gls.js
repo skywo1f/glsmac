@@ -152,23 +152,39 @@ const move_former = (game, player, unit) => {
 		return false;
 	}
 	if (tile.get_base() == null && !tile.is_water && !tile.features.monolith && !tile.features.xenofungus) {
-		if (!tile.terraforming.farm) {
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'farm'});
+		if (!tile.terraforming.road) {
+			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'road'});
 			return true;
 		}
-		if (!tile.terraforming.mine && !tile.terraforming.solar) {
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'mine'});
+		if (!tile.terraforming.forest && !tile.terraforming.farm) {
+			const type = tile.moisture <= 1 || tile.rockiness >= 2 ? 'forest' : 'farm';
+			game.event_as(player.id, 'terraform_tile', {unit: unit, type: type});
+			return true;
+		}
+		if (tile.terraforming.farm && !tile.terraforming.mine && !tile.terraforming.solar) {
+			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'solar'});
 			return true;
 		}
 	}
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
-		if (!can_enter(unit, candidate) || candidate.get_base() != null) {
+		if (
+			!can_enter(unit, candidate) ||
+			candidate.get_base() != null ||
+			candidate.is_water ||
+			candidate.features.monolith ||
+			candidate.features.xenofungus
+		) {
 			return 0 - 100000;
 		}
 		const resources = candidate.get_resources(player);
 		let score = resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
-		if (!candidate.terraforming.farm) {
-			score += 10;
+		if (!candidate.terraforming.road) {
+			score += 12;
+		}
+		if (!candidate.terraforming.forest && !candidate.terraforming.farm) {
+			score += 20;
+		} else if (candidate.terraforming.farm && !candidate.terraforming.mine && !candidate.terraforming.solar) {
+			score += 8;
 		}
 		return score;
 	});

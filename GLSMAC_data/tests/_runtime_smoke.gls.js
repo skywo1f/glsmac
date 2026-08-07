@@ -218,23 +218,9 @@
 					glsmac.exit();
 					return;
 				}
-				let unsupported_order_rejected = false;
-				try {
-					former.set_terraforming_order('road', 1);
-				} catch {
-					: (e) => {
-						unsupported_order_rejected = true;
-					}
-				}
-				if (
-					!unsupported_order_rejected ||
-					former.terraforming != 'none' ||
-					former.terraforming_turns_remaining != 0
-				) {
-					#print('RUNTIME_SMOKE_FAIL: unsupported native terraforming order was accepted');
-					glsmac.exit();
-					return;
-				}
+				former.set_terraforming_order('road', 1);
+				former.set_terraforming_order('forest', 1);
+				former.set_terraforming_order('none', 0);
 				former_id = former.id;
 
 				game.event('unit_skip_turn', {

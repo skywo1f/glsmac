@@ -153,6 +153,13 @@ test.assert(!tile.terraforming.mine);
 test.assert(!tile.terraforming.solar);
 test.assert(tile_state.updates == 4);
 
+unit.set_terraforming_order('solar', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(!tile.terraforming.forest);
+test.assert(tile.terraforming.solar);
+test.assert(!tile.terraforming.mine);
+test.assert(tile_state.updates == 5);
+
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;
 unit.moved_this_turn = true;
