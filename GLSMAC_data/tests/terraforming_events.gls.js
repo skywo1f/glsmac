@@ -19,6 +19,7 @@ tile = {
 	},
 	terraforming: {
 		road: false,
+		forest: false,
 		farm: false,
 		mine: false,
 		solar: false,
@@ -140,6 +141,17 @@ test.assert(unit.terraforming_turns_remaining == 1);
 test.assert(!terraforming.advance_order(unit));
 test.assert(tile.terraforming.road);
 test.assert(tile_state.updates == 3);
+
+tile.terraforming.farm = true;
+tile.terraforming.mine = true;
+tile.terraforming.solar = true;
+unit.set_terraforming_order('forest', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.terraforming.forest);
+test.assert(!tile.terraforming.farm);
+test.assert(!tile.terraforming.mine);
+test.assert(!tile.terraforming.solar);
+test.assert(tile_state.updates == 4);
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;

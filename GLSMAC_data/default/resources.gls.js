@@ -24,7 +24,9 @@ const result = {
 
 			// nutrients
 			if (!e.tile.features.xenofungus) {
-				if (e.tile.is_land) {
+				if (e.tile.is_land && e.tile.terraforming.forest) {
+					result.NUTRIENTS = 1;
+				} else if (e.tile.is_land) {
 					if (e.tile.rockiness < 3) {
 						result.NUTRIENTS = e.tile.moisture - 1;
 					}
@@ -51,12 +53,14 @@ const result = {
 
 			// minerals
 			if (!e.tile.features.xenofungus) {
-				if (e.tile.is_land) {
+				if (e.tile.is_land && e.tile.terraforming.forest) {
+					result.MINERALS = 2;
+				} else if (e.tile.is_land) {
 					if (e.tile.rockiness > 1) {
 						result.MINERALS = 1;
 					}
 				}
-				if (e.tile.terraforming.mine) {
+				if (!e.tile.terraforming.forest && e.tile.terraforming.mine) {
 					result.MINERALS = result.MINERALS + 1;
 				}
 				if (e.tile.bonuses.minerals) {
@@ -69,6 +73,9 @@ const result = {
 			// energy
 			if (!e.tile.features.xenofungus) {
 				if (e.tile.is_land) {
+					if (e.tile.terraforming.forest) {
+						result.ENERGY = 1;
+					}
 					if (e.tile.features.river) {
 						result.ENERGY = result.ENERGY + 1; // TODO: fix += with properties
 					}

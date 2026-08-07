@@ -121,6 +121,7 @@ return {
 				if (object.terraforming != 'none') {
 					const names = {
 						road: 'Road',
+						forest: 'Forest',
 						farm: 'Farm',
 						mine: 'Mine',
 						solar: 'Solar Collector',
@@ -256,13 +257,14 @@ return {
 			align: 'bottom left',
 			left: 6,
 			bottom: 256,
-			height: 72,
+			height: 90,
 		});
 		this.terraform_menu.surface({class: 'game-menu-top-border'});
 		this.terraform_menu.surface({class: 'game-menu-bottom-border'});
 		let terraform_top = 0;
 		for (entry of [
 			{type: 'road', label: 'Road (2 turns)'},
+			{type: 'forest', label: 'Forest (4 turns)'},
 			{type: 'farm', label: 'Farm (4 turns)'},
 			{type: 'mine', label: 'Mine (8 turns)'},
 			{type: 'solar', label: 'Solar (4 turns)'},
@@ -303,6 +305,8 @@ return {
 				let type = null;
 				if (e.code == 'R') {
 					type = 'road';
+				} else if (e.code == 'P') {
+					type = 'forest';
 				} else if (e.code == 'F') {
 					type = 'farm';
 				} else if (e.code == 'M') {

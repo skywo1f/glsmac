@@ -21,6 +21,7 @@ const make_tile = (fungus) => {
 			river: false,
 		},
 		terraforming: {
+			forest: false,
 			farm: false,
 			mine: false,
 			solar: false,
@@ -47,6 +48,14 @@ test.assert(yields == {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0});
 has_ecology = true;
 yields = resource_callback({tile: make_tile(true), player: player});
 test.assert(yields == {NUTRIENTS: 1, MINERALS: 0, ENERGY: 0});
+
+const forest_tile = make_tile(false);
+forest_tile.terraforming.forest = true;
+yields = resource_callback({tile: forest_tile, player: player});
+test.assert(yields == {NUTRIENTS: 1, MINERALS: 2, ENERGY: 1});
+forest_tile.features.river = true;
+yields = resource_callback({tile: forest_tile, player: player});
+test.assert(yields == {NUTRIENTS: 1, MINERALS: 2, ENERGY: 2});
 
 const bm_callbacks = {};
 const bm = {

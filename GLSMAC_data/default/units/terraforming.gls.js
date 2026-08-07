@@ -4,6 +4,11 @@ const orders = {
 		turns: 2,
 		changes: {road: true},
 	},
+	forest: {
+		name: 'Forest',
+		turns: 4,
+		changes: {forest: true, farm: false, mine: false, solar: false},
+	},
 	farm: {
 		name: 'Farm',
 		turns: 4,
