@@ -139,7 +139,7 @@ return {
 
 		this.sections.game_state.set({
 			year: game.get_year(),
-			energy: 0, // TODO
+			energy: owner.energy_credits,
 			ecodamage: 0, // TODO
 		});
 

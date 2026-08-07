@@ -30,6 +30,7 @@ return (game) => {
 		'process_base_production',
 		'initialize_player_research',
 		'process_player_research',
+		'process_player_economy',
 		'declare_victory',
 		'complete_turn',
 		'uncomplete_turn',

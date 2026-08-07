@@ -10,6 +10,7 @@
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
+	const initial_energy_stamp = 137;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -62,6 +63,23 @@
 		const role = game.is_master() ? 'HOST' : 'CLIENT';
 		let handled_turns = {};
 		let terraform_site_coords = null;
+
+		game.register_event('running_reconnect_set_energy', {
+			validate: (e) => {
+				if (#typeof(e.data.energy_credits) != 'Int' || e.data.energy_credits < 0) {
+					return 'Invalid reconnect energy stamp';
+				}
+			},
+			apply: (e) => {
+				const player = e.game.get_player(e.caller);
+				const previous = player.energy_credits;
+				player.set_energy_credits(e.data.energy_credits);
+				return {energy_credits: previous};
+			},
+			rollback: (e) => {
+				e.game.get_player(e.caller).set_energy_credits(e.applied.energy_credits);
+			},
+		});
 
 		const find_base_for_player = (player_id) => {
 			for (base of game.get_bm().get_bases()) {
@@ -236,6 +254,7 @@
 		const run_initial_founding_probe = () => {
 			let founding_requested = false;
 			let terraform_requested = false;
+			let energy_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -319,6 +338,15 @@
 							#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + terraform_state_error);
 							glsmac.exit();
 							return false;
+						}
+						if (game.get_player().energy_credits != initial_energy_stamp) {
+							if (!energy_requested) {
+								energy_requested = true;
+								game.event('running_reconnect_set_energy', {
+									energy_credits: initial_energy_stamp,
+								});
+							}
+							return true;
 						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');

@@ -46,6 +46,7 @@ Player::Player( const Player* const other ) {
 	m_technologies = other->m_technologies;
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
+	m_energy_credits = other->m_energy_credits;
 }
 
 Player::~Player() {
@@ -160,6 +161,17 @@ void Player::SetResearchState(
 	m_research_progress = progress;
 }
 
+int64_t Player::GetEnergyCredits() const {
+	return m_energy_credits;
+}
+
+void Player::SetEnergyCredits( const int64_t energy_credits ) {
+	if ( energy_credits < 0 || energy_credits > MAX_ENERGY_CREDITS ) {
+		THROW( "player energy credits are out of range" );
+	}
+	m_energy_credits = energy_credits;
+}
+
 WRAPIMPL_BEGIN( Player )
 	auto* const game = g_engine->GetGame();
 	WRAPIMPL_PROPS
@@ -178,6 +190,10 @@ WRAPIMPL_BEGIN( Player )
 			{
 				"difficulty_level",
 				VALUE( gse::value::String, , m_difficulty_level )
+			},
+			{
+				"energy_credits",
+				VALUE( gse::value::Int, , m_energy_credits )
 			},
 			{
 				"is_ready",
@@ -298,6 +314,19 @@ WRAPIMPL_BEGIN( Player )
 					return VALUE( gse::value::Bool, , HasTechnology( id ) );
 				} )
 			},
+			{
+				"set_energy_credits",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( energy_credits, 0, Int );
+					if ( energy_credits < 0 || energy_credits > MAX_ENERGY_CREDITS ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Player energy credits are out of range" );
+					}
+					SetEnergyCredits( energy_credits );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -320,6 +349,7 @@ const types::Buffer Player::Serialize() const {
 	}
 	buf.WriteString( m_research_target );
 	buf.WriteInt( m_research_progress );
+	buf.WriteInt( m_energy_credits );
 
 	return buf;
 }
@@ -355,6 +385,10 @@ void Player::Deserialize( types::Buffer buf ) {
 	if ( !ValidateResearchState( technologies, research_target, research_progress, research_error ) ) {
 		THROW( "invalid serialized player research state: " + research_error );
 	}
+	const auto energy_credits = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	if ( energy_credits < 0 || energy_credits > MAX_ENERGY_CREDITS ) {
+		THROW( "invalid serialized player energy credits" );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -369,6 +403,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_technologies = std::move( technologies );
 	m_research_target = research_target;
 	m_research_progress = research_progress;
+	m_energy_credits = energy_credits;
 
 }
 

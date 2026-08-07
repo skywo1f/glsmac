@@ -6,6 +6,7 @@
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
+	const initial_energy_stamp = 137;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -105,6 +106,11 @@
 		};
 
 		const get_base_state_error = () => {
+			if (game.get_player().energy_credits != initial_energy_stamp) {
+				return
+					'energy credits are ' + #to_string(game.get_player().energy_credits) +
+					', expected ' + #to_string(initial_energy_stamp);
+			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
 			}
@@ -296,6 +302,7 @@
 				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_TERRAFORM_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESEARCH_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_ENERGY_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}

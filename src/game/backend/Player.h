@@ -67,6 +67,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	using technologies_t = std::set< std::string >;
 	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
 	static constexpr size_t MAX_TECHNOLOGIES = 1024;
+	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
 
 	const technologies_t& GetTechnologies() const;
 	bool HasTechnology( const std::string& id ) const;
@@ -77,6 +78,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		const std::string& target,
 		const int64_t progress
 	);
+	int64_t GetEnergyCredits() const;
+	void SetEnergyCredits( const int64_t energy_credits );
 
 	WRAPDEFS_PTR( Player );
 
@@ -103,6 +106,7 @@ private:
 	technologies_t m_technologies = {};
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;
+	int64_t m_energy_credits = 0;
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(
