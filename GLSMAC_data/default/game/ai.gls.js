@@ -1,3 +1,6 @@
+const MOVEMENT_ACTION_DELAY = 200;
+const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
+
 const owned_bases = (game, player) => {
 	let result = [];
 	for (base of game.get_bm().get_bases()) {
@@ -36,7 +39,7 @@ const choose_tile = (tiles, score) => {
 };
 
 const can_enter = (unit, tile) => {
-	if (tile.is_locked()) {
+	if (unit.get_tile() == tile || tile.is_locked()) {
 		return false;
 	}
 	if (unit.is_land && tile.is_water) {
@@ -51,6 +54,30 @@ const can_enter = (unit, tile) => {
 		}
 	}
 	return true;
+};
+
+const has_other_active_former = (tile, unit) => {
+	for (other of tile.get_units()) {
+		if (other.id != unit.id && other.terraforming != 'none') {
+			return true;
+		}
+	}
+	return false;
+};
+
+const can_attempt_action = (unit, action_attempts) => {
+	const unit_key = #to_string(unit.id);
+	return (
+		(!#is_defined(action_attempts[unit_key]) || action_attempts[unit_key] < MAX_ACTION_ATTEMPTS_PER_UNIT) &&
+		unit.movement > 0.0 &&
+		!unit.is_immovable &&
+		unit.terraforming == 'none'
+	);
+};
+
+const record_action_attempt = (unit, action_attempts) => {
+	const unit_key = #to_string(unit.id);
+	action_attempts[unit_key] = #is_defined(action_attempts[unit_key]) ? action_attempts[unit_key] + 1 : 1;
 };
 
 const queue_production = (game, player, bases, units) => {
@@ -157,7 +184,13 @@ const move_former = (game, player, unit) => {
 	if (tile.is_locked()) {
 		return false;
 	}
-	if (tile.get_base() == null && !tile.is_water && !tile.features.monolith && !tile.features.xenofungus) {
+	if (
+		tile.get_base() == null &&
+		!tile.is_water &&
+		!tile.features.monolith &&
+		!tile.features.xenofungus &&
+		!has_other_active_former(tile, unit)
+	) {
 		if (!tile.terraforming.road) {
 			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'road'});
 			return true;
@@ -177,7 +210,8 @@ const move_former = (game, player, unit) => {
 			candidate.get_base() == null &&
 			!candidate.is_water &&
 			!candidate.features.monolith &&
-			!candidate.features.xenofungus;
+			!candidate.features.xenofungus &&
+			!has_other_active_former(candidate, unit);
 	};
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!is_candidate(candidate)) {
@@ -261,7 +295,7 @@ const play_turn = (game, player, done) => {
 	queue_production(game, player, bases, units);
 
 	let steps = 0;
-	let acted_units = {};
+	let action_attempts = {};
 	const play_next_action = () => {
 		if (!game.is_master() || game.is_game_over() || game.is_turn_complete(player.id)) {
 			done();
@@ -270,10 +304,9 @@ const play_turn = (game, player, done) => {
 		const current_units = owned_units(game, player);
 		const all_bases = game.get_bm().get_bases();
 		let action_started = false;
-		let action_delay = 100;
+		let action_delay = MOVEMENT_ACTION_DELAY;
 		for (unit of current_units) {
-			const unit_key = #to_string(unit.id);
-			if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+			if (!can_attempt_action(unit, action_attempts)) {
 				continue;
 			}
 			const def = unit.get_def();
@@ -281,30 +314,28 @@ const play_turn = (game, player, done) => {
 				action_started = move_colony(game, player, unit, all_bases);
 			}
 			if (action_started) {
-				acted_units[unit_key] = true;
+				record_action_attempt(unit, action_attempts);
 				break;
 			}
 		}
 		if (!action_started) {
 			for (unit of current_units) {
-				const unit_key = #to_string(unit.id);
-				if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+				if (!can_attempt_action(unit, action_attempts)) {
 					continue;
 				}
 				const def = unit.get_def();
 				if (def.can_terraform) {
-				action_started = move_former(game, player, unit);
+					action_started = move_former(game, player, unit);
 				}
 				if (action_started) {
-					acted_units[unit_key] = true;
+					record_action_attempt(unit, action_attempts);
 					break;
 				}
 			}
 		}
 		if (!action_started) {
 			for (unit of current_units) {
-				const unit_key = #to_string(unit.id);
-				if (#is_defined(acted_units[unit_key]) || unit.movement <= 0.0 || unit.is_immovable || unit.terraforming != 'none') {
+				if (!can_attempt_action(unit, action_attempts)) {
 					continue;
 				}
 				if (unit.get_def().offense > 0) {
@@ -315,13 +346,13 @@ const play_turn = (game, player, done) => {
 					}
 				}
 				if (action_started) {
-					acted_units[unit_key] = true;
+					record_action_attempt(unit, action_attempts);
 					break;
 				}
 			}
 		}
 		steps++;
-		if (action_started && steps < 100) {
+		if (action_started && steps < 1000) {
 			#async(action_delay, play_next_action);
 			return;
 		}

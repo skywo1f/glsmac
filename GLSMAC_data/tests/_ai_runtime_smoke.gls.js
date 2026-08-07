@@ -11,6 +11,9 @@
 	let ai_terraformed = false;
 	let ai_built_road = false;
 	let ai_completed_improvement = false;
+	let ai_built_rover = false;
+	let ai_rover_moved_twice = false;
+	let rover_tiles = {};
 	let ui_started = false;
 	let exit_scheduled = false;
 
@@ -83,7 +86,13 @@
 				return;
 			}
 			ai_id = ai.id;
-
+			if (!ai.has_technology('DoctrineMobility')) {
+				ai.set_research_state({
+					technologies: ['CentauriEcology', 'DoctrineMobility'],
+					target: '',
+					progress: 0,
+				});
+			}
 			let ai_bases = 0;
 			let populated_ai_bases = 0;
 			let garrisoned_ai_bases = 0;
@@ -131,6 +140,22 @@
 						ai_completed_improvement = true;
 					}
 				}
+				if (unit.owner == ai_id && unit.get_def().id == 'ReconRover') {
+					ai_built_rover = true;
+					const unit_key = #to_string(unit.id);
+					const tile = unit.get_tile();
+					if (#is_defined(rover_tiles[unit_key])) {
+						const previous = rover_tiles[unit_key];
+						const distance = game.get_tm().get_distance(game.get_tm().get_tile(previous[0], previous[1]), tile);
+						if (distance > 0) {
+							ai_moved = true;
+						}
+						if (distance >= 2) {
+							ai_rover_moved_twice = true;
+						}
+					}
+					rover_tiles[unit_key] = [tile.x, tile.y];
+				}
 				if (scout == null && unit.owner == ai_id && unit.get_def().id == 'ScoutPatrol') {
 					scout = unit;
 				}
@@ -153,18 +178,20 @@
 					!ai_terraformed ||
 					!ai_built_road ||
 					!ai_completed_improvement ||
+					!ai_built_rover ||
+					!ai_rover_moved_twice ||
 					populated_ai_bases != ai_bases ||
 					garrisoned_ai_bases != ai_bases ||
 					ai_combat_units <= ai_bases ||
 					!ui_started
 				) {
-					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
-					fail('AI did not complete movement, growth, expansion, Former production, and terraforming by turn sixteen');
+					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
+					fail('AI did not complete movement, growth, expansion, terraforming, and multi-move rover play by turn sixteen');
 					return;
 				}
 				if (!exit_scheduled) {
 					exit_scheduled = true;
-					#print('AI_RUNTIME_PASS: AI moved, grew, expanded, built a Former, terraformed, and completed sixteen synchronized turns');
+					#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and used a rover twice in one turn');
 					#async(500, () => { glsmac.exit(); });
 				}
 				return;
