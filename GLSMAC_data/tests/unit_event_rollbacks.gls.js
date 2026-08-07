@@ -388,6 +388,63 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 }
 
 {
+	const source = {
+		is_land: true,
+		features: {river: false, xenofungus: false},
+		terraforming: {road: false, forest: false},
+		rockiness: 0,
+	};
+	const destination = {
+		is_land: true,
+		features: {river: false, xenofungus: false},
+		terraforming: {road: false, forest: true},
+		rockiness: 0,
+		get_base: () => { return null; },
+	};
+	let current_tile = source;
+	const unit = {
+		movement: 1.5,
+		moved_this_turn: false,
+		get_def: () => { return {is_native: false}; },
+		get_tile: () => { return current_tile; },
+		move_to_tile: (tile, oncomplete) => {
+			current_tile = tile;
+			oncomplete();
+		},
+	};
+	let event = {
+		data: {unit: unit, tile: destination},
+		resolved: {is_movement_successful: true},
+	};
+	event.applied = move_unit.apply(event);
+	test.assert(event.data.unit.movement == 0.0);
+	move_unit.rollback(event);
+	test.assert(event.data.unit.movement == 1.5);
+	current_tile = source;
+
+	source.terraforming.road = true;
+	destination.terraforming.road = true;
+	event = {
+		data: {unit: unit, tile: destination},
+		resolved: {is_movement_successful: true},
+	};
+	event.applied = move_unit.apply(event);
+	test.assert(event.data.unit.movement > 1.166 && event.data.unit.movement < 1.167);
+	move_unit.rollback(event);
+	current_tile = source;
+
+	destination.terraforming.forest = false;
+	destination.rockiness = 3;
+	event = {
+		data: {unit: unit, tile: destination},
+		resolved: {is_movement_successful: true},
+	};
+	event.applied = move_unit.apply(event);
+	test.assert(event.data.unit.movement > 1.166 && event.data.unit.movement < 1.167);
+	move_unit.rollback(event);
+}
+
+{
 	const src_tile = {
 		is_land: true,
 		is_water: false,

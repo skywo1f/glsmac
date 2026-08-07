@@ -28,10 +28,20 @@ const get_movement_cost = (unit, src_tile, dst_tile) => {
 
 const get_movement_aftercost = (unit, src_tile, dst_tile) => {
 	const is_native = unit.get_def().is_native;
+	if (
+		dst_tile.is_land &&
+		(
+			(src_tile.features.river && dst_tile.features.river) ||
+			(src_tile.terraforming.road && dst_tile.terraforming.road)
+		)
+	) {
+		return 0.0;
+	}
 	if (is_native && dst_tile.features.xenofungus) {
 		return 0.0;
 	}
-	if (dst_tile.is_land && dst_tile.rockiness >= 3) {
+	const has_forest = #is_defined(dst_tile.terraforming.forest) && dst_tile.terraforming.forest;
+	if (dst_tile.is_land && (dst_tile.rockiness >= 3 || has_forest)) {
 		return 1.0;
 	}
 	return 0.0;
