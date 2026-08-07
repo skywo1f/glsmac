@@ -14,7 +14,8 @@ FacilityDef::FacilityDef(
 	const int64_t nutrient_bonus,
 	const int64_t mineral_bonus,
 	const int64_t energy_bonus,
-	const int64_t energy_maintenance
+	const int64_t energy_maintenance,
+	const std::string& required_technology
 )
 	: m_id( id )
 	, m_name( name )
@@ -22,7 +23,8 @@ FacilityDef::FacilityDef(
 	, m_nutrient_bonus( nutrient_bonus )
 	, m_mineral_bonus( mineral_bonus )
 	, m_energy_bonus( energy_bonus )
-	, m_energy_maintenance( energy_maintenance ) {
+	, m_energy_maintenance( energy_maintenance )
+	, m_required_technology( required_technology ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -50,6 +52,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_mineral_bonus );
 	buf.WriteInt( def->m_energy_bonus );
 	buf.WriteInt( def->m_energy_maintenance );
+	buf.WriteString( def->m_required_technology );
 	return buf;
 }
 
@@ -61,6 +64,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto mineral_bonus = buf.ReadInt();
 	const auto energy_bonus = buf.ReadInt();
 	const auto energy_maintenance = buf.ReadInt();
+	const auto required_technology = buf.GetRemaining() > 0 ? buf.ReadString() : "";
 	return new FacilityDef(
 		id,
 		name,
@@ -68,7 +72,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		nutrient_bonus,
 		mineral_bonus,
 		energy_bonus,
-		energy_maintenance
+		energy_maintenance,
+		required_technology
 	);
 }
 
@@ -105,6 +110,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"energy_maintenance",
 			VALUE( gse::value::Int, , m_energy_maintenance )
+		},
+		{
+			"required_technology",
+			VALUE( gse::value::String, , m_required_technology )
 		},
 	};
 WRAPIMPL_END_PTR()

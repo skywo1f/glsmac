@@ -374,6 +374,41 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				GT_ASSERT( rejected_negative_facility_cost, "negative facility mineral cost accepted" );
 
+				game::backend::base::FacilityDef facility_source(
+					"NETWORK_NODE",
+					"Network Node",
+					80,
+					0,
+					0,
+					0,
+					1,
+					"InformationNetworks"
+				);
+				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
+				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
+					game::backend::base::FacilityDef::Deserialize( facility_serialized )
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_required_technology == "InformationNetworks",
+					"facility technology prerequisite was not serialized"
+				);
+
+				types::Buffer legacy_facility;
+				legacy_facility.WriteString( "LEGACY" );
+				legacy_facility.WriteString( "Legacy Facility" );
+				legacy_facility.WriteInt( 40 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 1 );
+				std::unique_ptr< game::backend::base::FacilityDef > legacy_facility_parsed(
+					game::backend::base::FacilityDef::Deserialize( legacy_facility )
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_required_technology.empty(),
+					"legacy facility definition gained a technology prerequisite"
+				);
+
 				const auto make_unit_def = [](
 					const int64_t mineral_cost,
 					const int64_t offense,

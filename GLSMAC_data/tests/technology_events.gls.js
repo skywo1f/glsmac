@@ -12,10 +12,16 @@ test.assert(mobility.id == 'DoctrineMobility');
 test.assert(mobility.name == 'Doctrine: Mobility');
 test.assert(mobility.cost == 30);
 test.assert(mobility.prerequisites == ['CentauriEcology']);
+const information = technologies.get_definition('InformationNetworks');
+test.assert(information.id == 'InformationNetworks');
+test.assert(information.name == 'Information Networks');
+test.assert(information.cost == 40);
+test.assert(information.prerequisites == ['DoctrineMobility']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
 test.assert(technologies.get_next_target([]) == 'CentauriEcology');
 test.assert(technologies.get_next_target(['CentauriEcology']) == 'DoctrineMobility');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == '');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == 'InformationNetworks');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks']) == '');
 
 const base = {
 	get_intake: () => {
@@ -24,12 +30,22 @@ const base = {
 	get_consumption: () => {
 		return {ENERGY: 1};
 	},
+	has_facility: (id) => { return false; },
 };
 const labs = technologies.get_base_labs(base);
 test.assert(labs.allocation == 0.4);
 test.assert(labs.value == 2);
 test.assert(labs.bonus == 2);
 test.assert(labs.total == 4);
+const network_base = {
+	get_intake: base.get_intake,
+	get_consumption: base.get_consumption,
+	has_facility: (id) => { return id == 'NetworkNode'; },
+};
+const network_labs = technologies.get_base_labs(network_base);
+test.assert(network_labs.value == 2);
+test.assert(network_labs.bonus == 4);
+test.assert(network_labs.total == 6);
 
 const make_initial_player = (starting_technologies) => {
 	return {
@@ -54,6 +70,15 @@ test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology
 });
 test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology', 'DoctrineMobility'])) == {
 	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	target: 'InformationNetworks',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player([
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
 	target: '',
 	progress: 0,
 });
@@ -203,7 +228,7 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology', 'DoctrineMobility'],
-	target: '',
+	target: 'InformationNetworks',
 	progress: 0,
 });
 test.assert(messages == [
@@ -215,6 +240,32 @@ test.assert(research_state == {
 	technologies: ['CentauriEcology'],
 	target: 'DoctrineMobility',
 	progress: 29,
+});
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	target: 'InformationNetworks',
+	progress: 39,
+};
+event.data.technology = information;
+event.data.labs = 1;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
+	target: '',
+	progress: 0,
+});
+test.assert(messages == [
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Doctrine: Mobility.',
+	'Researcher has discovered Information Networks.',
+]);
+process_research.rollback(event);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	target: 'InformationNetworks',
+	progress: 39,
 });
 
 event.data.technology = {

@@ -320,6 +320,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, mineral_bonus, def, "mineral_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, energy_bonus, def, "energy_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, energy_maintenance, def, "energy_maintenance", Int, 0 );
+				N_GETPROP_OPT( std::string, required_technology, def, "required_technology", String, "" );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -346,7 +347,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					nutrient_bonus,
 					mineral_bonus,
 					energy_bonus,
-					energy_maintenance
+					energy_maintenance,
+					required_technology
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

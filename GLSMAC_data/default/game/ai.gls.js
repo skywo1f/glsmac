@@ -122,6 +122,9 @@ const queue_production = (game, player, bases, units) => {
 		} else if (base.can_set_production('facility', 'RecyclingTanks')) {
 			kind = 'facility';
 			id = 'RecyclingTanks';
+		} else if (base.can_set_production('facility', 'NetworkNode')) {
+			kind = 'facility';
+			id = 'NetworkNode';
 		} else {
 			kind = 'unit';
 			id = base.can_set_production('unit', 'ReconRover') ? 'ReconRover' : 'ScoutPatrol';

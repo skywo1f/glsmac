@@ -10,6 +10,18 @@ const facilities = [
 			energy_maintenance: 0,
 		},
 	},
+	{
+		id: 'NetworkNode',
+		data: {
+			name: 'Network Node',
+			mineral_cost: 80,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 1,
+			required_technology: 'InformationNetworks',
+		},
+	},
 ];
 
 return {

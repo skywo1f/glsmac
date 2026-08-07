@@ -12,9 +12,15 @@ const definitions = {
 		cost: 30,
 		prerequisites: ['CentauriEcology'],
 	},
+	InformationNetworks: {
+		id: 'InformationNetworks',
+		name: 'Information Networks',
+		cost: 40,
+		prerequisites: ['DoctrineMobility'],
+	},
 };
 
-const technology_order = ['CentauriEcology', 'DoctrineMobility'];
+const technology_order = ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'];
 
 const get_definition = (id) => {
 	if (!#is_defined(definitions[id])) {
@@ -63,16 +69,19 @@ const get_initial_state = (player) => {
 
 const get_base_labs = (base) => {
 	const allocation = 0.4;
-	const bonus = 2;
+	const base_bonus = 2;
 	const intake = base.get_intake();
 	const consumption = base.get_consumption();
 	const energy_surplus = #max(intake.ENERGY - consumption.ENERGY, 0);
 	const allocated = #round(#to_float(energy_surplus) * allocation);
+	const network_bonus = base.has_facility('NetworkNode')
+		? #ceil(#to_float(allocated + base_bonus) * 0.5)
+		: 0;
 	return {
 		allocation: allocation,
 		value: allocated,
-		bonus: bonus,
-		total: allocated + bonus,
+		bonus: base_bonus + network_bonus,
+		total: allocated + base_bonus + network_bonus,
 	};
 };
 

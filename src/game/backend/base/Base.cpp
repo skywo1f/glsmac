@@ -235,7 +235,15 @@ bool Base::CanProduce( const production_t& production ) const {
 			return CanProduceUnit( m_game->GetUM()->GetUnitDef( production.id ) );
 		case PK_FACILITY: {
 			auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
-			return def && def->m_mineral_cost > 0 && !HasFacility( production.id );
+			const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
+			return
+				def &&
+				def->m_mineral_cost > 0 &&
+				!HasFacility( production.id ) &&
+				(
+					def->m_required_technology.empty() ||
+					( owner && owner->HasTechnology( def->m_required_technology ) )
+				);
 		}
 	}
 	return false;
