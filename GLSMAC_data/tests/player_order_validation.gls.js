@@ -51,3 +51,23 @@ test.assert(unwork_base_tile.validate({
 	game: game,
 	data: {base: base},
 }) == completed_error);
+
+const center_tile = {
+	get_base: () => { return {}; },
+	has: (key) => { return false; },
+};
+const available_game = {
+	is_turn_complete: (id) => { return false; },
+};
+const available_base = {
+	get_owner: () => { return {id: player_id}; },
+	get_workable_tiles: () => { return [center_tile]; },
+};
+const available_pop = {
+	get_base: () => { return available_base; },
+};
+test.assert(work_base_tile.validate({
+	caller: player_id,
+	game: available_game,
+	data: {base: available_base, pop: available_pop, tile: center_tile},
+}) == 'Base centers cannot be worked');

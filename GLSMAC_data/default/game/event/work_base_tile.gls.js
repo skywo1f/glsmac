@@ -20,6 +20,9 @@ return {
 		if (!is_workable) {
 			return 'Tile is outside this base\'s workable radius';
 		}
+		if (e.data.tile.get_base() != null) {
+			return 'Base centers cannot be worked';
+		}
 		if (e.data.tile.has('working_pop')) {
 			return 'Tile is already being worked';
 		}

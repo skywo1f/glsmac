@@ -39,7 +39,7 @@ const get_tile_score = (base, tile, projected_size) => {
 	return score;
 };
 
-const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size) => { // modifier 1 to find best tiles, -1 to find worst tiles
+const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, require_available, excluded_keys) => { // modifier 1 to find best tiles, -1 to find worst tiles
 	let keys = {};
 	let result = [];
 	for (let i = 0; i < count; i++) {
@@ -49,6 +49,16 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size) 
 		let best = null;
 		for (tile of tiles) {
 			const key = #to_string(tile.x) + '_' + #to_string(tile.y);
+			if (
+				(#is_defined(excluded_keys) && #is_defined(excluded_keys[key])) ||
+				(
+					#is_defined(require_available) &&
+					require_available &&
+					(tile.get_base() != null || tile.has('working_pop'))
+				)
+			) {
+				continue;
+			}
 			if (#is_defined(keys[key])) {
 				continue;
 			}
@@ -63,7 +73,8 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size) 
 		}
 		if (best != null) {
 			keys[best.key] = true;
-			result :+best.tile;
+			const selected_tile = best.tile;
+			result :+selected_tile;
 		} else {
 			break;
 		}
@@ -71,7 +82,110 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size) 
 	return result;
 };
 
+const select_worker_tiles = (base, candidates, count) => {
+	let selected = [];
+	let selected_keys = {};
+	let fixed_nutrients = base.get_intake().NUTRIENTS;
+	let worked_tile = null;
+	for (worked_tile of base.get_worked_tiles()) {
+		fixed_nutrients -= worked_tile.get_resources(base.get_owner()).NUTRIENTS;
+	}
+	let selected_nutrients = fixed_nutrients;
+	const required_nutrients = base.get_consumption().NUTRIENTS;
+	for (let i = 0; i < count; i++) {
+		let best = null;
+		let candidate_tile = null;
+		for (candidate_tile of candidates) {
+			const key = #to_string(candidate_tile.x) + '_' + #to_string(candidate_tile.y);
+			if (#is_defined(selected_keys[key])) {
+				continue;
+			}
+			const resources = candidate_tile.get_resources(base.get_owner());
+			const needed = #max(required_nutrients - selected_nutrients, 0);
+			const food = #min(resources.NUTRIENTS, needed);
+			const score = food * 1000 + get_tile_score(base, candidate_tile);
+			if (
+				best == null ||
+				score > best.score ||
+				(score == best.score && (candidate_tile.y < best.tile.y || (candidate_tile.y == best.tile.y && candidate_tile.x < best.tile.x)))
+			) {
+				best = {tile: candidate_tile, key: key, score: score, nutrients: resources.NUTRIENTS};
+			}
+		}
+		if (best == null) {
+			break;
+		}
+		const selected_tile = best.tile;
+		selected :+selected_tile;
+		selected_keys[best.key] = true;
+		selected_nutrients += best.nutrients;
+	}
+	return selected;
+};
+
+const rebalance_workers = (base) => {
+	let workers = [];
+	let candidates = [];
+	let candidate_keys = {};
+	const add_candidate = (candidate_tile) => {
+		const key = #to_string(candidate_tile.x) + '_' + #to_string(candidate_tile.y);
+		if (!#is_defined(candidate_keys[key])) {
+			candidate_keys[key] = true;
+			candidates :+candidate_tile;
+		}
+	};
+	let base_pop = null;
+	for (base_pop of base.get_pops()) {
+		if (base_pop.has('worked_tile')) {
+			workers :+base_pop;
+		}
+	}
+	if (#sizeof(workers) == 0) {
+		return;
+	}
+	let worked_tile = null;
+	for (worked_tile of base.get_worked_tiles()) {
+		add_candidate(worked_tile);
+	}
+	let available_tile = null;
+	for (available_tile of base.get_unworked_tiles()) {
+		if (available_tile.get_base() == null && !available_tile.has('working_pop')) {
+			add_candidate(available_tile);
+		}
+	}
+	const selected = select_worker_tiles(base, candidates, #sizeof(workers));
+	let selected_keys = {};
+	let new_tiles = [];
+	let selected_tile = null;
+	for (selected_tile of selected) {
+		const key = #to_string(selected_tile.x) + '_' + #to_string(selected_tile.y);
+		selected_keys[key] = true;
+		if (!base.is_tile_worked(selected_tile)) {
+			new_tiles :+selected_tile;
+		}
+	}
+	let displaced = [];
+	let worker = null;
+	for (worker of workers) {
+		const worker_tile = worker.get('worked_tile');
+		const key = #to_string(worker_tile.x) + '_' + #to_string(worker_tile.y);
+		if (!#is_defined(selected_keys[key])) {
+			displaced :+worker;
+		}
+	}
+	for (let i = 0; i < #sizeof(displaced); i++) {
+		if (i < #sizeof(new_tiles)) {
+			pop_work_tile(base, displaced[i], new_tiles[i]);
+		} else {
+			pop_unwork(base, displaced[i], 'DOCTOR');
+		}
+	}
+};
+
 const process_growth = (game, base) => {
+	if (base.get_owner().type == 'ai') {
+		rebalance_workers(base);
+	}
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
@@ -125,8 +239,20 @@ const process_growth = (game, base) => {
 		if (!game.is_master()) {
 			return;
 		}
-		const best_tile = (find_best_or_worst_tiles(base, base.get_unworked_tiles(), 1, 1, base.get_size() + 1))[0];
+		if (!#is_defined(globals.reserved_growth_tiles)) {
+			globals.reserved_growth_tiles = {};
+		}
+		const best_tile = (find_best_or_worst_tiles(
+			base,
+			base.get_unworked_tiles(),
+			1,
+			1,
+			base.get_size() + 1,
+			true,
+			globals.reserved_growth_tiles
+		))[0];
 		if (best_tile != null) {
+			globals.reserved_growth_tiles[#to_string(best_tile.x) + '_' + #to_string(best_tile.y)] = true;
 			// found tile to work, spawn worker
 			// TODO: talents logic
 			game.event('add_base_pop', {
@@ -291,10 +417,12 @@ return (game) => {
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
+		game.set('f_base_rebalance_workers', rebalance_workers);
 
 		// new turn, process all bases
 		game.on('turn', (e) => {
 			if (game.is_master()) {
+				globals.reserved_growth_tiles = {};
 				for (base of bm.get_bases()) {
 					game.event('process_base_growth', {
 						base: base,

@@ -38,6 +38,7 @@ events = [];
 const owner = {id: 1};
 const make_tile = (x, nutrients, minerals, energy) => {
 	let working_pop = #undefined;
+	let tile_base = null;
 	return {
 		x: x,
 		y: 0,
@@ -52,6 +53,11 @@ const make_tile = (x, nutrients, minerals, energy) => {
 		get: (key) => {
 			return key == 'working_pop' ? working_pop : #undefined;
 		},
+		has: (key) => {
+			return key == 'working_pop' && #is_defined(working_pop);
+		},
+		get_base: () => { return tile_base; },
+		set_base: (base) => { tile_base = base; },
 		set_working_pop: (pop) => {
 			working_pop = pop;
 		},
@@ -60,11 +66,15 @@ const make_tile = (x, nutrients, minerals, energy) => {
 
 const mineral_tile = make_tile(1, 0, 4, 0);
 const nutrient_tile = make_tile(2, 2, 0, 0);
+const occupied_tile = make_tile(3, 9, 9, 9);
+const center_tile = make_tile(4, 9, 9, 9);
+occupied_tile.set_working_pop({id: 99});
+center_tile.set_base({id: 99});
 let accumulated_nutrients = 20;
 let base_size = 1;
 let intake_nutrients = 2;
 let consumption_nutrients = 2;
-let unworked_tiles = [mineral_tile, nutrient_tile];
+let unworked_tiles = [mineral_tile, nutrient_tile, occupied_tile, center_tile];
 let worked_tiles = [];
 let pops = [];
 const base = {
@@ -88,6 +98,9 @@ const base = {
 const find_tiles = values.f_base_find_best_or_worst_tiles;
 test.assert((find_tiles(base, [mineral_tile, nutrient_tile], 1, 1))[0] == mineral_tile);
 test.assert((find_tiles(base, [mineral_tile, nutrient_tile], 1, 1, 2))[0] == nutrient_tile);
+let reserved_tiles = {};
+reserved_tiles['2_0'] = true;
+test.assert((find_tiles(base, [mineral_tile, nutrient_tile], 1, 1, 2, true, reserved_tiles))[0] == mineral_tile);
 
 values.f_base_process_growth(game, base);
 test.assert(#sizeof(events) == 1);
@@ -114,3 +127,46 @@ test.assert(#sizeof(events) == 1);
 test.assert(events[0].name == 'remove_base_pop');
 test.assert(events[0].data.base == base);
 test.assert(events[0].data.pop == mineral_pop);
+
+let worker_tile = mineral_tile;
+const worker = {
+	id: 1,
+	has: (key) => { return key == 'worked_tile' && #is_defined(worker_tile); },
+	get: (key) => { return key == 'worked_tile' ? worker_tile : #undefined; },
+	set_type: (type) => { test.assert(type == 'WORKER'); },
+};
+mineral_tile.set_working_pop(worker);
+nutrient_tile.set_working_pop(#undefined);
+worked_tiles = [mineral_tile];
+unworked_tiles = [nutrient_tile];
+const rebalance_base = {
+	get_owner: () => { return owner; },
+	get_size: () => { return 2; },
+	get_intake: () => {
+		const resources = worker_tile.get_resources(owner);
+		return {NUTRIENTS: 2 + resources.NUTRIENTS, MINERALS: resources.MINERALS, ENERGY: resources.ENERGY};
+	},
+	get_consumption: () => { return {NUTRIENTS: 4, MINERALS: 0, ENERGY: 0}; },
+	get_unworked_tiles: () => { return unworked_tiles; },
+	get_worked_tiles: () => { return worked_tiles; },
+	get_pops: () => { return [worker]; },
+	is_tile_worked: (tile) => { return #sizeof(worked_tiles) > 0 && worked_tiles[0] == tile; },
+	unwork_pop_tile: (pop, tile) => {
+		test.assert(pop == worker && tile == worker_tile);
+		tile.set_working_pop(#undefined);
+		worked_tiles = [];
+		worker_tile = #undefined;
+	},
+	work_pop_tile: (pop, tile) => {
+		test.assert(pop == worker && !tile.has('working_pop'));
+		worker_tile = tile;
+		tile.set_working_pop(pop);
+		worked_tiles = [tile];
+		unworked_tiles = [mineral_tile];
+	},
+};
+
+values.f_base_rebalance_workers(rebalance_base);
+test.assert(worker_tile == nutrient_tile);
+test.assert(worked_tiles == [nutrient_tile]);
+test.assert(rebalance_base.get_intake().NUTRIENTS == rebalance_base.get_consumption().NUTRIENTS);
