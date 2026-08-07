@@ -102,7 +102,7 @@ const size_t Unit::GetSelectionWeight() const {
 
 	// non-artillery units have priority
 	// TODO: use real unit properties
-	if ( m_def->IsArtillery() ) {
+	if ( !m_def->IsArtillery() ) {
 		weight += 60;
 	}
 

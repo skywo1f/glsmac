@@ -54,7 +54,7 @@ UnitDef::~UnitDef() {
 }
 
 const bool UnitDef::IsArtillery() const {
-	return m_id != "SporeLauncher";
+	return m_id == "SporeLauncher";
 }
 
 sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {

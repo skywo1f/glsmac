@@ -91,6 +91,12 @@ return {
 		if (e.data.defender.owner == e.data.attacker.owner) {
 			return 'Unit cannot attack a friendly unit';
 		}
+		if (e.data.attacker.health <= 0.0) {
+			return 'Dead unit cannot attack';
+		}
+		if (e.data.defender.health <= 0.0) {
+			return 'Dead unit cannot be attacked';
+		}
 
 		const attacker_tile = e.data.attacker.get_tile();
 		const defender_tile = e.data.defender.get_tile();

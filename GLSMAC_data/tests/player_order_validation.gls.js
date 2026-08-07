@@ -34,6 +34,24 @@ test.assert(attack_unit.validate({
 	},
 }) == completed_error);
 
+test.assert(attack_unit.validate({
+	caller: player_id,
+	game: {is_turn_complete: () => { return false; }},
+	data: {
+		attacker: {owner: player_id, health: 0.0},
+		defender: {owner: 2, health: 1.0},
+	},
+}) == 'Dead unit cannot attack');
+
+test.assert(attack_unit.validate({
+	caller: player_id,
+	game: {is_turn_complete: () => { return false; }},
+	data: {
+		attacker: {owner: player_id, health: 1.0},
+		defender: {owner: 2, health: 0.0},
+	},
+}) == 'Dead unit cannot be attacked');
+
 test.assert(unit_skip_turn.validate({
 	caller: player_id,
 	game: game,
