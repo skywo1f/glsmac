@@ -1,5 +1,6 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
+const pathfinding = #include('ai/pathfinding');
 
 const owned_bases = (game, player) => {
 	let result = [];
@@ -282,6 +283,18 @@ const move_combat = (game, player, unit, all_bases) => {
 		const resources = candidate.get_resources(player);
 		return resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
 	});
+	if (
+		enemy_base != null &&
+		(target == null || game.get_tm().get_distance(target, enemy_base.get_tile()) >= enemy_distance)
+	) {
+		const path_step = pathfinding.find_path_step(game.get_tm(), unit, enemy_base.get_tile(), (candidate) => {
+			return can_enter(unit, candidate);
+		});
+		if (path_step != null) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
+			return 100;
+		}
+	}
 	if (target != null && can_enter(unit, target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
 		return 100;
