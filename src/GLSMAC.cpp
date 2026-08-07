@@ -274,6 +274,23 @@ WRAPIMPL_BEGIN( GLSMAC )
 			} ),
 		},
 		{
+			"add_single_player",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				if ( !m_state ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
+				}
+				if ( m_is_game_running ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Game is already running" );
+				}
+				if ( !m_state->m_slots->GetSlots().empty() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Single player is already prepared" );
+				}
+				AddSinglePlayerSlot( nullptr );
+				return m_state->m_slots->GetSlot( 0 ).GetPlayer()->Wrap( GSE_CALL );
+			} )
+		},
+		{
 			"add_ai_player",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );

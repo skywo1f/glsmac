@@ -4,15 +4,11 @@ return (i) => {
 		entries: [
 			['Play with Standard Rules', () => {
 				// TODO: rules
-				// TODO: faction selection
-				i.glsmac.add_ai_player();
-				i.glsmac.start_game();
+				i.steps.select_faction(i);
 			}],
 			['Play with Current Rules', () => {
 				// TODO: rules
-				// TODO: faction selection
-				i.glsmac.add_ai_player();
-				i.glsmac.start_game();
+				i.steps.select_faction(i);
 			}],
 			['Customize Rules', () => {
 				// TODO: custom rules
