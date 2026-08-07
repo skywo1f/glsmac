@@ -3,9 +3,10 @@ const get_movement_cost = (unit, src_tile, dst_tile) => {
 
 	if (
 		dst_tile.is_land &&
-		src_tile.features.river &&
-		dst_tile.features.river
-		// TODO: roads
+		(
+			(src_tile.features.river && dst_tile.features.river) ||
+			(src_tile.terraforming.road && dst_tile.terraforming.road)
+		)
 	) {
 		return 1.0 / 3.0;
 	}

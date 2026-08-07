@@ -18,6 +18,7 @@ tile = {
 		xenofungus: false,
 	},
 	terraforming: {
+		road: false,
 		farm: false,
 		mine: false,
 		solar: false,
@@ -132,6 +133,13 @@ test.assert(!terraforming.advance_order(unit));
 test.assert(tile.terraforming.mine);
 test.assert(!tile.terraforming.solar);
 test.assert(tile_state.updates == 2);
+
+unit.set_terraforming_order('road', 2);
+test.assert(terraforming.advance_order(unit));
+test.assert(unit.terraforming_turns_remaining == 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.terraforming.road);
+test.assert(tile_state.updates == 3);
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;

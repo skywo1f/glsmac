@@ -1,4 +1,9 @@
 const orders = {
+	road: {
+		name: 'Road',
+		turns: 2,
+		changes: {road: true},
+	},
 	farm: {
 		name: 'Farm',
 		turns: 4,

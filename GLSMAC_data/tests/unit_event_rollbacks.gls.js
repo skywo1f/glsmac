@@ -395,6 +395,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			river: false,
 			xenofungus: false,
 		},
+		terraforming: {road: false},
 		rockiness: 0,
 	};
 	const dst_tile = {
@@ -404,6 +405,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			river: false,
 			xenofungus: false,
 		},
+		terraforming: {road: false},
 		rockiness: 0,
 	};
 	let current_tile = src_tile;
@@ -479,12 +481,14 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		is_land: true,
 		is_water: false,
 		features: {river: false, xenofungus: false},
+		terraforming: {road: false},
 		rockiness: 0,
 	};
 	const fungus_tile = {
 		is_land: true,
 		is_water: false,
 		features: {river: false, xenofungus: true},
+		terraforming: {road: false},
 		rockiness: 0,
 	};
 	let random_max = 0.0;
@@ -516,6 +520,23 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		game: {random: {get_float: () => { throw Error('native fungus movement should not roll'); }}},
 		data: {unit: native, tile: fungus_tile},
 	}).is_movement_successful == true);
+
+	src_tile.terraforming.road = true;
+	fungus_tile.terraforming.road = true;
+	conventional.movement = 0.3;
+	random_max = 0.0;
+	test.assert(move_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					random_max = max;
+					return 0.32;
+				},
+			},
+		},
+		data: {unit: conventional, tile: fungus_tile},
+	}).is_movement_successful == false);
+	test.assert(random_max > 0.333 && random_max < 0.334);
 }
 
 {
