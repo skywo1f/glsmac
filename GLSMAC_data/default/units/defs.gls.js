@@ -95,6 +95,8 @@ const units = [
 	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1),
 	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1),
 	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2),
+	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 308, 156, false, false, 'AppliedPhysics', 1),
+	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 410, 156, false, false, 'IndustrialBase', 1),
 	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79),
 	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233),
 	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310),

@@ -18,9 +18,27 @@ const definitions = {
 		cost: 40,
 		prerequisites: ['DoctrineMobility'],
 	},
+	AppliedPhysics: {
+		id: 'AppliedPhysics',
+		name: 'Applied Physics',
+		cost: 50,
+		prerequisites: ['InformationNetworks'],
+	},
+	IndustrialBase: {
+		id: 'IndustrialBase',
+		name: 'Industrial Base',
+		cost: 50,
+		prerequisites: ['AppliedPhysics'],
+	},
 };
 
-const technology_order = ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'];
+const technology_order = [
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'IndustrialBase',
+];
 
 const get_definition = (id) => {
 	if (!#is_defined(definitions[id])) {

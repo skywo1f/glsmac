@@ -17,11 +17,21 @@ test.assert(information.id == 'InformationNetworks');
 test.assert(information.name == 'Information Networks');
 test.assert(information.cost == 40);
 test.assert(information.prerequisites == ['DoctrineMobility']);
+const physics = technologies.get_definition('AppliedPhysics');
+test.assert(physics.name == 'Applied Physics');
+test.assert(physics.cost == 50);
+test.assert(physics.prerequisites == ['InformationNetworks']);
+const industry = technologies.get_definition('IndustrialBase');
+test.assert(industry.name == 'Industrial Base');
+test.assert(industry.cost == 50);
+test.assert(industry.prerequisites == ['AppliedPhysics']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
 test.assert(technologies.get_next_target([]) == 'CentauriEcology');
 test.assert(technologies.get_next_target(['CentauriEcology']) == 'DoctrineMobility');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == 'InformationNetworks');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks']) == '');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks']) == 'AppliedPhysics');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics']) == 'IndustrialBase');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase']) == '');
 
 const base = {
 	get_intake: () => {
@@ -79,6 +89,17 @@ test.assert(technologies.get_initial_state(make_initial_player([
 	'InformationNetworks',
 ])) == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
+	target: 'AppliedPhysics',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player([
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'IndustrialBase',
+])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
 	target: '',
 	progress: 0,
 });
@@ -253,7 +274,7 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
-	target: '',
+	target: 'AppliedPhysics',
 	progress: 0,
 });
 test.assert(messages == [
@@ -267,6 +288,38 @@ test.assert(research_state == {
 	target: 'InformationNetworks',
 	progress: 39,
 });
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
+	target: 'AppliedPhysics',
+	progress: 49,
+};
+event.data.technology = physics;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics'],
+	target: 'IndustrialBase',
+	progress: 0,
+});
+process_research.rollback(event);
+test.assert(research_state.target == 'AppliedPhysics');
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics'],
+	target: 'IndustrialBase',
+	progress: 49,
+};
+event.data.technology = industry;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
+	target: '',
+	progress: 0,
+});
+process_research.rollback(event);
+test.assert(research_state.target == 'IndustrialBase');
 
 event.data.technology = {
 	id: 'WrongTarget',

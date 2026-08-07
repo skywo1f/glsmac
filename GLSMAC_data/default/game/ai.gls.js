@@ -123,7 +123,9 @@ const queue_production = (game, player, bases, units) => {
 		}
 		if (!has_garrison) {
 			kind = 'unit';
-			id = 'ScoutPatrol';
+			id = base.can_set_production('unit', 'SynthmetalSentinels')
+				? 'SynthmetalSentinels'
+				: 'ScoutPatrol';
 		} else if (player.has_technology('CentauriEcology') && former_count < #sizeof(bases)) {
 			kind = 'unit';
 			id = 'Former';
@@ -144,7 +146,9 @@ const queue_production = (game, player, bases, units) => {
 			id = 'NetworkNode';
 		} else {
 			kind = 'unit';
-			id = base.can_set_production('unit', 'ReconRover') ? 'ReconRover' : 'ScoutPatrol';
+			id = base.can_set_production('unit', 'LaserInfantry')
+				? 'LaserInfantry'
+				: (base.can_set_production('unit', 'ReconRover') ? 'ReconRover' : 'ScoutPatrol');
 		}
 		const queue = base.get_production_queue();
 		if (id == null) {
