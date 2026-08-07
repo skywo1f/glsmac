@@ -1,5 +1,10 @@
 const MIN_DAMAGE_VALUE = 0.1;
 const MAX_DAMAGE_VALUE = 0.3;
+const MIN_BOMBARDMENT_HEALTH = 0.1;
+
+const is_artillery = (def) => {
+	return def.id == 'SporeLauncher';
+};
 
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
@@ -79,6 +84,17 @@ const get_combat_powers = (attacker, defender) => {
 	};
 };
 
+const get_artillery_powers = (attacker, defender) => {
+	const attacker_def = attacker.get_def();
+	const defender_def = defender.get_def();
+	return {
+		attack: #to_float(attacker_def.offense) * get_morale_multiplier(attacker) * attacker.health,
+		defence: #to_float(
+			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
+		) * get_morale_multiplier(defender) * defender.health,
+	};
+};
+
 return {
 
 	validate: (e) => {
@@ -124,25 +140,26 @@ return {
 		if (attacker_tile == defender_tile) {
 			return 'Defender tile is same as attacker tile';
 		}
+		const attacker_def = e.data.attacker.get_def();
+		const attacker_is_artillery = is_artillery(attacker_def);
 		if (!attacker_tile.is_adjactent_to(defender_tile)) {
-			return 'Defender tile is not adjacent to attacker tile';
+			if (!attacker_is_artillery || e.game.tm.get_distance(attacker_tile, defender_tile) > 2) {
+				return attacker_is_artillery
+					? 'Defender tile is out of artillery range'
+					: 'Defender tile is not adjacent to attacker tile';
+			}
 		}
-		if (e.data.attacker.is_land && defender_tile.is_water) {
+		if (!attacker_is_artillery && e.data.attacker.is_land && defender_tile.is_water) {
 			// TODO: marine
 			return 'Land units can\'t attack water tiles';
 		}
-		if (e.data.attacker.is_water && defender_tile.is_land) {
+		if (!attacker_is_artillery && e.data.attacker.is_water && defender_tile.is_land) {
 			// TODO: marine
 			return 'Water units can\'t attack land tiles';
 		}
 
-		let attacker_def = e.data.attacker.get_def();
 		if (attacker_def.offense <= 0) {
 			return 'Noncombat units cannot attack';
-		}
-		if (attacker_def.id == 'SporeLauncher') {
-			// TODO: bombardments
-			return 'Artillery units can\'t attack directly';
 		}
 
 	},
@@ -150,8 +167,29 @@ return {
 	resolve: (e) => {
 		const attacker = e.data.attacker;
 		const defender = e.data.defender;
+		const attacker_is_artillery = is_artillery(attacker.get_def());
+		const defender_is_artillery = is_artillery(defender.get_def());
 
-		const powers = get_combat_powers(attacker, defender);
+		if (attacker_is_artillery && !defender_is_artillery) {
+			const powers = get_artillery_powers(attacker, defender);
+			let damage_sequence = [];
+			const combat_roll = e.game.random.get_float(0.0, powers.attack + powers.defence);
+			if (combat_roll < powers.attack && defender.health > MIN_BOMBARDMENT_HEALTH) {
+				const maximum_damage = defender.health - MIN_BOMBARDMENT_HEALTH;
+				const damage = #min(maximum_damage, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
+				damage_sequence [] = [true, damage];
+			}
+			return {
+				sequence: damage_sequence,
+				attacker_dead: false,
+				defender_dead: false,
+				advance_after_combat: false,
+			};
+		}
+
+		const powers = attacker_is_artillery
+			? get_artillery_powers(attacker, defender)
+			: get_combat_powers(attacker, defender);
 		const attack_power = powers.attack;
 		const defence_power = powers.defence;
 
@@ -176,6 +214,7 @@ return {
 			sequence: damage_sequence,
 			attacker_dead: attacker_health <= 0.0,
 			defender_dead: defender_health <= 0.0,
+			advance_after_combat: !attacker_is_artillery,
 		};
 	},
 
@@ -221,7 +260,11 @@ return {
 				id: 'DEATH_PSI',
 				tile: defender_tile,
 			};
-			if (!e.resolved.attacker_dead) {
+			let advance_after_combat = true;
+			if (#is_defined(e.resolved.advance_after_combat)) {
+				advance_after_combat = e.resolved.advance_after_combat;
+			}
+			if (!e.resolved.attacker_dead && advance_after_combat) {
 				death_animation.oncomplete = () => {
 					if (e.game.is_master()) {
 						e.game.event('advance_unit_after_combat', {

@@ -1763,6 +1763,18 @@ void Game::Initialize(
 							};
 							break;
 						}
+						case input::MB_RIGHT: {
+							auto* selected_unit = m_um->GetSelectedUnit();
+							if ( selected_unit && selected_unit->IsActive() ) {
+								m_attack_target_unit_id = selected_unit->GetId();
+								SelectTileAtPoint(
+									backend::TQP_ATTACK_TARGET,
+									c.x,
+									c.y
+								);
+							}
+							break;
+						}
 						default: {
 						}
 					}
@@ -1940,6 +1952,45 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 	}
 
 	ASSERT( m_tile_at_query_purpose != backend::TQP_NONE, "tile query purpose not set" );
+	if ( m_tile_at_query_purpose == backend::TQP_ATTACK_TARGET ) {
+		const auto attacker_id = m_attack_target_unit_id;
+		m_attack_target_unit_id = 0;
+		m_tile_at_query_purpose = backend::TQP_NONE;
+		auto* selected_unit = m_um->GetUnitById( attacker_id );
+		if ( !selected_unit || !selected_unit->IsActive() ) {
+			return;
+		}
+		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
+		for ( const auto& it : tile->GetUnits() ) {
+			if ( !it.second->IsOwned() ) {
+				foreign_units.insert( it );
+			}
+		}
+		if ( foreign_units.empty() ) {
+			return;
+		}
+		const auto defender_id = foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId();
+		auto* game = m_game;
+		m_glsmac->WithGSE(
+			[ game, attacker_id, defender_id ]( GSE_CALLABLE ) {
+				auto* attacker = game->GetUM()->GetUnit( attacker_id );
+				if ( !attacker ) {
+					return;
+				}
+				auto* defender = game->GetUM()->GetUnit( defender_id );
+				if ( !defender ) {
+					return;
+				}
+				game->Event(
+					GSE_CALL, "attack_unit", {
+						{ "attacker", attacker->Wrap( GSE_CALL ) },
+						{ "defender", defender->Wrap( GSE_CALL ) },
+					}
+				);
+			}
+		);
+		return;
+	}
 
 	DeselectTileOrUnit();
 

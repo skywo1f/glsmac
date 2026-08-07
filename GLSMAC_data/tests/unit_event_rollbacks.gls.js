@@ -17,6 +17,12 @@ const native_def = {
 	offense: 1,
 	defense: 1,
 };
+const artillery_def = {
+	id: 'SporeLauncher',
+	is_native: true,
+	offense: 4,
+	defense: 1,
+};
 
 test.assert(
 	attack_unit.validate({
@@ -32,6 +38,115 @@ test.assert(
 		},
 	}) == 'Unit cannot attack a friendly unit'
 );
+
+{
+	const ranged_attacker_tile = {
+		is_locked: () => { return false; },
+		is_adjactent_to: (tile) => { return false; },
+		is_land: true,
+		is_water: false,
+	};
+	const ranged_defender_tile = {
+		is_locked: () => { return false; },
+		is_land: true,
+		is_water: false,
+	};
+	const event = {
+		caller: owner.id,
+		game: {
+			is_turn_complete: () => { return false; },
+			tm: {
+				get_distance: (from, to) => { return 2; },
+			},
+		},
+		data: {
+			attacker: {
+				owner: owner.id,
+				health: 1.0,
+				movement: 1.0,
+				is_immovable: false,
+				is_land: true,
+				is_water: false,
+				terraforming: 'none',
+				get_tile: () => { return ranged_attacker_tile; },
+				get_def: () => { return artillery_def; },
+			},
+			defender: {
+				owner: owner.id + 1,
+				health: 1.0,
+				is_land: true,
+				is_water: false,
+				get_tile: () => { return ranged_defender_tile; },
+			},
+		},
+	};
+	test.assert(!#is_defined(attack_unit.validate(event)));
+	event.game.tm.get_distance = (from, to) => { return 3; };
+	test.assert(attack_unit.validate(event) == 'Defender tile is out of artillery range');
+}
+
+{
+	let random_index = 0;
+	const random_values = [0.0, 0.3];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					return random_values[random_index++];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 3,
+				health: 1.0,
+				get_def: () => { return artillery_def; },
+			},
+			defender: {
+				morale: 3,
+				health: 0.2,
+				get_def: () => { return native_def; },
+			},
+		},
+	});
+	test.assert(random_index == 2);
+	test.assert(#sizeof(resolved.sequence) == 1);
+	test.assert(resolved.sequence[0][0] == true);
+	test.assert(resolved.sequence[0][1] > 0.099 && resolved.sequence[0][1] < 0.101);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == false);
+	test.assert(resolved.advance_after_combat == false);
+}
+
+{
+	let random_index = 0;
+	const random_values = [0.0, 0.1];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => {
+					return random_values[random_index++];
+				},
+			},
+		},
+		data: {
+			attacker: {
+				morale: 3,
+				health: 0.1,
+				get_def: () => { return artillery_def; },
+			},
+			defender: {
+				morale: 3,
+				health: 0.1,
+				get_def: () => { return artillery_def; },
+			},
+		},
+	});
+	test.assert(random_index == 2);
+	test.assert(resolved.attacker_dead == false);
+	test.assert(resolved.defender_dead == true);
+	test.assert(resolved.advance_after_combat == false);
+}
 
 {
 	const random_values = [0.1, 0.1];
@@ -859,6 +974,23 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(advance_data.animations_id == 73);
 	attack_unit.rollback(event);
 	test.assert(active_attacker.movement == 2.0);
+	test.assert(active_attacker.health == 0.8);
+	test.assert(active_defender.health == 0.9);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.resolved = {
+		sequence: [[true, 0.9]],
+		attacker_dead: false,
+		defender_dead: true,
+		advance_after_combat: false,
+	};
+	event.applied = attack_unit.apply(event);
+	test.assert(despawn_requests == 4);
+	test.assert(#sizeof(animations) == 2);
+	test.assert(!#is_defined(animations[1].oncomplete));
+	test.assert(advance_requests == 1);
+	attack_unit.rollback(event);
 	test.assert(active_attacker.health == 0.8);
 	test.assert(active_defender.health == 0.9);
 }

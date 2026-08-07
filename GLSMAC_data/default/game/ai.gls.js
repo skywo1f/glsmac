@@ -86,6 +86,19 @@ const record_action_attempt = (unit, action_attempts) => {
 	action_attempts[unit_key] = #is_defined(action_attempts[unit_key]) ? action_attempts[unit_key] + 1 : 1;
 };
 
+const attack_enemy_on_tile = (game, player, unit, tile) => {
+	if (tile.is_locked()) {
+		return false;
+	}
+	for (enemy of tile.get_units()) {
+		if (enemy.owner != player.id) {
+			game.event_as(player.id, 'attack_unit', {attacker: unit, defender: enemy});
+			return true;
+		}
+	}
+	return false;
+};
+
 const queue_production = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
@@ -255,10 +268,19 @@ const move_combat = (game, player, unit, all_bases) => {
 		return 0;
 	}
 	for (nearby of tile.get_surrounding_tiles()) {
-		for (enemy of nearby.get_units()) {
-			if (enemy.owner != player.id) {
-				game.event_as(player.id, 'attack_unit', {attacker: unit, defender: enemy});
-				return 1000;
+		if (attack_enemy_on_tile(game, player, unit, nearby)) {
+			return 1000;
+		}
+	}
+	if (unit.get_def().id == 'SporeLauncher') {
+		for (nearby of tile.get_surrounding_tiles()) {
+			for (ranged of nearby.get_surrounding_tiles()) {
+				if (
+					game.get_tm().get_distance(tile, ranged) == 2 &&
+					attack_enemy_on_tile(game, player, unit, ranged)
+				) {
+					return 1000;
+				}
 			}
 		}
 	}
