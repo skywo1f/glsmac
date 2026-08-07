@@ -51,6 +51,8 @@ private:
 	std::string m_id;
 	std::string m_name;
 	backend::unit::def_type_t m_type;
+	int64_t m_offense;
+	int64_t m_defense;
 
 	typedef std::unordered_map< backend::unit::morale_t, sprite::Sprite > morale_based_sprites_t;
 
