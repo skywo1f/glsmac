@@ -25,12 +25,21 @@ const reset_nutrients = (game, base) => {
 	base.set('accumulated_nutrients', updated);
 };
 
-const get_tile_score = (base, tile) => {
+const get_tile_score = (base, tile, projected_size) => {
 	const resources = tile.get_resources(base.get_owner());
-	return resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY; // simple logic for now, TODO: improve based on what base needs
+	let score = resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
+	if (#is_defined(projected_size)) {
+		const is_growth = projected_size > base.get_size();
+		const nutrient_change = is_growth ? resources.NUTRIENTS : 0 - resources.NUTRIENTS;
+		const projected_nutrients = base.get_intake().NUTRIENTS + nutrient_change;
+		const nutrient_deficit = #max(projected_size * 2 - projected_nutrients, 0);
+		// Avoid starvation first, then gain or preserve the highest-value tile.
+		score = (0 - nutrient_deficit * 1000) + (is_growth ? score : 0 - score);
+	}
+	return score;
 };
 
-const find_best_or_worst_tiles = (base, tiles, count, modifier) => { // modifier 1 to find best tiles, -1 to find worst tiles
+const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size) => { // modifier 1 to find best tiles, -1 to find worst tiles
 	let keys = {};
 	let result = [];
 	for (let i = 0; i < count; i++) {
@@ -43,7 +52,7 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier) => { // modifier
 			if (#is_defined(keys[key])) {
 				continue;
 			}
-			const score = get_tile_score(base, tile) * modifier;
+			const score = get_tile_score(base, tile, projected_size) * modifier;
 			if (best == null || score > best.score) {
 				best = {
 					tile: tile,
@@ -83,7 +92,7 @@ const process_growth = (game, base) => {
 			}
 		}
 		if (pop == null) {
-			const worst_tile = (find_best_or_worst_tiles(base, base.get_worked_tiles(), 1, 0 - 1))[0];
+			const worst_tile = (find_best_or_worst_tiles(base, base.get_worked_tiles(), 1, 1, base.get_size() - 1))[0];
 			if (#is_defined(worst_tile)) {
 				const p = worst_tile.get('working_pop');
 				if (#is_defined(p)) {
@@ -116,7 +125,7 @@ const process_growth = (game, base) => {
 		if (!game.is_master()) {
 			return;
 		}
-		const best_tile = (find_best_or_worst_tiles(base, base.get_unworked_tiles(), 1, 1))[0];
+		const best_tile = (find_best_or_worst_tiles(base, base.get_unworked_tiles(), 1, 1, base.get_size() + 1))[0];
 		if (best_tile != null) {
 			// found tile to work, spawn worker
 			// TODO: talents logic
