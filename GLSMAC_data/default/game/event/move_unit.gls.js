@@ -1,3 +1,5 @@
+const movement_rules = #include('../movement_rules');
+
 const get_movement_cost = (unit, src_tile, dst_tile) => {
 	const is_native = unit.get_def().is_native;
 
@@ -92,7 +94,9 @@ return {
 		if (any_foreign_units_in_tile) {
 			return 'Destination tile contains foreign units (combat not implemented yet)';
 		}
-		// TODO: ZOC
+		if (movement_rules.is_zoc_move_blocked(e.data.unit, src_tile, dst_tile)) {
+			return 'Unit cannot move directly between enemy zones of control';
+		}
 	},
 
 	resolve: (e) => {

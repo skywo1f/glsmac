@@ -25,7 +25,7 @@ const find_path_step = (tm, unit, destination, can_enter) => {
 
 		for (candidate of current.get_surrounding_tiles()) {
 			const key = get_tile_key(candidate);
-			if (#is_defined(visited[key]) || !can_enter(candidate)) {
+			if (#is_defined(visited[key]) || !can_enter(current, candidate)) {
 				continue;
 			}
 			visited[key] = true;

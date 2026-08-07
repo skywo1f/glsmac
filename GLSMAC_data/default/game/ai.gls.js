@@ -1,6 +1,7 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
 const pathfinding = #include('ai/pathfinding');
+const movement_rules = #include('movement_rules');
 
 const owned_bases = (game, player) => {
 	let result = [];
@@ -39,7 +40,7 @@ const choose_tile = (tiles, score) => {
 	return best;
 };
 
-const can_enter = (unit, tile) => {
+const can_enter = (unit, tile, source) => {
 	if (unit.get_tile() == tile || tile.is_locked()) {
 		return false;
 	}
@@ -53,6 +54,10 @@ const can_enter = (unit, tile) => {
 		if (other.owner != unit.owner) {
 			return false;
 		}
+	}
+	const source_tile = #is_defined(source) ? source : unit.get_tile();
+	if (movement_rules.is_zoc_move_blocked(unit, source_tile, tile)) {
+		return false;
 	}
 	return true;
 };
@@ -287,8 +292,8 @@ const move_combat = (game, player, unit, all_bases) => {
 		enemy_base != null &&
 		(target == null || game.get_tm().get_distance(target, enemy_base.get_tile()) >= enemy_distance)
 	) {
-		const path_step = pathfinding.find_path_step(game.get_tm(), unit, enemy_base.get_tile(), (candidate) => {
-			return can_enter(unit, candidate);
+		const path_step = pathfinding.find_path_step(game.get_tm(), unit, enemy_base.get_tile(), (source, candidate) => {
+			return can_enter(unit, candidate, source);
 		});
 		if (path_step != null) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});

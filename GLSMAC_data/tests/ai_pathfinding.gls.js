@@ -32,7 +32,7 @@ detour_b.set_neighbours([detour_a, destination]);
 destination.set_neighbours([water, detour_b]);
 
 const unit = {get_tile: () => { return source; }};
-const can_enter = (tile) => { return tile.passable; };
+const can_enter = (source_tile, tile) => { return tile.passable; };
 const tiles = [source, water, detour_a, detour_b, destination];
 const tm = {
 	get_tile: (x, y) => {
