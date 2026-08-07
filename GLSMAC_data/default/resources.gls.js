@@ -44,7 +44,9 @@ const result = {
 					result.NUTRIENTS = result.NUTRIENTS + 2;
 				}
 			} else {
-				// TODO: fungus tiles
+				if (e.player.has_technology('CentauriEcology')) {
+					result.NUTRIENTS = 1;
+				}
 			}
 
 			// minerals
