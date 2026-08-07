@@ -122,7 +122,11 @@ const queue_production = (game, player, bases, units) => {
 		} else if (base.can_set_production('facility', 'RecyclingTanks')) {
 			kind = 'facility';
 			id = 'RecyclingTanks';
-		} else if (base.can_set_production('facility', 'NetworkNode')) {
+		} else if (
+			base.can_set_production('facility', 'NetworkNode') &&
+			game.get('f_economy_get_player')(game, player) >=
+				game.get_bm().get_facility_def('NetworkNode').energy_maintenance
+		) {
 			kind = 'facility';
 			id = 'NetworkNode';
 		} else {

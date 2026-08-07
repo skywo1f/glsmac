@@ -29,6 +29,7 @@ return (game) => {
 		'remove_base_production',
 		'process_base_production',
 		'hurry_base_production',
+		'liquidate_base_facility',
 		'initialize_player_research',
 		'process_player_research',
 		'process_player_economy',
