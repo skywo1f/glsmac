@@ -1,6 +1,7 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
 const pathfinding = #include('ai/pathfinding');
+const production = #include('ai/production');
 const movement_rules = #include('movement_rules');
 
 const owned_bases = (game, player) => {
@@ -111,9 +112,10 @@ const queue_production = (game, player, bases, units) => {
 		}
 	}
 
+	const unit_defs = game.get_um().get_unit_defs();
+	const facility_defs = game.get_bm().get_facility_defs();
+	const available_energy = game.get('f_economy_get_player')(game, player);
 	for (base of bases) {
-		let kind = null;
-		let id = null;
 		let has_garrison = false;
 		for (unit of base.get_tile().get_units()) {
 			if (unit.owner == player.id && unit.get_def().offense > 0) {
@@ -121,46 +123,40 @@ const queue_production = (game, player, bases, units) => {
 				break;
 			}
 		}
-		if (!has_garrison) {
-			kind = 'unit';
-			id = base.can_set_production('unit', 'SynthmetalSentinels')
-				? 'SynthmetalSentinels'
-				: 'ScoutPatrol';
-		} else if (player.has_technology('CentauriEcology') && former_count < #sizeof(bases)) {
-			kind = 'unit';
-			id = 'Former';
-			former_count++;
-		} else if (#sizeof(bases) + colony_count < 3) {
-			kind = 'unit';
-			id = 'ColonyPod';
-			colony_count++;
-		} else if (base.can_set_production('facility', 'RecyclingTanks')) {
-			kind = 'facility';
-			id = 'RecyclingTanks';
-		} else if (
-			base.can_set_production('facility', 'NetworkNode') &&
-			game.get('f_economy_get_player')(game, player) >=
-				game.get_bm().get_facility_def('NetworkNode').energy_maintenance
-		) {
-			kind = 'facility';
-			id = 'NetworkNode';
-		} else {
-			kind = 'unit';
-			id = base.can_set_production('unit', 'LaserInfantry')
-				? 'LaserInfantry'
-				: (base.can_set_production('unit', 'ReconRover') ? 'ReconRover' : 'ScoutPatrol');
+		const selected = production.choose(
+			base,
+			unit_defs,
+			facility_defs,
+			{
+				needs_garrison: !has_garrison,
+				needs_former: former_count < #sizeof(bases),
+				needs_colony: #sizeof(bases) + colony_count < 3,
+				available_energy: available_energy,
+			}
+		);
+		if (selected != null && selected.kind == 'unit') {
+			if (selected.def.can_terraform) {
+				former_count++;
+			}
+			if (selected.def.can_found_base) {
+				colony_count++;
+			}
 		}
 		const queue = base.get_production_queue();
-		if (id == null) {
+		if (selected == null) {
 			if (#sizeof(queue) > 0) {
 				game.event_as(player.id, 'remove_base_production', {base: base, index: 0});
 			}
 		} else if (
 			#sizeof(queue) == 0 ||
-			queue[0].production_kind != kind ||
-			queue[0].id != id
+			queue[0].production_kind != selected.kind ||
+			queue[0].id != selected.id
 		) {
-			game.event_as(player.id, 'set_base_production', {base: base, kind: kind, id: id});
+			game.event_as(player.id, 'set_base_production', {
+				base: base,
+				kind: selected.kind,
+				id: selected.id,
+			});
 		}
 	}
 };
