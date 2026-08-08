@@ -21,6 +21,7 @@ const validation_state = {
 	turn_complete: false,
 	site_locked: false,
 };
+let unit_is_active = true;
 
 const nearby_tile = {
 	get_base: () => {
@@ -58,6 +59,7 @@ const unit = {
 		return {can_found_base: validation_state.can_found_base};
 	},
 	get_owner: () => {
+		test.assert(unit_is_active);
 		return owner;
 	},
 	get_tile: () => {
@@ -136,7 +138,7 @@ validation_event.data.name = #undefined;
 		restored_unit: null,
 		spawned_info: null,
 		despawned_base: null,
-		created_pop: null,
+		created_pops: [],
 		worked_pop: null,
 		worked_tile: null,
 	};
@@ -145,8 +147,9 @@ validation_event.data.name = #undefined;
 		id: 88,
 		create_pop: (data) => {
 			test.assert(data.type == 'WORKER');
-			state.created_pop = {id: 1, type: data.type};
-			return state.created_pop;
+			const pop = {id: #sizeof(state.created_pops) + 1, type: data.type};
+			state.created_pops :+pop;
+			return pop;
 		},
 		get_unworked_tiles: () => {
 			return [occupied_work_tile, work_tile];
@@ -172,6 +175,7 @@ validation_event.data.name = #undefined;
 			despawn_unit: (value) => {
 				test.assert(value == state.active_unit);
 				state.active_unit = null;
+				unit_is_active = false;
 			},
 			spawn_unit: (data) => {
 				test.assert(data.id == 42);
@@ -186,6 +190,7 @@ validation_event.data.name = #undefined;
 					moved_this_turn: true,
 				};
 				state.active_unit = state.restored_unit;
+				unit_is_active = true;
 				return state.restored_unit;
 			},
 		},
@@ -201,12 +206,18 @@ validation_event.data.name = #undefined;
 			},
 		},
 		get: (key) => {
+			if (key == 'f_project_get_player_effects') {
+				return (value_owner) => {
+					test.assert(value_owner == owner);
+					return {new_base_population: 3};
+				};
+			}
 			if (key == 'f_base_find_best_or_worst_tiles') {
 				return (value_base, tiles, count, modifier) => {
 					test.assert(value_base == base);
 					test.assert(#sizeof(tiles) == 1);
 					test.assert(tiles[0] == work_tile);
-					test.assert(count == 1);
+					test.assert(count == 3);
 					test.assert(modifier == 1);
 					return tiles;
 				};
@@ -235,7 +246,8 @@ validation_event.data.name = #undefined;
 	test.assert(state.spawned_info.production == 'ScoutPatrol');
 	test.assert(validation_state.site_base == base);
 	test.assert(state.active_unit == null);
-	test.assert(state.worked_pop == state.created_pop);
+	test.assert(#sizeof(state.created_pops) == 3);
+	test.assert(state.worked_pop == state.created_pops[0]);
 	test.assert(state.worked_tile == work_tile);
 
 	unit.movement = 0.0;

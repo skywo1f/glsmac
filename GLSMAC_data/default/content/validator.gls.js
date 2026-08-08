@@ -48,6 +48,13 @@ const facility_fields = {
 	network_node_research_bonus: true,
 	worked_tile_energy_bonus: true,
 	global_prevent_riots: true,
+	global_terraforming_rate_multiplier: true,
+	new_base_population: true,
+	small_base_drone_modifier: true,
+	global_psi_attack_multiplier: true,
+	global_psi_defense_multiplier: true,
+	global_naval_movement_bonus: true,
+	global_full_repair: true,
 };
 
 const facility_manifest_fields = {
@@ -458,6 +465,21 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'network_node_research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'worked_tile_energy_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_bool(data, 'global_prevent_riots', path, errors, false);
+		validate_number(data, 'global_terraforming_rate_multiplier', path, errors, false, 1.0, 10.0);
+		validate_int(data, 'new_base_population', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(
+			data,
+			'small_base_drone_modifier',
+			path,
+			errors,
+			false,
+			0 - MAX_DEFINITION_VALUE,
+			MAX_DEFINITION_VALUE
+		);
+		validate_number(data, 'global_psi_attack_multiplier', path, errors, false, 1.0, 10.0);
+		validate_number(data, 'global_psi_defense_multiplier', path, errors, false, 1.0, 10.0);
+		validate_number(data, 'global_naval_movement_bonus', path, errors, false, 0.0, 10.0);
+		validate_bool(data, 'global_full_repair', path, errors, false);
 		validate_string(data, 'name', path, errors, true);
 		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -550,7 +572,29 @@ const validate_facilities = (facilities, technologies, errors) => {
 				data.network_node_research_bonus > 0
 			) ||
 			(#is_defined(data.worked_tile_energy_bonus) && data.worked_tile_energy_bonus > 0) ||
-			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots);
+			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots) ||
+			(
+				#is_defined(data.global_terraforming_rate_multiplier) &&
+				data.global_terraforming_rate_multiplier > 1.0
+			) ||
+			(#is_defined(data.new_base_population) && data.new_base_population > 0) ||
+			(
+				#is_defined(data.small_base_drone_modifier) &&
+				data.small_base_drone_modifier != 0
+			) ||
+			(
+				#is_defined(data.global_psi_attack_multiplier) &&
+				data.global_psi_attack_multiplier > 1.0
+			) ||
+			(
+				#is_defined(data.global_psi_defense_multiplier) &&
+				data.global_psi_defense_multiplier > 1.0
+			) ||
+			(
+				#is_defined(data.global_naval_movement_bonus) &&
+				data.global_naval_movement_bonus > 0.0
+			) ||
+			(#is_defined(data.global_full_repair) && data.global_full_repair);
 		if (!has_effect && !(#is_defined(data.is_project) && data.is_project)) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}

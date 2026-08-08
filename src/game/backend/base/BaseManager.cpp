@@ -374,6 +374,13 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, network_node_research_bonus, def, "network_node_research_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, worked_tile_energy_bonus, def, "worked_tile_energy_bonus", Int, 0 );
 				N_GETPROP_OPT( bool, global_prevent_riots, def, "global_prevent_riots", Bool, false );
+				N_GETPROP_OPT( float, global_terraforming_rate_multiplier, def, "global_terraforming_rate_multiplier", Float, 1.0f );
+				N_GETPROP_OPT( int64_t, new_base_population, def, "new_base_population", Int, 0 );
+				N_GETPROP_OPT( int64_t, small_base_drone_modifier, def, "small_base_drone_modifier", Int, 0 );
+				N_GETPROP_OPT( float, global_psi_attack_multiplier, def, "global_psi_attack_multiplier", Float, 1.0f );
+				N_GETPROP_OPT( float, global_psi_defense_multiplier, def, "global_psi_defense_multiplier", Float, 1.0f );
+				N_GETPROP_OPT( float, global_naval_movement_bonus, def, "global_naval_movement_bonus", Float, 0.0f );
+				N_GETPROP_OPT( bool, global_full_repair, def, "global_full_repair", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -444,6 +451,18 @@ WRAPIMPL_BEGIN( BaseManager )
 					network_node_research_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					worked_tile_energy_bonus < 0 ||
 					worked_tile_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					global_terraforming_rate_multiplier < 1.0f ||
+					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
+					new_base_population < 0 ||
+					new_base_population > base::FacilityDef::MAX_POPULATION_LIMIT ||
+					small_base_drone_modifier < -base::FacilityDef::MAX_DRONE_MODIFIER ||
+					small_base_drone_modifier > base::FacilityDef::MAX_DRONE_MODIFIER ||
+					global_psi_attack_multiplier < 1.0f ||
+					global_psi_attack_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
+					global_psi_defense_multiplier < 1.0f ||
+					global_psi_defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
+					global_naval_movement_bonus < 0.0f ||
+					global_naval_movement_bonus > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					(
 						!granted_facility.empty() &&
 						(
@@ -463,7 +482,14 @@ WRAPIMPL_BEGIN( BaseManager )
 						network_node_drone_modifier != 0 ||
 						network_node_research_bonus != 0 ||
 						worked_tile_energy_bonus != 0 ||
-						global_prevent_riots
+						global_prevent_riots ||
+						global_terraforming_rate_multiplier != 1.0f ||
+						new_base_population != 0 ||
+						small_base_drone_modifier != 0 ||
+						global_psi_attack_multiplier != 1.0f ||
+						global_psi_defense_multiplier != 1.0f ||
+						global_naval_movement_bonus != 0.0f ||
+						global_full_repair
 					)
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
@@ -512,7 +538,14 @@ WRAPIMPL_BEGIN( BaseManager )
 					network_node_drone_modifier,
 					network_node_research_bonus,
 					worked_tile_energy_bonus,
-					global_prevent_riots
+					global_prevent_riots,
+					global_terraforming_rate_multiplier,
+					new_base_population,
+					small_base_drone_modifier,
+					global_psi_attack_multiplier,
+					global_psi_defense_multiplier,
+					global_naval_movement_bonus,
+					global_full_repair
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

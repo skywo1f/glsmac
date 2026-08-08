@@ -27,6 +27,7 @@ const get_project_effects = (game, base) => {
 		network_node_drone_modifier: 0,
 		network_node_research_bonus: 0,
 		prevent_riots: false,
+		small_base_drone_modifier: 0,
 	};
 };
 
@@ -94,6 +95,10 @@ const get_social_facility_effects = (game, base) => {
 	}
 	const project_effects = get_project_effects(game, base);
 	result.talent_bonus = result.talent_bonus + project_effects.talent_bonus;
+	if (#is_defined(base.get_size) && base.get_size() <= 3) {
+		result.drone_modifier = result.drone_modifier +
+			project_effects.small_base_drone_modifier;
+	}
 	if (#is_defined(base.has_facility) && base.has_facility('NetworkNode')) {
 		result.drone_modifier = result.drone_modifier +
 			project_effects.network_node_drone_modifier;

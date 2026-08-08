@@ -192,19 +192,27 @@
 				const effect_project_ids = [
 					'TheHumanGenomeProject',
 					'TheCommandNexus',
+					'TheWeatherParadigm',
 					'TheMerchantExchange',
 					'TheCitizensDefenseForce',
 					'TheVirtualWorld',
+					'ThePlanetaryTransitSystem',
+					'TheXenoempathyDome',
+					'TheNeuralAmplifier',
+					'TheMaritimeControlCenter',
 					'TheSupercollider',
 					'TheAsceticVirtues',
 					'ThePholusMutagen',
 					'TheCyborgFactory',
 					'TheTheoryOfEverything',
+					'TheDreamTwister',
 					'TheNetworkBackbone',
+					'TheNanoFactory',
 					'TheLivingRefinery',
 					'TheCloningVats',
 					'TheSelfAwareColony',
 					'ClinicalImmortality',
+					'TheSpaceElevator',
 					'TheSingularityInductor',
 					'TheBulkMatterTransmitter',
 					'TheTelepathicMatrix',
@@ -218,19 +226,27 @@
 					effective_ids[definition.id] = true;
 				}
 				if (
-					#sizeof(game.get('f_project_get_owned')(base)) != 18 ||
+					#sizeof(game.get('f_project_get_owned')(base)) != 26 ||
 					project_effects.talent_bonus != 2 ||
 					project_effects.growth_rating_bonus != 10 ||
 					project_effects.population_limit_bonus != 2 ||
 					project_effects.mineral_bonus != 2 ||
 					project_effects.support_bonus != 2 ||
 					project_effects.maintenance_multiplier != 0.5 ||
-					project_effects.native_lifecycle_bonus != 1 ||
+					project_effects.native_lifecycle_bonus != 2 ||
 					project_effects.network_node_drone_modifier != -2 ||
 					project_effects.network_node_research_bonus != 1 ||
+					project_effects.terraforming_rate_multiplier != 1.5 ||
+					project_effects.new_base_population != 3 ||
+					project_effects.small_base_drone_modifier != -1 ||
+					project_effects.psi_attack_multiplier != 1.5 ||
+					project_effects.psi_defense_multiplier != 1.5 ||
+					project_effects.naval_movement_bonus != 2.0 ||
+					!project_effects.full_repair ||
 					!project_effects.prevent_riots ||
 					!#is_defined(effective_ids.CommandCenter) ||
 					!#is_defined(effective_ids.PerimeterDefense) ||
+					!#is_defined(effective_ids.NavalYard) ||
 					!#is_defined(effective_ids.BioenhancementCenter) ||
 					!#is_defined(effective_ids.QuantumConverter)
 				) {

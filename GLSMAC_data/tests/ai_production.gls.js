@@ -51,6 +51,13 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		network_node_research_bonus: 0,
 		worked_tile_energy_bonus: 0,
 		global_prevent_riots: false,
+		global_terraforming_rate_multiplier: 1.0,
+		new_base_population: 0,
+		small_base_drone_modifier: 0,
+		global_psi_attack_multiplier: 1.0,
+		global_psi_defense_multiplier: 1.0,
+		global_naval_movement_bonus: 0.0,
+		global_full_repair: false,
 	};
 };
 

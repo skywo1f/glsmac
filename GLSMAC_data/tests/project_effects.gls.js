@@ -16,6 +16,13 @@ const project = {
 	network_node_drone_modifier: -2,
 	network_node_research_bonus: 1,
 	global_prevent_riots: true,
+	global_terraforming_rate_multiplier: 1.5,
+	new_base_population: 3,
+	small_base_drone_modifier: -1,
+	global_psi_attack_multiplier: 1.5,
+	global_psi_defense_multiplier: 1.25,
+	global_naval_movement_bonus: 2.0,
+	global_full_repair: true,
 };
 
 const owner = {id: 1};
@@ -62,6 +69,14 @@ test.assert(values.f_project_get_effects(target_base) == {
 	network_node_drone_modifier: -2,
 	network_node_research_bonus: 1,
 	prevent_riots: true,
+	terraforming_rate_multiplier: 1.5,
+	new_base_population: 3,
+	small_base_drone_modifier: -1,
+	psi_attack_multiplier: 1.5,
+	psi_defense_multiplier: 1.25,
+	naval_movement_bonus: 2.0,
+	full_repair: true,
 });
+test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);

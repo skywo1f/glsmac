@@ -36,6 +36,16 @@ const get_base_defense_multiplier = (defender, attacker, game) => {
 	return multiplier;
 };
 
+const get_project_effects = (unit, game) => {
+	if (!#is_defined(game) || !#is_defined(game.get)) {
+		return {psi_attack_multiplier: 1.0, psi_defense_multiplier: 1.0};
+	}
+	const resolver = game.get('f_project_get_player_effects');
+	return #is_defined(resolver)
+		? resolver(unit.get_owner())
+		: {psi_attack_multiplier: 1.0, psi_defense_multiplier: 1.0};
+};
+
 const get_combat_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
@@ -65,6 +75,9 @@ const get_combat_powers = (attacker, defender, game) => {
 	}
 	if (!is_psi_combat) {
 		defence_modifier *= get_base_defense_multiplier(defender, attacker, game);
+	} else {
+		attack_modifier *= get_project_effects(attacker, game).psi_attack_multiplier;
+		defence_modifier *= get_project_effects(defender, game).psi_defense_multiplier;
 	}
 	if (attacker.is_land && !attacker_def.is_native && attacker.movement < 1.0) {
 		attack_modifier *= attacker.movement;

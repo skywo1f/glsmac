@@ -50,7 +50,14 @@ FacilityDef::FacilityDef(
 	const int64_t network_node_drone_modifier,
 	const int64_t network_node_research_bonus,
 	const int64_t worked_tile_energy_bonus,
-	const bool global_prevent_riots
+	const bool global_prevent_riots,
+	const float global_terraforming_rate_multiplier,
+	const int64_t new_base_population,
+	const int64_t small_base_drone_modifier,
+	const float global_psi_attack_multiplier,
+	const float global_psi_defense_multiplier,
+	const float global_naval_movement_bonus,
+	const bool global_full_repair
 )
 	: m_id( id )
 	, m_name( name )
@@ -92,7 +99,14 @@ FacilityDef::FacilityDef(
 	, m_network_node_drone_modifier( network_node_drone_modifier )
 	, m_network_node_research_bonus( network_node_research_bonus )
 	, m_worked_tile_energy_bonus( worked_tile_energy_bonus )
-	, m_global_prevent_riots( global_prevent_riots ) {
+	, m_global_prevent_riots( global_prevent_riots )
+	, m_global_terraforming_rate_multiplier( global_terraforming_rate_multiplier )
+	, m_new_base_population( new_base_population )
+	, m_small_base_drone_modifier( small_base_drone_modifier )
+	, m_global_psi_attack_multiplier( global_psi_attack_multiplier )
+	, m_global_psi_defense_multiplier( global_psi_defense_multiplier )
+	, m_global_naval_movement_bonus( global_naval_movement_bonus )
+	, m_global_full_repair( global_full_repair ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -155,7 +169,14 @@ FacilityDef::FacilityDef(
 			m_network_node_drone_modifier != 0 ||
 			m_network_node_research_bonus != 0 ||
 			m_worked_tile_energy_bonus != 0 ||
-			m_global_prevent_riots
+			m_global_prevent_riots ||
+			m_global_terraforming_rate_multiplier != 1.0f ||
+			m_new_base_population != 0 ||
+			m_small_base_drone_modifier != 0 ||
+			m_global_psi_attack_multiplier != 1.0f ||
+			m_global_psi_defense_multiplier != 1.0f ||
+			m_global_naval_movement_bonus != 0.0f ||
+			m_global_full_repair
 		) ||
 		m_global_talent_bonus < 0 ||
 		m_global_talent_bonus > MAX_RESOURCE_BONUS ||
@@ -176,7 +197,19 @@ FacilityDef::FacilityDef(
 		m_network_node_research_bonus < 0 ||
 		m_network_node_research_bonus > MAX_RESOURCE_BONUS ||
 		m_worked_tile_energy_bonus < 0 ||
-		m_worked_tile_energy_bonus > MAX_RESOURCE_BONUS
+		m_worked_tile_energy_bonus > MAX_RESOURCE_BONUS ||
+		m_global_terraforming_rate_multiplier < 1.0f ||
+		m_global_terraforming_rate_multiplier > MAX_DEFENSE_MULTIPLIER ||
+		m_new_base_population < 0 ||
+		m_new_base_population > MAX_POPULATION_LIMIT ||
+		m_small_base_drone_modifier < -MAX_DRONE_MODIFIER ||
+		m_small_base_drone_modifier > MAX_DRONE_MODIFIER ||
+		m_global_psi_attack_multiplier < 1.0f ||
+		m_global_psi_attack_multiplier > MAX_DEFENSE_MULTIPLIER ||
+		m_global_psi_defense_multiplier < 1.0f ||
+		m_global_psi_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
+		m_global_naval_movement_bonus < 0.0f ||
+		m_global_naval_movement_bonus > MAX_DEFENSE_MULTIPLIER
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -225,6 +258,13 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_network_node_research_bonus );
 	buf.WriteInt( def->m_worked_tile_energy_bonus );
 	buf.WriteBool( def->m_global_prevent_riots );
+	buf.WriteFloat( def->m_global_terraforming_rate_multiplier );
+	buf.WriteInt( def->m_new_base_population );
+	buf.WriteInt( def->m_small_base_drone_modifier );
+	buf.WriteFloat( def->m_global_psi_attack_multiplier );
+	buf.WriteFloat( def->m_global_psi_defense_multiplier );
+	buf.WriteFloat( def->m_global_naval_movement_bonus );
+	buf.WriteBool( def->m_global_full_repair );
 	return buf;
 }
 
@@ -270,6 +310,13 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto network_node_research_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto worked_tile_energy_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto global_prevent_riots = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto global_terraforming_rate_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto new_base_population = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto small_base_drone_modifier = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_psi_attack_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto global_psi_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto global_naval_movement_bonus = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
+	const auto global_full_repair = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -311,7 +358,14 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		network_node_drone_modifier,
 		network_node_research_bonus,
 		worked_tile_energy_bonus,
-		global_prevent_riots
+		global_prevent_riots,
+		global_terraforming_rate_multiplier,
+		new_base_population,
+		small_base_drone_modifier,
+		global_psi_attack_multiplier,
+		global_psi_defense_multiplier,
+		global_naval_movement_bonus,
+		global_full_repair
 	);
 }
 
@@ -484,6 +538,34 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"global_prevent_riots",
 			VALUE( gse::value::Bool, , m_global_prevent_riots )
+		},
+		{
+			"global_terraforming_rate_multiplier",
+			VALUE( gse::value::Float, , m_global_terraforming_rate_multiplier )
+		},
+		{
+			"new_base_population",
+			VALUE( gse::value::Int, , m_new_base_population )
+		},
+		{
+			"small_base_drone_modifier",
+			VALUE( gse::value::Int, , m_small_base_drone_modifier )
+		},
+		{
+			"global_psi_attack_multiplier",
+			VALUE( gse::value::Float, , m_global_psi_attack_multiplier )
+		},
+		{
+			"global_psi_defense_multiplier",
+			VALUE( gse::value::Float, , m_global_psi_defense_multiplier )
+		},
+		{
+			"global_naval_movement_bonus",
+			VALUE( gse::value::Float, , m_global_naval_movement_bonus )
+		},
+		{
+			"global_full_repair",
+			VALUE( gse::value::Bool, , m_global_full_repair )
 		},
 	};
 WRAPIMPL_END_PTR()

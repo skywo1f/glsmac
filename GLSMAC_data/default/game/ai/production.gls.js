@@ -128,7 +128,11 @@ const score_project = (def, context) => {
 		def.global_maintenance_multiplier < 1.0 ||
 		def.global_native_lifecycle_bonus > 0 || def.network_node_drone_modifier != 0 ||
 		def.network_node_research_bonus > 0 || def.worked_tile_energy_bonus > 0 ||
-		def.global_prevent_riots;
+		def.global_prevent_riots || def.global_terraforming_rate_multiplier > 1.0 ||
+		def.new_base_population > 0 || def.small_base_drone_modifier != 0 ||
+		def.global_psi_attack_multiplier > 1.0 ||
+		def.global_psi_defense_multiplier > 1.0 ||
+		def.global_naval_movement_bonus > 0.0 || def.global_full_repair;
 	if (!has_effect) {
 		return null;
 	}
@@ -141,7 +145,13 @@ const score_project = (def, context) => {
 		def.network_node_research_bonus * 15000 + def.worked_tile_energy_bonus * 20000 +
 		(def.granted_facility != '' ? 50000 : 0) +
 		(def.global_maintenance_multiplier < 1.0 ? 40000 : 0) +
-		(def.global_prevent_riots ? 50000 : 0);
+		(def.global_prevent_riots ? 50000 : 0) +
+		#round((def.global_terraforming_rate_multiplier - 1.0) * 80000.0) +
+		def.new_base_population * 20000 - def.small_base_drone_modifier * 30000 +
+		#round((def.global_psi_attack_multiplier - 1.0) * 60000.0) +
+		#round((def.global_psi_defense_multiplier - 1.0) * 60000.0) +
+		#round(def.global_naval_movement_bonus * 20000.0) +
+		(def.global_full_repair ? 40000 : 0);
 };
 
 const score_hurry = (def, context) => {

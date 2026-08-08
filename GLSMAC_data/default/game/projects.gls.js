@@ -10,14 +10,20 @@ const empty_effects = () => {
 		network_node_drone_modifier: 0,
 		network_node_research_bonus: 0,
 		prevent_riots: false,
+		terraforming_rate_multiplier: 1.0,
+		new_base_population: 1,
+		small_base_drone_modifier: 0,
+		psi_attack_multiplier: 1.0,
+		psi_defense_multiplier: 1.0,
+		naval_movement_bonus: 0.0,
+		full_repair: false,
 	};
 };
 
-const get_owned_projects = (game, base) => {
+const get_player_projects = (game, player) => {
 	let result = [];
-	const owner_id = base.get_owner().id;
 	for (candidate of game.get_bm().get_bases()) {
-		if (candidate.get_owner().id != owner_id) {
+		if (candidate.get_owner().id != player.id) {
 			continue;
 		}
 		for (facility of candidate.get_facilities()) {
@@ -29,9 +35,13 @@ const get_owned_projects = (game, base) => {
 	return result;
 };
 
-const get_effects = (game, base) => {
+const get_owned_projects = (game, base) => {
+	return get_player_projects(game, base.get_owner());
+};
+
+const get_player_effects = (game, player) => {
 	const result = empty_effects();
-	for (project of get_owned_projects(game, base)) {
+	for (project of get_player_projects(game, player)) {
 		result.talent_bonus = result.talent_bonus + project.global_talent_bonus;
 		result.growth_rating_bonus = result.growth_rating_bonus + project.global_growth_rating_bonus;
 		result.population_limit_bonus = result.population_limit_bonus + project.global_population_limit_bonus;
@@ -46,8 +56,42 @@ const get_effects = (game, base) => {
 		result.network_node_research_bonus = result.network_node_research_bonus +
 			project.network_node_research_bonus;
 		result.prevent_riots = result.prevent_riots || project.global_prevent_riots;
+		result.terraforming_rate_multiplier = result.terraforming_rate_multiplier * (
+			#is_defined(project.global_terraforming_rate_multiplier)
+				? project.global_terraforming_rate_multiplier
+				: 1.0
+		);
+		result.new_base_population = #max(
+			result.new_base_population,
+			#is_defined(project.new_base_population) ? project.new_base_population : 0
+		);
+		result.small_base_drone_modifier = result.small_base_drone_modifier + (
+			#is_defined(project.small_base_drone_modifier) ? project.small_base_drone_modifier : 0
+		);
+		result.psi_attack_multiplier = result.psi_attack_multiplier * (
+			#is_defined(project.global_psi_attack_multiplier)
+				? project.global_psi_attack_multiplier
+				: 1.0
+		);
+		result.psi_defense_multiplier = result.psi_defense_multiplier * (
+			#is_defined(project.global_psi_defense_multiplier)
+				? project.global_psi_defense_multiplier
+				: 1.0
+		);
+		result.naval_movement_bonus = result.naval_movement_bonus + (
+			#is_defined(project.global_naval_movement_bonus)
+				? project.global_naval_movement_bonus
+				: 0.0
+		);
+		result.full_repair = result.full_repair || (
+			#is_defined(project.global_full_repair) && project.global_full_repair
+		);
 	}
 	return result;
+};
+
+const get_effects = (game, base) => {
+	return get_player_effects(game, base.get_owner());
 };
 
 const get_effective_facilities = (game, base) => {
@@ -71,6 +115,10 @@ const get_effective_facilities = (game, base) => {
 return (game) => {
 	game.set('f_project_get_owned', (base) => { return get_owned_projects(game, base); });
 	game.set('f_project_get_effects', (base) => { return get_effects(game, base); });
+	game.set(
+		'f_project_get_player_effects',
+		(player) => { return get_player_effects(game, player); }
+	);
 	game.set(
 		'f_base_get_effective_facilities',
 		(base) => { return get_effective_facilities(game, base); }

@@ -92,6 +92,7 @@ return {
 	apply: (e) => {
 		const unit = e.data.unit;
 		const tile = unit.get_tile();
+		const owner = unit.get_owner();
 		const backup = snapshot_unit(unit);
 		let info = {
 			production: 'ScoutPatrol',
@@ -100,10 +101,20 @@ return {
 			info.name = e.data.name;
 		}
 
-		const base = e.game.bm.spawn_base(unit.get_owner(), tile, info);
+		const base = e.game.bm.spawn_base(owner, tile, info);
 		e.game.um.despawn_unit(unit);
 
-		const pop = base.create_pop({type: 'WORKER'});
+		const get_project_effects = #is_defined(e.game.get)
+			? e.game.get('f_project_get_player_effects')
+			: #undefined;
+		const project_effects = #is_defined(get_project_effects)
+			? get_project_effects(owner)
+			: {new_base_population: 1};
+		const initial_population = #max(project_effects.new_base_population, 1);
+		let pops = [];
+		for (let pop_index = 0; pop_index < initial_population; pop_index++) {
+			pops :+base.create_pop({type: 'WORKER'});
+		}
 		let unoccupied = [];
 		for (candidate of base.get_unworked_tiles()) {
 			if (candidate.get_base() == null && !candidate.has('working_pop')) {
@@ -113,11 +124,19 @@ return {
 		const workable = e.game.get('f_base_find_best_or_worst_tiles')(
 			base,
 			unoccupied,
-			1,
+			initial_population,
 			1
 		);
-		if (#sizeof(workable) > 0) {
-			e.game.get('f_base_pop_work_tile')(base, pop, workable[0]);
+		for (
+			let work_index = 0;
+			work_index < #sizeof(workable) && work_index < #sizeof(pops);
+			work_index++
+		) {
+			e.game.get('f_base_pop_work_tile')(
+				base,
+				pops[work_index],
+				workable[work_index]
+			);
 		}
 
 		return {

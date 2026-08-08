@@ -63,6 +63,7 @@ let pops = laborers + [doctor];
 let facilities = [];
 const base = {
 	get_pops: () => { return pops; },
+	get_size: () => { return #sizeof(pops); },
 	get_facilities: () => { return facilities; },
 	get_intake: () => { return {NUTRIENTS: 14, MINERALS: 10, ENERGY: 10}; },
 	get_consumption: () => { return {NUTRIENTS: 14, MINERALS: 2, ENERGY: 0}; },
@@ -107,12 +108,33 @@ values.f_project_get_effects = (target_base) => {
 		talent_bonus: 0,
 		network_node_drone_modifier: 0,
 		prevent_riots: true,
+		small_base_drone_modifier: 0,
 	};
 };
 state = values.f_base_get_psych(base);
 test.assert(state.is_rioting == false);
 test.assert(values.f_base_get_pending_production(base) == 8);
 values.f_project_get_effects = #undefined;
+
+pops = [
+	make_pop('WORKER', true),
+	make_pop('WORKER', true),
+	make_pop('WORKER', true),
+];
+facilities = [{drone_modifier: 1, talent_bonus: 0, suppress_psych: false}];
+values.f_project_get_effects = (target_base) => {
+	return {
+		talent_bonus: 0,
+		network_node_drone_modifier: 0,
+		prevent_riots: false,
+		small_base_drone_modifier: -1,
+	};
+};
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.workers == 3 && state.drones == 0);
+values.f_project_get_effects = #undefined;
+pops = laborers + [doctor];
 
 facilities = [{drone_modifier: -2, talent_bonus: 0, suppress_psych: false}];
 values.f_base_process_psych(game, base, 0);

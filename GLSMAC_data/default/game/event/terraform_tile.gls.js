@@ -70,7 +70,17 @@ return {
 			moved_this_turn: unit.moved_this_turn,
 		};
 		const order = terraforming.get_order(e.data.type);
-		unit.set_terraforming_order(e.data.type, order.turns);
+		const get_effects = #is_defined(e.game.get)
+			? e.game.get('f_project_get_player_effects')
+			: #undefined;
+		const effects = #is_defined(get_effects)
+			? get_effects(unit.get_owner())
+			: {terraforming_rate_multiplier: 1.0};
+		const turns = #max(
+			#ceil(#to_float(order.turns) / effects.terraforming_rate_multiplier),
+			1
+		);
+		unit.set_terraforming_order(e.data.type, turns);
 		unit.movement = 0.0;
 		unit.moved_this_turn = true;
 		return previous;

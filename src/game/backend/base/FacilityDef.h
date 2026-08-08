@@ -68,7 +68,14 @@ public:
 		const int64_t network_node_drone_modifier = 0,
 		const int64_t network_node_research_bonus = 0,
 		const int64_t worked_tile_energy_bonus = 0,
-		const bool global_prevent_riots = false
+		const bool global_prevent_riots = false,
+		const float global_terraforming_rate_multiplier = 1.0f,
+		const int64_t new_base_population = 0,
+		const int64_t small_base_drone_modifier = 0,
+		const float global_psi_attack_multiplier = 1.0f,
+		const float global_psi_defense_multiplier = 1.0f,
+		const float global_naval_movement_bonus = 0.0f,
+		const bool global_full_repair = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -113,6 +120,13 @@ public:
 	const int64_t m_network_node_research_bonus;
 	const int64_t m_worked_tile_energy_bonus;
 	const bool m_global_prevent_riots;
+	const float m_global_terraforming_rate_multiplier;
+	const int64_t m_new_base_population;
+	const int64_t m_small_base_drone_modifier;
+	const float m_global_psi_attack_multiplier;
+	const float m_global_psi_defense_multiplier;
+	const float m_global_naval_movement_bonus;
+	const bool m_global_full_repair;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

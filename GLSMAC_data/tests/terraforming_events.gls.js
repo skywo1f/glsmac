@@ -57,6 +57,7 @@ unit = {
 	get_tile: () => {
 		return tile;
 	},
+	get_owner: () => { return {id: 1}; },
 	set_terraforming_order: (type, turns) => {
 		unit.terraforming = type;
 		unit.terraforming_turns_remaining = turns;
@@ -64,6 +65,7 @@ unit = {
 };
 
 let turn_complete = false;
+let terraforming_rate_multiplier = 1.0;
 const event = {
 	caller: 1,
 	data: {
@@ -73,6 +75,13 @@ const event = {
 	game: {
 		is_turn_complete: (player) => {
 			return turn_complete;
+		},
+		get: (key) => {
+			test.assert(key == 'f_project_get_player_effects');
+			return (owner) => {
+				test.assert(owner.id == 1);
+				return {terraforming_rate_multiplier: terraforming_rate_multiplier};
+			};
 		},
 	},
 };
@@ -117,6 +126,12 @@ test.assert(unit.terraforming == 'none');
 test.assert(unit.terraforming_turns_remaining == 0);
 test.assert(event.data.unit.movement == 1.0);
 test.assert(!event.data.unit.moved_this_turn);
+
+terraforming_rate_multiplier = 1.5;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 3);
+terraform_tile.rollback(event);
+terraforming_rate_multiplier = 1.0;
 
 unit.set_terraforming_order('farm', 4);
 test.assert(terraforming.advance_order(unit));

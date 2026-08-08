@@ -29,6 +29,7 @@ const make_unit = (tile, owner, offense, defense, is_native, movement_type) => {
 		is_land: movement_type == 'land',
 		is_water: movement_type == 'water',
 		is_air: movement_type == 'air',
+		get_owner: () => { return {id: owner}; },
 		get_tile: () => { return tile; },
 		get_def: () => {
 			return {
@@ -63,6 +64,24 @@ test.assert(combat_rules.get_combat_powers(attacker, occupying_defender).defence
 
 const native_attacker = make_unit(attack_tile, 1, 1, 1, true, 'land');
 test.assert(combat_rules.get_combat_powers(native_attacker, defender).defence == 2.5);
+
+const project_psi_game = {
+	get: (key) => {
+		test.assert(key == 'f_project_get_player_effects');
+		return (player) => {
+			return player.id == native_attacker.owner
+				? {psi_attack_multiplier: 1.5, psi_defense_multiplier: 1.0}
+				: {psi_attack_multiplier: 1.0, psi_defense_multiplier: 1.5};
+		};
+	},
+};
+const project_psi_powers = combat_rules.get_combat_powers(
+	native_attacker,
+	defender,
+	project_psi_game
+);
+test.assert(project_psi_powers.attack == 4.5);
+test.assert(project_psi_powers.defence == 3.75);
 
 const water_attacker = make_unit(attack_tile, 1, 2, 1, false, 'water');
 const air_attacker = make_unit(attack_tile, 1, 2, 1, false, 'air');
