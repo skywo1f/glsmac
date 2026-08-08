@@ -70,6 +70,7 @@ return {
 		this.pages.resource.set({
 			base: data.base,
 		});
+		this.pages.support.set(data.support);
 		this.pages.psych.set({
 			base: data.base,
 		});

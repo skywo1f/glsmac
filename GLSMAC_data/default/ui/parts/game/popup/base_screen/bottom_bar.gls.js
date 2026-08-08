@@ -130,6 +130,8 @@ return {
 			pops: base.get_pops(),
 		});
 
+		this.parts.support.set(data.support);
+
 	},
 
 };

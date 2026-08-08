@@ -103,6 +103,15 @@
 				glsmac.exit();
 				return;
 			}
+			const bases = game.get_bm().get_bases();
+			if (#sizeof(bases) == 0) {
+				#print('RUNTIME_SMOKE_FAIL: no starting base was available for the base screen');
+				glsmac.exit();
+				return;
+			}
+			#async(0, () => {
+				game.select_base(bases[0]);
+			});
 			ui_started = true;
 			finish_if_ready();
 		});

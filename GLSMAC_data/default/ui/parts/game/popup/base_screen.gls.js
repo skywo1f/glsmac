@@ -117,6 +117,18 @@ return {
 
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
+		let supported_units = [];
+		for (unit of game.get_um().get_units()) {
+			if (unit.owner == owner.id && unit.home_base_id == base.id) {
+				supported_units :+unit;
+			}
+		}
+		const free_support_capacity = #max(base.get_size(), 1);
+		const support = {
+			units: supported_units,
+			free_units: #min(#sizeof(supported_units), free_support_capacity),
+			mineral_upkeep: consumption.MINERALS,
+		};
 
 		// dummy data for now
 
@@ -169,6 +181,7 @@ return {
 
 		this.sections.middle_area.set({
 			base: base,
+			support: support,
 		});
 		this.sections.buttons.set({
 			base: base,
@@ -176,6 +189,7 @@ return {
 
 		this.sections.bottom_bar.set({
 			base: base,
+			support: support,
 		});
 	},
 
