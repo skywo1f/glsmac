@@ -115,13 +115,6 @@
 				return;
 			}
 			ai_id = ai.id;
-			if (!ai.has_technology('DoctrineMobility')) {
-				ai.set_research_state({
-					technologies: ['CentauriEcology', 'DoctrineMobility'],
-					target: '',
-					progress: 0,
-				});
-			}
 			let ai_bases = 0;
 			let populated_ai_bases = 0;
 			let garrisoned_ai_bases = 0;

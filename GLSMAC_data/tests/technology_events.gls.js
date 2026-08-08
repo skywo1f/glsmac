@@ -30,6 +30,8 @@ test.assert(social.name == 'Social Psych');
 test.assert(social.cost == 40);
 test.assert(social.prerequisites == ['CentauriEcology']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
+test.assert(technologies.get_available_targets([]) == ['CentauriEcology']);
+test.assert(technologies.get_available_targets(['CentauriEcology']) == ['DoctrineMobility', 'SocialPsych']);
 test.assert(technologies.get_next_target([]) == 'CentauriEcology');
 test.assert(technologies.get_next_target(['CentauriEcology']) == 'DoctrineMobility');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == 'InformationNetworks');

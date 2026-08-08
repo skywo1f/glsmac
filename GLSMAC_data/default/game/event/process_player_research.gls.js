@@ -39,7 +39,7 @@ return {
 		let completed = false;
 		if (e.data.labs >= e.data.technology.cost - progress) {
 			technologies :+e.data.technology.id;
-			target = e.game.get('f_technology_get_next_target')(technologies);
+			target = e.game.get('f_technology_get_next_target')(technologies, e.data.player);
 			progress = 0;
 			completed = true;
 		} else {

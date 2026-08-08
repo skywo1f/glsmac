@@ -54,8 +54,9 @@ const get_definition = (id) => {
 	return definitions[id];
 };
 
-const get_next_target = (known) => {
+const get_available_targets = (known) => {
 	let known_ids = {};
+	let result = [];
 	for (id of known) {
 		known_ids[id] = true;
 	}
@@ -71,13 +72,18 @@ const get_next_target = (known) => {
 			}
 		}
 		if (available) {
-			return id;
+			result :+id;
 		}
 	}
-	return '';
+	return result;
 };
 
-const get_initial_state = (player) => {
+const get_next_target = (known) => {
+	const available = get_available_targets(known);
+	return #sizeof(available) == 0 ? '' : available[0];
+};
+
+const get_initial_state = (player, choose_target) => {
 	let known = [];
 	for (id of player.get_faction().get_starting_technologies()) {
 		if (get_definition(id) == null) {
@@ -87,7 +93,7 @@ const get_initial_state = (player) => {
 	}
 	return {
 		technologies: known,
-		target: get_next_target(known),
+		target: #is_defined(choose_target) ? choose_target(known) : get_next_target(known),
 		progress: 0,
 	};
 };
@@ -125,6 +131,7 @@ const get_player_labs = (game, player) => {
 return {
 	definitions: definitions,
 	get_definition: get_definition,
+	get_available_targets: get_available_targets,
 	get_next_target: get_next_target,
 	get_initial_state: get_initial_state,
 	get_base_labs: get_base_labs,
@@ -132,8 +139,26 @@ return {
 
 	configure: (game) => {
 		game.on('start', (e) => {
+			const choose_next_target = (known, player) => {
+				const available = get_available_targets(known);
+				if (#sizeof(available) == 0) {
+					return '';
+				}
+				if (#is_defined(player) && player.type == 'ai') {
+					let available_ids = {};
+					for (candidate_id of available) {
+						available_ids[candidate_id] = true;
+					}
+					const selected = game.get('f_ai_choose_research_target')(player, available);
+					if (#is_defined(available_ids[selected])) {
+						return selected;
+					}
+					throw Error('AI selected unavailable research target: ' + selected);
+				}
+				return available[0];
+			};
 			game.set('f_technology_get_definition', get_definition);
-			game.set('f_technology_get_next_target', get_next_target);
+			game.set('f_technology_get_next_target', choose_next_target);
 			game.set('f_technology_get_base_labs', get_base_labs);
 			game.set('f_technology_get_player_labs', get_player_labs);
 
@@ -141,7 +166,9 @@ return {
 				for (player of game.get_players()) {
 					game.event('initialize_player_research', {
 						player: player,
-						state: get_initial_state(player),
+						state: get_initial_state(player, (known) => {
+							return choose_next_target(known, player);
+						}),
 					});
 				}
 			}

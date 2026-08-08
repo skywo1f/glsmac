@@ -4,6 +4,7 @@ const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
+const research = #include('ai/research');
 const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
@@ -212,6 +213,61 @@ const queue_production = (game, player, bases, units) => {
 			});
 		}
 	}
+};
+
+const choose_research_target = (game, player, available) => {
+	const bases = owned_bases(game, player);
+	const units = owned_units(game, player);
+	let former_count = 0;
+	let colony_count = 0;
+	let combat_count = 0;
+	for (unit of units) {
+		const def = unit.get_def();
+		if (def.can_terraform) {
+			former_count++;
+		}
+		if (def.can_found_base) {
+			colony_count++;
+		}
+		if (def.offense > 0) {
+			combat_count++;
+		}
+	}
+	let needs_growth = false;
+	let needs_psych = false;
+	let base_labs = 0;
+	for (base of bases) {
+		const pending_growth = game.get('f_base_get_pending_growth')(base);
+		const psych = game.get('f_economy_get_base_psych')(game, base);
+		if (base.get_size() < 3 || pending_growth <= 0) {
+			needs_growth = true;
+		}
+		if (game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size()) {
+			needs_psych = true;
+		}
+		base_labs += game.get('f_technology_get_base_labs')(base).total;
+	}
+	const tm = game.get_tm();
+	const desired_base_count = strategy.get_desired_base_count(
+		game.get_turn(),
+		tm.get_map_width(),
+		tm.get_map_height(),
+		#sizeof(game.get_players())
+	);
+	return research.choose_id(
+		available,
+		(id) => { return game.get('f_technology_get_definition')(id); },
+		game.get_um().get_unit_defs(),
+		game.get_bm().get_facility_defs(),
+		{
+			needs_colony: #sizeof(bases) + colony_count < desired_base_count,
+			needs_former: former_count < #sizeof(bases),
+			needs_military: combat_count < #sizeof(bases) * 2,
+			needs_growth: needs_growth,
+			needs_psych: needs_psych,
+			base_labs: base_labs,
+		}
+	);
 };
 
 const move_colony = (game, player, unit, all_bases) => {
@@ -521,6 +577,9 @@ const play_turn = (game, player, done) => {
 
 return (game) => {
 	game.on('start', (e) => {
+		game.set('f_ai_choose_research_target', (player, available) => {
+			return choose_research_target(game, player, available);
+		});
 		let ui_started = false;
 		let ai_running = false;
 		const play_ai_players = () => {
