@@ -378,7 +378,6 @@ const process_growth = (game, base, allocated_psych) => {
 			base: base,
 			pop: pop,
 		});
-		rebalance_ai_workers(base, allocated_psych);
 		return;
 	}
 	base.set('accumulated_nutrients', accumulated);
@@ -423,7 +422,6 @@ const process_growth = (game, base, allocated_psych) => {
 				type: 'DOCTOR',
 			});
 		}
-		rebalance_ai_workers(base, allocated_psych);
 	}
 };
 

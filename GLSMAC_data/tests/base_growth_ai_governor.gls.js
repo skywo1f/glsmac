@@ -1,9 +1,14 @@
 const define_bases = #include('../default/game/bases');
+const add_base_pop = #include('../default/game/event/add_base_pop');
+const remove_base_pop = #include('../default/game/event/remove_base_pop');
+const process_base_growth = #include('../default/game/event/process_base_growth');
+const refresh_base_psych = #include('../default/game/event/refresh_base_psych');
 
 const callbacks = {};
 const values = {
 	f_economy_get_base_psych: (game, base) => { return 0; },
 };
+let pending_events = [];
 let game = null;
 game = {
 	get_bm: () => {
@@ -19,19 +24,7 @@ game = {
 		};
 	},
 	event: (name, data) => {
-		if (name == 'add_base_pop') {
-			values.f_base_reset_nutrients(game, data.base);
-			const pop = data.base.create_pop({type: data.type});
-			if (#is_defined(data.worked_tile)) {
-				values.f_base_pop_work_tile(data.base, pop, data.worked_tile);
-			}
-		} else if (name == 'remove_base_pop') {
-			values.f_base_reset_nutrients(game, data.base);
-			if (data.pop.has('worked_tile')) {
-				values.f_base_pop_unwork_tile(data.base, data.pop);
-			}
-			data.base.destroy_pop(data.pop);
-		}
+		pending_events :+{name: name, data: data};
 	},
 	on: (name, callback) => {
 		callbacks[name] = callback;
@@ -47,6 +40,26 @@ game = {
 
 define_bases(game);
 callbacks.start({});
+pending_events = [];
+
+const drain_events = () => {
+	let index = 0;
+	while (index < #sizeof(pending_events)) {
+		const queued = pending_events[index];
+		const event = {caller: 0, game: game, data: queued.data};
+		if (queued.name == 'add_base_pop') {
+			add_base_pop.apply(event);
+		} else if (queued.name == 'remove_base_pop') {
+			remove_base_pop.apply(event);
+		} else if (queued.name == 'refresh_base_psych') {
+			refresh_base_psych.apply(event);
+		} else {
+			throw Error('Unexpected queued event: ' + queued.name);
+		}
+		index++;
+	}
+	pending_events = [];
+};
 
 const owner = {id: 1, type: 'ai'};
 const make_tile = (x) => {
@@ -174,11 +187,19 @@ const assert_stable_size_four = (base) => {
 };
 
 const growing_base = make_base(3, 38, 8);
-values.f_base_process_growth(game, growing_base, 0);
+process_base_growth.apply({caller: 0, game: game, data: {base: growing_base, psych: 0}});
+test.assert(growing_base.get_size() == 3);
+test.assert(pending_events[0].name == 'add_base_pop');
+test.assert(pending_events[1].name == 'refresh_base_psych');
+drain_events();
 test.assert(growing_base.get('accumulated_nutrients') == 0);
 assert_stable_size_four(growing_base);
 
 const starving_base = make_base(5, 0, 0);
-values.f_base_process_growth(game, starving_base, 0);
+process_base_growth.apply({caller: 0, game: game, data: {base: starving_base, psych: 0}});
+test.assert(starving_base.get_size() == 5);
+test.assert(pending_events[0].name == 'remove_base_pop');
+test.assert(pending_events[1].name == 'refresh_base_psych');
+drain_events();
 test.assert(starving_base.get('accumulated_nutrients') == 0);
 assert_stable_size_four(starving_base);

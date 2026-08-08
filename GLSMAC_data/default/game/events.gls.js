@@ -24,6 +24,7 @@ return (game) => {
 		'add_base_pop',
 		'remove_base_pop',
 		'process_base_growth',
+		'refresh_base_psych',
 		'set_base_production',
 		'queue_base_production',
 		'remove_base_production',
