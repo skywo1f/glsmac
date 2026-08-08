@@ -11,7 +11,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier, economy_multiplier, unit_morale_bonus) => {
+const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus) => {
 	return {
 		id: id,
 		nutrient_bonus: nutrients,
@@ -24,6 +24,7 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		defense_multiplier: #is_defined(defense_multiplier) ? defense_multiplier : 1.0,
 		economy_multiplier: #is_defined(economy_multiplier) ? economy_multiplier : 0.0,
 		unit_morale_bonus: #is_defined(unit_morale_bonus) ? unit_morale_bonus : 0,
+		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
 	};
 };
 
@@ -39,6 +40,7 @@ const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
 const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
 const energy_bank = facility('EnergyBank', 0, 0, 0, 0, 0.0, 1, 80, 1.0, 0.5);
 const command_center = facility('CommandCenter', 0, 0, 0, 0, 0.0, 1, 40, 1.0, 0.0, 2);
+const biology_lab = facility('BiologyLab', 0, 0, 0, 0, 0.0, 1, 60, 1.0, 0.0, 0, 2);
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -128,6 +130,10 @@ low_economy_context.priorities = {development: 0};
 test.assert(
 	production.score_facility(energy_bank, economy_context) >
 	production.score_facility(energy_bank, low_economy_context)
+);
+test.assert(
+	production.score_facility(biology_lab, economy_context) >
+	production.score_facility(biology_lab, low_economy_context)
 );
 let military_context = context(false, false, false, false, 10);
 military_context.priorities = {military: 100, development: 25};
@@ -233,6 +239,7 @@ let economy_hurry = hurry_context('facility', 20, 200, 20, 2);
 economy_hurry.priorities = {development: 100};
 economy_hurry.production_score = production.score_facility(energy_bank, economy_hurry);
 test.assert(production.score_hurry(energy_bank, economy_hurry) != null);
+test.assert(production.score_hurry(biology_lab, economy_hurry) != null);
 
 let military_hurry = hurry_context('facility', 20, 200, 20, 2);
 military_hurry.priorities = {military: 100};

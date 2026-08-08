@@ -14,7 +14,7 @@ const unit = (id, required_technology, offense, defense, movement, can_found_bas
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier, unit_morale_bonus) => {
+const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus) => {
 	return {
 		id: id,
 		required_technology: required_technology,
@@ -26,6 +26,7 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		defense_multiplier: #is_defined(defense_multiplier) ? defense_multiplier : 1.0,
 		economy_multiplier: #is_defined(economy_multiplier) ? economy_multiplier : 0.0,
 		unit_morale_bonus: #is_defined(unit_morale_bonus) ? unit_morale_bonus : 0,
+		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
 	};
 };
 const context = (needs_military, needs_psych) => {
@@ -84,6 +85,13 @@ low_development_context.priorities = {development: 0};
 test.assert(
 	research.score_technology(economics, [], [energy_bank], development_context) >
 	research.score_technology(economics, [], [energy_bank], low_development_context)
+);
+
+const secrets = technology('Secrets', 80);
+const biology_lab = facility('BiologyLab', 'Secrets', 0, 0, 0, 0, 0.0, 1.0, 0.0, 0, 2);
+test.assert(
+	research.score_technology(secrets, [], [biology_lab], development_context) >
+	research.score_technology(secrets, [], [biology_lab], low_development_context)
 );
 
 const doctrine = technology('Doctrine', 30);

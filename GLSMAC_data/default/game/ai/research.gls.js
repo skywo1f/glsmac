@@ -58,6 +58,7 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 			def.research_multiplier * #to_float(context.base_labs) *
 				#to_float(1000 + development_priority * 10)
 		);
+		score += def.research_bonus * (3000 + development_priority * 200);
 		score += #round(
 			#max(def.defense_multiplier - 1.0, 0.0) *
 				#to_float(5000 + defense_priority * 400)

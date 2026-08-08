@@ -60,6 +60,12 @@ const definitions = {
 		cost: 70,
 		prerequisites: ['IndustrialBase'],
 	},
+	SecretsHumanBrain: {
+		id: 'SecretsHumanBrain',
+		name: 'Secrets of the Human Brain',
+		cost: 80,
+		prerequisites: ['SocialPsych', 'Biogenetics'],
+	},
 };
 
 const technology_order = [
@@ -73,6 +79,7 @@ const technology_order = [
 	'PlanetaryNetworks',
 	'DoctrineLoyalty',
 	'IndustrialEconomics',
+	'SecretsHumanBrain',
 ];
 
 const get_definition = (id) => {
@@ -134,15 +141,19 @@ const get_base_labs = (base) => {
 	const energy_surplus = #max(intake.ENERGY - consumption.ENERGY, 0);
 	const allocated = #round(#to_float(energy_surplus) * allocation);
 	let research_multiplier = 0.0;
+	let fixed_facility_bonus = 0;
 	for (facility of base.get_facilities()) {
 		research_multiplier += facility.research_multiplier;
+		fixed_facility_bonus += #is_defined(facility.research_bonus) ? facility.research_bonus : 0;
 	}
-	const facility_bonus = #ceil(#to_float(allocated + base_bonus) * research_multiplier);
+	const facility_bonus = #ceil(
+		#to_float(allocated + base_bonus + fixed_facility_bonus) * research_multiplier
+	);
 	return {
 		allocation: allocation,
 		value: allocated,
-		bonus: base_bonus + facility_bonus,
-		total: allocated + base_bonus + facility_bonus,
+		bonus: base_bonus + fixed_facility_bonus + facility_bonus,
+		total: allocated + base_bonus + fixed_facility_bonus + facility_bonus,
 	};
 };
 

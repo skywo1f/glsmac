@@ -34,7 +34,8 @@ public:
 		const float research_multiplier = 0.0f,
 		const float defense_multiplier = 1.0f,
 		const float economy_multiplier = 0.0f,
-		const int64_t unit_morale_bonus = 0
+		const int64_t unit_morale_bonus = 0,
+		const int64_t research_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -51,6 +52,7 @@ public:
 	const float m_defense_multiplier;
 	const float m_economy_multiplier;
 	const int64_t m_unit_morale_bonus;
+	const int64_t m_research_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

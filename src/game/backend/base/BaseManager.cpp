@@ -327,6 +327,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( float, defense_multiplier, def, "defense_multiplier", Float, 1.0f );
 				N_GETPROP_OPT( float, economy_multiplier, def, "economy_multiplier", Float, 0.0f );
 				N_GETPROP_OPT( int64_t, unit_morale_bonus, def, "unit_morale_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, research_bonus, def, "research_bonus", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -349,7 +350,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					economy_multiplier < 0.0f ||
 					economy_multiplier > base::FacilityDef::MAX_ECONOMY_MULTIPLIER ||
 					unit_morale_bonus < 0 ||
-					unit_morale_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS
+					unit_morale_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					research_bonus < 0 ||
+					research_bonus > base::FacilityDef::MAX_RESOURCE_BONUS
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -369,7 +372,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					research_multiplier,
 					defense_multiplier,
 					economy_multiplier,
-					unit_morale_bonus
+					unit_morale_bonus,
+					research_bonus
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

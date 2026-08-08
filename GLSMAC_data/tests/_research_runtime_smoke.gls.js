@@ -14,13 +14,14 @@
 	let planetary_networks_accelerated = false;
 	let doctrine_loyalty_accelerated = false;
 	let industrial_economics_accelerated = false;
+	let secrets_human_brain_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: ten-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: eleven-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -62,6 +63,7 @@
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			const command_center = game.get_bm().get_facility_def('CommandCenter');
+			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -92,7 +94,10 @@
 				energy_bank.economy_multiplier != 0.5 ||
 				command_center.required_technology != 'DoctrineMobility' ||
 				command_center.energy_maintenance != 1 ||
-				command_center.unit_morale_bonus != 2
+				command_center.unit_morale_bonus != 2 ||
+				biology_lab.required_technology != 'SecretsHumanBrain' ||
+				biology_lab.energy_maintenance != 1 ||
+				biology_lab.research_bonus != 2
 			) {
 				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit or facility definitions are invalid');
 				glsmac.exit();
@@ -115,18 +120,54 @@
 				}
 			}
 
+			if (player.has_technology('SecretsHumanBrain')) {
+				if (
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'IndustrialEconomics', 'InformationNetworks', 'PlanetaryNetworks', 'SecretsHumanBrain', 'SocialPsych'] ||
+					state.target != '' ||
+					state.progress != 0
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: final eleven-tier research state is invalid');
+					glsmac.exit();
+					return;
+				}
+				if (
+					!base.can_set_production('facility', 'BiologyLab') ||
+					!base.can_set_production('facility', 'PerimeterDefense')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: final facility production gates are invalid');
+					glsmac.exit();
+					return;
+				}
+				const labs_before = game.get('f_technology_get_base_labs')(base).total;
+				const consumption_before = base.get_consumption().ENERGY;
+				base.add_facility('BiologyLab');
+				const labs_after = game.get('f_technology_get_base_labs')(base).total;
+				if (
+					base.get_consumption().ENERGY != consumption_before + 1 ||
+					labs_after <= labs_before
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Biology Lab maintenance or research bonus is invalid');
+					glsmac.exit();
+					return;
+				}
+				research_complete = true;
+				finish_if_ready();
+				return;
+			}
+
 			if (player.has_technology('IndustrialEconomics')) {
+				const secrets_human_brain = game.get('f_technology_get_definition')('SecretsHumanBrain');
+				const progress_is_valid = secrets_human_brain_accelerated
+					? state.progress == secrets_human_brain.cost - 1
+					: state.progress >= 0 && state.progress < secrets_human_brain.cost;
 				if (
 					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'IndustrialEconomics', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
-					state.target != '' ||
-					state.progress != 0 ||
+					state.target != 'SecretsHumanBrain' ||
+					!progress_is_valid ||
 					!base.can_set_production('facility', 'EnergyBank') ||
-					!base.can_set_production('facility', 'PerimeterDefense') ||
-					!base.has_facility('HologramTheatre') ||
-					!base.has_facility('RecreationCommons') ||
-					!base.has_facility('RecyclingTanks')
+					base.can_set_production('facility', 'BiologyLab')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Industrial Economics did not unlock Energy Bank');
+					#print('RESEARCH_RUNTIME_FAIL: Industrial Economics did not advance to Secrets of the Human Brain');
 					glsmac.exit();
 					return;
 				}
@@ -145,8 +186,15 @@
 					glsmac.exit();
 					return;
 				}
-				research_complete = true;
-				finish_if_ready();
+				if (!secrets_human_brain_accelerated) {
+					secrets_human_brain_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
+						target: 'SecretsHumanBrain',
+						progress: secrets_human_brain.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

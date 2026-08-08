@@ -67,6 +67,7 @@ const score_facility = (def, context) => {
 	const psych_weight = 100 + psych_priority * 11;
 	const defense_weight = 5000 + defense_priority * 500;
 	const economy_weight = 5000 + development_priority * 300;
+	const research_weight = 3000 + development_priority * 200;
 	const morale_weight = 5000 + military_priority * 300;
 	const infrastructure_bonus = (
 		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
@@ -77,6 +78,7 @@ const score_facility = (def, context) => {
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
 		def.energy_maintenance * 250 - def.mineral_cost +
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
+		def.research_bonus * research_weight +
 		#round(#max(def.defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
 		#round(def.economy_multiplier * #to_float(economy_weight)) +
 		def.unit_morale_bonus * morale_weight;
@@ -132,6 +134,9 @@ const score_hurry = (def, context) => {
 		}
 		if (def.research_multiplier > 0.0 && context.base_labs > 0) {
 			urgency += 10000;
+		}
+		if (def.research_bonus > 0) {
+			urgency += def.research_bonus * get_priority(context, 'development', 50) * 100;
 		}
 		if (def.defense_multiplier > 1.0) {
 			urgency += get_priority(context, 'defense', 0) * 400;

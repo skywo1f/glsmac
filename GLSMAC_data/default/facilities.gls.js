@@ -89,6 +89,19 @@ const facilities = [
 			required_technology: 'DoctrineMobility',
 		},
 	},
+	{
+		id: 'BiologyLab',
+		data: {
+			name: 'Biology Lab',
+			mineral_cost: 60,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 1,
+			research_bonus: 2,
+			required_technology: 'SecretsHumanBrain',
+		},
+	},
 ];
 
 return {
