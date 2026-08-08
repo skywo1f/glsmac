@@ -1,5 +1,6 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
+const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
@@ -172,45 +173,48 @@ const queue_production = (game, player, bases, units) => {
 	}
 };
 
-const site_is_valid = (tile, owner) => {
-	if (tile.is_locked() || tile.is_water || tile.get_base() != null) {
-		return false;
-	}
-	for (nearby of tile.get_surrounding_tiles()) {
-		if (nearby.get_base() != null) {
-			return false;
-		}
-	}
-	for (unit of tile.get_units()) {
-		if (unit.owner != owner) {
-			return false;
-		}
-	}
-	return true;
-};
-
 const move_colony = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return false;
 	}
-	if (site_is_valid(tile, player.id)) {
-		game.event_as(player.id, 'found_base', {unit: unit});
-		return true;
-	}
-	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
+	const tm = game.get_tm();
+	const current_score = colonization.get_site_score(tm, tile, player, all_bases);
+	let site_target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!can_enter(unit, candidate)) {
 			return 0 - 100000;
 		}
-		let min_distance = 1000;
-		for (base of all_bases) {
-			min_distance = #min(min_distance, game.get_tm().get_distance(candidate, base.get_tile()));
-		}
-		const resources = candidate.get_resources(player);
-		return min_distance * 20 + resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
+		const score = colonization.get_site_score(tm, candidate, player, all_bases);
+		return score == null ? 0 - 100000 : score;
 	});
-	if (target != null && can_enter(unit, target)) {
-		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
+	if (
+		site_target != null &&
+		colonization.get_site_score(tm, site_target, player, all_bases) == null
+	) {
+		site_target = null;
+	}
+	if (
+		current_score != null &&
+		(
+			site_target == null ||
+			colonization.get_site_score(tm, site_target, player, all_bases) <= current_score
+		)
+	) {
+		game.event_as(player.id, 'found_base', {unit: unit});
+		return true;
+	}
+	if (site_target != null && can_enter(unit, site_target)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: site_target});
+		return true;
+	}
+	const travel_target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
+		if (!can_enter(unit, candidate)) {
+			return 0 - 100000;
+		}
+		return colonization.get_travel_score(tm, candidate, player, all_bases);
+	});
+	if (travel_target != null && can_enter(unit, travel_target)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: travel_target});
 		return true;
 	}
 	return false;
