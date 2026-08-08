@@ -11,7 +11,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost) => {
+const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier) => {
 	return {
 		id: id,
 		nutrient_bonus: nutrients,
@@ -21,6 +21,7 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		research_multiplier: research,
 		energy_maintenance: maintenance,
 		mineral_cost: cost,
+		defense_multiplier: #is_defined(defense_multiplier) ? defense_multiplier : 1.0,
 	};
 };
 
@@ -33,6 +34,7 @@ const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
 const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
 const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
+const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -101,6 +103,19 @@ growth_context.needs_growth = true;
 test.assert(
 	production.score_facility(recycling, growth_context) >
 	production.score_facility(recycling, context(false, false, false, false, 10))
+);
+
+let defense_context = context(false, false, false, false, 10);
+defense_context.priorities = {defense: 100, development: 25};
+test.assert(
+	production.score_facility(perimeter, defense_context) >
+	production.score_facility(recycling, defense_context)
+);
+let low_defense_context = context(false, false, false, false, 10);
+low_defense_context.priorities = {defense: 0, development: 25};
+test.assert(
+	production.score_facility(perimeter, defense_context) >
+	production.score_facility(perimeter, low_defense_context)
 );
 
 locked = {};
@@ -188,6 +203,11 @@ test.assert(production.score_hurry(recycling, premature_hurry) == null);
 let early_hurry = hurry_context('facility', 120, 200, 0, 2);
 early_hurry.needs_growth = true;
 test.assert(production.score_hurry(recycling, early_hurry) == null);
+
+let defense_hurry = hurry_context('facility', 20, 200, 20, 2);
+defense_hurry.priorities = {defense: 100};
+defense_hurry.production_score = production.score_facility(perimeter, defense_hurry);
+test.assert(production.score_hurry(perimeter, defense_hurry) != null);
 
 let lower_id = {base: {id: 2}, score: 100};
 let higher_id = {base: {id: 3}, score: 100};

@@ -18,7 +18,8 @@ FacilityDef::FacilityDef(
 	const int64_t energy_maintenance,
 	const std::string& required_technology,
 	const int64_t psych_bonus,
-	const float research_multiplier
+	const float research_multiplier,
+	const float defense_multiplier
 )
 	: m_id( id )
 	, m_name( name )
@@ -29,7 +30,8 @@ FacilityDef::FacilityDef(
 	, m_energy_maintenance( energy_maintenance )
 	, m_required_technology( required_technology )
 	, m_psych_bonus( psych_bonus )
-	, m_research_multiplier( research_multiplier ) {
+	, m_research_multiplier( research_multiplier )
+	, m_defense_multiplier( defense_multiplier ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -46,7 +48,9 @@ FacilityDef::FacilityDef(
 		m_psych_bonus < 0 ||
 		m_psych_bonus > MAX_RESOURCE_BONUS ||
 		m_research_multiplier < 0.0f ||
-		m_research_multiplier > MAX_RESEARCH_MULTIPLIER
+		m_research_multiplier > MAX_RESEARCH_MULTIPLIER ||
+		m_defense_multiplier < 1.0f ||
+		m_defense_multiplier > MAX_DEFENSE_MULTIPLIER
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -64,6 +68,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteString( def->m_required_technology );
 	buf.WriteInt( def->m_psych_bonus );
 	buf.WriteFloat( def->m_research_multiplier );
+	buf.WriteFloat( def->m_defense_multiplier );
 	return buf;
 }
 
@@ -78,6 +83,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto required_technology = buf.GetRemaining() > 0 ? buf.ReadString() : "";
 	const auto psych_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto research_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
+	const auto defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	return new FacilityDef(
 		id,
 		name,
@@ -88,7 +94,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		energy_maintenance,
 		required_technology,
 		psych_bonus,
-		research_multiplier
+		research_multiplier,
+		defense_multiplier
 	);
 }
 
@@ -137,6 +144,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"research_multiplier",
 			VALUE( gse::value::Float, , m_research_multiplier )
+		},
+		{
+			"defense_multiplier",
+			VALUE( gse::value::Float, , m_defense_multiplier )
 		},
 	};
 WRAPIMPL_END_PTR()

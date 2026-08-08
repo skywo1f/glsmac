@@ -60,8 +60,10 @@ const score_facility = (def, context) => {
 	}
 	const growth_priority = get_priority(context, 'growth', context.needs_growth ? 100 : 0);
 	const psych_priority = get_priority(context, 'psych', context.needs_psych ? 100 : 0);
+	const defense_priority = get_priority(context, 'defense', 0);
 	const nutrient_weight = 1000 + growth_priority * 15;
 	const psych_weight = 100 + psych_priority * 11;
+	const defense_weight = 5000 + defense_priority * 500;
 	const infrastructure_bonus = (
 		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
 	) ? BASIC_INFRASTRUCTURE_SCORE_BONUS : 0;
@@ -70,7 +72,8 @@ const score_facility = (def, context) => {
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
 		def.energy_maintenance * 250 - def.mineral_cost +
-		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0);
+		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
+		#round(#max(def.defense_multiplier - 1.0, 0.0) * #to_float(defense_weight));
 };
 
 const score_hurry = (def, context) => {
@@ -123,6 +126,9 @@ const score_hurry = (def, context) => {
 		}
 		if (def.research_multiplier > 0.0 && context.base_labs > 0) {
 			urgency += 10000;
+		}
+		if (def.defense_multiplier > 1.0) {
+			urgency += get_priority(context, 'defense', 0) * 400;
 		}
 	}
 	if (urgency <= 0) {

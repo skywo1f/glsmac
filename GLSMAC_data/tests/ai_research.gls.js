@@ -14,7 +14,7 @@ const unit = (id, required_technology, offense, defense, movement, can_found_bas
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier) => {
+const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier) => {
 	return {
 		id: id,
 		required_technology: required_technology,
@@ -23,6 +23,7 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		energy_bonus: energy,
 		psych_bonus: psych,
 		research_multiplier: research_multiplier,
+		defense_multiplier: #is_defined(defense_multiplier) ? defense_multiplier : 1.0,
 	};
 };
 const context = (needs_military, needs_psych) => {
@@ -60,6 +61,17 @@ const alpha = technology('Alpha', 40);
 const beta = technology('Beta', 40);
 test.assert(research.choose([beta, alpha], [], [], context(false, false)) == alpha);
 test.assert(research.choose([], units, facilities, context(true, true)) == null);
+
+const loyalty = technology('Loyalty', 60);
+const perimeter = facility('Perimeter', 'Loyalty', 0, 0, 0, 0, 0.0, 2.0);
+let defensive_context = context(false, false);
+defensive_context.priorities = {defense: 100, development: 25};
+let peaceful_context = context(false, false);
+peaceful_context.priorities = {defense: 0, development: 25};
+test.assert(
+	research.score_technology(loyalty, [], [perimeter], defensive_context) >
+	research.score_technology(loyalty, [], [perimeter], peaceful_context)
+);
 
 const expansion = technology('Expansion', 40);
 const ecology = technology('Ecology', 40);

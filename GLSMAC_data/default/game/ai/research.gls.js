@@ -49,6 +49,7 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 			'psych',
 			context.needs_psych ? 100 : 0
 		);
+		const defense_priority = get_priority(context, 'defense', 0);
 		score += 1000 + development_priority * 10;
 		score += def.nutrient_bonus * (500 + growth_priority * 45);
 		score += def.mineral_bonus * 1500 + def.energy_bonus * 1000;
@@ -56,6 +57,10 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		score += #round(
 			def.research_multiplier * #to_float(context.base_labs) *
 				#to_float(1000 + development_priority * 10)
+		);
+		score += #round(
+			#max(def.defense_multiplier - 1.0, 0.0) *
+				#to_float(5000 + defense_priority * 400)
 		);
 	}
 	return score;

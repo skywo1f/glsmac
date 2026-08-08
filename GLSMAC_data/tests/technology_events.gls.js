@@ -37,6 +37,10 @@ const planetary_networks = technologies.get_definition('PlanetaryNetworks');
 test.assert(planetary_networks.name == 'Planetary Networks');
 test.assert(planetary_networks.cost == 50);
 test.assert(planetary_networks.prerequisites == ['InformationNetworks']);
+const doctrine_loyalty = technologies.get_definition('DoctrineLoyalty');
+test.assert(doctrine_loyalty.name == 'Doctrine: Loyalty');
+test.assert(doctrine_loyalty.cost == 60);
+test.assert(doctrine_loyalty.prerequisites == ['DoctrineMobility', 'SocialPsych']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
 test.assert(technologies.get_available_targets([]) == ['CentauriEcology', 'Biogenetics']);
 test.assert(technologies.get_available_targets(['CentauriEcology']) == ['DoctrineMobility', 'SocialPsych', 'Biogenetics']);
@@ -48,7 +52,8 @@ test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility',
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase']) == 'SocialPsych');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych']) == 'Biogenetics');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics']) == 'PlanetaryNetworks');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks']) == '');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks']) == 'DoctrineLoyalty');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty']) == '');
 
 const base = {
 	get_intake: () => {
@@ -156,6 +161,21 @@ test.assert(technologies.get_initial_state(make_initial_player([
 	'PlanetaryNetworks',
 ])) == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
+	target: 'DoctrineLoyalty',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player([
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'IndustrialBase',
+	'SocialPsych',
+	'Biogenetics',
+	'PlanetaryNetworks',
+	'DoctrineLoyalty',
+])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
 	target: '',
 	progress: 0,
 });
@@ -457,11 +477,27 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
-	target: '',
+	target: 'DoctrineLoyalty',
 	progress: 0,
 });
 process_research.rollback(event);
 test.assert(research_state.target == 'PlanetaryNetworks');
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
+	target: 'DoctrineLoyalty',
+	progress: 59,
+};
+event.data.technology = doctrine_loyalty;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
+	target: '',
+	progress: 0,
+});
+process_research.rollback(event);
+test.assert(research_state.target == 'DoctrineLoyalty');
 
 event.data.technology = {
 	id: 'WrongTarget',

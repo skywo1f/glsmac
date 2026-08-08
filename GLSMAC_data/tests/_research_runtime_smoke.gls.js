@@ -12,13 +12,14 @@
 	let social_accelerated = false;
 	let biogenetics_accelerated = false;
 	let planetary_networks_accelerated = false;
+	let doctrine_loyalty_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: eight-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: nine-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -57,6 +58,7 @@
 			const network_node = game.get_bm().get_facility_def('NetworkNode');
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
+			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -78,7 +80,10 @@
 				recreation_commons.psych_bonus != 4 ||
 				hologram_theatre.required_technology != 'PlanetaryNetworks' ||
 				hologram_theatre.energy_maintenance != 3 ||
-				hologram_theatre.psych_bonus != 4
+				hologram_theatre.psych_bonus != 4 ||
+				perimeter_defense.required_technology != 'DoctrineLoyalty' ||
+				perimeter_defense.energy_maintenance != 0 ||
+				perimeter_defense.defense_multiplier != 2.0
 			) {
 				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit or facility definitions are invalid');
 				glsmac.exit();
@@ -101,16 +106,17 @@
 				}
 			}
 
-			if (player.has_technology('PlanetaryNetworks')) {
+			if (player.has_technology('DoctrineLoyalty')) {
 				if (
-					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
 					state.target != '' ||
 					state.progress != 0 ||
+					!base.can_set_production('facility', 'PerimeterDefense') ||
 					!base.can_set_production('facility', 'HologramTheatre') ||
 					!base.has_facility('RecreationCommons') ||
 					!base.has_facility('RecyclingTanks')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Planetary Networks did not unlock Hologram Theatre');
+					#print('RESEARCH_RUNTIME_FAIL: Doctrine Loyalty did not unlock Perimeter Defense');
 					glsmac.exit();
 					return;
 				}
@@ -127,6 +133,34 @@
 				}
 				research_complete = true;
 				finish_if_ready();
+				return;
+			}
+
+			if (player.has_technology('PlanetaryNetworks')) {
+				const doctrine_loyalty = game.get('f_technology_get_definition')('DoctrineLoyalty');
+				const progress_is_valid = doctrine_loyalty_accelerated
+					? state.progress == doctrine_loyalty.cost - 1
+					: state.progress >= 0 && state.progress < doctrine_loyalty.cost;
+				if (
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
+					state.target != 'DoctrineLoyalty' ||
+					!progress_is_valid ||
+					base.can_set_production('facility', 'PerimeterDefense') ||
+					!base.can_set_production('facility', 'HologramTheatre')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Planetary Networks did not advance to Doctrine Loyalty');
+					glsmac.exit();
+					return;
+				}
+				if (!doctrine_loyalty_accelerated) {
+					doctrine_loyalty_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
+						target: 'DoctrineLoyalty',
+						progress: doctrine_loyalty.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

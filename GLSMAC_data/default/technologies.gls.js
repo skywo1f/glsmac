@@ -48,6 +48,12 @@ const definitions = {
 		cost: 50,
 		prerequisites: ['InformationNetworks'],
 	},
+	DoctrineLoyalty: {
+		id: 'DoctrineLoyalty',
+		name: 'Doctrine: Loyalty',
+		cost: 60,
+		prerequisites: ['DoctrineMobility', 'SocialPsych'],
+	},
 };
 
 const technology_order = [
@@ -59,6 +65,7 @@ const technology_order = [
 	'SocialPsych',
 	'Biogenetics',
 	'PlanetaryNetworks',
+	'DoctrineLoyalty',
 ];
 
 const get_definition = (id) => {

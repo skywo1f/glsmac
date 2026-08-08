@@ -50,6 +50,19 @@ const facilities = [
 			required_technology: 'PlanetaryNetworks',
 		},
 	},
+	{
+		id: 'PerimeterDefense',
+		data: {
+			name: 'Perimeter Defense',
+			mineral_cost: 50,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 0,
+			defense_multiplier: 2.0,
+			required_technology: 'DoctrineLoyalty',
+		},
+	},
 ];
 
 return {
