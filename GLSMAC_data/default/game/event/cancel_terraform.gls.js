@@ -8,6 +8,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (unit.health <= 0.0) {
+			return 'Dead unit cannot cancel terraforming';
+		}
 		if (unit.terraforming == 'none') {
 			return 'Former has no terraforming order to cancel';
 		}

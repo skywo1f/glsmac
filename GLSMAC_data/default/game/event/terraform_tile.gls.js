@@ -14,6 +14,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (unit.health <= 0.0) {
+			return 'Dead unit cannot terraform';
+		}
 		if (!unit.get_def().can_terraform) {
 			return 'Only Formers can terraform terrain';
 		}

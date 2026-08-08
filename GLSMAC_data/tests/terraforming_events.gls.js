@@ -47,6 +47,7 @@ unit = {
 	id: 10,
 	owner: 1,
 	movement: 1.0,
+	health: 1.0,
 	moved_this_turn: false,
 	terraforming: 'none',
 	terraforming_turns_remaining: 0,

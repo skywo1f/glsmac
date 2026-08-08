@@ -44,6 +44,7 @@ const mover = {
 	is_immovable: false,
 	terraforming: 'none',
 	movement: 1.0,
+	health: 1.0,
 	get_tile: () => { return source; },
 };
 const enemy_land = {owner: enemy_owner.id, is_land: true, is_water: false, is_air: false};

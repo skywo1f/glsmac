@@ -42,6 +42,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (unit.health <= 0.0) {
+			return 'Dead unit cannot found a base';
+		}
 		if (!unit.get_def().can_found_base) {
 			return 'Unit cannot found a base';
 		}

@@ -58,6 +58,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (e.data.unit.health <= 0.0) {
+			return 'Dead unit cannot move';
+		}
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;

@@ -142,6 +142,7 @@ let movement = 0.75;
 const unit = {
 	owner: 1,
 	movement: movement,
+	health: 1.0,
 	terraforming: 'none',
 	get_tile: () => {
 		return {

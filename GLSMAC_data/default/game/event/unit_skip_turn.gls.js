@@ -8,6 +8,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (unit.health <= 0.0) {
+			return 'Dead unit cannot skip its turn';
+		}
 		if (unit.get_tile().is_locked()) {
 			return 'Unit tile is locked';
 		}
