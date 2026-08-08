@@ -111,7 +111,7 @@ IF ( BUILD_TESTING )
 			--quickstart
 			--quickstart-mapsize "20x10"
 			--quickstart-seed "1:2:3:4"
-			--quickstart-faction "HIVE"
+			--quickstart-faction "GAIANS"
 			--nosound
 			--windowed
 			--window-size "1024x768"

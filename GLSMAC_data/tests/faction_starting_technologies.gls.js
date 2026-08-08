@@ -15,7 +15,7 @@ factions.configure(fm);
 
 test.assert(configured_count == 14);
 test.assert(configured.GAIANS.starting_technologies == ['CentauriEcology']);
-test.assert(!#is_defined(configured.HIVE.starting_technologies));
+test.assert(configured.HIVE.starting_technologies == ['DoctrineLoyalty']);
 test.assert(configured.UNIVERSITY.starting_technologies == ['InformationNetworks']);
 test.assert(configured.MORGANITES.starting_technologies == ['IndustrialBase']);
 test.assert(configured.SPARTANS.starting_technologies == ['DoctrineMobility']);

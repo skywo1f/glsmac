@@ -1,6 +1,6 @@
 const factions = [
 	['Gaians', 'gaians', {starting_technologies: ['CentauriEcology']}],
-	['Hive', 'hive', {}],
+	['Hive', 'hive', {starting_technologies: ['DoctrineLoyalty']}],
 	['University', 'univ', {starting_technologies: ['InformationNetworks']}],
 	['Morganites', 'morgan', {starting_technologies: ['IndustrialBase']}],
 	['Spartans', 'spartans', {starting_technologies: ['DoctrineMobility']}],

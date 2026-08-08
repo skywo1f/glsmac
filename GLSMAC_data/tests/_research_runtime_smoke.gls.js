@@ -93,14 +93,14 @@
 			const state = player.get_research_state();
 			if (turn_id == 1) {
 				if (
-					player.get_faction().id != 'HIVE' ||
-					player.has_technology('CentauriEcology') ||
-					state.technologies != [] ||
-					state.target != 'CentauriEcology' ||
+					player.get_faction().id != 'GAIANS' ||
+					!player.has_technology('CentauriEcology') ||
+					state.technologies != ['CentauriEcology'] ||
+					state.target != 'DoctrineMobility' ||
 					state.progress != 0 ||
-					base.can_set_production('unit', 'Former')
+					!base.can_set_production('unit', 'Former')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: initial Hive research or production gate is invalid');
+					#print('RESEARCH_RUNTIME_FAIL: initial Gaian research or production gate is invalid');
 					glsmac.exit();
 					return;
 				}
