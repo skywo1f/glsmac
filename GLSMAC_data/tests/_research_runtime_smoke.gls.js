@@ -124,11 +124,13 @@
 
 			if (player.has_technology('IndustrialBase')) {
 				const social = game.get('f_technology_get_definition')('SocialPsych');
-				const expected_progress = social_accelerated ? social.cost - 1 : 0;
+				const progress_is_valid = social_accelerated
+					? state.progress == social.cost - 1
+					: state.progress >= 0 && state.progress < social.cost;
 				if (
 					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks'] ||
 					state.target != 'SocialPsych' ||
-					state.progress != expected_progress ||
+					!progress_is_valid ||
 					!base.can_set_production('unit', 'SynthmetalSentinels') ||
 					base.can_set_production('facility', 'RecreationCommons')
 				) {
@@ -150,11 +152,13 @@
 
 			if (player.has_technology('AppliedPhysics')) {
 				const industry = game.get('f_technology_get_definition')('IndustrialBase');
-				const expected_progress = industry_accelerated ? industry.cost - 1 : 0;
+				const progress_is_valid = industry_accelerated
+					? state.progress == industry.cost - 1
+					: state.progress >= 0 && state.progress < industry.cost;
 				if (
 					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'InformationNetworks'] ||
 					state.target != 'IndustrialBase' ||
-					state.progress != expected_progress ||
+					!progress_is_valid ||
 					!base.can_set_production('unit', 'LaserInfantry') ||
 					base.can_set_production('unit', 'SynthmetalSentinels')
 				) {
@@ -176,11 +180,13 @@
 
 			if (player.has_technology('InformationNetworks')) {
 				const physics = game.get('f_technology_get_definition')('AppliedPhysics');
-				const expected_progress = physics_accelerated ? physics.cost - 1 : 0;
+				const progress_is_valid = physics_accelerated
+					? state.progress == physics.cost - 1
+					: state.progress >= 0 && state.progress < physics.cost;
 				if (
 					state.technologies != ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'] ||
 					state.target != 'AppliedPhysics' ||
-					state.progress != expected_progress ||
+					!progress_is_valid ||
 					!base.can_set_production('facility', 'NetworkNode') ||
 					base.can_set_production('unit', 'LaserInfantry')
 				) {
@@ -213,11 +219,13 @@
 
 			if (player.has_technology('DoctrineMobility')) {
 				const information = game.get('f_technology_get_definition')('InformationNetworks');
-				const expected_progress = information_accelerated ? information.cost - 1 : 0;
+				const progress_is_valid = information_accelerated
+					? state.progress == information.cost - 1
+					: state.progress >= 0 && state.progress < information.cost;
 				if (
 					state.technologies != ['CentauriEcology', 'DoctrineMobility'] ||
 					state.target != 'InformationNetworks' ||
-					state.progress != expected_progress ||
+					!progress_is_valid ||
 					!base.can_set_production('unit', 'ReconRover') ||
 					base.can_set_production('facility', 'NetworkNode')
 				) {
@@ -239,11 +247,13 @@
 
 			if (player.has_technology('CentauriEcology')) {
 				const mobility = game.get('f_technology_get_definition')('DoctrineMobility');
-				const expected_progress = mobility_accelerated ? mobility.cost - 1 : 0;
+				const progress_is_valid = mobility_accelerated
+					? state.progress == mobility.cost - 1
+					: state.progress >= 0 && state.progress < mobility.cost;
 				if (
 					state.technologies != ['CentauriEcology'] ||
 					state.target != 'DoctrineMobility' ||
-					state.progress != expected_progress ||
+					!progress_is_valid ||
 					!base.can_set_production('unit', 'Former') ||
 					base.can_set_production('unit', 'ReconRover')
 				) {

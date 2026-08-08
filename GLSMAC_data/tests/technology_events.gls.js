@@ -161,8 +161,13 @@ const game = {
 		messages :+text;
 	},
 	get: (key) => {
-		test.assert(key == 'f_technology_get_next_target');
-		return technologies.get_next_target;
+		if (key == 'f_technology_get_next_target') {
+			return technologies.get_next_target;
+		}
+		if (key == 'f_technology_get_definition') {
+			return technologies.get_definition;
+		}
+		throw Error('Unknown game value: ' + key);
 	},
 };
 
@@ -243,10 +248,11 @@ research_state.progress = 7;
 event.data.labs = 20;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
+test.assert(event.applied.completed_count == 1);
 test.assert(research_state == {
 	technologies: ['CentauriEcology'],
 	target: 'DoctrineMobility',
-	progress: 0,
+	progress: 7,
 });
 test.assert(messages == ['Researcher has discovered Centauri Ecology.']);
 process_research.rollback(event);
@@ -254,6 +260,33 @@ test.assert(research_state == {
 	technologies: [],
 	target: 'CentauriEcology',
 	progress: 7,
+});
+
+research_state = {
+	technologies: [],
+	target: 'CentauriEcology',
+	progress: 19,
+};
+event.data.technology = ecology;
+event.data.labs = 55;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(event.applied.completed_count == 2);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	target: 'InformationNetworks',
+	progress: 24,
+});
+test.assert(messages == [
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Doctrine: Mobility.',
+]);
+process_research.rollback(event);
+test.assert(research_state == {
+	technologies: [],
+	target: 'CentauriEcology',
+	progress: 19,
 });
 
 research_state = {
@@ -273,6 +306,8 @@ test.assert(research_state == {
 });
 test.assert(messages == [
 	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Doctrine: Mobility.',
 	'Researcher has discovered Doctrine: Mobility.',
 ]);
 process_research.rollback(event);
@@ -298,6 +333,8 @@ test.assert(research_state == {
 });
 test.assert(messages == [
 	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Centauri Ecology.',
+	'Researcher has discovered Doctrine: Mobility.',
 	'Researcher has discovered Doctrine: Mobility.',
 	'Researcher has discovered Information Networks.',
 ]);

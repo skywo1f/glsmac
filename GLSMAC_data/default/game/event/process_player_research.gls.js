@@ -35,15 +35,23 @@ return {
 			technologies :+id;
 		}
 		let target = previous.target;
-		let progress = previous.progress;
-		let completed = false;
-		if (e.data.labs >= e.data.technology.cost - progress) {
-			technologies :+e.data.technology.id;
+		let progress = previous.progress + e.data.labs;
+		let technology = e.data.technology;
+		let completed_names = [];
+		while (target != '' && progress >= technology.cost) {
+			progress -= technology.cost;
+			technologies :+technology.id;
+			completed_names :+technology.name;
 			target = e.game.get('f_technology_get_next_target')(technologies, e.data.player);
+			if (target != '') {
+				technology = e.game.get('f_technology_get_definition')(target);
+				if (technology == null) {
+					throw Error('Unknown research target: ' + target);
+				}
+			}
+		}
+		if (target == '') {
 			progress = 0;
-			completed = true;
-		} else {
-			progress += e.data.labs;
 		}
 		e.data.player.set_research_state({
 			technologies: technologies,
@@ -53,14 +61,15 @@ return {
 		e.game.trigger('research_updated', {
 			player: e.data.player,
 		});
-		if (completed) {
+		for (name of completed_names) {
 			e.game.message(
-				e.data.player.name + ' has discovered ' + e.data.technology.name + '.'
+				e.data.player.name + ' has discovered ' + name + '.'
 			);
 		}
 		return {
 			state: previous,
-			completed: completed,
+			completed: #sizeof(completed_names) > 0,
+			completed_count: #sizeof(completed_names),
 		};
 	},
 
