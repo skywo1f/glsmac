@@ -105,6 +105,8 @@ const facilities = [
 ];
 
 return {
+	definitions: facilities,
+
 	define: (game) => {
 		for (facility of facilities) {
 			game.event('define_base_facility', facility);

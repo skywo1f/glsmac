@@ -104,6 +104,9 @@ const units = [
 ];
 
 const result = {
+	moralesets: moralesets,
+	definitions: units,
+
 	define: (game) => {
 
 		for (moraleset of moralesets) {

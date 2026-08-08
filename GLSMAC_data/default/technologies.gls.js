@@ -169,6 +169,7 @@ const get_player_labs = (game, player) => {
 
 return {
 	definitions: definitions,
+	order: technology_order,
 	get_definition: get_definition,
 	get_available_targets: get_available_targets,
 	get_next_target: get_next_target,

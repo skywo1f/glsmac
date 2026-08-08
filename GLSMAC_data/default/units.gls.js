@@ -3,6 +3,8 @@ const turns = #include('units/turns');
 const animations = #include('units/animations');
 
 const result = {
+	moralesets: defs.moralesets,
+	definitions: defs.definitions,
 
 	configure: (game) => {
 		turns.configure(game);
