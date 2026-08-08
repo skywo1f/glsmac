@@ -46,5 +46,21 @@ const tm = {
 };
 
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter) == detour_a);
+const destination_score = (tile, distance) => {
+	return tile == destination ? 100 - distance : null;
+};
+let best = pathfinding.find_best_reachable(tm, unit, can_enter, destination_score);
+test.assert(best.target == destination);
+test.assert(best.step == detour_a);
+test.assert(best.distance == 3);
 detour_b.passable = false;
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter) == null);
+test.assert(pathfinding.find_best_reachable(tm, unit, can_enter, destination_score) == null);
+
+const source_score = (tile, distance) => {
+	return tile == source ? 10 : null;
+};
+best = pathfinding.find_best_reachable(tm, unit, can_enter, source_score);
+test.assert(best.target == source);
+test.assert(best.step == null);
+test.assert(best.distance == 0);

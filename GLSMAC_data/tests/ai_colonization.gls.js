@@ -58,4 +58,4 @@ test.assert(!colonization.is_valid_site(tm, too_close, owner.id, []));
 
 test.assert(colonization.get_site_score(tm, rich, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));
 test.assert(colonization.get_site_score(tm, ideal, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));
-test.assert(colonization.get_travel_score(tm, ideal, owner, [home]) > colonization.get_travel_score(tm, poor, owner, [home]));
+test.assert(colonization.get_destination_score(tm, rich, owner, [home], 1) > colonization.get_destination_score(tm, rich, owner, [home], 2));

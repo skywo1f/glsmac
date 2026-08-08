@@ -1,5 +1,6 @@
 const MIN_BASE_DISTANCE = 3;
 const IDEAL_BASE_DISTANCE = 4;
+const TRAVEL_DISTANCE_PENALTY = 25;
 
 const get_resource_value = (resources) => {
 	return resources.NUTRIENTS * 4 + resources.MINERALS * 3 + resources.ENERGY * 2;
@@ -41,14 +42,14 @@ const get_site_score = (tm, tile, player, bases) => {
 	return score;
 };
 
-const get_travel_score = (tm, tile, player, bases) => {
-	const distance = get_nearest_base_distance(tm, tile, bases);
-	return #min(distance, IDEAL_BASE_DISTANCE) * 100 + get_resource_value(tile.get_resources(player));
+const get_destination_score = (tm, tile, player, bases, travel_distance) => {
+	const site_score = get_site_score(tm, tile, player, bases);
+	return site_score == null ? null : site_score - travel_distance * TRAVEL_DISTANCE_PENALTY;
 };
 
 return {
 	get_nearest_base_distance: get_nearest_base_distance,
 	is_valid_site: is_valid_site,
 	get_site_score: get_site_score,
-	get_travel_score: get_travel_score,
+	get_destination_score: get_destination_score,
 };

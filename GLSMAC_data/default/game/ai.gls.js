@@ -220,42 +220,20 @@ const move_colony = (game, player, unit, all_bases) => {
 		return false;
 	}
 	const tm = game.get_tm();
-	const current_score = colonization.get_site_score(tm, tile, player, all_bases);
-	let site_target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
-		if (!can_enter(unit, candidate)) {
-			return 0 - 100000;
-		}
-		const score = colonization.get_site_score(tm, candidate, player, all_bases);
-		return score == null ? 0 - 100000 : score;
+	const destination = pathfinding.find_best_reachable(tm, unit, (source, candidate) => {
+		return can_enter(unit, candidate, source);
+	}, (candidate, distance) => {
+		return colonization.get_destination_score(tm, candidate, player, all_bases, distance);
 	});
-	if (
-		site_target != null &&
-		colonization.get_site_score(tm, site_target, player, all_bases) == null
-	) {
-		site_target = null;
+	if (destination == null) {
+		return false;
 	}
-	if (
-		current_score != null &&
-		(
-			site_target == null ||
-			colonization.get_site_score(tm, site_target, player, all_bases) <= current_score
-		)
-	) {
+	if (destination.target == tile) {
 		game.event_as(player.id, 'found_base', {unit: unit});
 		return true;
 	}
-	if (site_target != null && can_enter(unit, site_target)) {
-		game.event_as(player.id, 'move_unit', {unit: unit, tile: site_target});
-		return true;
-	}
-	const travel_target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
-		if (!can_enter(unit, candidate)) {
-			return 0 - 100000;
-		}
-		return colonization.get_travel_score(tm, candidate, player, all_bases);
-	});
-	if (travel_target != null && can_enter(unit, travel_target)) {
-		game.event_as(player.id, 'move_unit', {unit: unit, tile: travel_target});
+	if (destination.step != null && can_enter(unit, destination.step)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: destination.step});
 		return true;
 	}
 	return false;
