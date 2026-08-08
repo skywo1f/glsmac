@@ -16,6 +16,13 @@ const get_unit_support_penalty = (context) => {
 	return projected_overage * UNIT_SUPPORT_SCORE_PENALTY;
 };
 
+const get_remaining_maintenance_budget = (def, available_energy) => {
+	const budget = #max(available_energy, 0);
+	return def.energy_maintenance <= budget
+		? budget - def.energy_maintenance
+		: null;
+};
+
 const score_unit = (def, context) => {
 	if (def.can_found_base) {
 		return context.needs_colony && context.can_expand
@@ -48,7 +55,7 @@ const score_unit = (def, context) => {
 };
 
 const score_facility = (def, context) => {
-	if (def.energy_maintenance > context.available_energy) {
+	if (get_remaining_maintenance_budget(def, context.available_energy) == null) {
 		return null;
 	}
 	const growth_priority = get_priority(context, 'growth', context.needs_growth ? 100 : 0);
@@ -165,6 +172,7 @@ const choose = (base, unit_defs, facility_defs, context) => {
 };
 
 return {
+	get_remaining_maintenance_budget: get_remaining_maintenance_budget,
 	score_unit: score_unit,
 	score_facility: score_facility,
 	score_hurry: score_hurry,

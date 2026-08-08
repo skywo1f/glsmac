@@ -234,7 +234,7 @@ const queue_production = (game, player, bases, units) => {
 	let combat_count = metrics.combat_count;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
-	const available_energy = metrics.energy_income;
+	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
 	let hurry_candidates = [];
@@ -291,6 +291,11 @@ const queue_production = (game, player, bases, units) => {
 			if (selected.def.offense > 0) {
 				combat_count++;
 			}
+		} else if (selected != null && selected.kind == 'facility') {
+			available_energy = production.get_remaining_maintenance_budget(
+				selected.def,
+				available_energy
+			);
 		}
 		const queue = base.get_production_queue();
 		let production_changed = false;

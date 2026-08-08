@@ -68,6 +68,14 @@ test.assert(production.choose(base, all_units, all_facilities, context(false, fa
 locked.Network = true;
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Laser');
 
+let deficit_context = context(false, false, false, false, 0 - 3);
+deficit_context.needs_military = false;
+test.assert(production.score_facility(recycling, deficit_context) != null);
+test.assert(production.score_facility(network, deficit_context) == null);
+test.assert(production.get_remaining_maintenance_budget(recycling, 0 - 3) == 0);
+test.assert(production.get_remaining_maintenance_budget(network, 1) == 0);
+test.assert(production.get_remaining_maintenance_budget(network, 0) == null);
+
 const alpha = unit('Alpha', 1, 1, 1.0, 10, false, false);
 const beta = unit('Beta', 1, 1, 1.0, 10, false, false);
 test.assert(production.choose(base, [beta, alpha], [], context(false, false, false, false, 0)).id == 'Alpha');
