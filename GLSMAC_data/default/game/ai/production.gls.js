@@ -3,6 +3,12 @@ const MIN_HURRY_RESERVE = 20;
 const HURRY_RESERVE_TURNS = 3;
 const MIN_NONEMERGENCY_HURRY_MINERALS = 10;
 
+const get_priority = (context, name, fallback) => {
+	return #is_defined(context.priorities) && #is_defined(context.priorities[name])
+		? context.priorities[name]
+		: fallback;
+};
+
 const get_unit_support_penalty = (context) => {
 	const projected_overage = #max(context.supported_units + 1 - context.free_support, 0);
 	return projected_overage * UNIT_SUPPORT_SCORE_PENALTY;
@@ -11,13 +17,15 @@ const get_unit_support_penalty = (context) => {
 const score_unit = (def, context) => {
 	if (def.can_found_base) {
 		return context.needs_colony && context.can_expand
-			? 70000 + #max(context.nutrient_surplus, 0) * 250 -
+			? 45000 + get_priority(context, 'expansion', 50) * 500 +
+				#max(context.nutrient_surplus, 0) * 250 -
 				def.mineral_cost - get_unit_support_penalty(context)
 			: null;
 	}
 	if (def.can_terraform) {
 		return context.needs_former
-			? 80000 - def.mineral_cost - get_unit_support_penalty(context)
+			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
+				def.mineral_cost - get_unit_support_penalty(context)
 			: null;
 	}
 	if (def.offense <= 0) {
@@ -31,7 +39,8 @@ const score_unit = (def, context) => {
 	if (!context.needs_military) {
 		return null;
 	}
-	return 30000 + def.offense * 1000 + def.defense * 250 +
+	return 20000 + get_priority(context, 'military', 33) * 300 +
+		def.offense * 1000 + def.defense * 250 +
 		#round(def.movement_per_turn * 100.0) - def.mineral_cost -
 		get_unit_support_penalty(context);
 };
@@ -40,9 +49,13 @@ const score_facility = (def, context) => {
 	if (def.energy_maintenance > context.available_energy) {
 		return null;
 	}
-	const nutrient_weight = context.needs_growth ? 2500 : 1000;
-	return 40000 + def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
-		def.energy_bonus * 500 + def.psych_bonus * (context.needs_psych ? 1200 : 100) -
+	const growth_priority = get_priority(context, 'growth', context.needs_growth ? 100 : 0);
+	const psych_priority = get_priority(context, 'psych', context.needs_psych ? 100 : 0);
+	const nutrient_weight = 1000 + growth_priority * 15;
+	const psych_weight = 100 + psych_priority * 11;
+	return 30000 + get_priority(context, 'development', 50) * 200 +
+		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
+		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
 		def.energy_maintenance * 250 - def.mineral_cost +
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0);
 };

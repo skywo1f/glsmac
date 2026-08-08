@@ -33,6 +33,80 @@ const owned_units = (game, player) => {
 	return filter_owned_units(game.get_um().get_units(), player);
 };
 
+const get_strategy_metrics = (game, player, bases, units) => {
+	let former_count = 0;
+	let colony_count = 0;
+	let combat_count = 0;
+	for (unit of units) {
+		const def = unit.get_def();
+		if (def.can_terraform) {
+			former_count++;
+		}
+		if (def.can_found_base) {
+			colony_count++;
+		}
+		if (def.offense > 0) {
+			combat_count++;
+		}
+	}
+
+	const tm = game.get_tm();
+	const all_units = game.get_um().get_units();
+	let underdefended_bases = 0;
+	let growth_stalled_bases = 0;
+	let unstable_bases = 0;
+	let base_labs = 0;
+	for (base of bases) {
+		if (
+			combat.get_garrison_count(base, player.id) <
+			combat.get_required_garrison(tm, base, player.id, all_units)
+		) {
+			underdefended_bases++;
+		}
+		const intake = base.get_intake();
+		const consumption = base.get_consumption();
+		if (base.get_size() < 3 || intake.NUTRIENTS - consumption.NUTRIENTS <= 0) {
+			growth_stalled_bases++;
+		}
+		const psych = game.get('f_economy_get_base_psych')(game, base);
+		if (game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size()) {
+			unstable_bases++;
+		}
+		base_labs += game.get('f_technology_get_base_labs')(base).total;
+	}
+	return {
+		base_count: #sizeof(bases),
+		desired_base_count: strategy.get_desired_base_count(
+			game.get_turn(),
+			tm.get_map_width(),
+			tm.get_map_height(),
+			#sizeof(game.get_players())
+		),
+		former_count: former_count,
+		colony_count: colony_count,
+		combat_count: combat_count,
+		underdefended_bases: underdefended_bases,
+		growth_stalled_bases: growth_stalled_bases,
+		unstable_bases: unstable_bases,
+		base_labs: base_labs,
+		energy_income: game.get('f_economy_get_player')(game, player),
+	};
+};
+
+const get_strategy_priorities = (metrics, former_count, colony_count, combat_count) => {
+	return strategy.get_priorities({
+		base_count: metrics.base_count,
+		desired_base_count: metrics.desired_base_count,
+		former_count: former_count,
+		colony_count: colony_count,
+		combat_count: combat_count,
+		underdefended_bases: metrics.underdefended_bases,
+		growth_stalled_bases: metrics.growth_stalled_bases,
+		unstable_bases: metrics.unstable_bases,
+		energy_income: metrics.energy_income,
+	});
+};
+
 const choose_tile = (tiles, score) => {
 	let best = null;
 	let best_score = 0;
@@ -127,33 +201,15 @@ const attack_enemy_in_tiles = (game, player, unit, tiles) => {
 };
 
 const queue_production = (game, player, bases, units) => {
-	let former_count = 0;
-	let colony_count = 0;
-	let combat_count = 0;
-	for (unit of units) {
-		const def = unit.get_def();
-		if (def.can_terraform) {
-			former_count++;
-		}
-		if (def.can_found_base) {
-			colony_count++;
-		}
-		if (def.offense > 0) {
-			combat_count++;
-		}
-	}
-
+	const metrics = get_strategy_metrics(game, player, bases, units);
+	let former_count = metrics.former_count;
+	let colony_count = metrics.colony_count;
+	let combat_count = metrics.combat_count;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
-	const available_energy = game.get('f_economy_get_player')(game, player);
+	const available_energy = metrics.energy_income;
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
-	const desired_base_count = strategy.get_desired_base_count(
-		game.get_turn(),
-		tm.get_map_width(),
-		tm.get_map_height(),
-		#sizeof(game.get_players())
-	);
 	let hurry_candidates = [];
 	for (base of bases) {
 		const garrison_count = combat.get_garrison_count(base, player.id);
@@ -169,10 +225,16 @@ const queue_production = (game, player, bases, units) => {
 		const consumption = base.get_consumption();
 		const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
 		const mineral_surplus = intake.MINERALS - consumption.MINERALS;
+		const priorities = get_strategy_priorities(
+			metrics,
+			former_count,
+			colony_count,
+			combat_count
+		);
 		const context = {
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: former_count < #sizeof(bases),
-			needs_colony: #sizeof(bases) + colony_count < desired_base_count,
+			needs_colony: #sizeof(bases) + colony_count < metrics.desired_base_count,
 			needs_military: combat_count < #sizeof(bases) * 2,
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
@@ -183,6 +245,7 @@ const queue_production = (game, player, bases, units) => {
 			free_support: #max(base.get_size(), 1),
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			available_energy: available_energy,
+			priorities: priorities,
 		};
 		const selected = production.choose(
 			base,
@@ -242,41 +305,12 @@ const queue_production = (game, player, bases, units) => {
 const choose_research_target = (game, player, available) => {
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
-	let former_count = 0;
-	let colony_count = 0;
-	let combat_count = 0;
-	for (unit of units) {
-		const def = unit.get_def();
-		if (def.can_terraform) {
-			former_count++;
-		}
-		if (def.can_found_base) {
-			colony_count++;
-		}
-		if (def.offense > 0) {
-			combat_count++;
-		}
-	}
-	let needs_growth = false;
-	let needs_psych = false;
-	let base_labs = 0;
-	for (base of bases) {
-		const pending_growth = game.get('f_base_get_pending_growth')(base);
-		const psych = game.get('f_economy_get_base_psych')(game, base);
-		if (base.get_size() < 3 || pending_growth <= 0) {
-			needs_growth = true;
-		}
-		if (game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size()) {
-			needs_psych = true;
-		}
-		base_labs += game.get('f_technology_get_base_labs')(base).total;
-	}
-	const tm = game.get_tm();
-	const desired_base_count = strategy.get_desired_base_count(
-		game.get_turn(),
-		tm.get_map_width(),
-		tm.get_map_height(),
-		#sizeof(game.get_players())
+	const metrics = get_strategy_metrics(game, player, bases, units);
+	const priorities = get_strategy_priorities(
+		metrics,
+		metrics.former_count,
+		metrics.colony_count,
+		metrics.combat_count
 	);
 	return research.choose_id(
 		available,
@@ -284,12 +318,13 @@ const choose_research_target = (game, player, available) => {
 		game.get_um().get_unit_defs(),
 		game.get_bm().get_facility_defs(),
 		{
-			needs_colony: #sizeof(bases) + colony_count < desired_base_count,
-			needs_former: former_count < #sizeof(bases),
-			needs_military: combat_count < #sizeof(bases) * 2,
-			needs_growth: needs_growth,
-			needs_psych: needs_psych,
-			base_labs: base_labs,
+			needs_colony: metrics.base_count + metrics.colony_count < metrics.desired_base_count,
+			needs_former: metrics.former_count < metrics.base_count,
+			needs_military: metrics.combat_count < metrics.base_count * 2,
+			needs_growth: metrics.growth_stalled_bases > 0,
+			needs_psych: metrics.unstable_bases > 0,
+			base_labs: metrics.base_labs,
+			priorities: priorities,
 		}
 	);
 };

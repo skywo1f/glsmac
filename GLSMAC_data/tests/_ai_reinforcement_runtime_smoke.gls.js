@@ -68,8 +68,11 @@
 		}
 		const rover = game.get_um().get_unit(rover_id);
 		if (rover.get_tile() == reinforcement_tile) {
+			if (reinforcement_tile.is_locked()) {
+				return true;
+			}
 			#print('AI_REINFORCEMENT_RUNTIME_PASS: field rover routed to an under-defended friendly base');
-			#async(500, () => { glsmac.exit(); });
+			#async(2000, () => { glsmac.exit(); });
 			return false;
 		}
 		if (wait_ticks >= 300) {

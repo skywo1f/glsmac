@@ -60,3 +60,27 @@ const alpha = technology('Alpha', 40);
 const beta = technology('Beta', 40);
 test.assert(research.choose([beta, alpha], [], [], context(false, false)) == alpha);
 test.assert(research.choose([], units, facilities, context(true, true)) == null);
+
+const expansion = technology('Expansion', 40);
+const ecology = technology('Ecology', 40);
+const colony = unit('Colony', 'Expansion', 0, 1, 1.0, true, false);
+const former = unit('Former', 'Ecology', 0, 1, 1.0, false, true);
+let strategic_context = context(true, false);
+strategic_context.needs_colony = true;
+strategic_context.needs_former = true;
+strategic_context.priorities = {
+	expansion: 100,
+	terraforming: 25,
+	military: 25,
+	growth: 0,
+	psych: 0,
+	development: 25,
+};
+test.assert(
+	research.choose([ecology, expansion], [former, colony], [], strategic_context) == expansion
+);
+strategic_context.priorities.expansion = 25;
+strategic_context.priorities.terraforming = 100;
+test.assert(
+	research.choose([expansion, ecology], [colony, former], [], strategic_context) == ecology
+);

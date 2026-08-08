@@ -1,5 +1,24 @@
 const TILES_PER_BASE = 24;
 const TURNS_PER_EXPANSION = 6;
+const UNITS_PER_BASE = 2;
+
+const get_gap_priority = (current, target) => {
+	const missing = #max(target - current, 0);
+	return missing == 0 ? 0 : #min(100, 50 + missing * 25);
+};
+
+const get_pressure_priority = (affected, total) => {
+	if (affected <= 0 || total <= 0) {
+		return 0;
+	}
+	return #min(
+		100,
+		50 + #ceil(
+			#to_float(affected * 50) /
+			#to_float(total)
+		)
+	);
+};
 
 const get_desired_base_count = (turn, map_width, map_height, player_count) => {
 	const competitors = #max(player_count, 1);
@@ -17,6 +36,61 @@ const get_desired_base_count = (turn, map_width, map_height, player_count) => {
 	return #min(map_capacity, expansion_tempo);
 };
 
+const get_priorities = (context) => {
+	const bases = #max(context.base_count, 0);
+	const expansion = get_gap_priority(
+		bases + #max(context.colony_count, 0),
+		#max(context.desired_base_count, 1)
+	);
+	const terraforming = get_gap_priority(
+		#max(context.former_count, 0),
+		bases
+	);
+	const defense = get_pressure_priority(
+		#max(context.underdefended_bases, 0),
+		bases
+	);
+	const military = #max(
+		defense,
+		get_gap_priority(
+			#max(context.combat_count, 0),
+			bases * UNITS_PER_BASE
+		)
+	);
+	const growth = get_pressure_priority(
+		#max(context.growth_stalled_bases, 0),
+		bases
+	);
+	const psych = get_pressure_priority(
+		#max(context.unstable_bases, 0),
+		bases
+	);
+	const operational_pressure = #max(
+		#max(expansion, terraforming),
+		#max(defense, #max(growth, psych))
+	);
+	let development = #max(
+		20,
+		100 - #floor(#to_float(operational_pressure) * 0.5) -
+			#floor(#to_float(military) * 0.25)
+	);
+	if (context.energy_income <= 0) {
+		development = #max(development - 25, 0);
+	}
+	return {
+		expansion: expansion,
+		terraforming: terraforming,
+		defense: defense,
+		military: military,
+		growth: growth,
+		psych: psych,
+		development: development,
+	};
+};
+
 return {
 	get_desired_base_count: get_desired_base_count,
+	get_gap_priority: get_gap_priority,
+	get_pressure_priority: get_pressure_priority,
+	get_priorities: get_priorities,
 };

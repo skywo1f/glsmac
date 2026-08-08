@@ -95,6 +95,44 @@ test.assert(
 	production.score_facility(recycling, context(false, false, false, false, 10))
 );
 
+locked = {};
+let expansion_context = context(false, true, true, false, 10);
+expansion_context.priorities = {
+	expansion: 100,
+	terraforming: 25,
+	military: 25,
+	growth: 0,
+	psych: 0,
+	development: 25,
+};
+test.assert(production.choose(base, all_units, all_facilities, expansion_context).id == 'Colony');
+
+let terraforming_context = context(false, true, true, false, 10);
+terraforming_context.priorities = {
+	expansion: 25,
+	terraforming: 100,
+	military: 25,
+	growth: 0,
+	psych: 0,
+	development: 25,
+};
+test.assert(production.choose(base, all_units, all_facilities, terraforming_context).id == 'Former');
+
+let development_context = context(false, false, false, false, 10);
+development_context.needs_military = true;
+development_context.priorities = {
+	expansion: 0,
+	terraforming: 0,
+	military: 25,
+	growth: 0,
+	psych: 0,
+	development: 100,
+};
+test.assert(production.choose(base, all_units, all_facilities, development_context).id == 'Recycling');
+development_context.priorities.military = 100;
+development_context.priorities.development = 25;
+test.assert(production.choose(base, all_units, all_facilities, development_context).id == 'Laser');
+
 const hurry_context = (kind, cost, credits, accumulated, mineral_surplus) => {
 	let result = context(false, false, false, false, 10);
 	result.kind = kind;
