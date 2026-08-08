@@ -90,6 +90,9 @@ const score_facility = (def, context) => {
 				? 120000 + growth_priority * 1000
 				: 0
 		) +
+		(#max(0 - def.drone_modifier, 0) + def.talent_bonus) * psych_weight * 2 -
+		#max(def.drone_modifier, 0) * psych_weight * 2 +
+		(def.suppress_psych && context.needs_psych ? 100000 : 0) +
 		def.unit_morale_bonus * morale_weight;
 };
 
@@ -140,6 +143,12 @@ const score_hurry = (def, context) => {
 		}
 		if (def.population_limit > context.base_size && context.needs_population_capacity) {
 			urgency += 100000;
+		}
+		if (
+			context.needs_psych &&
+			(def.drone_modifier < 0 || def.talent_bonus > 0 || def.suppress_psych)
+		) {
+			urgency += 60000;
 		}
 		if (def.mineral_bonus > 0) {
 			urgency += 15000;

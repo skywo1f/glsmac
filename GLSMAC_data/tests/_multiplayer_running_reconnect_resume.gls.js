@@ -189,6 +189,9 @@
 			const robotic_assembly = game.get_bm().get_facility_def('RoboticAssemblyPlant');
 			const hab_complex = game.get_bm().get_facility_def('HabComplex');
 			const habitation_dome = game.get_bm().get_facility_def('HabitationDome');
+			const paradise_garden = game.get_bm().get_facility_def('ParadiseGarden');
+			const genejack_factory = game.get_bm().get_facility_def('GenejackFactory');
+			const punishment_sphere = game.get_bm().get_facility_def('PunishmentSphere');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -206,7 +209,11 @@
 				recycling_tanks.psych_multiplier != 0.0 ||
 				recycling_tanks.population_limit != 0 ||
 				recycling_tanks.required_facility != '' ||
-				recreation_commons.psych_bonus != 4 ||
+				recycling_tanks.drone_modifier != 0 ||
+				recycling_tanks.talent_bonus != 0 ||
+				recycling_tanks.suppress_psych ||
+				recreation_commons.psych_bonus != 0 ||
+				recreation_commons.drone_modifier != -2 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
 				perimeter_defense.required_technology != 'DoctrineLoyalty' ||
 				perimeter_defense.defense_multiplier != 2.0 ||
@@ -222,7 +229,12 @@
 				robotic_assembly.mineral_multiplier != 0.5 ||
 				hab_complex.population_limit != 14 ||
 				habitation_dome.population_limit != 1000000 ||
-				habitation_dome.required_facility != 'HabComplex'
+				habitation_dome.required_facility != 'HabComplex' ||
+				paradise_garden.talent_bonus != 2 ||
+				genejack_factory.mineral_multiplier != 0.5 ||
+				genejack_factory.drone_modifier != 1 ||
+				punishment_sphere.research_multiplier != -0.5 ||
+				!punishment_sphere.suppress_psych
 			) {
 				return 'built Recycling Tanks definition is invalid';
 			}

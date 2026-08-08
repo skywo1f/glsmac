@@ -60,8 +60,10 @@ const laborers = [
 ];
 const doctor = make_pop('DOCTOR', false);
 let pops = laborers + [doctor];
+let facilities = [];
 const base = {
 	get_pops: () => { return pops; },
+	get_facilities: () => { return facilities; },
 	get_intake: () => { return {NUTRIENTS: 14, MINERALS: 10, ENERGY: 10}; },
 	get_consumption: () => { return {NUTRIENTS: 14, MINERALS: 2, ENERGY: 0}; },
 };
@@ -98,3 +100,24 @@ test.assert(state.workers == 3);
 test.assert(state.drones == 3);
 test.assert(state.is_rioting == true);
 test.assert(previous == ['TALENT', 'TALENT', 'TALENT', 'WORKER', 'WORKER', 'WORKER', 'TECHNICIAN']);
+
+facilities = [{drone_modifier: -2, talent_bonus: 0, suppress_psych: false}];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.workers == 5 && state.drones == 1 && state.talents == 0);
+
+facilities = [{drone_modifier: 1, talent_bonus: 0, suppress_psych: false}];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.workers == 2 && state.drones == 4 && state.talents == 0);
+
+facilities = [{drone_modifier: -2, talent_bonus: 2, suppress_psych: false}];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.workers == 5 && state.drones == 0 && state.talents == 1);
+
+facilities = [{drone_modifier: 0, talent_bonus: 0, suppress_psych: true}];
+values.f_base_process_psych(game, base, 10);
+state = values.f_base_get_psych(base);
+test.assert(state.workers == 6 && state.drones == 0 && state.talents == 0);
+test.assert(values.f_base_get_stable_worker_count(base, 0) == 7);

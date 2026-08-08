@@ -50,36 +50,73 @@ const get_psych_state = (game, base) => {
 	return result;
 };
 
+const get_social_facility_effects = (base) => {
+	let result = {drone_modifier: 0, talent_bonus: 0, suppress_psych: false};
+	if (!#is_defined(base.get_facilities)) {
+		return result;
+	}
+	for (facility of base.get_facilities()) {
+		result.drone_modifier = result.drone_modifier + (
+			#is_defined(facility.drone_modifier) ? facility.drone_modifier : 0
+		);
+		result.talent_bonus = result.talent_bonus + (
+			#is_defined(facility.talent_bonus) ? facility.talent_bonus : 0
+		);
+		result.suppress_psych = result.suppress_psych || (
+			#is_defined(facility.suppress_psych) && facility.suppress_psych
+		);
+	}
+	return result;
+};
+
+const apply_psych_improvements = (base, improvements) => {
+	for (pop of base.get_pops()) {
+		if (improvements <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
+			pop.set_type('WORKER');
+			improvements--;
+		}
+	}
+	for (pop of base.get_pops()) {
+		if (improvements <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
+			pop.set_type('TALENT');
+			improvements--;
+		}
+	}
+};
+
 const process_psych = (game, base, allocated_psych) => {
 	let laborer_count = 0;
 	let psych = allocated_psych;
+	const effects = get_social_facility_effects(base);
+	const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
 	for (pop of base.get_pops()) {
 		if (pop.has('worked_tile')) {
-			const type = laborer_count < CONTENT_CITIZENS ? 'WORKER' : 'DRONE';
+			const type = laborer_count < content_citizens ? 'WORKER' : 'DRONE';
 			pop.set_type(type);
 			laborer_count++;
 		} else if (pop.get_type() == 'DOCTOR') {
 			psych += DOCTOR_PSYCH;
 		}
 	}
-	for (pop of base.get_pops()) {
-		if (psych < PSYCH_PER_IMPROVEMENT) {
-			break;
+	if (effects.suppress_psych) {
+		for (pop of base.get_pops()) {
+			if (pop.has('worked_tile')) {
+				pop.set_type('WORKER');
+			}
 		}
-		if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
-			pop.set_type('WORKER');
-			psych -= PSYCH_PER_IMPROVEMENT;
-		}
+		return;
 	}
-	for (pop of base.get_pops()) {
-		if (psych < PSYCH_PER_IMPROVEMENT) {
-			break;
-		}
-		if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
-			pop.set_type('TALENT');
-			psych -= PSYCH_PER_IMPROVEMENT;
-		}
-	}
+	apply_psych_improvements(base, effects.talent_bonus);
+	apply_psych_improvements(
+		base,
+		#floor(#to_float(psych) / #to_float(PSYCH_PER_IMPROVEMENT))
+	);
 };
 
 const get_nutrients_for_growth = (game, base) => {
@@ -243,14 +280,19 @@ const select_worker_tiles = (base, candidates, count) => {
 
 const get_stable_worker_count = (base, allocated_psych) => {
 	const population = #sizeof(base.get_pops());
+	const effects = get_social_facility_effects(base);
+	if (effects.suppress_psych) {
+		return population;
+	}
 	let result = 0;
 	for (let workers = population; workers >= 0; workers--) {
 		const doctors = population - workers;
 		let improvements = #floor(
 			#to_float(allocated_psych + doctors * DOCTOR_PSYCH) /
 			#to_float(PSYCH_PER_IMPROVEMENT)
-		);
-		let drones = #max(workers - CONTENT_CITIZENS, 0);
+		) + effects.talent_bonus;
+		const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
+		let drones = #max(workers - content_citizens, 0);
 		const pacified = #min(drones, improvements);
 		drones -= pacified;
 		improvements -= pacified;

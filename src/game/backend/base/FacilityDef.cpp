@@ -1,5 +1,6 @@
 #include "FacilityDef.h"
 
+#include "gse/value/Bool.h"
 #include "gse/value/Float.h"
 #include "gse/value/Int.h"
 #include "gse/value/String.h"
@@ -26,7 +27,10 @@ FacilityDef::FacilityDef(
 	const float mineral_multiplier,
 	const float psych_multiplier,
 	const int64_t population_limit,
-	const std::string& required_facility
+	const std::string& required_facility,
+	const int64_t drone_modifier,
+	const int64_t talent_bonus,
+	const bool suppress_psych
 )
 	: m_id( id )
 	, m_name( name )
@@ -45,7 +49,10 @@ FacilityDef::FacilityDef(
 	, m_mineral_multiplier( mineral_multiplier )
 	, m_psych_multiplier( psych_multiplier )
 	, m_population_limit( population_limit )
-	, m_required_facility( required_facility ) {
+	, m_required_facility( required_facility )
+	, m_drone_modifier( drone_modifier )
+	, m_talent_bonus( talent_bonus )
+	, m_suppress_psych( suppress_psych ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -61,7 +68,7 @@ FacilityDef::FacilityDef(
 		m_energy_maintenance > MAX_ENERGY_MAINTENANCE ||
 		m_psych_bonus < 0 ||
 		m_psych_bonus > MAX_RESOURCE_BONUS ||
-		m_research_multiplier < 0.0f ||
+		m_research_multiplier < MIN_RESEARCH_MULTIPLIER ||
 		m_research_multiplier > MAX_RESEARCH_MULTIPLIER ||
 		m_defense_multiplier < 1.0f ||
 		m_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
@@ -77,7 +84,11 @@ FacilityDef::FacilityDef(
 		m_psych_multiplier > MAX_PSYCH_MULTIPLIER ||
 		m_population_limit < 0 ||
 		m_population_limit > MAX_POPULATION_LIMIT ||
-		m_required_facility == m_id
+		m_required_facility == m_id ||
+		m_drone_modifier < -MAX_DRONE_MODIFIER ||
+		m_drone_modifier > MAX_DRONE_MODIFIER ||
+		m_talent_bonus < 0 ||
+		m_talent_bonus > MAX_RESOURCE_BONUS
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -103,6 +114,9 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_psych_multiplier );
 	buf.WriteInt( def->m_population_limit );
 	buf.WriteString( def->m_required_facility );
+	buf.WriteInt( def->m_drone_modifier );
+	buf.WriteInt( def->m_talent_bonus );
+	buf.WriteBool( def->m_suppress_psych );
 	return buf;
 }
 
@@ -125,6 +139,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto psych_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto population_limit = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto required_facility = buf.GetRemaining() > 0 ? buf.ReadString() : "";
+	const auto drone_modifier = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto talent_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto suppress_psych = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -143,7 +160,10 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		mineral_multiplier,
 		psych_multiplier,
 		population_limit,
-		required_facility
+		required_facility,
+		drone_modifier,
+		talent_bonus,
+		suppress_psych
 	);
 }
 
@@ -224,6 +244,18 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"required_facility",
 			VALUE( gse::value::String, , m_required_facility )
+		},
+		{
+			"drone_modifier",
+			VALUE( gse::value::Int, , m_drone_modifier )
+		},
+		{
+			"talent_bonus",
+			VALUE( gse::value::Int, , m_talent_bonus )
+		},
+		{
+			"suppress_psych",
+			VALUE( gse::value::Bool, , m_suppress_psych )
 		},
 	};
 WRAPIMPL_END_PTR()

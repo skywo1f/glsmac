@@ -86,6 +86,13 @@ const combined_labs = technologies.get_base_labs({
 });
 test.assert(combined_labs == {allocation: 0.4, value: 2, bonus: 7, total: 9});
 
+const punished_labs = technologies.get_base_labs({
+	get_intake: base.get_intake,
+	get_consumption: base.get_consumption,
+	get_facilities: () => { return [{research_multiplier: 0.0 - 0.5, research_bonus: 0}]; },
+});
+test.assert(punished_labs == {allocation: 0.4, value: 2, bonus: 0, total: 2});
+
 const make_initial_player = (starting_technologies) => {
 	return {
 		get_faction: () => {

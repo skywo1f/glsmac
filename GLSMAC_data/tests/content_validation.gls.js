@@ -20,14 +20,23 @@ const make_catalog = () => {
 	};
 };
 
+const get_facility = (catalog, id) => {
+	for (entry of catalog.facilities) {
+		if (entry.id == id) {
+			return entry;
+		}
+	}
+	return null;
+};
+
 const result = validator.validate(make_catalog());
 
 test.assert(result.errors == []);
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 24,
-	complete_facilities: 11,
-	partial_facilities: 13,
+	facilities: 26,
+	complete_facilities: 14,
+	partial_facilities: 12,
 	base_facilities: 38,
 	projects: 33,
 	units: 10,
@@ -48,7 +57,7 @@ test.assert(validator.validate(invalid).errors == [
 ]);
 
 invalid = make_catalog();
-invalid.facilities[1].data.nutrient_typo = 1;
+get_facility(invalid, 'RecyclingTanks').data.nutrient_typo = 1;
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.nutrient_typo: is not a supported field',
 ]);
@@ -57,38 +66,38 @@ invalid = make_catalog();
 invalid.facility_coverage.status.RecyclingTanks = 'unknown';
 test.assert(validator.validate(invalid).errors == [
 	'facility_coverage.RecyclingTanks: must be complete or partial',
-	'facility_coverage.complete: reports 11 but contains 10',
+	'facility_coverage.complete: reports 14 but contains 13',
 ]);
 
 invalid = make_catalog();
-invalid.facilities[1].data.required_technology = 'MissingTechnology';
+get_facility(invalid, 'RecyclingTanks').data.required_technology = 'MissingTechnology';
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.required_technology: references missing technology MissingTechnology',
 	'facilities.RecyclingTanks.required_technology: does not match base-game manifest value Biogenetics',
 ]);
 
 invalid = make_catalog();
-invalid.facilities[20].data.required_facility = 'MissingFacility';
+get_facility(invalid, 'HabitationDome').data.required_facility = 'MissingFacility';
 test.assert(validator.validate(invalid).errors == [
 	'facilities.HabitationDome.required_facility: references missing facility MissingFacility',
 ]);
 
 invalid = make_catalog();
-invalid.facilities[1].data.mineral_cost = 41;
+get_facility(invalid, 'RecyclingTanks').data.mineral_cost = 41;
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.mineral_cost: does not match base-game manifest value 40',
 ]);
 
 invalid = make_catalog();
-invalid.facilities :+#clone(invalid.facilities[1]);
+invalid.facilities :+#clone(get_facility(invalid, 'RecyclingTanks'));
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks: duplicates facility id RecyclingTanks',
 ]);
 
 invalid = make_catalog();
-invalid.facilities[1].data.nutrient_bonus = 0;
-invalid.facilities[1].data.mineral_bonus = 0;
-invalid.facilities[1].data.energy_bonus = 0;
+get_facility(invalid, 'RecyclingTanks').data.nutrient_bonus = 0;
+get_facility(invalid, 'RecyclingTanks').data.mineral_bonus = 0;
+get_facility(invalid, 'RecyclingTanks').data.energy_bonus = 0;
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks: has no implemented gameplay effect',
 ]);

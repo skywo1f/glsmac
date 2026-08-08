@@ -25,6 +25,9 @@ const facility_fields = {
 	psych_multiplier: true,
 	population_limit: true,
 	required_facility: true,
+	drone_modifier: true,
+	talent_bonus: true,
+	suppress_psych: true,
 };
 
 const facility_manifest_fields = {
@@ -416,7 +419,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'energy_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'energy_maintenance', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'psych_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
-		validate_number(data, 'research_multiplier', path, errors, false, 0.0, 10.0);
+		validate_number(data, 'research_multiplier', path, errors, false, 0.0 - 1.0, 10.0);
 		validate_number(data, 'defense_multiplier', path, errors, false, 1.0, 10.0);
 		validate_number(data, 'economy_multiplier', path, errors, false, 0.0, 10.0);
 		validate_int(data, 'unit_morale_bonus', path, errors, false, 0, 10);
@@ -425,6 +428,17 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_number(data, 'psych_multiplier', path, errors, false, 0.0, 10.0);
 		validate_int(data, 'population_limit', path, errors, false, 1, MAX_DEFINITION_VALUE);
 		validate_optional_string(data, 'required_facility', path, errors);
+		validate_int(
+			data,
+			'drone_modifier',
+			path,
+			errors,
+			false,
+			0 - MAX_DEFINITION_VALUE,
+			MAX_DEFINITION_VALUE
+		);
+		validate_int(data, 'talent_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_bool(data, 'suppress_psych', path, errors, false);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -442,14 +456,17 @@ const validate_facilities = (facilities, technologies, errors) => {
 			data.mineral_bonus > 0 ||
 			data.energy_bonus > 0 ||
 			(#is_defined(data.psych_bonus) && data.psych_bonus > 0) ||
-			(#is_defined(data.research_multiplier) && data.research_multiplier > 0.0) ||
+			(#is_defined(data.research_multiplier) && data.research_multiplier != 0.0) ||
 			(#is_defined(data.defense_multiplier) && data.defense_multiplier > 1.0) ||
 			(#is_defined(data.economy_multiplier) && data.economy_multiplier > 0.0) ||
 			(#is_defined(data.unit_morale_bonus) && data.unit_morale_bonus > 0) ||
 			(#is_defined(data.research_bonus) && data.research_bonus > 0) ||
 			(#is_defined(data.mineral_multiplier) && data.mineral_multiplier > 0.0) ||
 			(#is_defined(data.psych_multiplier) && data.psych_multiplier > 0.0) ||
-			(#is_defined(data.population_limit) && data.population_limit > 0);
+			(#is_defined(data.population_limit) && data.population_limit > 0) ||
+			(#is_defined(data.drone_modifier) && data.drone_modifier != 0) ||
+			(#is_defined(data.talent_bonus) && data.talent_bonus > 0) ||
+			(#is_defined(data.suppress_psych) && data.suppress_psych);
 		if (!has_effect) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}

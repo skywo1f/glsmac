@@ -28,6 +28,9 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		mineral_multiplier: #is_defined(mineral_multiplier) ? mineral_multiplier : 0.0,
 		psych_multiplier: #is_defined(psych_multiplier) ? psych_multiplier : 0.0,
 		population_limit: 0,
+		drone_modifier: 0,
+		talent_bonus: 0,
+		suppress_psych: false,
 	};
 };
 

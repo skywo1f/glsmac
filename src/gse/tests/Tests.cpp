@@ -392,7 +392,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					0.5f,
 					0.25f,
 					14,
-					"HabComplex"
+					"HabComplex",
+					-2,
+					2,
+					true
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -418,6 +421,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					facility_roundtrip->m_population_limit == 14 &&
 					facility_roundtrip->m_required_facility == "HabComplex",
 					"facility population requirements were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_drone_modifier == -2 &&
+					facility_roundtrip->m_talent_bonus == 2 &&
+					facility_roundtrip->m_suppress_psych,
+					"facility social effects were not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -448,6 +457,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy_facility_parsed->m_population_limit == 0 &&
 					legacy_facility_parsed->m_required_facility.empty(),
 					"legacy facility definition gained a population requirement"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_drone_modifier == 0 &&
+					legacy_facility_parsed->m_talent_bonus == 0 &&
+					!legacy_facility_parsed->m_suppress_psych,
+					"legacy facility definition gained a social effect"
 				);
 
 				const auto make_unit_def = [](

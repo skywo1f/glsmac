@@ -17,12 +17,14 @@ public:
 	static constexpr int64_t MAX_RESOURCE_BONUS = 1000000;
 	static constexpr int64_t MAX_ENERGY_MAINTENANCE = 1000000;
 	static constexpr float MAX_RESEARCH_MULTIPLIER = 10.0f;
+	static constexpr float MIN_RESEARCH_MULTIPLIER = -1.0f;
 	static constexpr float MAX_DEFENSE_MULTIPLIER = 10.0f;
 	static constexpr float MAX_ECONOMY_MULTIPLIER = 10.0f;
 	static constexpr float MAX_MINERAL_MULTIPLIER = 10.0f;
 	static constexpr float MAX_PSYCH_MULTIPLIER = 10.0f;
 	static constexpr int64_t MAX_UNIT_MORALE_BONUS = 10;
 	static constexpr int64_t MAX_POPULATION_LIMIT = 1000000;
+	static constexpr int64_t MAX_DRONE_MODIFIER = 1000000;
 
 	FacilityDef(
 		const std::string& id,
@@ -42,7 +44,10 @@ public:
 		const float mineral_multiplier = 0.0f,
 		const float psych_multiplier = 0.0f,
 		const int64_t population_limit = 0,
-		const std::string& required_facility = ""
+		const std::string& required_facility = "",
+		const int64_t drone_modifier = 0,
+		const int64_t talent_bonus = 0,
+		const bool suppress_psych = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -64,6 +69,9 @@ public:
 	const float m_psych_multiplier;
 	const int64_t m_population_limit;
 	const std::string m_required_facility;
+	const int64_t m_drone_modifier;
+	const int64_t m_talent_bonus;
+	const bool m_suppress_psych;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

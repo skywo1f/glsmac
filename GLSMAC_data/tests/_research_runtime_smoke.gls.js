@@ -30,7 +30,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 22 facilities, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 26 facilities, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -156,6 +156,9 @@
 				let research_bonus = 0;
 				let defense_multiplier = 1.0;
 				let morale_bonus = 0;
+				let drone_modifier = 0;
+				let talent_bonus = 0;
+				let suppress_psych = 0;
 				for (facility_id of facility_ids) {
 					const definition = game.get_bm().get_facility_def(facility_id);
 					nutrient_bonus += definition.nutrient_bonus;
@@ -169,18 +172,22 @@
 					research_bonus += definition.research_bonus;
 					defense_multiplier += #max(definition.defense_multiplier - 1.0, 0.0);
 					morale_bonus += definition.unit_morale_bonus;
+					drone_modifier += definition.drone_modifier;
+					talent_bonus += definition.talent_bonus;
+					suppress_psych += definition.suppress_psych ? 1 : 0;
 					base.add_facility(facility_id);
 				}
 				const intake_after = base.get_intake();
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 24 ||
+					#sizeof(facility_ids) != 26 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 58 || mineral_multiplier != 1.5 ||
-					psych_bonus != 16 || psych_multiplier != 2.0 ||
-					research_multiplier != 2.5 || research_bonus != 2 ||
+					maintenance != 62 || mineral_multiplier != 2.0 ||
+					psych_bonus != 0 || psych_multiplier != 2.0 ||
+					research_multiplier != 2.0 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 4 ||
+					drone_modifier != -5 || talent_bonus != 2 || suppress_psych != 1 ||
 					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus ||
 					intake_after.MINERALS != #ceil(
 						#to_float(intake_before.MINERALS + mineral_bonus) * (1.0 + mineral_multiplier)

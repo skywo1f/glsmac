@@ -332,6 +332,9 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( float, psych_multiplier, def, "psych_multiplier", Float, 0.0f );
 				N_GETPROP_OPT( int64_t, population_limit, def, "population_limit", Int, 0 );
 				N_GETPROP_OPT( std::string, required_facility, def, "required_facility", String, "" );
+				N_GETPROP_OPT( int64_t, drone_modifier, def, "drone_modifier", Int, 0 );
+				N_GETPROP_OPT( int64_t, talent_bonus, def, "talent_bonus", Int, 0 );
+				N_GETPROP_OPT( bool, suppress_psych, def, "suppress_psych", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -347,7 +350,7 @@ WRAPIMPL_BEGIN( BaseManager )
 					energy_maintenance > base::FacilityDef::MAX_ENERGY_MAINTENANCE ||
 					psych_bonus < 0 ||
 					psych_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
-					research_multiplier < 0.0f ||
+					research_multiplier < base::FacilityDef::MIN_RESEARCH_MULTIPLIER ||
 					research_multiplier > base::FacilityDef::MAX_RESEARCH_MULTIPLIER ||
 					defense_multiplier < 1.0f ||
 					defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
@@ -363,7 +366,11 @@ WRAPIMPL_BEGIN( BaseManager )
 					psych_multiplier > base::FacilityDef::MAX_PSYCH_MULTIPLIER ||
 					population_limit < 0 ||
 					population_limit > base::FacilityDef::MAX_POPULATION_LIMIT ||
-					required_facility == id
+					required_facility == id ||
+					drone_modifier < -base::FacilityDef::MAX_DRONE_MODIFIER ||
+					drone_modifier > base::FacilityDef::MAX_DRONE_MODIFIER ||
+					talent_bonus < 0 ||
+					talent_bonus > base::FacilityDef::MAX_RESOURCE_BONUS
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -388,7 +395,10 @@ WRAPIMPL_BEGIN( BaseManager )
 					mineral_multiplier,
 					psych_multiplier,
 					population_limit,
-					required_facility
+					required_facility,
+					drone_modifier,
+					talent_bonus,
+					suppress_psych
 				) );
 				return VALUE( gse::value::Undefined );
 			} )
