@@ -37,6 +37,19 @@ const facilities = [
 			required_technology: 'SocialPsych',
 		},
 	},
+	{
+		id: 'HologramTheatre',
+		data: {
+			name: 'Hologram Theatre',
+			mineral_cost: 60,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 3,
+			psych_bonus: 4,
+			required_technology: 'PlanetaryNetworks',
+		},
+	},
 ];
 
 return {

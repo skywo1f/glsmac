@@ -25,7 +25,7 @@ test.assert(configured.CONSCIOUSNESS.starting_technologies == ['AppliedPhysics',
 test.assert(configured.PIRATES.starting_technologies == ['DoctrineMobility']);
 test.assert(configured.PIRATES.is_naval);
 test.assert(configured.DRONES.starting_technologies == ['IndustrialBase']);
-test.assert(configured.ANGELS.starting_technologies == ['InformationNetworks']);
+test.assert(configured.ANGELS.starting_technologies == ['InformationNetworks', 'PlanetaryNetworks']);
 test.assert(configured.PLANETCULT.starting_technologies == ['CentauriEcology', 'SocialPsych']);
 test.assert(configured.CARETAKERS.starting_technologies == ['Biogenetics', 'CentauriEcology', 'InformationNetworks']);
 test.assert(configured.CARETAKERS.is_progenitor);

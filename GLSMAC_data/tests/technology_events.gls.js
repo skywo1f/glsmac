@@ -33,6 +33,10 @@ const biogenetics = technologies.get_definition('Biogenetics');
 test.assert(biogenetics.name == 'Biogenetics');
 test.assert(biogenetics.cost == 30);
 test.assert(biogenetics.prerequisites == []);
+const planetary_networks = technologies.get_definition('PlanetaryNetworks');
+test.assert(planetary_networks.name == 'Planetary Networks');
+test.assert(planetary_networks.cost == 50);
+test.assert(planetary_networks.prerequisites == ['InformationNetworks']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
 test.assert(technologies.get_available_targets([]) == ['CentauriEcology', 'Biogenetics']);
 test.assert(technologies.get_available_targets(['CentauriEcology']) == ['DoctrineMobility', 'SocialPsych', 'Biogenetics']);
@@ -43,7 +47,8 @@ test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility',
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics']) == 'IndustrialBase');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase']) == 'SocialPsych');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych']) == 'Biogenetics');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics']) == '');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics']) == 'PlanetaryNetworks');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks']) == '');
 
 const base = {
 	get_intake: () => {
@@ -137,6 +142,20 @@ test.assert(technologies.get_initial_state(make_initial_player([
 	'Biogenetics',
 ])) == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
+	target: 'PlanetaryNetworks',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player([
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'IndustrialBase',
+	'SocialPsych',
+	'Biogenetics',
+	'PlanetaryNetworks',
+])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
 	target: '',
 	progress: 0,
 });
@@ -422,11 +441,27 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
-	target: '',
+	target: 'PlanetaryNetworks',
 	progress: 0,
 });
 process_research.rollback(event);
 test.assert(research_state.target == 'Biogenetics');
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
+	target: 'PlanetaryNetworks',
+	progress: 49,
+};
+event.data.technology = planetary_networks;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
+	target: '',
+	progress: 0,
+});
+process_research.rollback(event);
+test.assert(research_state.target == 'PlanetaryNetworks');
 
 event.data.technology = {
 	id: 'WrongTarget',

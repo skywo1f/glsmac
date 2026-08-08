@@ -9,7 +9,7 @@ const factions = [
 	['Consciousness', 'cyborg', {starting_technologies: ['AppliedPhysics', 'InformationNetworks']}],
 	['Pirates', 'pirates', {is_naval: true, starting_technologies: ['DoctrineMobility']}],
 	['Drones', 'drone', {starting_technologies: ['IndustrialBase']}],
-	['Angels', 'angels', {starting_technologies: ['InformationNetworks']}],
+	['Angels', 'angels', {starting_technologies: ['InformationNetworks', 'PlanetaryNetworks']}],
 	['Planetcult', 'fungboy', {starting_technologies: ['CentauriEcology', 'SocialPsych']}],
 	['Caretakers', 'caretake', {is_progenitor: true, starting_technologies: ['Biogenetics', 'CentauriEcology', 'InformationNetworks']}],
 	['Usurpers', 'usurper', {is_progenitor: true, starting_technologies: ['AppliedPhysics', 'Biogenetics', 'CentauriEcology']}],

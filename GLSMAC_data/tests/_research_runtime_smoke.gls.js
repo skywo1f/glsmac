@@ -11,13 +11,14 @@
 	let industry_accelerated = false;
 	let social_accelerated = false;
 	let biogenetics_accelerated = false;
+	let planetary_networks_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: seven-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: eight-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -55,6 +56,7 @@
 			const recycling_tanks = game.get_bm().get_facility_def('RecyclingTanks');
 			const network_node = game.get_bm().get_facility_def('NetworkNode');
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
+			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -73,9 +75,12 @@
 				network_node.energy_maintenance != 1 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
 				recreation_commons.energy_maintenance != 1 ||
-				recreation_commons.psych_bonus != 4
+				recreation_commons.psych_bonus != 4 ||
+				hologram_theatre.required_technology != 'PlanetaryNetworks' ||
+				hologram_theatre.energy_maintenance != 3 ||
+				hologram_theatre.psych_bonus != 4
 			) {
-				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit definitions are invalid');
+				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit or facility definitions are invalid');
 				glsmac.exit();
 				return;
 			}
@@ -96,17 +101,49 @@
 				}
 			}
 
-			if (player.has_technology('Biogenetics')) {
+			if (player.has_technology('PlanetaryNetworks')) {
 				if (
-					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
 					state.target != '' ||
 					state.progress != 0 ||
+					!base.can_set_production('facility', 'HologramTheatre') ||
+					!base.has_facility('RecreationCommons') ||
+					!base.has_facility('RecyclingTanks')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Planetary Networks did not unlock Hologram Theatre');
+					glsmac.exit();
+					return;
+				}
+				const consumption_before = base.get_consumption().ENERGY;
+				const psych_before = game.get('f_economy_get_base_psych')(game, base);
+				base.add_facility('HologramTheatre');
+				if (
+					base.get_consumption().ENERGY != consumption_before + 3 ||
+					game.get('f_economy_get_base_psych')(game, base) != psych_before + 4
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Hologram Theatre maintenance or psych bonus is invalid');
+					glsmac.exit();
+					return;
+				}
+				research_complete = true;
+				finish_if_ready();
+				return;
+			}
+
+			if (player.has_technology('Biogenetics')) {
+				const planetary_networks = game.get('f_technology_get_definition')('PlanetaryNetworks');
+				const progress_is_valid = planetary_networks_accelerated
+					? state.progress == planetary_networks.cost - 1
+					: state.progress >= 0 && state.progress < planetary_networks.cost;
+				if (
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
+					state.target != 'PlanetaryNetworks' ||
+					!progress_is_valid ||
 					!base.can_set_production('facility', 'RecyclingTanks') ||
-					!base.can_set_production('unit', 'LaserInfantry') ||
-					!base.can_set_production('unit', 'SynthmetalSentinels') ||
+					base.can_set_production('facility', 'HologramTheatre') ||
 					!base.has_facility('RecreationCommons')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Biogenetics did not unlock Recycling Tanks');
+					#print('RESEARCH_RUNTIME_FAIL: Biogenetics did not advance to Planetary Networks');
 					glsmac.exit();
 					return;
 				}
@@ -122,8 +159,15 @@
 					glsmac.exit();
 					return;
 				}
-				research_complete = true;
-				finish_if_ready();
+				if (!planetary_networks_accelerated) {
+					planetary_networks_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
+						target: 'PlanetaryNetworks',
+						progress: planetary_networks.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

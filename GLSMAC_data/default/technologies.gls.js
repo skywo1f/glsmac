@@ -42,6 +42,12 @@ const definitions = {
 		cost: 30,
 		prerequisites: [],
 	},
+	PlanetaryNetworks: {
+		id: 'PlanetaryNetworks',
+		name: 'Planetary Networks',
+		cost: 50,
+		prerequisites: ['InformationNetworks'],
+	},
 };
 
 const technology_order = [
@@ -52,6 +58,7 @@ const technology_order = [
 	'IndustrialBase',
 	'SocialPsych',
 	'Biogenetics',
+	'PlanetaryNetworks',
 ];
 
 const get_definition = (id) => {
