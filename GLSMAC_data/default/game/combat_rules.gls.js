@@ -1,18 +1,10 @@
+const unit_abilities = #include('unit_abilities');
+
 const is_artillery = (def) => {
 	return #is_defined(def.is_artillery) ? def.is_artillery : def.id == 'SporeLauncher';
 };
 
-const has_ability = (def, id) => {
-	if (!#is_defined(def.abilities)) {
-		return false;
-	}
-	for (ability of def.abilities) {
-		if (ability == id) {
-			return true;
-		}
-	}
-	return false;
-};
+const has_ability = (def, id) => { return unit_abilities.has(def, id); };
 
 const get_morale_multiplier = (unit) => {
 	return 0.75 + #to_float(unit.morale) * 0.125;

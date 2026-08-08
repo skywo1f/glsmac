@@ -10,6 +10,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		mineral_cost: cost,
 		can_found_base: can_found_base,
 		can_terraform: can_terraform,
+		abilities: [],
 	};
 };
 const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus, mineral_multiplier, psych_multiplier) => {
@@ -156,6 +157,12 @@ supported_context.free_support = 1;
 test.assert(
 	production.score_unit(laser, supported_context) <
 	production.score_unit(laser, context(false, false, false, false, 0))
+);
+const clean_laser = unit('CleanLaser', 2, 1, 1.0, 20, false, false);
+clean_laser.abilities = ['CleanReactor'];
+test.assert(
+	production.score_unit(clean_laser, supported_context) ==
+	production.score_unit(laser, supported_context) + 5000
 );
 
 let growth_context = context(false, false, false, false, 10);

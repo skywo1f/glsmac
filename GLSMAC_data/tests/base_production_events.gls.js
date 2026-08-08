@@ -46,6 +46,20 @@ const land_patrol = {
 	is_land: true,
 	is_water: false,
 	is_air: false,
+	abilities: [],
+};
+const trained_land_patrol = {
+	id: 'TrainedLandPatrol',
+	name: 'Trained Land Patrol',
+	production_kind: 'unit',
+	mineral_cost: 20,
+	can_found_base: false,
+	is_native: false,
+	morale_set: 'STANDARD',
+	is_land: true,
+	is_water: false,
+	is_air: false,
+	abilities: ['HighMorale'],
 };
 const sea_patrol = {
 	id: 'SeaPatrol',
@@ -153,6 +167,7 @@ const definitions = [
 	spore_launcher,
 	colony_pod,
 	land_patrol,
+	trained_land_patrol,
 	sea_patrol,
 	air_patrol,
 	recycling_tanks,
@@ -787,6 +802,18 @@ for (triad_unit of [land_patrol, sea_patrol, air_patrol]) {
 	test.assert(!#is_defined(spawned_unit));
 }
 built_facilities = [];
+
+production_queue = [trained_land_patrol];
+accumulated_minerals = 13;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == trained_land_patrol.id);
+test.assert(spawn_data.morale == 2);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 13);
+test.assert(!#is_defined(spawned_unit));
 
 const worker_a = make_pop('WORKER', {id: 'worker-a'});
 const worker_b = make_pop('WORKER', {id: 'worker-b'});

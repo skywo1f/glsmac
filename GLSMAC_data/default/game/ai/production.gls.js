@@ -1,3 +1,5 @@
+const unit_abilities = #include('../unit_abilities');
+
 const UNIT_SUPPORT_SCORE_PENALTY = 5000;
 const MIN_HURRY_RESERVE = 20;
 const HURRY_RESERVE_TURNS = 3;
@@ -11,8 +13,11 @@ const get_priority = (context, name, fallback) => {
 		: fallback;
 };
 
-const get_unit_support_penalty = (context) => {
-	const projected_overage = #max(context.supported_units + 1 - context.free_support, 0);
+const get_unit_support_penalty = (def, context) => {
+	const projected_overage = #max(
+		context.supported_units + unit_abilities.get_support_cost(def) - context.free_support,
+		0
+	);
 	return projected_overage * UNIT_SUPPORT_SCORE_PENALTY;
 };
 
@@ -28,13 +33,13 @@ const score_unit = (def, context) => {
 		return context.needs_colony && context.can_expand
 			? 45000 + get_priority(context, 'expansion', 50) * 500 +
 				#max(context.nutrient_surplus, 0) * 250 -
-				def.mineral_cost - get_unit_support_penalty(context)
+				def.mineral_cost - get_unit_support_penalty(def, context)
 			: null;
 	}
 	if (def.can_terraform) {
 		return context.needs_former
 			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
-				def.mineral_cost - get_unit_support_penalty(context)
+				def.mineral_cost - get_unit_support_penalty(def, context)
 			: null;
 	}
 	if (def.offense <= 0) {
@@ -43,7 +48,7 @@ const score_unit = (def, context) => {
 	if (context.needs_garrison) {
 		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
 			#round(def.movement_per_turn * 10.0) - def.mineral_cost -
-			get_unit_support_penalty(context);
+			get_unit_support_penalty(def, context);
 	}
 	if (!context.needs_military) {
 		return null;
@@ -51,7 +56,7 @@ const score_unit = (def, context) => {
 	return 20000 + get_priority(context, 'military', 33) * 300 +
 		def.offense * 1000 + def.defense * 250 +
 		#round(def.movement_per_turn * 100.0) - def.mineral_cost -
-		get_unit_support_penalty(context);
+		get_unit_support_penalty(def, context);
 };
 
 const score_facility = (def, context) => {

@@ -37,8 +37,13 @@ const base = {
 	get_size: () => { return base_size; },
 	get_facilities: () => { return [{energy_maintenance: 2}]; },
 };
-const supported = (owner_id, home_base_id) => {
-	return {owner: owner_id, home_base_id: home_base_id};
+const supported = (owner_id, home_base_id, abilities) => {
+	const def = {abilities: #is_defined(abilities) ? abilities : []};
+	return {
+		owner: owner_id,
+		home_base_id: home_base_id,
+		get_def: () => { return def; },
+	};
 };
 
 units = [
@@ -46,6 +51,7 @@ units = [
 	supported(owner.id, base.id),
 	supported(owner.id, base.id),
 	supported(owner.id, base.id),
+	supported(owner.id, base.id, ['CleanReactor']),
 	supported(owner.id, 8),
 	supported(2, base.id),
 	supported(owner.id, 0),

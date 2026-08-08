@@ -1,4 +1,5 @@
 const terraforming = #include('../../units/terraforming');
+const unit_abilities = #include('../unit_abilities');
 
 return {
 
@@ -69,8 +70,10 @@ return {
 		const effects = #is_defined(get_effects)
 			? get_effects(unit.get_owner())
 			: {terraforming_rate_multiplier: 1.0};
+		const rate_multiplier = effects.terraforming_rate_multiplier *
+			unit_abilities.get_terraforming_rate_multiplier(unit, e.data.type);
 		const turns = #max(
-			#ceil(#to_float(order.turns) / effects.terraforming_rate_multiplier),
+			#ceil(#to_float(order.turns) / rate_multiplier),
 			1
 		);
 		unit.set_terraforming_order(e.data.type, turns);

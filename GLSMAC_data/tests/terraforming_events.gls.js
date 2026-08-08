@@ -72,6 +72,7 @@ tile = {
 };
 
 let can_terraform = true;
+let former_abilities = [];
 let unit = null;
 unit = {
 	id: 10,
@@ -82,7 +83,7 @@ unit = {
 	terraforming: 'none',
 	terraforming_turns_remaining: 0,
 	get_def: () => {
-		return {can_terraform: can_terraform};
+		return {can_terraform: can_terraform, abilities: former_abilities};
 	},
 	get_tile: () => {
 		return tile;
@@ -208,6 +209,22 @@ event.applied = terraform_tile.apply(event);
 test.assert(unit.terraforming_turns_remaining == 3);
 terraform_tile.rollback(event);
 terraforming_rate_multiplier = 1.0;
+
+former_abilities = ['SuperFormer'];
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 2);
+terraform_tile.rollback(event);
+former_abilities = [];
+
+event.data.type = 'remove_fungus';
+tile.features.xenofungus = true;
+former_abilities = ['FungicideTanks'];
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 3);
+terraform_tile.rollback(event);
+former_abilities = [];
+event.data.type = 'farm';
+tile.features.xenofungus = false;
 
 unit.set_terraforming_order('farm', 4);
 test.assert(terraforming.advance_order(unit));

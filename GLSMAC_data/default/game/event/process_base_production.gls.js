@@ -1,3 +1,5 @@
+const unit_abilities = #include('../unit_abilities');
+
 const get_queue_specs = (base) => {
 	let result = [];
 	for (production of base.get_production_queue()) {
@@ -31,7 +33,7 @@ const cancel_project_queues = (game, project_id, completing_base) => {
 };
 
 const get_production_morale = (game, base, production) => {
-	let morale = 1;
+	let morale = 1 + unit_abilities.get_morale_bonus(production);
 	const resolver = game.get('f_base_get_effective_facilities');
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	for (facility of facilities) {

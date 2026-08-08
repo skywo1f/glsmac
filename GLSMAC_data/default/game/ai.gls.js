@@ -8,6 +8,7 @@ const research = #include('ai/research');
 const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
+const unit_abilities = #include('unit_abilities');
 
 const owned_bases = (game, player) => {
 	let result = [];
@@ -239,7 +240,7 @@ const queue_production = (game, player, bases, units) => {
 		let supported_units = 0;
 		for (unit of units) {
 			if (unit.home_base_id == base.id) {
-				supported_units++;
+				supported_units += unit_abilities.get_support_cost(unit);
 			}
 		}
 		const required_garrison = combat.get_required_garrison(tm, base, player.id, all_units);

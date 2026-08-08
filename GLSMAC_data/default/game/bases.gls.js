@@ -1,4 +1,5 @@
 const pops = #include('pops');
+const unit_abilities = #include('unit_abilities');
 
 const globals = {};
 const CONTENT_CITIZENS = 3;
@@ -644,16 +645,16 @@ return (game) => {
 			ENERGY: 0,
 		};
 
-		let supported_units = 0;
+		let unit_support = 0;
 		for (unit of game.get_um().get_units()) {
 			if (unit.owner == e.base.get_owner().id && unit.home_base_id == e.base.id) {
-				supported_units++;
+				unit_support += unit_abilities.get_support_cost(unit);
 			}
 		}
 		const project_effects = get_project_effects(game, e.base);
 		const free_support = #max(e.base.get_size(), 1) * FREE_SUPPORTED_UNITS_PER_POP +
 			project_effects.support_bonus;
-		result.MINERALS = #max(supported_units - free_support, 0);
+		result.MINERALS = #max(unit_support - free_support, 0);
 		for (facility of get_effective_facilities(game, e.base)) {
 			result.ENERGY = result.ENERGY + facility.energy_maintenance;
 		}
