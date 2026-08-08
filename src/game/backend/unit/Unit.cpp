@@ -72,7 +72,8 @@ Unit::Unit(
 	const health_t health,
 	const bool moved_this_turn,
 	const map::tile::terraforming_t terraforming,
-	const uint16_t terraforming_turns_remaining
+	const uint16_t terraforming_turns_remaining,
+	const size_t home_base_id
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -84,7 +85,8 @@ Unit::Unit(
 	, m_health( health )
 	, m_moved_this_turn( moved_this_turn )
 	, m_terraforming( terraforming )
-	, m_terraforming_turns_remaining( terraforming_turns_remaining ) {
+	, m_terraforming_turns_remaining( terraforming_turns_remaining )
+	, m_home_base_id( home_base_id ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -148,6 +150,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteBool( unit->m_moved_this_turn );
 	buf.WriteInt( unit->m_terraforming );
 	buf.WriteInt( unit->m_terraforming_turns_remaining );
+	buf.WriteInt( unit->m_home_base_id );
 	return buf;
 }
 
@@ -191,6 +194,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto moved_this_turn = buf.ReadBool();
 	const auto terraforming = buf.ReadInt< map::tile::terraforming_t >( "unit terraforming order" );
 	const auto terraforming_turns_remaining = buf.ReadInt< uint16_t >( "unit terraforming turns remaining" );
+	const auto home_base_id = buf.GetRemaining() > 0
+		? buf.ReadInt< size_t >( "unit home base id" )
+		: 0;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -222,7 +228,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		health,
 		moved_this_turn,
 		terraforming,
-		terraforming_turns_remaining
+		terraforming_turns_remaining,
+		home_base_id
 	);
 }
 
@@ -253,6 +260,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_PTR( "moved_this_turn", m_moved_this_turn )
 	WRAPIMPL_GET_CUSTOM( "terraforming", String, map::tile::Tile::GetTerraformingString( m_terraforming ) )
 	WRAPIMPL_GET_CUSTOM( "terraforming_turns_remaining", Int, m_terraforming_turns_remaining )
+	WRAPIMPL_GET_CUSTOM( "home_base_id", Int, m_home_base_id )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
 	WRAPIMPL_GET_CUSTOM( "is_water", Bool, m_def->GetMovementType() == MT_WATER )

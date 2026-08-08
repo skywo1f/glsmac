@@ -526,6 +526,7 @@
 						tile: client_base.get_tile(),
 						morale: 1,
 						health: 1.0,
+						home_base_id: client_base.id,
 					});
 					if (defeated_unit.id != defeated_snapshot_unit_id) {
 						#print('RUNNING_RECONNECT_FAIL_HOST: unexpected defeated unit id');
@@ -548,6 +549,7 @@
 						type: 'ColonyPod',
 						health: 1.0,
 						morale: 2,
+						home_base_id: client_base.id,
 					});
 					if (terraform_site_coords == null) {
 						#print('RUNNING_RECONNECT_FAIL_HOST: terraforming site is missing');
@@ -563,6 +565,7 @@
 						type: 'Former',
 						health: 1.0,
 						morale: 2,
+						home_base_id: client_base.id,
 					});
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});

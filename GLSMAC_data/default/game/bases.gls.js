@@ -4,6 +4,7 @@ const globals = {};
 const CONTENT_CITIZENS = 3;
 const PSYCH_PER_IMPROVEMENT = 2;
 const DOCTOR_PSYCH = 2;
+const FREE_SUPPORTED_UNITS_PER_POP = 1;
 
 const is_rioting = (base) => {
 	let talents = 0;
@@ -486,7 +487,14 @@ return (game) => {
 			ENERGY: 0,
 		};
 
-		// TODO: supported units
+		let supported_units = 0;
+		for (unit of game.get_um().get_units()) {
+			if (unit.owner == e.base.get_owner().id && unit.home_base_id == e.base.id) {
+				supported_units++;
+			}
+		}
+		const free_support = #max(e.base.get_size(), 1) * FREE_SUPPORTED_UNITS_PER_POP;
+		result.MINERALS = #max(supported_units - free_support, 0);
 		for (facility of e.base.get_facilities()) {
 			result.ENERGY = result.ENERGY + facility.energy_maintenance;
 		}

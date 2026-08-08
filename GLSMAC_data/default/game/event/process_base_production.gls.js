@@ -44,6 +44,7 @@ return {
 						tile: base.get_tile(),
 						morale: 1,
 						health: 1.0,
+						home_base_id: base.id,
 					});
 					for (let i = 0; i < population_cost; i++) {
 						const pop = e.game.get('f_base_select_population_for_reduction')(base);

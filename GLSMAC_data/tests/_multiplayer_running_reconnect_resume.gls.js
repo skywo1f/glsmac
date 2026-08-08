@@ -7,6 +7,7 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const initial_energy_stamp = 137;
+	const processed_turn_unit_support = 2;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -146,6 +147,9 @@
 			if (base == null) {
 				return 'base is missing';
 			}
+			if (game.get_um().get_unit(former_snapshot_unit_id).home_base_id != base.id) {
+				return 'Former home base was not restored from the snapshot';
+			}
 			const expected_production_ids = get_snapshot_production_ids(base);
 			const production = base.get_production();
 			const production_queue = base.get_production_queue();
@@ -190,7 +194,8 @@
 			const expected_snapshot_minerals =
 				initial_mineral_stamp +
 					base.get_tile().get_resources(base.get_owner()).MINERALS +
-					recycling_tanks.mineral_bonus;
+					recycling_tanks.mineral_bonus -
+					processed_turn_unit_support;
 			if (base.get_accumulated_minerals() != expected_snapshot_minerals) {
 				return
 					'accumulated minerals are ' + #to_string(base.get_accumulated_minerals()) +

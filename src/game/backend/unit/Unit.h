@@ -43,7 +43,8 @@ public:
 		const health_t health,
 		const bool moved_this_turn,
 		const map::tile::terraforming_t terraforming,
-		const uint16_t terraforming_turns_remaining
+		const uint16_t terraforming_turns_remaining,
+		const size_t home_base_id
 	);
 	virtual ~Unit() = default;
 
@@ -57,6 +58,7 @@ public:
 	bool m_moved_this_turn;
 	map::tile::terraforming_t m_terraforming;
 	uint16_t m_terraforming_turns_remaining;
+	size_t m_home_base_id;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
 	size_t m_animation_id = 0;

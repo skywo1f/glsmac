@@ -134,6 +134,16 @@
 				smoke_unit.health = 0.5;
 				const research_state = game.get_player().get_research_state();
 				const rover = um.get_unit_def('ReconRover');
+				if (smoke_unit.home_base_id != base.id) {
+					#print('RUNTIME_SMOKE_FAIL: starting scout has no home base');
+					glsmac.exit();
+					return;
+				}
+				if (base.get_consumption().MINERALS != 0) {
+					#print('RUNTIME_SMOKE_FAIL: starting base has unexpected unit support');
+					glsmac.exit();
+					return;
+				}
 				if (
 					!game.get_player().has_technology('CentauriEcology') ||
 					research_state.technologies != ['CentauriEcology'] ||
@@ -297,11 +307,20 @@
 			else if (turn_id == 3) {
 				const bases = game.get_bm().get_bases();
 				const former = game.get_um().get_unit(former_id);
+				let produced_unit_has_home_base = false;
+				if (#sizeof(bases) > 0) {
+					for (unit of bases[0].get_tile().get_units()) {
+						if (unit.id != 1 && unit.home_base_id == bases[0].id) {
+							produced_unit_has_home_base = true;
+						}
+					}
+				}
 				if (
 					#sizeof(bases) == 0 ||
 					!bases[0].has_facility('RecyclingTanks') ||
 					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count ||
-					former.health != 0.5
+					former.health != 0.5 ||
+					!produced_unit_has_home_base
 				) {
 					#print('RUNTIME_SMOKE_FAIL: queued unit production or facility persistence failed');
 					glsmac.exit();

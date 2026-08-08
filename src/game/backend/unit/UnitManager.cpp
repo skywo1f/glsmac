@@ -568,6 +568,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP( health, obj, "health", Float );
 				N_GETPROP_OPT( std::string, terraforming_name, obj, "terraforming", String, "none" );
 				N_GETPROP_OPT( int64_t, terraforming_turns_remaining, obj, "terraforming_turns_remaining", Int, 0 );
+				N_GETPROP_OPT( size_t, home_base_id, obj, "home_base_id", Int, 0 );
 				const auto terraforming = map::tile::Tile::GetTerraformingFromString( terraforming_name );
 				if (
 					( terraforming == map::tile::TERRAFORMING_NONE && util::String::GetLowerCase( terraforming_name ) != "none" ) ||
@@ -595,7 +596,8 @@ WRAPIMPL_BEGIN( UnitManager )
 					health,
 					false,
 					terraforming,
-					static_cast< uint16_t >( terraforming_turns_remaining )
+					static_cast< uint16_t >( terraforming_turns_remaining ),
+					home_base_id
 				);
 				SpawnUnit( GSE_CALL, unit );
 				return unit->Wrap( GSE_CALL );

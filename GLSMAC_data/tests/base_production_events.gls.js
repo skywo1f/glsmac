@@ -105,6 +105,7 @@ const get_queue_state = () => {
 };
 
 const base = {
+	id: 11,
 	get_owner: () => {
 		return owner;
 	},
@@ -395,6 +396,7 @@ test.assert(spawn_data.owner == owner);
 test.assert(spawn_data.tile == tile);
 test.assert(spawn_data.morale == 1);
 test.assert(spawn_data.health == 1.0);
+test.assert(spawn_data.home_base_id == base.id);
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 25);
 test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);

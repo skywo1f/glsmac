@@ -21,6 +21,7 @@ return {
 			moved_this_turn: unit.moved_this_turn,
 			terraforming: unit.terraforming,
 			terraforming_turns_remaining: unit.terraforming_turns_remaining,
+			home_base_id: unit.home_base_id,
 		};
 		e.game.um.despawn_unit(unit);
 		return {
@@ -39,6 +40,7 @@ return {
 			health: u.health,
 			terraforming: u.terraforming,
 			terraforming_turns_remaining: u.terraforming_turns_remaining,
+			home_base_id: u.home_base_id,
 		});
 		unit.movement = u.movement;
 		unit.moved_this_turn = u.moved_this_turn;

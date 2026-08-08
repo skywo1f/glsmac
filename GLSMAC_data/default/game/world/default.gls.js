@@ -86,6 +86,7 @@ return (game) => {
 			type: type,
 			health: 1.0,
 			morale: 1,
+			home_base_at_tile: true,
 		});
 
 	}

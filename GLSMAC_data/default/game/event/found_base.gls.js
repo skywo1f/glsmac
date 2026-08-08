@@ -12,6 +12,7 @@ const snapshot_unit = (unit) => {
 		moved_this_turn: unit.moved_this_turn,
 		terraforming: unit.terraforming,
 		terraforming_turns_remaining: unit.terraforming_turns_remaining,
+		home_base_id: unit.home_base_id,
 	};
 };
 
@@ -25,6 +26,7 @@ const restore_unit = (e, backup) => {
 		health: backup.health,
 		terraforming: backup.terraforming,
 		terraforming_turns_remaining: backup.terraforming_turns_remaining,
+		home_base_id: backup.home_base_id,
 	});
 	unit.movement = backup.movement;
 	unit.moved_this_turn = backup.moved_this_turn;
