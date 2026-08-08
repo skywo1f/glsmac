@@ -167,6 +167,8 @@ def read_facilities(path: Path) -> list[FacilityRow]:
             raise ValueError(f"invalid FACILITIES row: {line}")
         prerequisite_code = row[3].strip()
         obsolete_code = row[4].strip()
+        kind = "project" if len(row) >= 11 else "facility"
+        effect_fields = row[5:-5] if kind == "project" else row[5:]
         facilities.append(
             FacilityRow(
                 name=row[0].strip(),
@@ -178,8 +180,8 @@ def read_facilities(path: Path) -> list[FacilityRow]:
                 obsolete_code=(
                     None if obsolete_code == "Disable" else obsolete_code
                 ),
-                effect=row[5].strip(),
-                kind="project" if len(row) > 6 else "facility",
+                effect=", ".join(field.strip() for field in effect_fields),
+                kind=kind,
             )
         )
     return facilities

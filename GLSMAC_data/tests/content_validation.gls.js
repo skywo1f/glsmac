@@ -25,8 +25,8 @@ test.assert(result.errors == []);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 8,
-	base_facilities: 36,
-	projects: 35,
+	base_facilities: 38,
+	projects: 33,
 	units: 10,
 	chassis: 9,
 	reactors: 4,

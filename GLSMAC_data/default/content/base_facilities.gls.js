@@ -274,22 +274,22 @@ const definitions = [
 	{
 		id: 'NavalYard',
 		name: 'Naval Yard',
-		kind: 'project',
+		kind: 'facility',
 		mineral_cost: 80,
 		energy_maintenance: 2,
 		required_technology: 'DoctrineInitiative',
 		obsolete_technology: '',
-		effect: '+2 Morale:Sea',
+		effect: '+2 Morale:Sea, Sea Def +100%',
 	},
 	{
 		id: 'AerospaceComplex',
 		name: 'Aerospace Complex',
-		kind: 'project',
+		kind: 'facility',
 		mineral_cost: 80,
 		energy_maintenance: 2,
 		required_technology: 'DoctrineAirPower',
 		obsolete_technology: '',
-		effect: '+2 Morale:Air',
+		effect: '+2 Morale:Air, Air Def +100%',
 	},
 	{
 		id: 'BioenhancementCenter',
@@ -389,7 +389,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'Biogenetics',
 		obsolete_technology: '',
-		effect: '+1 Talent Each Base',
+		effect: '+1 Talent Each Base, -1',
 	},
 	{
 		id: 'TheCommandNexus',
@@ -399,7 +399,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'DoctrineLoyalty',
 		obsolete_technology: '',
-		effect: 'Command Center Each Base',
+		effect: 'Command Center Each Base, 1',
 	},
 	{
 		id: 'TheWeatherParadigm',
@@ -409,7 +409,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'CentauriEcology',
 		obsolete_technology: '',
-		effect: 'Terraform Rate +50%',
+		effect: 'Terraform Rate +50%, 0',
 	},
 	{
 		id: 'TheMerchantExchange',
@@ -419,7 +419,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'IndustrialBase',
 		obsolete_technology: '',
-		effect: '+1 Energy Each Square Here',
+		effect: '+1 Energy Each Square Here, 0',
 	},
 	{
 		id: 'TheEmpathGuild',
@@ -429,7 +429,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'CentauriEmpathy',
 		obsolete_technology: '',
-		effect: 'Commlink For Every Faction',
+		effect: 'Commlink For Every Faction, -2',
 	},
 	{
 		id: 'TheCitizensDefenseForce',
@@ -439,7 +439,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'IntellectualIntegrity',
 		obsolete_technology: '',
-		effect: 'Perimeter Defense Each Base',
+		effect: 'Perimeter Defense Each Base, 0',
 	},
 	{
 		id: 'TheVirtualWorld',
@@ -449,7 +449,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'PlanetaryNetworks',
 		obsolete_technology: '',
-		effect: 'Network Nodes Help Drones',
+		effect: 'Network Nodes Help Drones, 0',
 	},
 	{
 		id: 'ThePlanetaryTransitSystem',
@@ -459,7 +459,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'IndustrialAutomation',
 		obsolete_technology: '',
-		effect: 'New Bases Begin At Size 3',
+		effect: 'New Bases Begin At Size 3, 0',
 	},
 	{
 		id: 'TheXenoempathyDome',
@@ -469,7 +469,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'CentauriMeditation',
 		obsolete_technology: '',
-		effect: 'Fungus Movement Bonus',
+		effect: 'Fungus Movement Bonus, 0',
 	},
 	{
 		id: 'TheNeuralAmplifier',
@@ -479,7 +479,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'NeuralGrafting',
 		obsolete_technology: '',
-		effect: 'Psi Defense +50%',
+		effect: 'Psi Defense +50%, 0',
 	},
 	{
 		id: 'TheMaritimeControlCenter',
@@ -489,7 +489,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'DoctrineInitiative',
 		obsolete_technology: '',
-		effect: 'Naval Movement +2; Naval Bases',
+		effect: 'Naval Movement +2; Naval Bases, 1',
 	},
 	{
 		id: 'ThePlanetaryDatalinks',
@@ -499,7 +499,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'Cyberethics',
 		obsolete_technology: '',
-		effect: 'Any Tech Known To 3 Others',
+		effect: 'Any Tech Known To 3 Others, 0',
 	},
 	{
 		id: 'TheSupercollider',
@@ -509,7 +509,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'AppliedRelativity',
 		obsolete_technology: '',
-		effect: 'Labs +100% At This Base',
+		effect: 'Labs +100% At This Base, 0',
 	},
 	{
 		id: 'TheAsceticVirtues',
@@ -519,7 +519,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'PlanetaryEconomics',
 		obsolete_technology: '',
-		effect: 'Pop. Limit Relaxed; +1 POLICE',
+		effect: 'Pop. Limit Relaxed; +1 POLICE, 0',
 	},
 	{
 		id: 'TheLongevityVaccine',
@@ -529,7 +529,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'BioEngineering',
 		obsolete_technology: '',
-		effect: 'Fewer Drones or More Profits',
+		effect: 'Fewer Drones or More Profits, 0',
 	},
 	{
 		id: 'TheHunterSeekerAlgorithm',
@@ -539,7 +539,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'PreSentientAlgorithms',
 		obsolete_technology: '',
-		effect: 'Immunity to Probe Teams',
+		effect: 'Immunity to Probe Teams, 0',
 	},
 	{
 		id: 'ThePholusMutagen',
@@ -549,7 +549,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'CentauriGenetics',
 		obsolete_technology: '',
-		effect: 'Ecology Bonus; Lifecycle Bonus',
+		effect: 'Ecology Bonus; Lifecycle Bonus, 0',
 	},
 	{
 		id: 'TheCyborgFactory',
@@ -559,7 +559,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'MindMachineInterface',
 		obsolete_technology: '',
-		effect: 'Bioenh. Center Every Base',
+		effect: 'Bioenh. Center Every Base, 1',
 	},
 	{
 		id: 'TheTheoryOfEverything',
@@ -569,7 +569,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'UnifiedFieldTheory',
 		obsolete_technology: '',
-		effect: 'Labs +100% At This Base',
+		effect: 'Labs +100% At This Base, 0',
 	},
 	{
 		id: 'TheDreamTwister',
@@ -579,7 +579,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'TheWillToPower',
 		obsolete_technology: '',
-		effect: 'Psi Attack +50%',
+		effect: 'Psi Attack +50%, 0',
 	},
 	{
 		id: 'TheUniversalTranslator',
@@ -589,7 +589,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'HomoSuperior',
 		obsolete_technology: '',
-		effect: 'Two Free Techs',
+		effect: 'Two Free Techs, 0',
 	},
 	{
 		id: 'TheNetworkBackbone',
@@ -599,7 +599,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'DigitalSentience',
 		obsolete_technology: '',
-		effect: '+1 Lab Per Commerce/Net Node',
+		effect: '+1 Lab Per Commerce/Net Node, 0',
 	},
 	{
 		id: 'TheNanoFactory',
@@ -609,7 +609,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'IndustrialNanorobotics',
 		obsolete_technology: '',
-		effect: 'Repair Units; Low Upgrade Costs',
+		effect: 'Repair Units; Low Upgrade Costs, 2',
 	},
 	{
 		id: 'TheLivingRefinery',
@@ -619,7 +619,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'AdvancedSpaceflight',
 		obsolete_technology: '',
-		effect: '+2 SUPPORT (social)',
+		effect: '+2 SUPPORT (social), 0',
 	},
 	{
 		id: 'TheCloningVats',
@@ -629,7 +629,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'Biomachinery',
 		obsolete_technology: '',
-		effect: 'Population Boom At All Bases',
+		effect: 'Population Boom At All Bases, 0',
 	},
 	{
 		id: 'TheSelfAwareColony',
@@ -639,7 +639,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'SelfAwareMachines',
 		obsolete_technology: '',
-		effect: 'Maintenance Halved; Extra Police',
+		effect: 'Maintenance Halved; Extra Police, 0',
 	},
 	{
 		id: 'ClinicalImmortality',
@@ -649,7 +649,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'MatterEditation',
 		obsolete_technology: '',
-		effect: 'Extra Talent Every Base',
+		effect: 'Extra Talent Every Base, 0',
 	},
 	{
 		id: 'TheSpaceElevator',
@@ -659,7 +659,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'SuperTensileSolids',
 		obsolete_technology: '',
-		effect: 'Energy +100%/Orbital Cost Halved',
+		effect: 'Energy +100%/Orbital Cost Halved, 0',
 	},
 	{
 		id: 'TheSingularityInductor',
@@ -669,7 +669,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'ControlledSingularity',
 		obsolete_technology: '',
-		effect: 'Quantum Converter Every Base',
+		effect: 'Quantum Converter Every Base, 0',
 	},
 	{
 		id: 'TheBulkMatterTransmitter',
@@ -679,7 +679,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'MatterTransmission',
 		obsolete_technology: '',
-		effect: '+2 Minerals Every Base',
+		effect: '+2 Minerals Every Base, 0',
 	},
 	{
 		id: 'TheTelepathicMatrix',
@@ -689,7 +689,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'Eudaimonia',
 		obsolete_technology: '',
-		effect: 'No More Drone Riots; +2 PROBE',
+		effect: 'No More Drone Riots; +2 PROBE, 0',
 	},
 	{
 		id: 'TheVoiceOfPlanet',
@@ -699,7 +699,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'ThresholdOfTranscendence',
 		obsolete_technology: '',
-		effect: 'Begins Ascent To Transcendence',
+		effect: 'Begins Ascent To Transcendence, 0',
 	},
 	{
 		id: 'TheAscentToTranscendence',
@@ -709,7 +709,7 @@ const definitions = [
 		energy_maintenance: 0,
 		required_technology: 'ThresholdOfTranscendence',
 		obsolete_technology: '',
-		effect: 'End of Human Era',
+		effect: 'End of Human Era, 0',
 	},
 ];
 
