@@ -24,7 +24,9 @@ FacilityDef::FacilityDef(
 	const int64_t unit_morale_bonus,
 	const int64_t research_bonus,
 	const float mineral_multiplier,
-	const float psych_multiplier
+	const float psych_multiplier,
+	const int64_t population_limit,
+	const std::string& required_facility
 )
 	: m_id( id )
 	, m_name( name )
@@ -41,7 +43,9 @@ FacilityDef::FacilityDef(
 	, m_unit_morale_bonus( unit_morale_bonus )
 	, m_research_bonus( research_bonus )
 	, m_mineral_multiplier( mineral_multiplier )
-	, m_psych_multiplier( psych_multiplier ) {
+	, m_psych_multiplier( psych_multiplier )
+	, m_population_limit( population_limit )
+	, m_required_facility( required_facility ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -70,7 +74,10 @@ FacilityDef::FacilityDef(
 		m_mineral_multiplier < 0.0f ||
 		m_mineral_multiplier > MAX_MINERAL_MULTIPLIER ||
 		m_psych_multiplier < 0.0f ||
-		m_psych_multiplier > MAX_PSYCH_MULTIPLIER
+		m_psych_multiplier > MAX_PSYCH_MULTIPLIER ||
+		m_population_limit < 0 ||
+		m_population_limit > MAX_POPULATION_LIMIT ||
+		m_required_facility == m_id
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -94,6 +101,8 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_research_bonus );
 	buf.WriteFloat( def->m_mineral_multiplier );
 	buf.WriteFloat( def->m_psych_multiplier );
+	buf.WriteInt( def->m_population_limit );
+	buf.WriteString( def->m_required_facility );
 	return buf;
 }
 
@@ -114,6 +123,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto research_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto mineral_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto psych_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
+	const auto population_limit = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto required_facility = buf.GetRemaining() > 0 ? buf.ReadString() : "";
 	return new FacilityDef(
 		id,
 		name,
@@ -130,7 +141,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		unit_morale_bonus,
 		research_bonus,
 		mineral_multiplier,
-		psych_multiplier
+		psych_multiplier,
+		population_limit,
+		required_facility
 	);
 }
 
@@ -203,6 +216,14 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"psych_multiplier",
 			VALUE( gse::value::Float, , m_psych_multiplier )
+		},
+		{
+			"population_limit",
+			VALUE( gse::value::Int, , m_population_limit )
+		},
+		{
+			"required_facility",
+			VALUE( gse::value::String, , m_required_facility )
 		},
 	};
 WRAPIMPL_END_PTR()

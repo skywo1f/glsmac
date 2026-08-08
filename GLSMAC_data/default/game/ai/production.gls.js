@@ -85,6 +85,11 @@ const score_facility = (def, context) => {
 			def.mineral_multiplier * #to_float(#max(context.mineral_surplus, 1)) * 1000.0
 		) +
 		#round(def.psych_multiplier * #to_float(1000 + psych_priority * 100)) +
+		(
+			def.population_limit > context.base_size && context.needs_population_capacity
+				? 120000 + growth_priority * 1000
+				: 0
+		) +
 		def.unit_morale_bonus * morale_weight;
 };
 
@@ -132,6 +137,9 @@ const score_hurry = (def, context) => {
 		}
 		if (def.nutrient_bonus > 0 && context.needs_growth) {
 			urgency += 30000;
+		}
+		if (def.population_limit > context.base_size && context.needs_population_capacity) {
+			urgency += 100000;
 		}
 		if (def.mineral_bonus > 0) {
 			urgency += 15000;

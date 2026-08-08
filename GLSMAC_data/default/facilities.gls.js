@@ -20,6 +20,8 @@ const effects = {
 	RoboticAssemblyPlant: {mineral_multiplier: 0.5},
 	Nanoreplicator: {mineral_multiplier: 0.5},
 	QuantumConverter: {mineral_multiplier: 0.5},
+	HabComplex: {population_limit: 14},
+	HabitationDome: {population_limit: 1000000, required_facility: 'HabComplex'},
 	PressureDome: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
 	CommandCenter: {unit_morale_bonus: 2},
 	BioenhancementCenter: {unit_morale_bonus: 2},

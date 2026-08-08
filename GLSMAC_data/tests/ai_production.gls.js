@@ -27,6 +27,7 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
 		mineral_multiplier: #is_defined(mineral_multiplier) ? mineral_multiplier : 0.0,
 		psych_multiplier: #is_defined(psych_multiplier) ? psych_multiplier : 0.0,
+		population_limit: 0,
 	};
 };
 
@@ -64,6 +65,8 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 		free_support: 1,
 		base_labs: 4,
 		available_energy: energy,
+		needs_population_capacity: false,
+		base_size: 1,
 	};
 };
 

@@ -29,6 +29,7 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
 		mineral_multiplier: #is_defined(mineral_multiplier) ? mineral_multiplier : 0.0,
 		psych_multiplier: #is_defined(psych_multiplier) ? psych_multiplier : 0.0,
+		population_limit: 0,
 	};
 };
 const context = (needs_military, needs_psych) => {

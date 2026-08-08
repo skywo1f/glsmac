@@ -330,6 +330,8 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, research_bonus, def, "research_bonus", Int, 0 );
 				N_GETPROP_OPT( float, mineral_multiplier, def, "mineral_multiplier", Float, 0.0f );
 				N_GETPROP_OPT( float, psych_multiplier, def, "psych_multiplier", Float, 0.0f );
+				N_GETPROP_OPT( int64_t, population_limit, def, "population_limit", Int, 0 );
+				N_GETPROP_OPT( std::string, required_facility, def, "required_facility", String, "" );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -358,7 +360,10 @@ WRAPIMPL_BEGIN( BaseManager )
 					mineral_multiplier < 0.0f ||
 					mineral_multiplier > base::FacilityDef::MAX_MINERAL_MULTIPLIER ||
 					psych_multiplier < 0.0f ||
-					psych_multiplier > base::FacilityDef::MAX_PSYCH_MULTIPLIER
+					psych_multiplier > base::FacilityDef::MAX_PSYCH_MULTIPLIER ||
+					population_limit < 0 ||
+					population_limit > base::FacilityDef::MAX_POPULATION_LIMIT ||
+					required_facility == id
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -381,7 +386,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					unit_morale_bonus,
 					research_bonus,
 					mineral_multiplier,
-					psych_multiplier
+					psych_multiplier,
+					population_limit,
+					required_facility
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

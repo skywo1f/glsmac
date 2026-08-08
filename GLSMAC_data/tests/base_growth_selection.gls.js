@@ -77,6 +77,7 @@ let consumption_nutrients = 2;
 let unworked_tiles = [mineral_tile, nutrient_tile, occupied_tile, center_tile];
 let worked_tiles = [];
 let pops = [];
+let facilities = [];
 const base = {
 	get_owner: () => { return owner; },
 	get_size: () => { return base_size; },
@@ -86,6 +87,7 @@ const base = {
 	get_workable_tiles: () => { return unworked_tiles; },
 	get_worked_tiles: () => { return worked_tiles; },
 	get_pops: () => { return pops; },
+	get_facilities: () => { return facilities; },
 	get: (key) => {
 		test.assert(key == 'accumulated_nutrients');
 		return accumulated_nutrients;
@@ -117,6 +119,21 @@ test.assert(events[0].name == 'add_base_pop');
 test.assert(events[0].data.base == base);
 test.assert(events[0].data.type == 'WORKER');
 test.assert(events[0].data.worked_tile == nutrient_tile);
+
+events = [];
+base_size = 7;
+accumulated_nutrients = 200;
+values.f_base_process_growth(game, base);
+test.assert(events == []);
+test.assert(accumulated_nutrients == 80);
+test.assert(values.f_base_get_population_limit(base) == 7);
+
+facilities = [{population_limit: 14}];
+values.f_base_process_growth(game, base);
+test.assert(#sizeof(events) == 1);
+test.assert(events[0].name == 'add_base_pop');
+test.assert(values.f_base_get_population_limit(base) == 14);
+facilities = [];
 
 const mineral_pop = {has: (key) => { return key == 'worked_tile'; }};
 const nutrient_pop = {has: (key) => { return key == 'worked_tile'; }};

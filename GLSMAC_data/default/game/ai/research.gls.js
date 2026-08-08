@@ -72,6 +72,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		score += #round(
 			def.psych_multiplier * #to_float(1000 + psych_priority * 100)
 		);
+		if (def.population_limit > 0 && context.needs_growth) {
+			score += 10000 + growth_priority * 500;
+		}
 		score += def.unit_morale_bonus * (
 			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
 		);

@@ -240,6 +240,7 @@ bool Base::CanProduce( const production_t& production ) const {
 				def &&
 				def->m_mineral_cost > 0 &&
 				!HasFacility( production.id ) &&
+				( def->m_required_facility.empty() || HasFacility( def->m_required_facility ) ) &&
 				(
 					def->m_required_technology.empty() ||
 					( owner && owner->HasTechnology( def->m_required_technology ) )

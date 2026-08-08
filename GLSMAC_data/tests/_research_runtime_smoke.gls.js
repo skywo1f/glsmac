@@ -129,11 +129,18 @@
 					progress: 0,
 				});
 				for (gate of production_gates) {
-					if (!base.can_set_production(gate[0], gate[1])) {
+					const expected_available = gate[1] != 'HabitationDome';
+					if (base.can_set_production(gate[0], gate[1]) != expected_available) {
 						fail('full-catalog production gate stayed locked: ' + gate[1]);
 						return;
 					}
 				}
+				base.add_facility('HabComplex');
+				if (!base.can_set_production('facility', 'HabitationDome')) {
+					fail('Habitation Dome stayed locked after Hab Complex');
+					return;
+				}
+				base.remove_facility('HabComplex');
 
 				const intake_before = base.get_intake();
 				const consumption_before = base.get_consumption().ENERGY;
@@ -168,9 +175,9 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 22 ||
+					#sizeof(facility_ids) != 24 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 52 || mineral_multiplier != 1.5 ||
+					maintenance != 58 || mineral_multiplier != 1.5 ||
 					psych_bonus != 16 || psych_multiplier != 2.0 ||
 					research_multiplier != 2.5 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 4 ||

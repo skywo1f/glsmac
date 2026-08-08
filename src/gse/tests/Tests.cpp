@@ -390,7 +390,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					0,
 					0,
 					0.5f,
-					0.25f
+					0.25f,
+					14,
+					"HabComplex"
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -411,6 +413,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					facility_roundtrip->m_psych_multiplier == 0.25f,
 					"facility psych multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_population_limit == 14 &&
+					facility_roundtrip->m_required_facility == "HabComplex",
+					"facility population requirements were not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -436,6 +443,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy_facility_parsed->m_mineral_multiplier == 0.0f &&
 					legacy_facility_parsed->m_psych_multiplier == 0.0f,
 					"legacy facility definition gained a resource multiplier"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_population_limit == 0 &&
+					legacy_facility_parsed->m_required_facility.empty(),
+					"legacy facility definition gained a population requirement"
 				);
 
 				const auto make_unit_def = [](

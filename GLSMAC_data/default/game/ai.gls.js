@@ -92,7 +92,11 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
-		if (base.get_size() < 3 || intake.NUTRIENTS - consumption.NUTRIENTS <= 0) {
+		if (
+			base.get_size() < 3 ||
+			base.get_size() >= game.get('f_base_get_population_limit')(base) ||
+			intake.NUTRIENTS - consumption.NUTRIENTS <= 0
+		) {
 			growth_stalled_bases++;
 		}
 		const psych = game.get('f_economy_get_base_psych')(game, base);
@@ -269,6 +273,9 @@ const queue_production = (game, player, bases, units) => {
 			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
+			needs_population_capacity:
+				base.get_size() >= game.get('f_base_get_population_limit')(base),
+			base_size: base.get_size(),
 			can_expand: base.get_size() > 1,
 			nutrient_surplus: nutrient_surplus,
 			mineral_surplus: mineral_surplus,

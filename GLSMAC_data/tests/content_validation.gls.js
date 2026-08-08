@@ -25,8 +25,8 @@ const result = validator.validate(make_catalog());
 test.assert(result.errors == []);
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 22,
-	complete_facilities: 9,
+	facilities: 24,
+	complete_facilities: 11,
 	partial_facilities: 13,
 	base_facilities: 38,
 	projects: 33,
@@ -57,7 +57,7 @@ invalid = make_catalog();
 invalid.facility_coverage.status.RecyclingTanks = 'unknown';
 test.assert(validator.validate(invalid).errors == [
 	'facility_coverage.RecyclingTanks: must be complete or partial',
-	'facility_coverage.complete: reports 9 but contains 8',
+	'facility_coverage.complete: reports 11 but contains 10',
 ]);
 
 invalid = make_catalog();
@@ -65,6 +65,12 @@ invalid.facilities[1].data.required_technology = 'MissingTechnology';
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.required_technology: references missing technology MissingTechnology',
 	'facilities.RecyclingTanks.required_technology: does not match base-game manifest value Biogenetics',
+]);
+
+invalid = make_catalog();
+invalid.facilities[20].data.required_facility = 'MissingFacility';
+test.assert(validator.validate(invalid).errors == [
+	'facilities.HabitationDome.required_facility: references missing facility MissingFacility',
 ]);
 
 invalid = make_catalog();

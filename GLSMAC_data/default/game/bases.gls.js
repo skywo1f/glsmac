@@ -5,6 +5,7 @@ const CONTENT_CITIZENS = 3;
 const PSYCH_PER_IMPROVEMENT = 2;
 const DOCTOR_PSYCH = 2;
 const FREE_SUPPORTED_UNITS_PER_POP = 1;
+const DEFAULT_POPULATION_LIMIT = 7;
 
 const is_rioting = (base) => {
 	let talents = 0;
@@ -116,6 +117,19 @@ const get_tile_score = (base, tile, projected_size) => {
 		score = (0 - nutrient_deficit * 1000) + (is_growth ? score : 0 - score);
 	}
 	return score;
+};
+
+const get_population_limit = (base) => {
+	let limit = DEFAULT_POPULATION_LIMIT;
+	if (!#is_defined(base.get_facilities)) {
+		return limit;
+	}
+	for (facility of base.get_facilities()) {
+		if (#is_defined(facility.population_limit)) {
+			limit = #max(limit, facility.population_limit);
+		}
+	}
+	return limit;
 };
 
 const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, require_available, excluded_keys) => { // modifier 1 to find best tiles, -1 to find worst tiles
@@ -381,6 +395,14 @@ const process_growth = (game, base, allocated_psych) => {
 		return;
 	}
 	base.set('accumulated_nutrients', accumulated);
+	const population_limit = get_population_limit(base);
+	if (base.get_size() >= population_limit) {
+		base.set(
+			'accumulated_nutrients',
+			#min(accumulated, get_nutrients_for_growth(game, base))
+		);
+		return;
+	}
 	if (base.get_size() == 0) {
 		grow = true; // always grow new bases to 1
 	}
@@ -585,6 +607,7 @@ return (game) => {
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
+		game.set('f_base_get_population_limit', get_population_limit);
 		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);

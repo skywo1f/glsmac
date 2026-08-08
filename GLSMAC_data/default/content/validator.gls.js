@@ -23,6 +23,8 @@ const facility_fields = {
 	research_bonus: true,
 	mineral_multiplier: true,
 	psych_multiplier: true,
+	population_limit: true,
+	required_facility: true,
 };
 
 const facility_manifest_fields = {
@@ -421,6 +423,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_number(data, 'mineral_multiplier', path, errors, false, 0.0, 10.0);
 		validate_number(data, 'psych_multiplier', path, errors, false, 0.0, 10.0);
+		validate_int(data, 'population_limit', path, errors, false, 1, MAX_DEFINITION_VALUE);
+		validate_optional_string(data, 'required_facility', path, errors);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -444,9 +448,32 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.unit_morale_bonus) && data.unit_morale_bonus > 0) ||
 			(#is_defined(data.research_bonus) && data.research_bonus > 0) ||
 			(#is_defined(data.mineral_multiplier) && data.mineral_multiplier > 0.0) ||
-			(#is_defined(data.psych_multiplier) && data.psych_multiplier > 0.0);
+			(#is_defined(data.psych_multiplier) && data.psych_multiplier > 0.0) ||
+			(#is_defined(data.population_limit) && data.population_limit > 0);
 		if (!has_effect) {
 			add_error(errors, path, 'has no implemented gameplay effect');
+		}
+	}
+	for (entry of facilities) {
+		if (
+			#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' ||
+			#typeof(entry.data) != 'Object' ||
+			!#is_defined(entry.data.required_facility) || entry.data.required_facility == ''
+		) {
+			continue;
+		}
+		if (entry.data.required_facility == entry.id) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.required_facility',
+				'cannot reference itself'
+			);
+		} else if (!#is_defined(seen[entry.data.required_facility])) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.required_facility',
+				'references missing facility ' + entry.data.required_facility
+			);
 		}
 	}
 	return count;

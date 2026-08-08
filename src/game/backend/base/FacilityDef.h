@@ -22,6 +22,7 @@ public:
 	static constexpr float MAX_MINERAL_MULTIPLIER = 10.0f;
 	static constexpr float MAX_PSYCH_MULTIPLIER = 10.0f;
 	static constexpr int64_t MAX_UNIT_MORALE_BONUS = 10;
+	static constexpr int64_t MAX_POPULATION_LIMIT = 1000000;
 
 	FacilityDef(
 		const std::string& id,
@@ -39,7 +40,9 @@ public:
 		const int64_t unit_morale_bonus = 0,
 		const int64_t research_bonus = 0,
 		const float mineral_multiplier = 0.0f,
-		const float psych_multiplier = 0.0f
+		const float psych_multiplier = 0.0f,
+		const int64_t population_limit = 0,
+		const std::string& required_facility = ""
 	);
 	virtual ~FacilityDef() = default;
 
@@ -59,6 +62,8 @@ public:
 	const int64_t m_research_bonus;
 	const float m_mineral_multiplier;
 	const float m_psych_multiplier;
+	const int64_t m_population_limit;
+	const std::string m_required_facility;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );
