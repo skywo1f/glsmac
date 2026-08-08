@@ -129,6 +129,7 @@ const queue_production = (game, player, bases, units) => {
 	const facility_defs = game.get_bm().get_facility_defs();
 	const available_energy = game.get('f_economy_get_player')(game, player);
 	const tm = game.get_tm();
+	const all_units = game.get_um().get_units();
 	const desired_base_count = strategy.get_desired_base_count(
 		game.get_turn(),
 		tm.get_map_width(),
@@ -136,20 +137,20 @@ const queue_production = (game, player, bases, units) => {
 		#sizeof(game.get_players())
 	);
 	for (base of bases) {
-		let has_garrison = false;
+		let garrison_count = 0;
 		for (unit of base.get_tile().get_units()) {
 			if (unit.owner == player.id && unit.get_def().offense > 0) {
-				has_garrison = true;
-				break;
+				garrison_count++;
 			}
 		}
+		const required_garrison = combat.get_required_garrison(tm, base, player.id, all_units);
 		const psych = game.get('f_economy_get_base_psych')(game, base);
 		const selected = production.choose(
 			base,
 			unit_defs,
 			facility_defs,
 			{
-				needs_garrison: !has_garrison,
+				needs_garrison: garrison_count < required_garrison,
 				needs_former: former_count < #sizeof(bases),
 				needs_colony: #sizeof(bases) + colony_count < desired_base_count,
 				needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
@@ -347,6 +348,24 @@ const move_combat = (game, player, unit, all_bases) => {
 			return 100;
 		}
 	}
+	const current_base = tile.get_base();
+	if (current_base != null && current_base.get_owner().id == player.id) {
+		let defenders = 0;
+		for (other of tile.get_units()) {
+			if (other.owner == player.id && other.get_def().offense > 0) {
+				defenders++;
+			}
+		}
+		const required_garrison = combat.get_required_garrison(
+			game.get_tm(),
+			current_base,
+			player.id,
+			game.get_um().get_units()
+		);
+		if (defenders <= required_garrison) {
+			return 0;
+		}
+	}
 	for (nearby of tile.get_surrounding_tiles()) {
 		if (attack_enemy_on_tile(game, player, unit, nearby)) {
 			return 1000;
@@ -362,18 +381,6 @@ const move_combat = (game, player, unit, all_bases) => {
 					return 1000;
 				}
 			}
-		}
-	}
-	const current_base = tile.get_base();
-	if (current_base != null && current_base.get_owner().id == player.id) {
-		let defenders = 0;
-		for (other of tile.get_units()) {
-			if (other.owner == player.id && other.get_def().offense > 0) {
-				defenders++;
-			}
-		}
-		if (defenders <= 1) {
-			return 0;
 		}
 	}
 	let enemy_base = null;
