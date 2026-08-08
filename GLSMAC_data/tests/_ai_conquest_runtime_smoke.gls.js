@@ -36,9 +36,13 @@
 			}
 			const victory = game.get_victory_state();
 			let ai_occupies_base = false;
+			let promoted_ai_occupies_base = false;
 			for (unit of captured_base.get_tile().get_units()) {
 				if (unit.owner == ai_id) {
 					ai_occupies_base = true;
+					if (unit.morale == 6) {
+						promoted_ai_occupies_base = true;
+					}
 				}
 			}
 			if (
@@ -46,7 +50,8 @@
 				victory.winner != ai_id ||
 				captured_base.get_owner().id != ai_id ||
 				game.get_um().has_unit(defender_id) ||
-				!ai_occupies_base
+				!ai_occupies_base ||
+				!promoted_ai_occupies_base
 			) {
 				fail('AI conquest state is inconsistent');
 				return false;
@@ -121,7 +126,7 @@
 				owner: ai,
 				tile: staging_tile,
 				type: 'ReconRover',
-				morale: 6,
+				morale: 5,
 				health: 1.0,
 			});
 			setup_complete = true;

@@ -1167,6 +1167,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			auto* unit = m_um->GetUnitById( d.unit_id );
 			ASSERT( unit, "unit is null" );
 			unit->SetMovement( d.movement );
+			unit->SetMorale( d.morale, *d.morale_string );
 			unit->SetHealth( d.health );
 			const auto& c = unit->GetTile()->GetCoords();
 			if ( d.tile_coords.x != c.x || d.tile_coords.y != c.y ) {

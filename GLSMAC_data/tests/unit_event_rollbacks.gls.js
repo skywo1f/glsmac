@@ -16,12 +16,14 @@ const native_def = {
 	is_native: true,
 	offense: 1,
 	defense: 1,
+	morale_set: 'NATIVE',
 };
 const artillery_def = {
 	id: 'SporeLauncher',
 	is_native: true,
 	offense: 4,
 	defense: 1,
+	morale_set: 'NATIVE',
 };
 
 test.assert(
@@ -834,6 +836,10 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let advance_data = null;
 
 	const um = {
+		get_moraleset: (id) => {
+			test.assert(id == 'NATIVE');
+			return ['Hatchling', 'Larval Mass', 'Pre-Boil', 'Boil', 'Mature Boil', 'Great Boil', 'Demon Boil'];
+		},
 		has_unit: (id) => {
 			if (id == attacker.id) {
 				return active_attacker != null;
@@ -963,6 +969,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	};
 	event.applied = attack_unit.apply(event);
 	test.assert(active_attacker.movement == 1.0);
+	test.assert(active_attacker.morale == 4);
 	test.assert(despawn_requests == 3);
 	test.assert(#sizeof(animations) == 2);
 	test.assert(#is_defined(animations[1].oncomplete));
@@ -974,6 +981,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(advance_data.animations_id == 73);
 	attack_unit.rollback(event);
 	test.assert(active_attacker.movement == 2.0);
+	test.assert(active_attacker.morale == 3);
 	test.assert(active_attacker.health == 0.8);
 	test.assert(active_defender.health == 0.9);
 
@@ -986,11 +994,35 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		advance_after_combat: false,
 	};
 	event.applied = attack_unit.apply(event);
+	test.assert(active_attacker.morale == 4);
 	test.assert(despawn_requests == 4);
 	test.assert(#sizeof(animations) == 2);
 	test.assert(!#is_defined(animations[1].oncomplete));
 	test.assert(advance_requests == 1);
 	attack_unit.rollback(event);
+	test.assert(active_attacker.morale == 3);
 	test.assert(active_attacker.health == 0.8);
 	test.assert(active_defender.health == 0.9);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	active_attacker.morale = 6;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_attacker.morale == 6);
+	attack_unit.rollback(event);
+	test.assert(active_attacker.morale == 6);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	active_attacker.morale = 3;
+	event.resolved = {
+		sequence: [[false, 0.8]],
+		attacker_dead: true,
+		defender_dead: false,
+	};
+	event.applied = attack_unit.apply(event);
+	test.assert(active_defender.morale == 6);
+	attack_unit.rollback(event);
+	test.assert(active_attacker.morale == 3);
+	test.assert(active_defender.morale == 5);
 }

@@ -98,6 +98,7 @@ public:
 	void Refresh();
 
 	void SetMovement( const backend::unit::movement_t movement );
+	void SetMorale( const backend::unit::morale_t morale, const std::string& morale_string );
 	void SetHealth( const backend::unit::health_t health );
 	const bool CanMove() const;
 

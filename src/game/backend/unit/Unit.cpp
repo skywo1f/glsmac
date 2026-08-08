@@ -303,7 +303,14 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 WRAPIMPL_DYNAMIC_SETTERS( Unit )
 	WRAPIMPL_SET_PTR( "movement", Float, m_movement )
-	WRAPIMPL_SET_PTR( "morale", Float, m_morale )
+	if ( key == "morale" ) {
+		if ( value->type != gse::value::Int::GetType() ) {
+			GSE_ERROR( gse::EC.INVALID_ASSIGNMENT, "Invalid assignment value type, expected: int, got: " + value->GetTypeString() );
+		}
+		obj->m_morale = obj->m_um->GetMorale( GSE_CALL, ( (gse::value::Int*)value )->value );
+		obj->OnWrapSet( GSE_CALL, key );
+		return;
+	}
 	WRAPIMPL_SET_PTR( "health", Float, m_health )
 	WRAPIMPL_SET_PTR( "moved_this_turn", Bool, m_moved_this_turn )
 WRAPIMPL_DYNAMIC_ON_SET( Unit )

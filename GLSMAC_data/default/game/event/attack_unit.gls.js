@@ -41,8 +41,14 @@ const restore_unit = (e, backup) => {
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
 	unit.movement = backup.movement;
+	unit.morale = backup.morale;
 	unit.health = backup.health;
 	unit.moved_this_turn = backup.moved_this_turn;
+};
+
+const promote_unit = (um, unit) => {
+	const morale_set = um.get_moraleset(unit.get_def().morale_set);
+	unit.morale = #min(unit.morale + 1, #sizeof(morale_set) - 1);
 };
 
 const get_morale_multiplier = (unit) => {
@@ -292,6 +298,12 @@ return {
 		}
 		if (e.resolved.defender_dead) {
 			defender.health = 0.0;
+		}
+		if (!e.resolved.attacker_dead && e.resolved.defender_dead) {
+			promote_unit(e.game.um, attacker);
+		}
+		if (!e.resolved.defender_dead && e.resolved.attacker_dead) {
+			promote_unit(e.game.um, defender);
 		}
 		if (e.game.is_master()) {
 			if (e.resolved.attacker_dead) {

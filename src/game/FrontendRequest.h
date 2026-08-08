@@ -180,6 +180,8 @@ public:
 		struct {
 			size_t unit_id;
 			backend::unit::movement_t movement;
+			backend::unit::morale_t morale;
+			const std::string* morale_string;
 			backend::unit::health_t health;
 			struct {
 				size_t x;

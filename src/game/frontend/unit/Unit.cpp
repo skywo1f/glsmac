@@ -304,6 +304,23 @@ void Unit::SetMovement( const backend::unit::movement_t movement ) {
 	}
 }
 
+void Unit::SetMorale( const backend::unit::morale_t morale, const std::string& morale_string ) {
+	if ( morale != m_morale || morale_string != m_morale_string ) {
+		if ( m_render.is_rendered ) {
+			GetSprite()->instanced_sprite->actor->RemoveInstance( m_render.instance_id );
+			m_render.instance_id = 0;
+		}
+		m_morale = morale;
+		m_morale_string = morale_string;
+		if ( m_render.is_rendered ) {
+			auto* sprite = GetSprite();
+			m_render.instance_id = sprite->next_instance_id++;
+			sprite->instanced_sprite->actor->SetInstance( m_render.instance_id, m_render.coords );
+		}
+		m_need_refresh = true;
+	}
+}
+
 void Unit::SetHealth( const backend::unit::health_t health ) {
 	if ( health != m_health ) {
 		m_health = health;

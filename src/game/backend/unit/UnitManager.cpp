@@ -245,6 +245,8 @@ void UnitManager::PushUpdates() {
 				auto fr = FrontendRequest( FrontendRequest::FR_UNIT_UPDATE );
 				fr.data.unit_update.unit_id = unit->m_id;
 				fr.data.unit_update.movement = unit->m_movement;
+				fr.data.unit_update.morale = unit->m_morale;
+				NEW( fr.data.unit_update.morale_string, std::string, unit->GetMoraleString() );
 				fr.data.unit_update.health = unit->m_health;
 				const auto* tile = unit->GetTile();
 				fr.data.unit_update.tile_coords = {
