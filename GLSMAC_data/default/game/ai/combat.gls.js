@@ -64,6 +64,59 @@ const get_required_garrison = (tm, base, player_id, units) => {
 	return result;
 };
 
+const get_garrison_count = (base, player_id) => {
+	let result = 0;
+	for (unit of base.get_tile().get_units()) {
+		if (unit.owner == player_id && unit.get_def().offense > 0) {
+			result++;
+		}
+	}
+	return result;
+};
+
+const get_reinforcement_score = (tm, unit, base, player_id, units, reservations) => {
+	const tile = base.get_tile();
+	if (
+		base.get_owner().id != player_id ||
+		(unit.is_land && tile.is_water) ||
+		(unit.is_water && tile.is_land)
+	) {
+		return null;
+	}
+	const key = #to_string(base.id);
+	const reserved = #is_defined(reservations[key]) ? reservations[key] : 0;
+	const required = get_required_garrison(tm, base, player_id, units);
+	const shortage = required - get_garrison_count(base, player_id) - reserved;
+	if (shortage <= 0) {
+		return null;
+	}
+	return shortage * 10000 + required * 1000 - tm.get_distance(unit.get_tile(), tile) * 100;
+};
+
+const choose_reinforcement_target = (tm, unit, player_id, bases, units, reservations) => {
+	let best = null;
+	let best_score = 0;
+	for (base of bases) {
+		const score = get_reinforcement_score(tm, unit, base, player_id, units, reservations);
+		if (score == null) {
+			continue;
+		}
+		const tile = base.get_tile();
+		if (
+			best == null ||
+			score > best_score ||
+			(
+				score == best_score &&
+				(tile.y < best.get_tile().y || (tile.y == best.get_tile().y && tile.x < best.get_tile().x))
+			)
+		) {
+			best = base;
+			best_score = score;
+		}
+	}
+	return best;
+};
+
 const get_attack_score = (attacker, defender) => {
 	const powers = combat_rules.get_attack_powers(attacker, defender);
 	const total = powers.attack + powers.defence;
@@ -170,6 +223,9 @@ return {
 	find_nearest_friendly_base: find_nearest_friendly_base,
 	get_repair_destination: get_repair_destination,
 	get_required_garrison: get_required_garrison,
+	get_garrison_count: get_garrison_count,
+	get_reinforcement_score: get_reinforcement_score,
+	choose_reinforcement_target: choose_reinforcement_target,
 	get_attack_score: get_attack_score,
 	choose_attack_target: choose_attack_target,
 	get_assault_score: get_assault_score,

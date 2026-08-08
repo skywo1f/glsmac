@@ -2,6 +2,7 @@ const combat = #include('../default/game/ai/combat');
 
 const player_id = 1;
 const other_player_id = 2;
+let next_base_id = 1;
 
 const make_tile = (x, y) => {
 	let base = null;
@@ -24,6 +25,7 @@ const make_tile = (x, y) => {
 const make_base = (owner_id, tile, size) => {
 	const base_size = #is_defined(size) ? size : 1;
 	const base = {
+		id: next_base_id++,
 		get_owner: () => { return {id: owner_id}; },
 		get_tile: () => { return tile; },
 		get_size: () => { return base_size; },
@@ -107,6 +109,7 @@ test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy])
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy, far_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [friendly, colony, far_enemy]) == 1);
+test.assert(combat.get_garrison_count(home_base, player_id) == 0);
 
 const attack_origin = make_tile(10, 10);
 const north_target_tile = make_tile(10, 9);
@@ -172,4 +175,49 @@ water_base_tile.is_water = true;
 const water_base = make_base(other_player_id, water_base_tile, 10);
 test.assert(
 	combat.choose_assault_target(tm, assault_attacker, player_id, [water_base], [assault_attacker]) == null
+);
+
+const reinforcement_origin = make_tile(40, 40);
+const reinforcement_unit = make_combat_unit(player_id, reinforcement_origin, 2, 1, 1.0, 2);
+const close_base_tile = make_tile(42, 40);
+const threatened_base_tile = make_tile(45, 40);
+const close_base = make_base(player_id, close_base_tile);
+const threatened_base = make_base(player_id, threatened_base_tile);
+const nearby_threat_tile = make_tile(46, 40);
+const nearby_threat = make_combat_unit(other_player_id, nearby_threat_tile, 1, 1, 1.0, 2);
+const reinforcement_units = [reinforcement_unit, nearby_threat];
+test.assert(
+	combat.choose_reinforcement_target(
+		tm,
+		reinforcement_unit,
+		player_id,
+		[close_base, threatened_base],
+		reinforcement_units,
+		{}
+	) == threatened_base
+);
+let reservations = {};
+const threatened_base_key = #to_string(threatened_base.id);
+reservations[threatened_base_key] = 2;
+test.assert(
+	combat.choose_reinforcement_target(
+		tm,
+		reinforcement_unit,
+		player_id,
+		[close_base, threatened_base],
+		reinforcement_units,
+		reservations
+	) == close_base
+);
+const close_defender = make_combat_unit(player_id, close_base_tile, 1, 1, 1.0, 2);
+test.assert(combat.get_garrison_count(close_base, player_id) == 1);
+test.assert(
+	combat.choose_reinforcement_target(
+		tm,
+		reinforcement_unit,
+		player_id,
+		[close_base],
+		[reinforcement_unit, close_defender],
+		{}
+	) == null
 );

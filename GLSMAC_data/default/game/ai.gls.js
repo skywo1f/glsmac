@@ -149,13 +149,8 @@ const queue_production = (game, player, bases, units) => {
 		#sizeof(game.get_players())
 	);
 	for (base of bases) {
-		let garrison_count = 0;
+		const garrison_count = combat.get_garrison_count(base, player.id);
 		let supported_units = 0;
-		for (unit of base.get_tile().get_units()) {
-			if (unit.owner == player.id && unit.get_def().offense > 0) {
-				garrison_count++;
-			}
-		}
 		for (unit of units) {
 			if (unit.home_base_id == base.id) {
 				supported_units++;
@@ -386,7 +381,7 @@ const move_former = (game, player, unit, all_bases) => {
 	return false;
 };
 
-const move_combat = (game, player, unit, all_bases, all_units) => {
+const move_combat = (game, player, unit, all_bases, all_units, reinforcement_assignments) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return 0;
@@ -419,12 +414,7 @@ const move_combat = (game, player, unit, all_bases, all_units) => {
 	}
 	const current_base = tile.get_base();
 	if (current_base != null && current_base.get_owner().id == player.id) {
-		let defenders = 0;
-		for (other of tile.get_units()) {
-			if (other.owner == player.id && other.get_def().offense > 0) {
-				defenders++;
-			}
-		}
+		const defenders = combat.get_garrison_count(current_base, player.id);
 		const required_garrison = combat.get_required_garrison(
 			game.get_tm(),
 			current_base,
@@ -450,6 +440,72 @@ const move_combat = (game, player, unit, all_bases, all_units) => {
 		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles)) {
 			return 1000;
 		}
+	}
+	const unit_key = #to_string(unit.id);
+	let reinforcement_base = null;
+	if (#is_defined(reinforcement_assignments[unit_key])) {
+		for (base of all_bases) {
+			if (
+				base.id == reinforcement_assignments[unit_key] &&
+				base.get_owner().id == player.id &&
+				base.get_tile() != tile
+			) {
+				reinforcement_base = base;
+				break;
+			}
+		}
+		if (reinforcement_base == null) {
+			reinforcement_assignments[unit_key] = #undefined;
+		}
+	}
+	if (reinforcement_base == null) {
+		let reservations = {};
+		for (other of all_units) {
+			if (other.owner != player.id) {
+				continue;
+			}
+			const other_key = #to_string(other.id);
+			if (#is_defined(reinforcement_assignments[other_key])) {
+				const base_key = #to_string(reinforcement_assignments[other_key]);
+				reservations[base_key] = #is_defined(reservations[base_key])
+					? reservations[base_key] + 1
+					: 1;
+			}
+		}
+		reinforcement_base = combat.choose_reinforcement_target(
+			game.get_tm(),
+			unit,
+			player.id,
+			all_bases,
+			all_units,
+			reservations
+		);
+		if (reinforcement_base != null) {
+			reinforcement_assignments[unit_key] = reinforcement_base.id;
+		}
+	}
+	if (reinforcement_base != null) {
+		const destination = reinforcement_base.get_tile();
+		const current_distance = game.get_tm().get_distance(tile, destination);
+		let reinforcement_step = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
+			if (!can_enter(unit, candidate)) {
+				return 0 - 100000;
+			}
+			return 10000 - game.get_tm().get_distance(candidate, destination) * 100;
+		});
+		if (
+			reinforcement_step == null ||
+			game.get_tm().get_distance(reinforcement_step, destination) >= current_distance
+		) {
+			reinforcement_step = pathfinding.find_path_step(game.get_tm(), unit, destination, (source, candidate) => {
+				return can_enter(unit, candidate, source);
+			});
+		}
+		if (reinforcement_step != null && can_enter(unit, reinforcement_step)) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: reinforcement_step});
+			return 100;
+		}
+		reinforcement_assignments[unit_key] = #undefined;
 	}
 	const enemy_base = combat.choose_assault_target(
 		game.get_tm(),
@@ -497,6 +553,7 @@ const play_turn = (game, player, done) => {
 
 	let steps = 0;
 	let action_attempts = {};
+	let reinforcement_assignments = {};
 	const play_next_action = () => {
 		if (!game.is_master() || game.is_game_over() || game.is_turn_complete(player.id)) {
 			done();
@@ -548,7 +605,14 @@ const play_turn = (game, player, done) => {
 					continue;
 				}
 				if (unit.get_def().offense > 0) {
-					const combat_delay = move_combat(game, player, unit, all_bases, all_units);
+					const combat_delay = move_combat(
+						game,
+						player,
+						unit,
+						all_bases,
+						all_units,
+						reinforcement_assignments
+					);
 					if (combat_delay > 0) {
 						action_started = true;
 						action_delay = combat_delay;

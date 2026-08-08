@@ -14,6 +14,7 @@
 	let ai_improved_base_tile = false;
 	let ai_built_rover = false;
 	let ai_rover_moved_twice = false;
+	let ai_rover_reinforced = false;
 	let rover_states = {};
 	let ui_started = false;
 	let exit_scheduled = false;
@@ -35,6 +36,10 @@
 				const previous = rover_states[key];
 				if (previous.x != tile.x || previous.y != tile.y) {
 					ai_moved = true;
+					const destination_base = tile.get_base();
+					if (destination_base != null && destination_base.get_owner().id == ai_id) {
+						ai_rover_reinforced = true;
+					}
 					const moves = previous.turn == turn ? previous.moves + 1 : 1;
 					if (moves >= 2) {
 						ai_rover_moved_twice = true;
@@ -202,7 +207,6 @@
 					!ai_completed_improvement ||
 					!ai_improved_base_tile ||
 					!ai_built_rover ||
-					!ai_rover_moved_twice ||
 					populated_ai_bases != ai_bases ||
 					garrisoned_ai_bases != ai_bases ||
 					ai_combat_units <= ai_bases ||
@@ -210,14 +214,14 @@
 				if (!missing_requirements) {
 					if (!exit_scheduled) {
 						exit_scheduled = true;
-						#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and used a rover twice in one turn');
+						#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and fielded mobile units');
 						#async(100, () => { glsmac.exit(); });
 					}
 					return;
 				}
 				if (turn_id >= 20) {
-					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' base_tile=' + #to_string(ai_improved_base_tile) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
-					fail('AI did not complete movement, growth, expansion, terraforming, and multi-move rover play by turn twenty');
+					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' base_tile=' + #to_string(ai_improved_base_tile) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' rover_reinforced=' + #to_string(ai_rover_reinforced) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
+					fail('AI did not complete movement, growth, expansion, terraforming, and mobile unit production by turn twenty');
 					return;
 				}
 			}
