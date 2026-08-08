@@ -1,5 +1,6 @@
 const define_economy = #include('../default/game/economy');
 const process_player_economy = #include('../default/game/event/process_player_economy');
+const settle_player_economy = #include('../default/game/event/settle_player_economy');
 const hurry_base_production = #include('../default/game/event/hurry_base_production');
 const liquidate_base_facility = #include('../default/game/event/liquidate_base_facility');
 
@@ -83,10 +84,18 @@ test.assert(values.f_economy_get_hurry_cost(hurry_base) == 0);
 
 callbacks.turn({});
 test.assert(#sizeof(events) == 2);
-test.assert(events[0].name == 'process_player_economy');
-test.assert(events[0].data.player == player);
-test.assert(events[0].data.energy_credits == 6);
-test.assert(events[1].data.energy_credits == 0);
+test.assert(events[0].name == 'settle_player_economy');
+test.assert(events[1].name == 'settle_player_economy');
+for (let settlement_index = 0; settlement_index < 2; settlement_index++) {
+	const settlement = {caller: 0, game: game, data: events[settlement_index].data};
+	test.assert(!#is_defined(settle_player_economy.validate(settlement)));
+	settle_player_economy.apply(settlement);
+}
+test.assert(#sizeof(events) == 4);
+test.assert(events[2].name == 'process_player_economy');
+test.assert(events[2].data.player == player);
+test.assert(events[2].data.energy_credits == 6);
+test.assert(events[3].data.energy_credits == 0);
 
 let trigger_count = 0;
 const event_game = {trigger: (name, data) => {
@@ -180,23 +189,43 @@ poor_game = {
 	}; },
 	get_players: () => { return [poor_player]; },
 	is_master: () => { return true; },
+	trigger: (name, data) => {
+		test.assert(name == 'economy_updated' && data.player == poor_player);
+	},
 	event: (name, data) => {
 		poor_events :+{name: name, data: data};
-		if (name == 'liquidate_base_facility') {
-			const liquidation = {caller: 0, game: poor_game, data: data};
-			test.assert(!#is_defined(liquidate_base_facility.validate(liquidation)));
-			liquidate_base_facility.apply(liquidation);
-		}
 	},
 };
 define_economy(poor_game);
 poor_callbacks.start({});
 poor_callbacks.turn({});
+
+let poor_event_index = 0;
+while (poor_event_index < #sizeof(poor_events)) {
+	const queued = poor_events[poor_event_index];
+	const queued_event = {caller: 0, game: poor_game, data: queued.data};
+	if (queued.name == 'settle_player_economy') {
+		test.assert(!#is_defined(settle_player_economy.validate(queued_event)));
+		settle_player_economy.apply(queued_event);
+	} else if (queued.name == 'liquidate_base_facility') {
+		test.assert(!#is_defined(liquidate_base_facility.validate(queued_event)));
+		liquidate_base_facility.apply(queued_event);
+	} else if (queued.name == 'process_player_economy') {
+		test.assert(!#is_defined(process_player_economy.validate(queued_event)));
+		process_player_economy.apply(queued_event);
+	} else {
+		throw Error('Unexpected queued economy event: ' + queued.name);
+	}
+	poor_event_index++;
+}
+
 test.assert(!poor_has_node);
-test.assert(#sizeof(poor_events) == 2);
-test.assert(poor_events[0].name == 'liquidate_base_facility');
-test.assert(poor_events[1].name == 'process_player_economy');
-test.assert(poor_events[1].data.energy_credits == 0);
+test.assert(#sizeof(poor_events) == 4);
+test.assert(poor_events[0].name == 'settle_player_economy');
+test.assert(poor_events[1].name == 'liquidate_base_facility');
+test.assert(poor_events[2].name == 'settle_player_economy');
+test.assert(poor_events[3].name == 'process_player_economy');
+test.assert(poor_events[3].data.energy_credits == 0);
 
 poor_has_node = true;
 let liquidation = {

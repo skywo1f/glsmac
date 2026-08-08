@@ -1,5 +1,4 @@
 const PSYCH_ALLOCATION = 0.2;
-const MAX_ENERGY_CREDITS = 1000000000;
 
 const get_base_allocation = (game, base) => {
 	const intake = base.get_intake();
@@ -107,34 +106,9 @@ return (game) => {
 				return;
 			}
 			for (player of game.get_players()) {
-				let economy = get_player_economy(game, player);
-				let liquidation_count = 0;
-				while (player.energy_credits + economy < 0) {
-					const candidate = get_liquidation_candidate(game, player);
-					if (candidate == null) {
-						break;
-					}
-					game.event('liquidate_base_facility', {
-						base: candidate.base,
-						facility_id: candidate.facility.id,
-					});
-					const updated_economy = get_player_economy(game, player);
-					if (updated_economy <= economy) {
-						throw Error('Facility liquidation did not reduce faction upkeep');
-					}
-					economy = updated_economy;
-					liquidation_count++;
-					if (liquidation_count > 1024) {
-						throw Error('Facility liquidation limit exceeded');
-					}
-				}
-				const updated = #min(
-					MAX_ENERGY_CREDITS,
-					#max(0, player.energy_credits + economy)
-				);
-				game.event('process_player_economy', {
+				game.event('settle_player_economy', {
 					player: player,
-					energy_credits: updated,
+					liquidation_count: 0,
 				});
 			}
 		});
