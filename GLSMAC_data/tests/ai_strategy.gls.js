@@ -20,6 +20,12 @@ test.assert(strategy.get_gap_priority(0, 1) == 75);
 test.assert(strategy.get_gap_priority(0, 2) == 100);
 test.assert(strategy.get_pressure_priority(1, 4) == 63);
 test.assert(strategy.get_pressure_priority(0, 4) == 0);
+test.assert(strategy.get_rival_pressure_priority(10.0, 0.0) == 0);
+test.assert(strategy.get_rival_pressure_priority(10.0, 10.0) == 0);
+test.assert(strategy.get_rival_pressure_priority(10.0, 11.0) == 0);
+test.assert(strategy.get_rival_pressure_priority(10.0, 12.0) == 59);
+test.assert(strategy.get_rival_pressure_priority(10.0, 20.0) == 75);
+test.assert(strategy.get_rival_pressure_priority(0.0, 20.0) == 100);
 
 const priorities = (
 	bases,
@@ -30,7 +36,9 @@ const priorities = (
 	underdefended,
 	stalled,
 	unstable,
-	income
+	income,
+	own_power,
+	rival_power
 ) => {
 	return strategy.get_priorities({
 		base_count: bases,
@@ -42,6 +50,8 @@ const priorities = (
 		growth_stalled_bases: stalled,
 		unstable_bases: unstable,
 		energy_income: income,
+		own_combat_power: #is_defined(own_power) ? own_power : 0.0,
+		strongest_rival_power: #is_defined(rival_power) ? rival_power : 0.0,
 	});
 };
 
@@ -67,3 +77,13 @@ test.assert(reserved_expansion.development == 100);
 
 const broke_but_stable = priorities(2, 2, 0, 2, 4, 0, 0, 0, 0);
 test.assert(broke_but_stable.development == 75);
+
+const outmatched = priorities(2, 2, 0, 2, 4, 0, 0, 0, 5, 10.0, 20.0);
+test.assert(outmatched.rival_pressure == 75);
+test.assert(outmatched.military == 75);
+test.assert(outmatched.development == 82);
+
+const dominant = priorities(2, 2, 0, 2, 4, 0, 0, 0, 5, 20.0, 10.0);
+test.assert(dominant.rival_pressure == 0);
+test.assert(dominant.military == 0);
+test.assert(dominant.development == 100);

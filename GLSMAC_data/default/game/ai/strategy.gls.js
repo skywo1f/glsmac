@@ -1,6 +1,7 @@
 const TILES_PER_BASE = 24;
 const TURNS_PER_EXPANSION = 6;
 const UNITS_PER_BASE = 2;
+const RIVAL_POWER_MARGIN = 1.1;
 
 const get_gap_priority = (current, target) => {
 	const missing = #max(target - current, 0);
@@ -16,6 +17,19 @@ const get_pressure_priority = (affected, total) => {
 		50 + #ceil(
 			#to_float(affected * 50) /
 			#to_float(total)
+		)
+	);
+};
+
+const get_rival_pressure_priority = (own_power, rival_power) => {
+	if (rival_power <= own_power * RIVAL_POWER_MARGIN || rival_power <= 0.0) {
+		return 0;
+	}
+	return #min(
+		100,
+		50 + #ceil(
+			(rival_power - own_power) * 50.0 /
+			rival_power
 		)
 	);
 };
@@ -50,12 +64,22 @@ const get_priorities = (context) => {
 		#max(context.underdefended_bases, 0),
 		bases
 	);
+	const own_power = #is_defined(context.own_combat_power)
+		? #max(context.own_combat_power, 0.0)
+		: 0.0;
+	const rival_power = #is_defined(context.strongest_rival_power)
+		? #max(context.strongest_rival_power, 0.0)
+		: 0.0;
+	const rival_pressure = get_rival_pressure_priority(own_power, rival_power);
 	const military = #max(
-		defense,
-		get_gap_priority(
-			#max(context.combat_count, 0),
-			bases * UNITS_PER_BASE
-		)
+		#max(
+			defense,
+			get_gap_priority(
+				#max(context.combat_count, 0),
+				bases * UNITS_PER_BASE
+			)
+		),
+		rival_pressure
 	);
 	const growth = get_pressure_priority(
 		#max(context.growth_stalled_bases, 0),
@@ -81,6 +105,7 @@ const get_priorities = (context) => {
 		expansion: expansion,
 		terraforming: terraforming,
 		defense: defense,
+		rival_pressure: rival_pressure,
 		military: military,
 		growth: growth,
 		psych: psych,
@@ -92,5 +117,6 @@ return {
 	get_desired_base_count: get_desired_base_count,
 	get_gap_priority: get_gap_priority,
 	get_pressure_priority: get_pressure_priority,
+	get_rival_pressure_priority: get_rival_pressure_priority,
 	get_priorities: get_priorities,
 };

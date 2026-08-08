@@ -77,6 +77,17 @@ const get_garrison_count = (base, player_id) => {
 	return result;
 };
 
+const get_force_power = (unit) => {
+	const def = unit.get_def();
+	if (def.offense <= 0 || unit.health <= 0.0) {
+		return 0.0;
+	}
+	return (
+		#to_float(def.offense * 2 + def.defense) +
+		def.movement_per_turn * 0.5
+	) * combat_rules.get_morale_multiplier(unit) * unit.health;
+};
+
 const get_reinforcement_score = (tm, unit, base, player_id, units, reservations) => {
 	const tile = base.get_tile();
 	if (
@@ -267,6 +278,7 @@ return {
 	get_repair_destination: get_repair_destination,
 	get_required_garrison: get_required_garrison,
 	get_garrison_count: get_garrison_count,
+	get_force_power: get_force_power,
 	get_reinforcement_score: get_reinforcement_score,
 	choose_reinforcement_target: choose_reinforcement_target,
 	get_attack_score: get_attack_score,

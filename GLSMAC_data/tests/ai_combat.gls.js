@@ -86,6 +86,7 @@ const make_combat_unit = (owner_id, tile, offense, defense, health, morale) => {
 				is_native: false,
 				offense: offense,
 				defense: unit_defense,
+				movement_per_turn: 1.0,
 			};
 		},
 	};
@@ -103,6 +104,12 @@ const second_enemy = make_combat_unit(other_player_id, second_enemy_tile, 2);
 const far_enemy = make_combat_unit(other_player_id, far_enemy_tile, 2);
 const friendly = make_combat_unit(player_id, near_enemy_tile, 2);
 const colony = make_combat_unit(other_player_id, near_enemy_tile, 0);
+
+test.assert(combat.get_force_power(second_enemy) == 5.5);
+second_enemy.health = 0.5;
+test.assert(combat.get_force_power(second_enemy) == 2.75);
+second_enemy.health = 1.0;
+test.assert(combat.get_force_power(colony) == 0.0);
 
 test.assert(combat.get_required_garrison(tm, home_base, player_id, []) == 1);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy]) == 2);

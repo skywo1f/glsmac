@@ -175,6 +175,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( AI_OPPONENT_STRATEGY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-opponent-strategy-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${AI_OPPONENT_STRATEGY_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME ai_opponent_strategy_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${AI_OPPONENT_STRATEGY_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_ai_opponent_strategy_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( ai_opponent_strategy_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "AI_OPPONENT_STRATEGY_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "AI_OPPONENT_STRATEGY_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( AI_CONQUEST_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-conquest-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${AI_CONQUEST_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME ai_conquest_runtime_smoke COMMAND
