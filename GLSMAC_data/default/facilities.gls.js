@@ -1,3 +1,5 @@
+const manifest = #include('content/base_facilities');
+
 const facilities = [
 	{
 		id: 'RecyclingTanks',
@@ -106,6 +108,7 @@ const facilities = [
 
 return {
 	definitions: facilities,
+	manifest: manifest,
 
 	define: (game) => {
 		for (facility of facilities) {

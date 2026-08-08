@@ -23,6 +23,17 @@ const facility_fields = {
 	research_bonus: true,
 };
 
+const facility_manifest_fields = {
+	id: true,
+	name: true,
+	kind: true,
+	mineral_cost: true,
+	energy_maintenance: true,
+	required_technology: true,
+	obsolete_technology: true,
+	effect: true,
+};
+
 const unit_fields = {
 	name: true,
 	mineral_cost: true,
@@ -336,6 +347,100 @@ const validate_facilities = (facilities, technologies, errors) => {
 	return count;
 };
 
+const validate_facility_manifest = (manifest, technologies, errors) => {
+	let facility_count = 0;
+	let project_count = 0;
+	let definitions = {};
+	if (#typeof(manifest) != 'Array') {
+		add_error(errors, 'facility_manifest', 'must be an array');
+		return {
+			facility_count: facility_count,
+			project_count: project_count,
+			definitions: definitions,
+		};
+	}
+	for (let i = 0; i < #sizeof(manifest); i++) {
+		const entry = manifest[i];
+		const index_path = 'facility_manifest[' + #to_string(i) + ']';
+		if (#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' || entry.id == '') {
+			add_error(errors, index_path, 'must have a non-empty id');
+			continue;
+		}
+		const path = 'facility_manifest.' + entry.id;
+		if (#is_defined(definitions[entry.id])) {
+			add_error(errors, path, 'duplicates catalog id ' + entry.id);
+			continue;
+		}
+		definitions[entry.id] = entry;
+		validate_known_fields(entry, facility_manifest_fields, path, errors);
+		validate_string(entry, 'name', path, errors, true);
+		validate_string(entry, 'kind', path, errors, true);
+		if (#is_defined(entry.kind) && entry.kind == 'facility') {
+			facility_count++;
+		} else if (#is_defined(entry.kind) && entry.kind == 'project') {
+			project_count++;
+		} else if (#is_defined(entry.kind)) {
+			add_error(errors, path + '.kind', 'must be facility or project');
+		}
+		validate_int(entry, 'mineral_cost', path, errors, true, 0, MAX_DEFINITION_VALUE);
+		validate_int(entry, 'energy_maintenance', path, errors, true, 0, MAX_DEFINITION_VALUE);
+		validate_optional_string(entry, 'required_technology', path, errors);
+		validate_optional_string(entry, 'obsolete_technology', path, errors);
+		validate_string(entry, 'effect', path, errors, true);
+		for (technology_field of ['required_technology', 'obsolete_technology']) {
+			if (
+				#is_defined(entry[technology_field]) &&
+				entry[technology_field] != '' &&
+				!#is_defined(technologies[entry[technology_field]])
+			) {
+				add_error(
+					errors,
+					path + '.' + technology_field,
+					'references missing technology ' + entry[technology_field]
+				);
+			}
+		}
+	}
+	return {
+		facility_count: facility_count,
+		project_count: project_count,
+		definitions: definitions,
+	};
+};
+
+const validate_facility_implementations = (facilities, manifest, errors) => {
+	if (#typeof(facilities) != 'Array') {
+		return;
+	}
+	for (entry of facilities) {
+		if (#typeof(entry) != 'Object' || #typeof(entry.id) != 'String') {
+			continue;
+		}
+		const path = 'facilities.' + entry.id;
+		if (!#is_defined(manifest[entry.id])) {
+			add_error(errors, path, 'is not present in the base-game facility manifest');
+			continue;
+		}
+		if (manifest[entry.id].kind != 'facility') {
+			add_error(errors, path, 'cannot implement a secret project as a base facility');
+			continue;
+		}
+		if (#typeof(entry.data) != 'Object') {
+			continue;
+		}
+		const data = entry.data;
+		for (field of ['name', 'mineral_cost', 'energy_maintenance', 'required_technology']) {
+			if (data[field] != manifest[entry.id][field]) {
+				add_error(
+					errors,
+					path + '.' + field,
+					'does not match base-game manifest value ' + #to_string(manifest[entry.id][field])
+				);
+			}
+		}
+	}
+};
+
 const validate_moralesets = (moralesets, errors) => {
 	let count = 0;
 	let ids = {};
@@ -517,9 +622,19 @@ const validate = (catalog) => {
 		errors
 	);
 	const morale_result = validate_moralesets(catalog.moralesets, errors);
+	const facility_manifest_result = validate_facility_manifest(
+		catalog.facility_manifest,
+		catalog.technologies.definitions,
+		errors
+	);
 	const facility_count = validate_facilities(
 		catalog.facilities,
 		catalog.technologies.definitions,
+		errors
+	);
+	validate_facility_implementations(
+		catalog.facilities,
+		facility_manifest_result.definitions,
 		errors
 	);
 	const unit_count = validate_units(
@@ -538,6 +653,8 @@ const validate = (catalog) => {
 		counts: {
 			technologies: technology_count,
 			facilities: facility_count,
+			base_facilities: facility_manifest_result.facility_count,
+			projects: facility_manifest_result.project_count,
 			units: unit_count,
 			moralesets: morale_result.count,
 			factions: faction_count,

@@ -19,6 +19,7 @@ return (glsmac) => {
 				order: technologies.order,
 			},
 			facilities: facilities.definitions,
+			facility_manifest: facilities.manifest,
 			units: units.definitions,
 			moralesets: units.moralesets,
 			factions: factions.definitions,
@@ -34,7 +35,9 @@ return (glsmac) => {
 		}
 		#print(
 			'CONTENT_VALIDATION_PASS: technologies=' + #to_string(result.counts.technologies) +
-			' facilities=' + #to_string(result.counts.facilities) +
+			' facilities=' + #to_string(result.counts.facilities) + '/' +
+				#to_string(result.counts.base_facilities) +
+			' projects=0/' + #to_string(result.counts.projects) +
 			' units=' + #to_string(result.counts.units) +
 			' moralesets=' + #to_string(result.counts.moralesets) +
 			' factions=' + #to_string(result.counts.factions)

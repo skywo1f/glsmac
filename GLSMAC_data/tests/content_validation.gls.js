@@ -11,6 +11,7 @@ const make_catalog = () => {
 			order: #clone(technologies.order),
 		},
 		facilities: #clone(facilities.definitions),
+		facility_manifest: #clone(facilities.manifest),
 		units: #clone(units.definitions),
 		moralesets: #clone(units.moralesets),
 		factions: #clone(factions.definitions),
@@ -23,6 +24,8 @@ test.assert(result.errors == []);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 8,
+	base_facilities: 36,
+	projects: 35,
 	units: 10,
 	moralesets: 2,
 	factions: 14,
@@ -44,6 +47,13 @@ invalid = make_catalog();
 invalid.facilities[0].data.required_technology = 'MissingTechnology';
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.required_technology: references missing technology MissingTechnology',
+	'facilities.RecyclingTanks.required_technology: does not match base-game manifest value Biogenetics',
+]);
+
+invalid = make_catalog();
+invalid.facilities[0].data.mineral_cost = 41;
+test.assert(validator.validate(invalid).errors == [
+	'facilities.RecyclingTanks.mineral_cost: does not match base-game manifest value 40',
 ]);
 
 invalid = make_catalog();
@@ -87,6 +97,7 @@ const cyclic = validator.validate({
 		order: ['Alpha', 'Beta'],
 	},
 	facilities: [],
+	facility_manifest: [],
 	units: [],
 	moralesets: [],
 	factions: [],
