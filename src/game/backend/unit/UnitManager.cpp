@@ -24,6 +24,8 @@
 #include "gse/value/Array.h"
 #include "game/backend/map/tile/Tile.h"
 #include "game/backend/map/tile/TileManager.h"
+#include "game/backend/base/Base.h"
+#include "game/backend/base/BaseManager.h"
 #include "util/String.h"
 
 namespace game {
@@ -569,6 +571,15 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( std::string, terraforming_name, obj, "terraforming", String, "none" );
 				N_GETPROP_OPT( int64_t, terraforming_turns_remaining, obj, "terraforming_turns_remaining", Int, 0 );
 				N_GETPROP_OPT( size_t, home_base_id, obj, "home_base_id", Int, 0 );
+				if ( home_base_id > 0 && m_game->IsRunning() ) {
+					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
+					if ( !home_base ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Unit home base does not exist" );
+					}
+					if ( home_base->m_owner != owner->GetSlot() ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Unit home base belongs to another player" );
+					}
+				}
 				const auto terraforming = map::tile::Tile::GetTerraformingFromString( terraforming_name );
 				if (
 					( terraforming == map::tile::TERRAFORMING_NONE && util::String::GetLowerCase( terraforming_name ) != "none" ) ||
@@ -736,6 +747,24 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 	}
 	Unit::SetNextId( next_unit_id );
 	Log( "Restored next unit id: " + std::to_string( Unit::GetNextId() ) );
+}
+
+void UnitManager::ValidateHomeBases() const {
+	const auto validate = [ this ]( const Unit* unit ) {
+		if ( unit->m_home_base_id == 0 ) {
+			return;
+		}
+		auto* const home_base = m_game->GetBM()->GetBase( unit->m_home_base_id );
+		if ( !home_base || home_base->m_owner != unit->m_owner ) {
+			THROW( "unit #" + std::to_string( unit->m_id ) + " has an invalid home base" );
+		}
+	};
+	for ( const auto& it : m_units ) {
+		validate( it.second );
+	}
+	for ( const auto* unit : m_unprocessed_units ) {
+		validate( unit );
+	}
 }
 
 void UnitManager::QueueUnitUpdate( const Unit* unit, const unit_update_op_t op ) {

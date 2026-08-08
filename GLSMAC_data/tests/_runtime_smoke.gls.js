@@ -140,6 +140,27 @@
 
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
+				let invalid_home_base_rejected = false;
+				try {
+					um.spawn_unit({
+						def: 'Former',
+						owner: game.get_player(),
+						tile: base.get_tile(),
+						morale: 1,
+						health: 1.0,
+						home_base_id: base.id + 1000000,
+					});
+				}
+				catch {
+					: (e) => {
+						invalid_home_base_rejected = true;
+					}
+				}
+				if (!invalid_home_base_rejected) {
+					#print('RUNTIME_SMOKE_FAIL: invalid unit home base was accepted');
+					glsmac.exit();
+					return;
+				}
 				smoke_unit.health = 0.5;
 				const research_state = game.get_player().get_research_state();
 				const rover = um.get_unit_def('ReconRover');

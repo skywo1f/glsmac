@@ -1594,6 +1594,7 @@ void Game::InitComplete( GSE_CALLABLE ) {
 	m_game_state = GS_RUNNING;
 	m_um->ProcessUnprocessed( GSE_CALL );
 	m_bm->ProcessUnprocessed( GSE_CALL );
+	m_um->ValidateHomeBases();
 	if ( m_state->m_connection ) {
 		m_state->m_connection->IfServer(
 			[]( connection::Server* connection ) -> void {

@@ -53,6 +53,7 @@ public:
 
 	void Serialize( types::Buffer& buf ) const;
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
+	void ValidateHomeBases() const;
 
 public:
 	// TODO: limit access
