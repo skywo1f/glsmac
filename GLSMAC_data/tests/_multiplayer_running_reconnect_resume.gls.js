@@ -34,17 +34,20 @@
 		};
 
 		const get_research_state_error = (player) => {
+			const starting_technologies = player.get_faction().get_starting_technologies();
 			let starts_with_ecology = false;
-			for (id of player.get_faction().get_starting_technologies()) {
+			for (id of starting_technologies) {
 				if (id == 'CentauriEcology') {
 					starts_with_ecology = true;
 				}
 			}
 			const state = player.get_research_state();
+			if (state.technologies != starting_technologies) {
+				return 'faction starting technologies were not restored';
+			}
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.technologies != ['CentauriEcology'] ||
 					state.target != 'DoctrineMobility' ||
 					state.progress <= 0
 				) {
@@ -55,7 +58,6 @@
 			const base = find_base_for_player(player.id);
 			if (
 				player.has_technology('CentauriEcology') ||
-				state.technologies != [] ||
 				state.target != 'CentauriEcology' ||
 				state.progress <= 0 ||
 				base == null ||
