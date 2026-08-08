@@ -18,7 +18,7 @@ const get_base_defense_multiplier = (defender) => {
 	}
 	let multiplier = 1.0;
 	for (facility of base.get_facilities()) {
-		multiplier = #max(multiplier, facility.defense_multiplier);
+		multiplier += #max(facility.defense_multiplier - 1.0, 0.0);
 	}
 	return multiplier;
 };

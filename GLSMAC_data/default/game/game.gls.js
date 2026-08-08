@@ -20,6 +20,7 @@ return (glsmac) => {
 			},
 			facilities: facilities.definitions,
 			facility_manifest: facilities.manifest,
+			facility_coverage: facilities.coverage,
 			units: units.definitions,
 			unit_manifest: units.manifest,
 			moralesets: units.moralesets,
@@ -38,6 +39,8 @@ return (glsmac) => {
 			'CONTENT_VALIDATION_PASS: technologies=' + #to_string(result.counts.technologies) +
 			' facilities=' + #to_string(result.counts.facilities) + '/' +
 				#to_string(result.counts.base_facilities) +
+				' (' + #to_string(result.counts.complete_facilities) + ' complete,' +
+				#to_string(result.counts.partial_facilities) + ' partial)' +
 			' projects=0/' + #to_string(result.counts.projects) +
 			' units=' + #to_string(result.counts.units) +
 			' predefined_units=' + #to_string(result.counts.predefined_units) +

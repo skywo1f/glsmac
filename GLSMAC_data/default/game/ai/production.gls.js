@@ -81,6 +81,10 @@ const score_facility = (def, context) => {
 		def.research_bonus * research_weight +
 		#round(#max(def.defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
 		#round(def.economy_multiplier * #to_float(economy_weight)) +
+		#round(
+			def.mineral_multiplier * #to_float(#max(context.mineral_surplus, 1)) * 1000.0
+		) +
+		#round(def.psych_multiplier * #to_float(1000 + psych_priority * 100)) +
 		def.unit_morale_bonus * morale_weight;
 };
 

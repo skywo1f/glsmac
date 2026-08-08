@@ -22,7 +22,9 @@ FacilityDef::FacilityDef(
 	const float defense_multiplier,
 	const float economy_multiplier,
 	const int64_t unit_morale_bonus,
-	const int64_t research_bonus
+	const int64_t research_bonus,
+	const float mineral_multiplier,
+	const float psych_multiplier
 )
 	: m_id( id )
 	, m_name( name )
@@ -37,7 +39,9 @@ FacilityDef::FacilityDef(
 	, m_defense_multiplier( defense_multiplier )
 	, m_economy_multiplier( economy_multiplier )
 	, m_unit_morale_bonus( unit_morale_bonus )
-	, m_research_bonus( research_bonus ) {
+	, m_research_bonus( research_bonus )
+	, m_mineral_multiplier( mineral_multiplier )
+	, m_psych_multiplier( psych_multiplier ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -62,7 +66,11 @@ FacilityDef::FacilityDef(
 		m_unit_morale_bonus < 0 ||
 		m_unit_morale_bonus > MAX_UNIT_MORALE_BONUS ||
 		m_research_bonus < 0 ||
-		m_research_bonus > MAX_RESOURCE_BONUS
+		m_research_bonus > MAX_RESOURCE_BONUS ||
+		m_mineral_multiplier < 0.0f ||
+		m_mineral_multiplier > MAX_MINERAL_MULTIPLIER ||
+		m_psych_multiplier < 0.0f ||
+		m_psych_multiplier > MAX_PSYCH_MULTIPLIER
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -84,6 +92,8 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_economy_multiplier );
 	buf.WriteInt( def->m_unit_morale_bonus );
 	buf.WriteInt( def->m_research_bonus );
+	buf.WriteFloat( def->m_mineral_multiplier );
+	buf.WriteFloat( def->m_psych_multiplier );
 	return buf;
 }
 
@@ -102,6 +112,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto economy_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto unit_morale_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto research_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto mineral_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
+	const auto psych_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	return new FacilityDef(
 		id,
 		name,
@@ -116,7 +128,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		defense_multiplier,
 		economy_multiplier,
 		unit_morale_bonus,
-		research_bonus
+		research_bonus,
+		mineral_multiplier,
+		psych_multiplier
 	);
 }
 
@@ -181,6 +195,14 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"research_bonus",
 			VALUE( gse::value::Int, , m_research_bonus )
+		},
+		{
+			"mineral_multiplier",
+			VALUE( gse::value::Float, , m_mineral_multiplier )
+		},
+		{
+			"psych_multiplier",
+			VALUE( gse::value::Float, , m_psych_multiplier )
 		},
 	};
 WRAPIMPL_END_PTR()

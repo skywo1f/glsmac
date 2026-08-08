@@ -14,7 +14,7 @@ const unit = (id, required_technology, offense, defense, movement, can_found_bas
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus) => {
+const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus, mineral_multiplier, psych_multiplier) => {
 	return {
 		id: id,
 		required_technology: required_technology,
@@ -27,6 +27,8 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		economy_multiplier: #is_defined(economy_multiplier) ? economy_multiplier : 0.0,
 		unit_morale_bonus: #is_defined(unit_morale_bonus) ? unit_morale_bonus : 0,
 		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
+		mineral_multiplier: #is_defined(mineral_multiplier) ? mineral_multiplier : 0.0,
+		psych_multiplier: #is_defined(psych_multiplier) ? psych_multiplier : 0.0,
 	};
 };
 const context = (needs_military, needs_psych) => {

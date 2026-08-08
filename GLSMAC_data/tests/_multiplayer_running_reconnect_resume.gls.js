@@ -184,6 +184,9 @@
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			const command_center = game.get_bm().get_facility_def('CommandCenter');
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
+			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
+			const research_hospital = game.get_bm().get_facility_def('ResearchHospital');
+			const robotic_assembly = game.get_bm().get_facility_def('RoboticAssemblyPlant');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -197,6 +200,8 @@
 				recycling_tanks.economy_multiplier != 0.0 ||
 				recycling_tanks.unit_morale_bonus != 0 ||
 				recycling_tanks.research_bonus != 0 ||
+				recycling_tanks.mineral_multiplier != 0.0 ||
+				recycling_tanks.psych_multiplier != 0.0 ||
 				recreation_commons.psych_bonus != 4 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
 				perimeter_defense.required_technology != 'DoctrineLoyalty' ||
@@ -206,7 +211,11 @@
 				command_center.required_technology != 'DoctrineMobility' ||
 				command_center.unit_morale_bonus != 2 ||
 				biology_lab.required_technology != 'CentauriEmpathy' ||
-				biology_lab.research_bonus != 2
+				biology_lab.research_bonus != 2 ||
+				hologram_theatre.psych_multiplier != 0.5 ||
+				research_hospital.research_multiplier != 0.5 ||
+				research_hospital.psych_multiplier != 0.25 ||
+				robotic_assembly.mineral_multiplier != 0.5
 			) {
 				return 'built Recycling Tanks definition is invalid';
 			}

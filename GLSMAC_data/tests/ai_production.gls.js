@@ -11,7 +11,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus) => {
+const facility = (id, nutrients, minerals, energy, psych, research, maintenance, cost, defense_multiplier, economy_multiplier, unit_morale_bonus, research_bonus, mineral_multiplier, psych_multiplier) => {
 	return {
 		id: id,
 		nutrient_bonus: nutrients,
@@ -25,6 +25,8 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		economy_multiplier: #is_defined(economy_multiplier) ? economy_multiplier : 0.0,
 		unit_morale_bonus: #is_defined(unit_morale_bonus) ? unit_morale_bonus : 0,
 		research_bonus: #is_defined(research_bonus) ? research_bonus : 0,
+		mineral_multiplier: #is_defined(mineral_multiplier) ? mineral_multiplier : 0.0,
+		psych_multiplier: #is_defined(psych_multiplier) ? psych_multiplier : 0.0,
 	};
 };
 
@@ -57,6 +59,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 		needs_growth: false,
 		can_expand: true,
 		nutrient_surplus: 1,
+		mineral_surplus: 2,
 		supported_units: 0,
 		free_support: 1,
 		base_labs: 4,

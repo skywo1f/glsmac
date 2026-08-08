@@ -21,6 +21,8 @@ const facility_fields = {
 	economy_multiplier: true,
 	unit_morale_bonus: true,
 	research_bonus: true,
+	mineral_multiplier: true,
+	psych_multiplier: true,
 };
 
 const facility_manifest_fields = {
@@ -417,6 +419,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_number(data, 'economy_multiplier', path, errors, false, 0.0, 10.0);
 		validate_int(data, 'unit_morale_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_number(data, 'mineral_multiplier', path, errors, false, 0.0, 10.0);
+		validate_number(data, 'psych_multiplier', path, errors, false, 0.0, 10.0);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -438,7 +442,9 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.defense_multiplier) && data.defense_multiplier > 1.0) ||
 			(#is_defined(data.economy_multiplier) && data.economy_multiplier > 0.0) ||
 			(#is_defined(data.unit_morale_bonus) && data.unit_morale_bonus > 0) ||
-			(#is_defined(data.research_bonus) && data.research_bonus > 0);
+			(#is_defined(data.research_bonus) && data.research_bonus > 0) ||
+			(#is_defined(data.mineral_multiplier) && data.mineral_multiplier > 0.0) ||
+			(#is_defined(data.psych_multiplier) && data.psych_multiplier > 0.0);
 		if (!has_effect) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}
@@ -538,6 +544,64 @@ const validate_facility_implementations = (facilities, manifest, errors) => {
 			}
 		}
 	}
+};
+
+const validate_facility_coverage = (coverage, facilities, errors) => {
+	let result = {complete: 0, partial: 0};
+	if (#typeof(coverage) != 'Object') {
+		add_error(errors, 'facility_coverage', 'must be an object');
+		return result;
+	}
+	validate_int(coverage, 'complete', 'facility_coverage', errors, true, 0, MAX_DEFINITION_VALUE);
+	validate_int(coverage, 'partial', 'facility_coverage', errors, true, 0, MAX_DEFINITION_VALUE);
+	if (#typeof(coverage.status) != 'Object') {
+		add_error(errors, 'facility_coverage.status', 'must be an object');
+		return result;
+	}
+	let implemented = {};
+	if (#typeof(facilities) == 'Array') {
+		for (entry of facilities) {
+			if (#typeof(entry) == 'Object' && #typeof(entry.id) == 'String') {
+				implemented[entry.id] = true;
+			}
+		}
+	}
+	for (id in coverage.status) {
+		const path = 'facility_coverage.' + id;
+		if (!#is_defined(implemented[id])) {
+			add_error(errors, path, 'references a facility that is not implemented');
+		}
+		const status = coverage.status[id];
+		if (status == 'complete') {
+			result.complete = result.complete + 1;
+		} else if (status == 'partial') {
+			result.partial = result.partial + 1;
+		} else {
+			add_error(errors, path, 'must be complete or partial');
+		}
+	}
+	for (id in implemented) {
+		if (!#is_defined(coverage.status[id])) {
+			add_error(errors, 'facility_coverage.' + id, 'is missing an implementation status');
+		}
+	}
+	if (#typeof(coverage.complete) == 'Int' && coverage.complete != result.complete) {
+		add_error(
+			errors,
+			'facility_coverage.complete',
+			'reports ' + #to_string(coverage.complete) +
+				' but contains ' + #to_string(result.complete)
+		);
+	}
+	if (#typeof(coverage.partial) == 'Int' && coverage.partial != result.partial) {
+		add_error(
+			errors,
+			'facility_coverage.partial',
+			'reports ' + #to_string(coverage.partial) +
+				' but contains ' + #to_string(result.partial)
+		);
+	}
+	return result;
 };
 
 const validate_moralesets = (moralesets, errors) => {
@@ -892,6 +956,11 @@ const validate = (catalog) => {
 		facility_manifest_result.definitions,
 		errors
 	);
+	const facility_coverage_result = validate_facility_coverage(
+		catalog.facility_coverage,
+		catalog.facilities,
+		errors
+	);
 	const unit_count = validate_units(
 		catalog.units,
 		catalog.technologies.definitions,
@@ -913,6 +982,8 @@ const validate = (catalog) => {
 		counts: {
 			technologies: technology_count,
 			facilities: facility_count,
+			complete_facilities: facility_coverage_result.complete,
+			partial_facilities: facility_coverage_result.partial,
 			base_facilities: facility_manifest_result.facility_count,
 			projects: facility_manifest_result.project_count,
 			units: unit_count,

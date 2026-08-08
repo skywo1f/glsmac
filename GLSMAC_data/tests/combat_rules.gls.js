@@ -53,7 +53,7 @@ test.assert(combat_rules.get_base_defense_multiplier(defender) == 2.0);
 test.assert(combat_rules.get_combat_powers(attacker, defender).defence == 5.0);
 
 facilities :+{defense_multiplier: 1.5};
-test.assert(combat_rules.get_base_defense_multiplier(defender) == 2.0);
+test.assert(combat_rules.get_base_defense_multiplier(defender) == 2.5);
 
 const occupying_defender = make_unit(base_tile, 3, 1, 2, false);
 test.assert(combat_rules.get_base_defense_multiplier(occupying_defender) == 1.0);

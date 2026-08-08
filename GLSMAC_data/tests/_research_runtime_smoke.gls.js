@@ -4,30 +4,18 @@
 	#include('../default/ui/ui')(glsmac);
 
 	const technologies = #include('../default/technologies');
-	const production_gates = [
+	const facility_catalog = #include('../default/facilities');
+	let production_gates = [
 		['unit', 'Former', 'CentauriEcology'],
 		['unit', 'ReconRover', 'DoctrineMobility'],
 		['unit', 'LaserInfantry', 'AppliedPhysics'],
 		['unit', 'SynthmetalSentinels', 'IndustrialBase'],
-		['facility', 'RecyclingTanks', 'Biogenetics'],
-		['facility', 'NetworkNode', 'InformationNetworks'],
-		['facility', 'RecreationCommons', 'SocialPsych'],
-		['facility', 'HologramTheatre', 'PlanetaryNetworks'],
-		['facility', 'PerimeterDefense', 'DoctrineLoyalty'],
-		['facility', 'EnergyBank', 'IndustrialEconomics'],
-		['facility', 'CommandCenter', 'DoctrineMobility'],
-		['facility', 'BiologyLab', 'CentauriEmpathy'],
 	];
-	const facility_ids = [
-		'RecyclingTanks',
-		'NetworkNode',
-		'RecreationCommons',
-		'HologramTheatre',
-		'PerimeterDefense',
-		'EnergyBank',
-		'CommandCenter',
-		'BiologyLab',
-	];
+	let facility_ids = [];
+	for (entry of facility_catalog.definitions) {
+		facility_ids :+entry.id;
+		production_gates :+['facility', entry.id, entry.data.required_technology];
+	}
 
 	let runtime_complete = false;
 	let ui_started = false;
@@ -41,7 +29,9 @@
 	const finish_if_ready = () => {
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: validated 77 technologies and batch production gates');
+			#print(
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 22 facilities, and batch production gates'
+			);
 			#async(500, () => { glsmac.exit(); });
 		}
 	};
@@ -100,7 +90,7 @@
 					return;
 				}
 				for (gate of production_gates) {
-					const should_be_available = gate[2] == 'CentauriEcology';
+					const should_be_available = gate[2] == '' || gate[2] == 'CentauriEcology';
 					if (base.can_set_production(gate[0], gate[1]) != should_be_available) {
 						fail('initial production gate is invalid: ' + gate[1]);
 						return;
@@ -147,19 +137,56 @@
 
 				const intake_before = base.get_intake();
 				const consumption_before = base.get_consumption().ENERGY;
-				const psych_before = game.get('f_economy_get_base_psych')(game, base);
 				const labs_before = game.get('f_technology_get_base_labs')(base).total;
+				let nutrient_bonus = 0;
+				let mineral_bonus = 0;
+				let energy_bonus = 0;
+				let maintenance = 0;
+				let mineral_multiplier = 0.0;
+				let psych_bonus = 0;
+				let psych_multiplier = 0.0;
+				let research_multiplier = 0.0;
+				let research_bonus = 0;
+				let defense_multiplier = 1.0;
+				let morale_bonus = 0;
 				for (facility_id of facility_ids) {
+					const definition = game.get_bm().get_facility_def(facility_id);
+					nutrient_bonus += definition.nutrient_bonus;
+					mineral_bonus += definition.mineral_bonus;
+					energy_bonus += definition.energy_bonus;
+					maintenance += definition.energy_maintenance;
+					mineral_multiplier += definition.mineral_multiplier;
+					psych_bonus += definition.psych_bonus;
+					psych_multiplier += definition.psych_multiplier;
+					research_multiplier += definition.research_multiplier;
+					research_bonus += definition.research_bonus;
+					defense_multiplier += #max(definition.defense_multiplier - 1.0, 0.0);
+					morale_bonus += definition.unit_morale_bonus;
 					base.add_facility(facility_id);
 				}
 				const intake_after = base.get_intake();
+				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
+				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					intake_after.NUTRIENTS != intake_before.NUTRIENTS + 1 ||
-					intake_after.MINERALS != intake_before.MINERALS + 1 ||
-					intake_after.ENERGY != intake_before.ENERGY + 1 ||
-					base.get_consumption().ENERGY != consumption_before + 8 ||
-					game.get('f_economy_get_base_psych')(game, base) != psych_before + 8 ||
-					game.get('f_technology_get_base_labs')(base).total <= labs_before
+					#sizeof(facility_ids) != 22 ||
+					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
+					maintenance != 52 || mineral_multiplier != 1.5 ||
+					psych_bonus != 16 || psych_multiplier != 2.0 ||
+					research_multiplier != 2.5 || research_bonus != 2 ||
+					defense_multiplier != 3.0 || morale_bonus != 4 ||
+					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus ||
+					intake_after.MINERALS != #ceil(
+						#to_float(intake_before.MINERALS + mineral_bonus) * (1.0 + mineral_multiplier)
+					) ||
+					intake_after.ENERGY != intake_before.ENERGY + energy_bonus ||
+					base.get_consumption().ENERGY != consumption_before + maintenance ||
+					psych_after.bonus != psych_bonus + #ceil(
+						#to_float(psych_after.value) * psych_multiplier
+					) ||
+					labs_after.bonus != 2 + research_bonus + #ceil(
+						#to_float(labs_after.value + 2 + research_bonus) * research_multiplier
+					) ||
+					labs_after.total <= labs_before
 				) {
 					fail('batch facility effects are invalid');
 					return;

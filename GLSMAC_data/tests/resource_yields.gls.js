@@ -95,3 +95,10 @@ const base = {
 const intake = bm_callbacks.get_base_intake({base: base});
 test.assert(intake == {NUTRIENTS: 2, MINERALS: 2, ENERGY: 2});
 test.assert(queried_players == [base_owner, base_owner]);
+
+base.get_facilities = () => { return [
+	{nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1, mineral_multiplier: 0.5},
+	{nutrient_bonus: 0, mineral_bonus: 0, energy_bonus: 0, mineral_multiplier: 0.5},
+]; };
+const multiplied_intake = bm_callbacks.get_base_intake({base: base});
+test.assert(multiplied_intake == {NUTRIENTS: 3, MINERALS: 6, ENERGY: 3});

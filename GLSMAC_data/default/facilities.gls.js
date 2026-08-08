@@ -1,114 +1,74 @@
 const manifest = #include('content/base_facilities');
 
-const facilities = [
-	{
-		id: 'RecyclingTanks',
-		data: {
-			name: 'Recycling Tanks',
-			mineral_cost: 40,
-			nutrient_bonus: 1,
-			mineral_bonus: 1,
-			energy_bonus: 1,
-			energy_maintenance: 0,
-			required_technology: 'Biogenetics',
-		},
-	},
-	{
-		id: 'NetworkNode',
-		data: {
-			name: 'Network Node',
-			mineral_cost: 80,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 1,
-			research_multiplier: 0.5,
-			required_technology: 'InformationNetworks',
-		},
-	},
-	{
-		id: 'RecreationCommons',
-		data: {
-			name: 'Recreation Commons',
-			mineral_cost: 40,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 1,
-			psych_bonus: 4,
-			required_technology: 'SocialPsych',
-		},
-	},
-	{
-		id: 'HologramTheatre',
-		data: {
-			name: 'Hologram Theatre',
-			mineral_cost: 60,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 3,
-			psych_bonus: 4,
-			required_technology: 'PlanetaryNetworks',
-		},
-	},
-	{
-		id: 'PerimeterDefense',
-		data: {
-			name: 'Perimeter Defense',
-			mineral_cost: 50,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 0,
-			defense_multiplier: 2.0,
-			required_technology: 'DoctrineLoyalty',
-		},
-	},
-	{
-		id: 'EnergyBank',
-		data: {
-			name: 'Energy Bank',
-			mineral_cost: 80,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 1,
-			economy_multiplier: 0.5,
-			required_technology: 'IndustrialEconomics',
-		},
-	},
-	{
-		id: 'CommandCenter',
-		data: {
-			name: 'Command Center',
-			mineral_cost: 40,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 1,
-			unit_morale_bonus: 2,
-			required_technology: 'DoctrineMobility',
-		},
-	},
-	{
-		id: 'BiologyLab',
-		data: {
-			name: 'Biology Lab',
-			mineral_cost: 60,
-			nutrient_bonus: 0,
-			mineral_bonus: 0,
-			energy_bonus: 0,
-			energy_maintenance: 1,
-			research_bonus: 2,
-			required_technology: 'CentauriEmpathy',
-		},
-	},
-];
+const effects = {
+	Headquarters: {energy_bonus: 1},
+	RecyclingTanks: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
+	PerimeterDefense: {defense_multiplier: 2.0},
+	TachyonField: {defense_multiplier: 2.0},
+	RecreationCommons: {psych_bonus: 4},
+	EnergyBank: {economy_multiplier: 0.5},
+	NetworkNode: {research_multiplier: 0.5},
+	BiologyLab: {research_bonus: 2},
+	HologramTheatre: {psych_bonus: 4, psych_multiplier: 0.5},
+	ParadiseGarden: {psych_bonus: 4},
+	TreeFarm: {economy_multiplier: 0.5, psych_multiplier: 0.5},
+	HybridForest: {economy_multiplier: 0.5, psych_multiplier: 0.5},
+	FusionLab: {economy_multiplier: 0.5, research_multiplier: 0.5},
+	QuantumLab: {economy_multiplier: 0.5, research_multiplier: 0.5},
+	ResearchHospital: {psych_bonus: 2, psych_multiplier: 0.25, research_multiplier: 0.5},
+	Nanohospital: {psych_bonus: 2, psych_multiplier: 0.25, research_multiplier: 0.5},
+	RoboticAssemblyPlant: {mineral_multiplier: 0.5},
+	Nanoreplicator: {mineral_multiplier: 0.5},
+	QuantumConverter: {mineral_multiplier: 0.5},
+	PressureDome: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
+	CommandCenter: {unit_morale_bonus: 2},
+	BioenhancementCenter: {unit_morale_bonus: 2},
+};
+
+const partial_effects = {
+	Headquarters: true,
+	RecreationCommons: true,
+	NetworkNode: true,
+	BiologyLab: true,
+	HologramTheatre: true,
+	ParadiseGarden: true,
+	TreeFarm: true,
+	HybridForest: true,
+	ResearchHospital: true,
+	Nanohospital: true,
+	PressureDome: true,
+	CommandCenter: true,
+	BioenhancementCenter: true,
+};
+
+const facilities = [];
+const coverage = {complete: 0, partial: 0, status: {}};
+for (entry of manifest) {
+	if (entry.kind != 'facility' || !#is_defined(effects[entry.id])) {
+		continue;
+	}
+	let data = {
+		name: entry.name,
+		mineral_cost: entry.mineral_cost,
+		nutrient_bonus: 0,
+		mineral_bonus: 0,
+		energy_bonus: 0,
+		energy_maintenance: entry.energy_maintenance,
+		required_technology: entry.required_technology,
+	};
+	for (key in effects[entry.id]) {
+		data[key] = effects[entry.id][key];
+	}
+	facilities :+{id: entry.id, data: data};
+	const status = #is_defined(partial_effects[entry.id]) ? 'partial' : 'complete';
+	coverage.status[entry.id] = status;
+	coverage[status] = coverage[status] + 1;
+}
 
 return {
 	definitions: facilities,
 	manifest: manifest,
+	coverage: coverage,
 
 	define: (game) => {
 		for (facility of facilities) {

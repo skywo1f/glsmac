@@ -504,6 +504,15 @@ return (game) => {
 			result.MINERALS = result.MINERALS + facility.mineral_bonus;
 			result.ENERGY = result.ENERGY + facility.energy_bonus;
 		}
+		let mineral_multiplier = 0.0;
+		for (facility of e.base.get_facilities()) {
+			mineral_multiplier += #is_defined(facility.mineral_multiplier)
+				? facility.mineral_multiplier
+				: 0.0;
+		}
+		result.MINERALS = result.MINERALS + #ceil(
+			#to_float(result.MINERALS) * mineral_multiplier
+		);
 
 		return result;
 	});

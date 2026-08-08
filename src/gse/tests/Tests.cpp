@@ -384,7 +384,13 @@ void AddTests( task::gsetests::GSETests* task ) {
 					1,
 					"InformationNetworks",
 					0,
-					0.5f
+					0.5f,
+					1.0f,
+					0.0f,
+					0,
+					0,
+					0.5f,
+					0.25f
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -397,6 +403,14 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					facility_roundtrip->m_research_multiplier == 0.5f,
 					"facility research multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_mineral_multiplier == 0.5f,
+					"facility mineral multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_psych_multiplier == 0.25f,
+					"facility psych multiplier was not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -417,6 +431,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					legacy_facility_parsed->m_research_multiplier == 0.0f,
 					"legacy facility definition gained a research multiplier"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_mineral_multiplier == 0.0f &&
+					legacy_facility_parsed->m_psych_multiplier == 0.0f,
+					"legacy facility definition gained a resource multiplier"
 				);
 
 				const auto make_unit_def = [](
