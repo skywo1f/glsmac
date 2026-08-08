@@ -67,7 +67,7 @@ test.assert(combat.get_repair_destination(tm, make_unit(north_tile, 0.8), player
 test.assert(combat.get_repair_destination(tm, make_unit(enemy_tile, 0.49), player_id, bases) == north_base);
 
 let next_unit_id = 1;
-const make_combat_unit = (owner_id, tile, offense, defense, health, morale) => {
+const make_combat_unit = (owner_id, tile, offense, defense, health, morale, def_id) => {
 	const unit_defense = #is_defined(defense) ? defense : 1;
 	const unit_health = #is_defined(health) ? health : 1.0;
 	const unit_morale = #is_defined(morale) ? morale : 2;
@@ -82,7 +82,7 @@ const make_combat_unit = (owner_id, tile, offense, defense, health, morale) => {
 		get_tile: () => { return tile; },
 		get_def: () => {
 			return {
-				id: 'TestUnit',
+				id: #is_defined(def_id) ? def_id : 'TestUnit',
 				is_native: false,
 				offense: offense,
 				defense: unit_defense,
@@ -117,6 +117,20 @@ test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, 
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy, far_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [friendly, colony, far_enemy]) == 1);
 test.assert(combat.get_garrison_count(home_base, player_id) == 0);
+
+const immovable_threat = make_combat_unit(other_player_id, near_enemy_tile, 3);
+immovable_threat.is_immovable = true;
+const sea_threat = make_combat_unit(other_player_id, near_enemy_tile, 3);
+sea_threat.is_land = false;
+sea_threat.is_water = true;
+const artillery_threat = make_combat_unit(other_player_id, near_enemy_tile, 3, 1, 1.0, 2, 'SporeLauncher');
+artillery_threat.is_land = false;
+artillery_threat.is_water = true;
+test.assert(!combat.can_threaten_tile(immovable_threat, home_tile));
+test.assert(!combat.can_threaten_tile(sea_threat, home_tile));
+test.assert(combat.can_threaten_tile(artillery_threat, home_tile));
+test.assert(combat.get_required_garrison(tm, home_base, player_id, [immovable_threat, sea_threat]) == 1);
+test.assert(combat.get_required_garrison(tm, home_base, player_id, [artillery_threat]) == 2);
 
 const attack_origin = make_tile(10, 10);
 const north_target_tile = make_tile(10, 9);
@@ -161,6 +175,24 @@ test.assert(
 		[assault_attacker, strong_defender]
 	) == farther_base
 );
+
+const incompatible_support = make_combat_unit(player_id, farther_base_tile, 8, 1, 1.0, 2);
+incompatible_support.is_land = false;
+incompatible_support.is_water = true;
+const unsupported_assault_score = combat.get_assault_score(
+	tm,
+	assault_attacker,
+	farther_base,
+	player_id,
+	[assault_attacker]
+);
+test.assert(combat.get_assault_score(
+	tm,
+	assault_attacker,
+	farther_base,
+	player_id,
+	[assault_attacker, incompatible_support]
+) == unsupported_assault_score);
 
 const close_open_tile = make_tile(31, 30);
 const distant_open_tile = make_tile(35, 30);

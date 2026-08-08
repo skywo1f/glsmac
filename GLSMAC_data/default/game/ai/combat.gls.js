@@ -50,12 +50,27 @@ const get_repair_destination = (tm, unit, player_id, bases) => {
 	return find_nearest_friendly_base(tm, player_id, tile, bases);
 };
 
+const can_threaten_tile = (unit, tile) => {
+	const def = unit.get_def();
+	if (
+		def.offense <= 0 ||
+		unit.health <= 0.0 ||
+		(#is_defined(unit.is_immovable) && unit.is_immovable)
+	) {
+		return false;
+	}
+	return combat_rules.is_artillery(def) || !(
+		(unit.is_land && tile.is_water) ||
+		(unit.is_water && tile.is_land)
+	);
+};
+
 const get_required_garrison = (tm, base, player_id, units) => {
 	let result = 1;
 	for (unit of units) {
 		if (
 			unit.owner != player_id &&
-			unit.get_def().offense > 0 &&
+			can_threaten_tile(unit, base.get_tile()) &&
 			tm.get_distance(base.get_tile(), unit.get_tile()) <= THREAT_DISTANCE
 		) {
 			result++;
@@ -234,7 +249,7 @@ const get_assault_score = (tm, attacker, base, player_id, units) => {
 			defense += combat_rules.get_attack_powers(attacker, unit).defence;
 		} else if (
 			unit.owner == player_id &&
-			def.offense > 0 &&
+			can_threaten_tile(unit, base_tile) &&
 			unit.health >= RETREAT_HEALTH &&
 			tm.get_distance(unit.get_tile(), base_tile) <= ASSAULT_SUPPORT_DISTANCE
 		) {
@@ -276,6 +291,7 @@ const choose_assault_target = (tm, attacker, player_id, bases, units) => {
 return {
 	find_nearest_friendly_base: find_nearest_friendly_base,
 	get_repair_destination: get_repair_destination,
+	can_threaten_tile: can_threaten_tile,
 	get_required_garrison: get_required_garrison,
 	get_garrison_count: get_garrison_count,
 	get_force_power: get_force_power,
