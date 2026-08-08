@@ -14,7 +14,6 @@ return {
 		if (e.game.is_master()) {
 			e.game.event('refresh_base_psych', {
 				base: e.data.base,
-				psych: e.data.psych,
 			});
 		}
 	},

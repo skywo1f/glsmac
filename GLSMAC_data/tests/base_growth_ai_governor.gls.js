@@ -5,8 +5,9 @@ const process_base_growth = #include('../default/game/event/process_base_growth'
 const refresh_base_psych = #include('../default/game/event/refresh_base_psych');
 
 const callbacks = {};
+let current_psych = 0;
 const values = {
-	f_economy_get_base_psych: (game, base) => { return 0; },
+	f_economy_get_base_psych: (game, base) => { return current_psych; },
 };
 let pending_events = [];
 let game = null;
@@ -41,6 +42,12 @@ game = {
 define_bases(game);
 callbacks.start({});
 pending_events = [];
+const base_process_psych = values.f_base_process_psych;
+let observed_psych = 0 - 1;
+values.f_base_process_psych = (target_game, base, psych) => {
+	observed_psych = psych;
+	base_process_psych(target_game, base, psych);
+};
 
 const drain_events = () => {
 	let index = 0;
@@ -176,6 +183,7 @@ const make_base = (initial_size, initial_nutrients, center_nutrients) => {
 };
 
 const assert_stable_size_four = (base) => {
+	values.f_base_rebalance_workers(base, values.f_base_get_stable_worker_count(base, 0));
 	values.f_base_process_psych(game, base, 0);
 	const state = values.f_base_get_psych(base);
 	test.assert(base.get_size() == 4);
@@ -191,8 +199,11 @@ process_base_growth.apply({caller: 0, game: game, data: {base: growing_base, psy
 test.assert(growing_base.get_size() == 3);
 test.assert(pending_events[0].name == 'add_base_pop');
 test.assert(pending_events[1].name == 'refresh_base_psych');
+current_psych = 2;
 drain_events();
+test.assert(observed_psych == 2);
 test.assert(growing_base.get('accumulated_nutrients') == 0);
+current_psych = 0;
 assert_stable_size_four(growing_base);
 
 const starving_base = make_base(5, 0, 0);
