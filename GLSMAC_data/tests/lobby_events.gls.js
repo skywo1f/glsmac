@@ -251,3 +251,43 @@ test.assert(!#is_defined(selected_factions[1]));
 select_faction.rollback(faction_event);
 test.assert(selected_factions[1] == 'HIVE');
 test.assert(faction_updates == 4);
+
+const chat_message = #include('../default/game/event/chat_message');
+const chat_player = {id: 1};
+let delivered_chat = null;
+const chat_game = {
+	get_player: (id) => {
+		test.assert(id == chat_player.id);
+		return chat_player;
+	},
+	trigger: (name, data) => {
+		test.assert(name == 'chat_message');
+		delivered_chat = data;
+	},
+};
+const chat_event = {
+	caller: chat_player.id,
+	game: chat_game,
+	data: {
+		text: 'Planetfall confirmed.',
+	},
+};
+
+test.assert(!#is_defined(chat_message.validate(chat_event)));
+chat_message.apply(chat_event);
+test.assert(delivered_chat.player == chat_player);
+test.assert(delivered_chat.text == chat_event.data.text);
+
+chat_event.data.text = '';
+test.assert(#is_defined(chat_message.validate(chat_event)));
+chat_event.data.text = 123;
+test.assert(#is_defined(chat_message.validate(chat_event)));
+
+let boundary_chat = '';
+while (#sizeof(boundary_chat) < 512) {
+	boundary_chat += 'x';
+}
+chat_event.data.text = boundary_chat;
+test.assert(!#is_defined(chat_message.validate(chat_event)));
+chat_event.data.text = chat_event.data.text + 'x';
+test.assert(#is_defined(chat_message.validate(chat_event)));
