@@ -1,5 +1,5 @@
 const MOVEMENT_ACTION_DELAY = 200;
-const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
+const action_state = #include('ai/action_state');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
@@ -189,21 +189,6 @@ const has_other_former = (tile, unit) => {
 		}
 	}
 	return false;
-};
-
-const can_attempt_action = (unit, action_attempts) => {
-	const unit_key = #to_string(unit.id);
-	return (
-		(!#is_defined(action_attempts[unit_key]) || action_attempts[unit_key] < MAX_ACTION_ATTEMPTS_PER_UNIT) &&
-		unit.movement > 0.0 &&
-		!unit.is_immovable &&
-		unit.terraforming == 'none'
-	);
-};
-
-const record_action_attempt = (unit, action_attempts) => {
-	const unit_key = #to_string(unit.id);
-	action_attempts[unit_key] = #is_defined(action_attempts[unit_key]) ? action_attempts[unit_key] + 1 : 1;
 };
 
 const attack_enemy_in_tiles = (game, player, unit, tiles) => {
@@ -662,6 +647,7 @@ const play_turn = (game, player, done) => {
 		const all_units = game.get_um().get_units();
 		const current_units = filter_owned_units(all_units, player);
 		const all_bases = game.get_bm().get_bases();
+		const waiting_for_action = action_state.refresh_pending_actions(current_units, action_attempts);
 		let action_started = false;
 		let action_delay = MOVEMENT_ACTION_DELAY;
 		let waiting_for_animation = false;
@@ -671,37 +657,39 @@ const play_turn = (game, player, done) => {
 				break;
 			}
 		}
-		for (unit of current_units) {
-			if (!can_attempt_action(unit, action_attempts)) {
-				continue;
-			}
-			const def = unit.get_def();
-			if (def.can_found_base) {
-				action_started = move_colony(game, player, unit, all_bases);
-			}
-			if (action_started) {
-				record_action_attempt(unit, action_attempts);
-				break;
-			}
-		}
-		if (!action_started) {
+		if (!waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
-				if (!can_attempt_action(unit, action_attempts)) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
 					continue;
 				}
 				const def = unit.get_def();
-				if (def.can_terraform) {
-						action_started = move_former(game, player, unit, all_bases);
+				if (def.can_found_base) {
+					action_started = move_colony(game, player, unit, all_bases);
 				}
 				if (action_started) {
-					record_action_attempt(unit, action_attempts);
+					action_state.record_action_attempt(unit, action_attempts);
 					break;
 				}
 			}
 		}
-		if (!action_started) {
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
-				if (!can_attempt_action(unit, action_attempts)) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
+					continue;
+				}
+				const def = unit.get_def();
+				if (def.can_terraform) {
+					action_started = move_former(game, player, unit, all_bases);
+				}
+				if (action_started) {
+					action_state.record_action_attempt(unit, action_attempts);
+					break;
+				}
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+			for (unit of current_units) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
 					continue;
 				}
 				if (unit.get_def().offense > 0) {
@@ -719,7 +707,7 @@ const play_turn = (game, player, done) => {
 					}
 				}
 				if (action_started) {
-					record_action_attempt(unit, action_attempts);
+					action_state.record_action_attempt(unit, action_attempts);
 					break;
 				}
 			}
@@ -729,7 +717,7 @@ const play_turn = (game, player, done) => {
 			#async(action_delay, play_next_action);
 			return;
 		}
-		if (waiting_for_animation && steps < 1000) {
+		if ((waiting_for_animation || waiting_for_action) && steps < 1000) {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
