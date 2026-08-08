@@ -1,0 +1,94 @@
+const move_unit = #include('../default/game/event/move_unit');
+
+const attacker_owner = {id: 1};
+const defender_owner = {id: 2};
+
+const make_base = (id, owner, distance) => {
+	let current_owner = owner;
+	return {
+		id: id,
+		get_owner: () => { return current_owner; },
+		set_owner: (value) => { current_owner = value; },
+		get_tile: () => { return {distance: distance}; },
+	};
+};
+
+const captured_base = make_base(9, defender_owner, 0);
+const higher_id_base = make_base(11, defender_owner, 2);
+const lower_id_base = make_base(10, defender_owner, 2);
+const source = {
+	is_land: true,
+	features: {river: false, xenofungus: false},
+	terraforming: {road: false, forest: false},
+	rockiness: 0,
+	get_base: () => { return null; },
+};
+const destination = {
+	is_land: true,
+	features: {river: false, xenofungus: false},
+	terraforming: {road: false, forest: false},
+	rockiness: 0,
+	get_base: () => { return captured_base; },
+};
+
+let current_tile = source;
+const capturing_unit = {
+	owner: attacker_owner.id,
+	movement: 1.0,
+	moved_this_turn: false,
+	get_owner: () => { return attacker_owner; },
+	get_def: () => { return {is_native: false}; },
+	get_tile: () => { return current_tile; },
+	move_to_tile: (tile, oncomplete) => {
+		current_tile = tile;
+		oncomplete();
+	},
+};
+
+let supported_unit = null;
+supported_unit = {
+	owner: defender_owner.id,
+	home_base_id: captured_base.id,
+	get_tile: () => { return {distance: 0}; },
+	set_home_base_id: (id) => { supported_unit.home_base_id = id; },
+};
+const unrelated_unit = {
+	owner: defender_owner.id,
+	home_base_id: lower_id_base.id,
+	get_tile: () => { return {distance: 0}; },
+	set_home_base_id: (id) => { throw Error('Unrelated unit was rehomed'); },
+};
+
+let bases = [captured_base, higher_id_base, lower_id_base];
+const game = {
+	um: {get_units: () => { return [supported_unit, unrelated_unit]; }},
+	bm: {get_bases: () => { return bases; }},
+	tm: {
+		get_distance: (unit_tile, base_tile) => { return base_tile.distance; },
+	},
+};
+
+let event = {
+	game: game,
+	data: {unit: capturing_unit, tile: destination},
+	resolved: {is_movement_successful: true},
+};
+event.applied = move_unit.apply(event);
+test.assert(current_tile == destination);
+test.assert(captured_base.get_owner() == attacker_owner);
+test.assert(supported_unit.home_base_id == lower_id_base.id);
+test.assert(unrelated_unit.home_base_id == lower_id_base.id);
+test.assert(#sizeof(event.applied.rehomed_units) == 1);
+
+move_unit.rollback(event);
+test.assert(current_tile == source);
+test.assert(captured_base.get_owner() == defender_owner);
+test.assert(supported_unit.home_base_id == captured_base.id);
+
+bases = [captured_base];
+event.applied = move_unit.apply(event);
+test.assert(captured_base.get_owner() == attacker_owner);
+test.assert(supported_unit.home_base_id == 0);
+move_unit.rollback(event);
+test.assert(captured_base.get_owner() == defender_owner);
+test.assert(supported_unit.home_base_id == captured_base.id);

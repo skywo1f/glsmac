@@ -1,4 +1,5 @@
 const movement_rules = #include('../movement_rules');
+const base_capture = #include('../base_capture');
 
 const get_movement_cost = (unit, src_tile, dst_tile) => {
 	const is_native = unit.get_def().is_native;
@@ -143,6 +144,7 @@ return {
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,
+			rehomed_units: [],
 		};
 
 		let movement_cost = get_movement_cost(unit, src_tile, dst_tile) + get_movement_aftercost(unit, src_tile, dst_tile);
@@ -160,6 +162,11 @@ return {
 		if (e.resolved.is_movement_successful) {
 			unit.move_to_tile(dst_tile, () => {});
 			if (dst_base != null && dst_base.get_owner().id != unit.owner) {
+				result.rehomed_units = base_capture.rehome_units(
+					e.game,
+					dst_base,
+					result.orig.base_owner.id
+				);
 				dst_base.set_owner(unit.get_owner());
 			}
 			finish_movement();
@@ -187,6 +194,7 @@ return {
 		if (captured_base != null && orig.base_owner != null && captured_base.get_owner().id != orig.base_owner.id) {
 			captured_base.set_owner(orig.base_owner);
 		}
+		base_capture.restore_units(e.applied.rehomed_units);
 		unit.movement = orig.movement;
 		unit.moved_this_turn = orig.moved_this_turn;
 	},

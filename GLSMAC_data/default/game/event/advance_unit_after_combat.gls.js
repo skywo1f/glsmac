@@ -1,22 +1,4 @@
-const get_rehome_base = (game, unit, owner_id, lost_base) => {
-	let best = null;
-	let best_distance = 0;
-	for (candidate of game.bm.get_bases()) {
-		if (candidate.id == lost_base.id || candidate.get_owner().id != owner_id) {
-			continue;
-		}
-		const distance = game.tm.get_distance(unit.get_tile(), candidate.get_tile());
-		if (
-			best == null ||
-			distance < best_distance ||
-			(distance == best_distance && candidate.id < best.id)
-		) {
-			best = candidate;
-			best_distance = distance;
-		}
-	}
-	return best;
-};
+const base_capture = #include('../base_capture');
 
 return {
 
@@ -66,25 +48,11 @@ return {
 		e.game.am.stop_animations(e.data.animations_id);
 		unit.move_to_tile(e.data.tile, () => {});
 		if (base != null && applied.orig_base_owner.id != unit.owner) {
-			for (supported_unit of e.game.um.get_units()) {
-				if (
-					supported_unit.owner != applied.orig_base_owner.id ||
-					supported_unit.home_base_id != base.id
-				) {
-					continue;
-				}
-				applied.rehomed_units :+{
-					unit: supported_unit,
-					home_base_id: supported_unit.home_base_id,
-				};
-				const destination = get_rehome_base(
-					e.game,
-					supported_unit,
-					applied.orig_base_owner.id,
-					base
-				);
-				supported_unit.set_home_base_id(destination == null ? 0 : destination.id);
-			}
+			applied.rehomed_units = base_capture.rehome_units(
+				e.game,
+				base,
+				applied.orig_base_owner.id
+			);
 			base.set_owner(unit.get_owner());
 		}
 		return applied;
@@ -101,9 +69,7 @@ return {
 		) {
 			e.applied.base.set_owner(e.applied.orig_base_owner);
 		}
-		for (snapshot of e.applied.rehomed_units) {
-			snapshot.unit.set_home_base_id(snapshot.home_base_id);
-		}
+		base_capture.restore_units(e.applied.rehomed_units);
 	},
 
 };
