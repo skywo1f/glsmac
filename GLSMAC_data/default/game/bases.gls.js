@@ -322,10 +322,14 @@ const select_population_for_reduction = (base) => {
 	return #is_defined(pop) ? pop : null;
 };
 
-const process_growth = (game, base, allocated_psych) => {
+const rebalance_ai_workers = (base, allocated_psych) => {
 	if (base.get_owner().type == 'ai') {
 		rebalance_workers(base, get_stable_worker_count(base, allocated_psych));
 	}
+};
+
+const process_growth = (game, base, allocated_psych) => {
+	rebalance_ai_workers(base, allocated_psych);
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
@@ -349,6 +353,7 @@ const process_growth = (game, base, allocated_psych) => {
 			base: base,
 			pop: pop,
 		});
+		rebalance_ai_workers(base, allocated_psych);
 		return;
 	}
 	base.set('accumulated_nutrients', accumulated);
@@ -394,6 +399,7 @@ const process_growth = (game, base, allocated_psych) => {
 				type: 'DOCTOR',
 			});
 		}
+		rebalance_ai_workers(base, allocated_psych);
 	}
 };
 
