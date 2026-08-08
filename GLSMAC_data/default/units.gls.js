@@ -6,6 +6,7 @@ const manifest = #include('content/base_units');
 const result = {
 	moralesets: defs.moralesets,
 	definitions: defs.definitions,
+	generated_count: defs.generated_count,
 	manifest: manifest,
 
 	configure: (game) => {

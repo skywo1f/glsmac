@@ -39,7 +39,7 @@ test.assert(result.counts == {
 		partial_facilities: 17,
 	base_facilities: 38,
 	projects: 33,
-	units: 10,
+		units: 102,
 	chassis: 9,
 	reactors: 4,
 	weapons: 21,
@@ -106,6 +106,12 @@ invalid = make_catalog();
 invalid.units[0].data.morale = 'MISSING';
 test.assert(validator.validate(invalid).errors == [
 	'units.ScoutPatrol.morale: references missing morale set MISSING',
+]);
+
+invalid = make_catalog();
+invalid.units[0].data.movement_per_turn = 1.5;
+test.assert(validator.validate(invalid).errors == [
+	'units.ScoutPatrol.movement_per_turn: must be an integer from 0 through 1000',
 ]);
 
 invalid = make_catalog();

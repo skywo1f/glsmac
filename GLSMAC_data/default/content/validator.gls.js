@@ -782,7 +782,7 @@ const validate_units = (units, technologies, morale_ids, errors) => {
 		if (#is_defined(data.movement_type) && !#is_defined(movement_types[data.movement_type])) {
 			add_error(errors, path + '.movement_type', 'is not supported');
 		}
-		validate_number(data, 'movement_per_turn', path, errors, true, 0.0, 1000.0);
+		validate_int(data, 'movement_per_turn', path, errors, true, 0, 1000);
 		validate_unit_render(data.render, path + '.render', errors);
 	}
 	return count;

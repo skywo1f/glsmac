@@ -128,6 +128,28 @@
 					target: '',
 					progress: 0,
 				});
+				const unit_defs = game.get_um().get_unit_defs();
+				let found_late_land_unit = false;
+				let found_sea_unit = false;
+				let found_air_unit = false;
+				for (unit_def of unit_defs) {
+					if (unit_def.offense >= 20 && unit_def.is_land) {
+						found_late_land_unit = base.can_set_production('unit', unit_def.id);
+					}
+					if (unit_def.offense > 1 && unit_def.is_water) {
+						found_sea_unit = true;
+					}
+					if (unit_def.offense > 1 && unit_def.is_air) {
+						found_air_unit = base.can_set_production('unit', unit_def.id);
+					}
+				}
+				if (
+					#sizeof(unit_defs) != 102 || !found_late_land_unit ||
+					!found_sea_unit || !found_air_unit
+				) {
+					fail('generated unit catalog is unavailable at runtime');
+					return;
+				}
 				for (gate of production_gates) {
 					const expected_available = gate[1] != 'HabitationDome';
 					if (base.can_set_production(gate[0], gate[1]) != expected_available) {
