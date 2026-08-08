@@ -1,5 +1,12 @@
 const MAX_DEFINITION_VALUE = 1000000;
 
+const technology_fields = {
+	id: true,
+	name: true,
+	cost: true,
+	prerequisites: true,
+};
+
 const facility_fields = {
 	name: true,
 	mineral_cost: true,
@@ -183,6 +190,7 @@ const validate_technologies = (definitions, order, errors) => {
 			graph_is_valid = false;
 			continue;
 		}
+		validate_known_fields(definition, technology_fields, path, errors);
 		validate_string(definition, 'id', path, errors, true);
 		if (#is_defined(definition.id) && definition.id != id) {
 			add_error(errors, path + '.id', 'must match catalog key ' + id);

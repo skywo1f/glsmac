@@ -99,7 +99,7 @@ const facilities = [
 			energy_bonus: 0,
 			energy_maintenance: 1,
 			research_bonus: 2,
-			required_technology: 'SecretsHumanBrain',
+			required_technology: 'CentauriEmpathy',
 		},
 	},
 ];

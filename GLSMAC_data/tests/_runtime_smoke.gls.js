@@ -177,7 +177,7 @@
 				if (
 					!game.get_player().has_technology('CentauriEcology') ||
 					research_state.technologies != ['CentauriEcology'] ||
-					research_state.target != 'DoctrineMobility' ||
+					research_state.target != 'Biogenetics' ||
 					research_state.progress != 0 ||
 					!base.can_set_production('unit', 'Former') ||
 					base.can_set_production('unit', 'ReconRover') ||
@@ -210,7 +210,7 @@
 				}
 				game.get_player().set_research_state({
 					technologies: ['CentauriEcology', 'Biogenetics'],
-					target: 'DoctrineMobility',
+					target: 'IndustrialBase',
 					progress: 0,
 				});
 				if (!base.can_set_production('facility', recycling_tanks.id)) {

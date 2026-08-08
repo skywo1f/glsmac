@@ -124,7 +124,7 @@
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != 'DoctrineMobility' ||
+					state.target != 'Biogenetics' ||
 					(expect_progress ? state.progress <= 0 : state.progress != 0)
 				) {
 					return 'starting Centauri Ecology progression is invalid';
@@ -134,7 +134,7 @@
 			const base = find_base_for_player(player.id);
 			if (
 				player.has_technology('CentauriEcology') ||
-				state.target != 'CentauriEcology' ||
+				state.target != 'Biogenetics' ||
 				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
 				base == null ||
 				base.can_set_production('unit', 'Former')
@@ -422,7 +422,7 @@
 				energy_bank.economy_multiplier != 0.5 ||
 				command_center.required_technology != 'DoctrineMobility' ||
 				command_center.unit_morale_bonus != 2 ||
-				biology_lab.required_technology != 'SecretsHumanBrain' ||
+				biology_lab.required_technology != 'CentauriEmpathy' ||
 				biology_lab.research_bonus != 2
 			) {
 				return 'built Recycling Tanks definition is invalid';

@@ -21,7 +21,7 @@ const result = validator.validate(make_catalog());
 
 test.assert(result.errors == []);
 test.assert(result.counts == {
-	technologies: 11,
+	technologies: 77,
 	facilities: 8,
 	units: 10,
 	moralesets: 2,
@@ -29,6 +29,12 @@ test.assert(result.counts == {
 });
 
 let invalid = make_catalog();
+invalid.technologies.definitions.Biogenetics.cost_typo = 30;
+test.assert(validator.validate(invalid).errors == [
+	'technologies.Biogenetics.cost_typo: is not a supported field',
+]);
+
+invalid = make_catalog();
 invalid.facilities[0].data.nutrient_typo = 1;
 test.assert(validator.validate(invalid).errors == [
 	'facilities.RecyclingTanks.nutrient_typo: is not a supported field',

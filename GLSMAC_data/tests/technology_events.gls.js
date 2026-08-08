@@ -2,101 +2,80 @@ const technologies = #include('../default/technologies');
 const initialize_research = #include('../default/game/event/initialize_player_research');
 const process_research = #include('../default/game/event/process_player_research');
 
-const ecology = technologies.get_definition('CentauriEcology');
-test.assert(ecology.id == 'CentauriEcology');
-test.assert(ecology.name == 'Centauri Ecology');
-test.assert(ecology.cost == 20);
-test.assert(#sizeof(ecology.prerequisites) == 0);
-const mobility = technologies.get_definition('DoctrineMobility');
-test.assert(mobility.id == 'DoctrineMobility');
-test.assert(mobility.name == 'Doctrine: Mobility');
-test.assert(mobility.cost == 30);
-test.assert(mobility.prerequisites == ['CentauriEcology']);
-const information = technologies.get_definition('InformationNetworks');
-test.assert(information.id == 'InformationNetworks');
-test.assert(information.name == 'Information Networks');
-test.assert(information.cost == 40);
-test.assert(information.prerequisites == ['DoctrineMobility']);
-const physics = technologies.get_definition('AppliedPhysics');
-test.assert(physics.name == 'Applied Physics');
-test.assert(physics.cost == 50);
-test.assert(physics.prerequisites == ['InformationNetworks']);
-const industry = technologies.get_definition('IndustrialBase');
-test.assert(industry.name == 'Industrial Base');
-test.assert(industry.cost == 50);
-test.assert(industry.prerequisites == ['AppliedPhysics']);
-const social = technologies.get_definition('SocialPsych');
-test.assert(social.name == 'Social Psych');
-test.assert(social.cost == 40);
-test.assert(social.prerequisites == ['CentauriEcology']);
 const biogenetics = technologies.get_definition('Biogenetics');
-test.assert(biogenetics.name == 'Biogenetics');
-test.assert(biogenetics.cost == 30);
-test.assert(biogenetics.prerequisites == []);
-const planetary_networks = technologies.get_definition('PlanetaryNetworks');
-test.assert(planetary_networks.name == 'Planetary Networks');
-test.assert(planetary_networks.cost == 50);
-test.assert(planetary_networks.prerequisites == ['InformationNetworks']);
-const doctrine_loyalty = technologies.get_definition('DoctrineLoyalty');
-test.assert(doctrine_loyalty.name == 'Doctrine: Loyalty');
-test.assert(doctrine_loyalty.cost == 60);
-test.assert(doctrine_loyalty.prerequisites == ['DoctrineMobility', 'SocialPsych']);
-const industrial_economics = technologies.get_definition('IndustrialEconomics');
-test.assert(industrial_economics.name == 'Industrial Economics');
-test.assert(industrial_economics.cost == 70);
-test.assert(industrial_economics.prerequisites == ['IndustrialBase']);
-const secrets_human_brain = technologies.get_definition('SecretsHumanBrain');
-test.assert(secrets_human_brain.name == 'Secrets of the Human Brain');
-test.assert(secrets_human_brain.cost == 80);
-test.assert(secrets_human_brain.prerequisites == ['SocialPsych', 'Biogenetics']);
+test.assert(biogenetics == {
+	id: 'Biogenetics',
+	name: 'Biogenetics',
+	cost: 30,
+	prerequisites: [],
+});
+test.assert(technologies.get_definition('CentauriEcology').prerequisites == []);
+test.assert(technologies.get_definition('DoctrineMobility').prerequisites == []);
+test.assert(technologies.get_definition('InformationNetworks').prerequisites == []);
+test.assert(technologies.get_definition('AppliedPhysics').prerequisites == []);
+test.assert(technologies.get_definition('IndustrialBase').prerequisites == []);
+test.assert(technologies.get_definition('SocialPsych').prerequisites == []);
+test.assert(technologies.get_definition('PlanetaryNetworks').prerequisites == ['InformationNetworks']);
+test.assert(technologies.get_definition('DoctrineLoyalty').prerequisites == ['DoctrineMobility', 'SocialPsych']);
+test.assert(technologies.get_definition('IndustrialEconomics').prerequisites == ['IndustrialBase']);
+test.assert(technologies.get_definition('SecretsHumanBrain').prerequisites == ['SocialPsych', 'Biogenetics']);
+test.assert(technologies.get_definition('TranscendentThought').prerequisites == ['ThresholdOfTranscendence', 'ControlledSingularity']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
-test.assert(technologies.get_available_targets([]) == ['CentauriEcology', 'Biogenetics']);
-test.assert(technologies.get_available_targets(['CentauriEcology']) == ['DoctrineMobility', 'SocialPsych', 'Biogenetics']);
-test.assert(technologies.get_next_target([]) == 'CentauriEcology');
-test.assert(technologies.get_next_target(['CentauriEcology']) == 'DoctrineMobility');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility']) == 'InformationNetworks');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks']) == 'AppliedPhysics');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics']) == 'IndustrialBase');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase']) == 'SocialPsych');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych']) == 'Biogenetics');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics']) == 'PlanetaryNetworks');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks']) == 'DoctrineLoyalty');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty']) == 'IndustrialEconomics');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics']) == 'SecretsHumanBrain');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics', 'SecretsHumanBrain']) == '');
+
+const root_technologies = [
+	'Biogenetics',
+	'IndustrialBase',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'SocialPsych',
+	'DoctrineMobility',
+	'CentauriEcology',
+];
+test.assert(technologies.get_available_targets([]) == root_technologies);
+test.assert(technologies.get_next_target([]) == 'Biogenetics');
+test.assert(technologies.get_next_target(root_technologies[0::5]) == 'CentauriEcology');
+test.assert(technologies.get_available_targets(root_technologies) == [
+	'NonlinearMathematics',
+	'HighEnergyChemistry',
+	'PolymorphicSoftware',
+	'PlanetaryNetworks',
+	'DoctrineFlexibility',
+	'DoctrineLoyalty',
+	'EthicalCalculus',
+	'IndustrialEconomics',
+	'SecretsHumanBrain',
+]);
+
+let every_technology = [];
+for (id of technologies.order) {
+	every_technology :+id;
+}
+test.assert(#sizeof(every_technology) == 77);
+test.assert(technologies.get_available_targets(every_technology) == []);
+test.assert(technologies.get_next_target(every_technology) == '');
 
 const base = {
-	get_intake: () => {
-		return {ENERGY: 6};
-	},
-	get_consumption: () => {
-		return {ENERGY: 1};
-	},
+	get_intake: () => { return {ENERGY: 6}; },
+	get_consumption: () => { return {ENERGY: 1}; },
 	get_facilities: () => { return []; },
 };
 const labs = technologies.get_base_labs(base);
-test.assert(labs.allocation == 0.4);
-test.assert(labs.value == 2);
-test.assert(labs.bonus == 2);
-test.assert(labs.total == 4);
-const network_base = {
+test.assert(labs == {allocation: 0.4, value: 2, bonus: 2, total: 4});
+
+const network_labs = technologies.get_base_labs({
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,
 	get_facilities: () => { return [{research_multiplier: 0.5, research_bonus: 0}]; },
-};
-const network_labs = technologies.get_base_labs(network_base);
-test.assert(network_labs.value == 2);
-test.assert(network_labs.bonus == 4);
-test.assert(network_labs.total == 6);
-const biology_base = {
+});
+test.assert(network_labs == {allocation: 0.4, value: 2, bonus: 4, total: 6});
+
+const biology_labs = technologies.get_base_labs({
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,
 	get_facilities: () => { return [{research_multiplier: 0.0, research_bonus: 2}]; },
-};
-const biology_labs = technologies.get_base_labs(biology_base);
-test.assert(biology_labs.value == 2);
-test.assert(biology_labs.bonus == 4);
-test.assert(biology_labs.total == 6);
+});
+test.assert(biology_labs == {allocation: 0.4, value: 2, bonus: 4, total: 6});
+
 const combined_labs = technologies.get_base_labs({
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,
@@ -105,140 +84,29 @@ const combined_labs = technologies.get_base_labs({
 		{research_multiplier: 0.0, research_bonus: 2},
 	]; },
 });
-test.assert(combined_labs.value == 2);
-test.assert(combined_labs.bonus == 7);
-test.assert(combined_labs.total == 9);
+test.assert(combined_labs == {allocation: 0.4, value: 2, bonus: 7, total: 9});
 
 const make_initial_player = (starting_technologies) => {
 	return {
 		get_faction: () => {
 			return {
-				get_starting_technologies: () => {
-					return starting_technologies;
-				},
+				get_starting_technologies: () => { return starting_technologies; },
 			};
 		},
 	};
 };
 test.assert(technologies.get_initial_state(make_initial_player([])) == {
 	technologies: [],
-	target: 'CentauriEcology',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology'])) == {
-	technologies: ['CentauriEcology'],
-	target: 'DoctrineMobility',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player(['CentauriEcology', 'DoctrineMobility'])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility'],
-	target: 'InformationNetworks',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
-	target: 'AppliedPhysics',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
-	target: 'SocialPsych',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych'],
 	target: 'Biogenetics',
 	progress: 0,
 });
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-	'Biogenetics',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
-	target: 'PlanetaryNetworks',
+test.assert(technologies.get_initial_state(make_initial_player(['Biogenetics'])) == {
+	technologies: ['Biogenetics'],
+	target: 'IndustrialBase',
 	progress: 0,
 });
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-	'Biogenetics',
-	'PlanetaryNetworks',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
-	target: 'DoctrineLoyalty',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-	'Biogenetics',
-	'PlanetaryNetworks',
-	'DoctrineLoyalty',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
-	target: 'IndustrialEconomics',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-	'Biogenetics',
-	'PlanetaryNetworks',
-	'DoctrineLoyalty',
-	'IndustrialEconomics',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
-	target: 'SecretsHumanBrain',
-	progress: 0,
-});
-test.assert(technologies.get_initial_state(make_initial_player([
-	'CentauriEcology',
-	'DoctrineMobility',
-	'InformationNetworks',
-	'AppliedPhysics',
-	'IndustrialBase',
-	'SocialPsych',
-	'Biogenetics',
-	'PlanetaryNetworks',
-	'DoctrineLoyalty',
-	'IndustrialEconomics',
-	'SecretsHumanBrain',
-])) == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics', 'SecretsHumanBrain'],
+test.assert(technologies.get_initial_state(make_initial_player(every_technology)) == {
+	technologies: every_technology,
 	target: '',
 	progress: 0,
 });
@@ -248,27 +116,15 @@ const clone_state = (state) => {
 	for (id of state.technologies) {
 		known :+id;
 	}
-	return {
-		technologies: known,
-		target: state.target,
-		progress: state.progress,
-	};
+	return {technologies: known, target: state.target, progress: state.progress};
 };
 
-let research_state = {
-	technologies: [],
-	target: '',
-	progress: 0,
-};
+let research_state = {technologies: [], target: '', progress: 0};
 const player = {
 	id: 1,
 	name: 'Researcher',
-	get_research_state: () => {
-		return clone_state(research_state);
-	},
-	set_research_state: (state) => {
-		research_state = clone_state(state);
-	},
+	get_research_state: () => { return clone_state(research_state); },
+	set_research_state: (state) => { research_state = clone_state(state); },
 };
 let triggers = [];
 let messages = [];
@@ -277,9 +133,7 @@ const game = {
 		triggers :+name;
 		test.assert(data.player == player);
 	},
-	message: (text) => {
-		messages :+text;
-	},
+	message: (text) => { messages :+text; },
 	get: (key) => {
 		if (key == 'f_technology_get_next_target') {
 			return technologies.get_next_target;
@@ -296,11 +150,7 @@ let event = {
 	game: game,
 	data: {
 		player: player,
-		state: {
-			technologies: [],
-			target: 'CentauriEcology',
-			progress: 0,
-		},
+		state: {technologies: [], target: 'Biogenetics', progress: 0},
 	},
 };
 test.assert(!#is_defined(initialize_research.validate(event)));
@@ -314,19 +164,11 @@ initialize_research.rollback(event);
 test.assert(research_state == {technologies: [], target: '', progress: 0});
 test.assert(triggers == ['research_updated', 'research_updated']);
 
-research_state = {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 3,
-};
+research_state = {technologies: [], target: 'Biogenetics', progress: 3};
 event = {
 	caller: 0,
 	game: game,
-	data: {
-		player: player,
-		technology: ecology,
-		labs: 4,
-	},
+	data: {player: player, technology: biogenetics, labs: 4},
 };
 test.assert(!#is_defined(process_research.validate(event)));
 event.caller = 1;
@@ -337,266 +179,51 @@ test.assert(#is_defined(process_research.validate(event)));
 event.data.labs = 4;
 event.data.technology = null;
 test.assert(#is_defined(process_research.validate(event)));
-event.data.technology = {
-	id: 'CentauriEcology',
-	name: 'Centauri Ecology',
-	cost: '20',
-};
+event.data.technology = {id: 'Biogenetics', name: 'Biogenetics', cost: '30'};
 test.assert(#is_defined(process_research.validate(event)));
-event.data.technology = ecology;
-research_state.progress = ecology.cost;
+event.data.technology = biogenetics;
+research_state.progress = biogenetics.cost;
 test.assert(#is_defined(process_research.validate(event)));
 research_state.progress = 3;
-event.data.labs = 4;
 
 event.applied = process_research.apply(event);
 test.assert(!event.applied.completed);
-test.assert(research_state == {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 7,
-});
+test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 7});
 test.assert(messages == []);
 process_research.rollback(event);
-test.assert(research_state == {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 3,
-});
+test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 3});
 
-research_state.progress = 7;
-event.data.labs = 20;
+research_state.progress = 29;
+event.data.labs = 1;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(event.applied.completed_count == 1);
 test.assert(research_state == {
-	technologies: ['CentauriEcology'],
-	target: 'DoctrineMobility',
-	progress: 7,
+	technologies: ['Biogenetics'],
+	target: 'IndustrialBase',
+	progress: 0,
 });
-test.assert(messages == ['Researcher has discovered Centauri Ecology.']);
+test.assert(messages == ['Researcher has discovered Biogenetics.']);
 process_research.rollback(event);
-test.assert(research_state == {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 7,
-});
+test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 29});
 
-research_state = {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 19,
-};
-event.data.technology = ecology;
-event.data.labs = 55;
+messages = [];
+research_state = {technologies: [], target: 'Biogenetics', progress: 29};
+event.data.labs = 51;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(event.applied.completed_count == 2);
 test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility'],
-	target: 'InformationNetworks',
-	progress: 24,
-});
-test.assert(messages == [
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Doctrine: Mobility.',
-]);
-process_research.rollback(event);
-test.assert(research_state == {
-	technologies: [],
-	target: 'CentauriEcology',
-	progress: 19,
-});
-
-research_state = {
-	technologies: ['CentauriEcology'],
-	target: 'DoctrineMobility',
-	progress: 29,
-};
-event.data.technology = mobility;
-event.data.labs = 1;
-test.assert(!#is_defined(process_research.validate(event)));
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility'],
+	technologies: ['Biogenetics', 'IndustrialBase'],
 	target: 'InformationNetworks',
 	progress: 0,
 });
 test.assert(messages == [
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Doctrine: Mobility.',
-	'Researcher has discovered Doctrine: Mobility.',
+	'Researcher has discovered Biogenetics.',
+	'Researcher has discovered Industrial Base.',
 ]);
 process_research.rollback(event);
-test.assert(research_state == {
-	technologies: ['CentauriEcology'],
-	target: 'DoctrineMobility',
-	progress: 29,
-});
+test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 29});
 
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility'],
-	target: 'InformationNetworks',
-	progress: 39,
-};
-event.data.technology = information;
-event.data.labs = 1;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
-	target: 'AppliedPhysics',
-	progress: 0,
-});
-test.assert(messages == [
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Centauri Ecology.',
-	'Researcher has discovered Doctrine: Mobility.',
-	'Researcher has discovered Doctrine: Mobility.',
-	'Researcher has discovered Information Networks.',
-]);
-process_research.rollback(event);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility'],
-	target: 'InformationNetworks',
-	progress: 39,
-});
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks'],
-	target: 'AppliedPhysics',
-	progress: 49,
-};
-event.data.technology = physics;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics'],
-	target: 'IndustrialBase',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'AppliedPhysics');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics'],
-	target: 'IndustrialBase',
-	progress: 49,
-};
-event.data.technology = industry;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
-	target: 'SocialPsych',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'IndustrialBase');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
-	target: 'SocialPsych',
-	progress: 39,
-};
-event.data.technology = social;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych'],
-	target: 'Biogenetics',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'SocialPsych');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych'],
-	target: 'Biogenetics',
-	progress: 29,
-};
-event.data.technology = biogenetics;
-event.data.labs = 1;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
-	target: 'PlanetaryNetworks',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'Biogenetics');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics'],
-	target: 'PlanetaryNetworks',
-	progress: 49,
-};
-event.data.technology = planetary_networks;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
-	target: 'DoctrineLoyalty',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'PlanetaryNetworks');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks'],
-	target: 'DoctrineLoyalty',
-	progress: 59,
-};
-event.data.technology = doctrine_loyalty;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
-	target: 'IndustrialEconomics',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'DoctrineLoyalty');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
-	target: 'IndustrialEconomics',
-	progress: 69,
-};
-event.data.technology = industrial_economics;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
-	target: 'SecretsHumanBrain',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'IndustrialEconomics');
-
-research_state = {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
-	target: 'SecretsHumanBrain',
-	progress: 79,
-};
-event.data.technology = secrets_human_brain;
-event.applied = process_research.apply(event);
-test.assert(event.applied.completed);
-test.assert(research_state == {
-	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics', 'SecretsHumanBrain'],
-	target: '',
-	progress: 0,
-});
-process_research.rollback(event);
-test.assert(research_state.target == 'SecretsHumanBrain');
-
-event.data.technology = {
-	id: 'WrongTarget',
-	name: 'Wrong Target',
-	cost: 20,
-};
+event.data.technology = {id: 'WrongTarget', name: 'Wrong Target', cost: 20};
 test.assert(#is_defined(process_research.validate(event)));

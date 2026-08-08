@@ -124,7 +124,7 @@
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != 'DoctrineMobility' ||
+					state.target != 'Biogenetics' ||
 					(expect_progress ? state.progress <= 0 : state.progress != 0)
 				) {
 					return 'starting Centauri Ecology progression is invalid';
@@ -134,7 +134,7 @@
 			const base = find_base_for_player(player.id);
 			if (
 				player.has_technology('CentauriEcology') ||
-				state.target != 'CentauriEcology' ||
+				state.target != 'Biogenetics' ||
 				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
 				base == null ||
 				base.can_set_production('unit', 'Former')
