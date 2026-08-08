@@ -141,3 +141,89 @@ test.assert(combat_rules.get_combat_powers(attacker, conventional_psi_defender).
 
 test.assert(combat_rules.is_artillery({id: 'TestArtillery', is_artillery: true}));
 test.assert(!combat_rules.is_artillery({id: 'SporeLauncher', is_artillery: false}));
+
+const ability_attacker = make_unit(attack_tile, 1, 2, 1, false, 'land');
+ability_attacker.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_attack: false,
+		offense: 2,
+		defense: 1,
+		movement_per_turn: 2.0,
+		abilities: [],
+	};
+};
+const ability_tile = make_tile();
+const ability_defender = make_unit(ability_tile, 2, 1, 2, false, 'land');
+ability_defender.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_defense: false,
+		offense: 1,
+		defense: 2,
+		abilities: ['CommJammer'],
+	};
+};
+test.assert(combat_rules.get_combat_powers(ability_attacker, ability_defender).defence == 3.0);
+
+ability_attacker.is_land = false;
+ability_attacker.is_air = true;
+ability_defender.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_defense: false,
+		offense: 1,
+		defense: 2,
+		abilities: ['AAATracking'],
+	};
+};
+test.assert(combat_rules.get_combat_powers(ability_attacker, ability_defender).defence == 4.0);
+
+ability_attacker.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_attack: false,
+		offense: 2,
+		defense: 1,
+		movement_per_turn: 8.0,
+		abilities: ['BlinkDisplacer'],
+	};
+};
+ability_defender.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_defense: false,
+		offense: 1,
+		defense: 2,
+		abilities: [],
+	};
+};
+const blink_defender = make_unit(base_tile, 2, 1, 2, false, 'land');
+blink_defender.get_def = ability_defender.get_def;
+test.assert(
+	combat_rules.get_combat_powers(ability_attacker, blink_defender, project_defense_game).defence == 2.5
+);
+
+const empath_attacker = make_unit(attack_tile, 1, 1, 1, false, 'land');
+empath_attacker.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_attack: true,
+		offense: 1,
+		defense: 1,
+		abilities: ['EmpathSong'],
+	};
+};
+const trance_defender = make_unit(base_tile, 2, 1, 1, false, 'land');
+trance_defender.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_defense: true,
+		offense: 1,
+		defense: 1,
+		abilities: ['HypnoticTrance'],
+	};
+};
+const ability_psi_powers = combat_rules.get_combat_powers(empath_attacker, trance_defender);
+test.assert(ability_psi_powers.attack == 4.5);
+test.assert(ability_psi_powers.defence == 3.75);

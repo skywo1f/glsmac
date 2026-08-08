@@ -2,6 +2,18 @@ const is_artillery = (def) => {
 	return #is_defined(def.is_artillery) ? def.is_artillery : def.id == 'SporeLauncher';
 };
 
+const has_ability = (def, id) => {
+	if (!#is_defined(def.abilities)) {
+		return false;
+	}
+	for (ability of def.abilities) {
+		if (ability == id) {
+			return true;
+		}
+	}
+	return false;
+};
+
 const get_morale_multiplier = (unit) => {
 	return 0.75 + #to_float(unit.morale) * 0.125;
 };
@@ -80,8 +92,30 @@ const get_combat_powers = (attacker, defender, game) => {
 		defence_modifier += 0.25;
 	}
 	if (!is_psi_combat) {
-		defence_modifier *= get_base_defense_multiplier(defender, attacker, game);
+		if (
+			#is_defined(attacker.is_air) && attacker.is_air &&
+			has_ability(defender_def, 'AAATracking')
+		) {
+			defence_modifier *= 2.0;
+		}
+		if (
+			#is_defined(attacker.is_land) && attacker.is_land &&
+			#is_defined(attacker_def.movement_per_turn) &&
+			attacker_def.movement_per_turn > 1.0 &&
+			has_ability(defender_def, 'CommJammer')
+		) {
+			defence_modifier *= 1.5;
+		}
+		if (!has_ability(attacker_def, 'BlinkDisplacer')) {
+			defence_modifier *= get_base_defense_multiplier(defender, attacker, game);
+		}
 	} else {
+		if (has_ability(attacker_def, 'EmpathSong')) {
+			attack_modifier *= 1.5;
+		}
+		if (has_ability(defender_def, 'HypnoticTrance')) {
+			defence_modifier *= 1.5;
+		}
 		attack_modifier *= get_project_effects(attacker, game).psi_attack_multiplier;
 		defence_modifier *= get_project_effects(defender, game).psi_defense_multiplier;
 	}
@@ -139,6 +173,7 @@ const get_best_defender = (attacker, tile, game) => {
 
 return {
 	is_artillery: is_artillery,
+	has_ability: has_ability,
 	get_morale_multiplier: get_morale_multiplier,
 	get_base_defense_multiplier: get_base_defense_multiplier,
 	get_combat_powers: get_combat_powers,

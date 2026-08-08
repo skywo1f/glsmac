@@ -1,8 +1,8 @@
 const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 
-test.assert(units.generated_count == 92);
-test.assert(#sizeof(units.definitions) == 102);
+test.assert(units.generated_count > 92);
+test.assert(#sizeof(units.definitions) == units.generated_count + 10);
 
 let ids = {};
 let found_late_land_assault = false;

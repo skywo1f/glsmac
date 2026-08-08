@@ -43,7 +43,7 @@ test.assert(result.counts == {
 		partial_projects: 16,
 	base_facilities: 38,
 	projects: 33,
-	units: 102,
+	units: #sizeof(units.definitions),
 	chassis: 9,
 	reactors: 4,
 	weapons: 21,

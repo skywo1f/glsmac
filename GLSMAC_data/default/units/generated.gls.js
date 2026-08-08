@@ -78,6 +78,30 @@ const find_component = (entries, id) => {
 };
 
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
+const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
+
+const get_role_abilities = (known, role) => {
+	let result = [];
+	const add_if_available = (id) => {
+		const ability = find_component(manifest.abilities, id);
+		if (is_available(ability, known)) {
+			result :+ability;
+		}
+	};
+	if (role == 'assault') {
+		add_if_available('EmpathSong');
+		add_if_available('BlinkDisplacer');
+	} else if (role == 'garrison') {
+		add_if_available('HypnoticTrance');
+		const aaa = find_component(manifest.abilities, 'AAATracking');
+		if (is_available(aaa, known)) {
+			result :+aaa;
+		} else {
+			add_if_available('CommJammer');
+		}
+	}
+	return result;
+};
 
 const get_render = (chassis, role) => {
 	let x = role == 'assault' ? 206 : 2;
@@ -103,13 +127,28 @@ const get_render = (chassis, role) => {
 	};
 };
 
-const make_definition = (technology_id, chassis, weapon, armor, role) => {
+const make_definition = (technology_id, chassis, weapon, armor, role, abilities) => {
 	const role_name = role == 'assault' ? weapon.short_name : armor.short_name;
+	let ability_name = '';
+	let ability_cost = 0;
+	let ability_ids = [];
+	let ability_suffix = '';
+	for (ability of abilities) {
+		if (ability.abbreviation != '') {
+			ability_name += ability.abbreviation + ' ';
+		}
+		ability_cost += ability.cost > 0 ? ability.cost : 1;
+		ability_ids :+ability.id;
+		ability_suffix += ability.id;
+	}
+	const name = role == 'artillery'
+		? weapon.short_name + ' Artillery ' + chassis.name
+		: ability_name + role_name + ' ' + chassis.name;
 	return {
-		id: 'Generated' + chassis.id + weapon.id + armor.id,
+		id: 'Generated' + chassis.id + weapon.id + armor.id + ability_suffix,
 		data: {
-			name: role_name + ' ' + chassis.name,
-			mineral_cost: #max((chassis.cost + weapon.cost + armor.cost) * 5, 10),
+			name: name,
+			mineral_cost: #max((chassis.cost + weapon.cost + armor.cost + ability_cost) * 5, 10),
 			is_native: false,
 			offense: weapon.offense,
 			defense: armor.defense,
@@ -121,7 +160,7 @@ const make_definition = (technology_id, chassis, weapon, armor, role) => {
 			armor: armor.id,
 			reactor: 'FissionPlant',
 			reactor_power: 1,
-			abilities: [],
+			abilities: ability_ids,
 			morale: 'STANDARD',
 			type: 'static',
 			movement_type: chassis.triad == 'sea' ? 'water' : chassis.triad,
@@ -133,18 +172,22 @@ const make_definition = (technology_id, chassis, weapon, armor, role) => {
 
 let definitions = [];
 let seen = {};
-seen['Infantry|HandWeapons|NoArmor'] = true;
-seen['Speeder|HandWeapons|NoArmor'] = true;
-seen['Infantry|Laser|NoArmor'] = true;
-seen['Infantry|HandWeapons|SynthmetalArmor'] = true;
+seen['Infantry|HandWeapons|NoArmor|'] = true;
+seen['Speeder|HandWeapons|NoArmor|'] = true;
+seen['Infantry|Laser|NoArmor|'] = true;
+seen['Infantry|HandWeapons|SynthmetalArmor|'] = true;
 
-const add_design = (technology_id, chassis, weapon, armor, role) => {
-	const signature = chassis.id + '|' + weapon.id + '|' + armor.id;
+const add_design = (technology_id, chassis, weapon, armor, role, abilities) => {
+	let ability_signature = '';
+	for (ability of abilities) {
+		ability_signature += ability.id + ',';
+	}
+	const signature = chassis.id + '|' + weapon.id + '|' + armor.id + '|' + ability_signature;
 	if (#is_defined(seen[signature])) {
 		return;
 	}
 	seen[signature] = true;
-	definitions :+make_definition(technology_id, chassis, weapon, armor, role);
+	definitions :+make_definition(technology_id, chassis, weapon, armor, role, abilities);
 };
 
 const add_milestone_designs = (technology_id) => {
@@ -158,8 +201,19 @@ const add_milestone_designs = (technology_id) => {
 	}
 	for (triad in chassis_by_triad) {
 		const chassis = chassis_by_triad[triad];
-		add_design(technology_id, chassis, weapon, armor, 'assault');
-		add_design(technology_id, chassis, hand_weapons, armor, 'garrison');
+		add_design(technology_id, chassis, weapon, armor, 'assault', []);
+		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+		const assault_abilities = get_role_abilities(known, 'assault');
+		if (#sizeof(assault_abilities) > 0) {
+			add_design(technology_id, chassis, weapon, armor, 'assault', assault_abilities);
+		}
+		const garrison_abilities = get_role_abilities(known, 'garrison');
+		if (#sizeof(garrison_abilities) > 0) {
+			add_design(technology_id, chassis, hand_weapons, armor, 'garrison', garrison_abilities);
+		}
+		if (triad != 'air' && is_available(heavy_artillery, known)) {
+			add_design(technology_id, chassis, weapon, armor, 'artillery', [heavy_artillery]);
+		}
 	}
 };
 
