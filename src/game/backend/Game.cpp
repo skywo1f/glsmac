@@ -1357,12 +1357,24 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	if ( IsGameOver() ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game already has a winner" );
 	}
-	if ( type != VT_CONQUEST ) {
+	if ( type != VT_CONQUEST && type != VT_TRANSCENDENCE ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Unsupported victory type" );
 	}
-	auto* const expected_winner = GetConquestWinner();
-	if ( !expected_winner || !expected_winner->GetSlot() || expected_winner->GetSlot()->GetIndex() != winner_slot ) {
-		GSE_ERROR( gse::EC.GAME_ERROR, "Player has not met the conquest victory condition" );
+	if ( !m_state || winner_slot >= m_state->m_slots->GetCount() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Victory winner slot does not exist" );
+	}
+	const auto& winner = m_state->m_slots->GetSlot( winner_slot );
+	if ( winner.GetState() != slot::Slot::SS_PLAYER || !winner.GetPlayer() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Victory winner slot has no player" );
+	}
+	if ( type == VT_CONQUEST ) {
+		auto* const expected_winner = GetConquestWinner();
+		if (
+			!expected_winner || !expected_winner->GetSlot() ||
+			expected_winner->GetSlot()->GetIndex() != winner_slot
+		) {
+			GSE_ERROR( gse::EC.GAME_ERROR, "Player has not met the conquest victory condition" );
+		}
 	}
 
 	m_victory_state = { type, winner_slot, m_current_turn.GetId() };
@@ -1374,6 +1386,8 @@ const std::string Game::GetVictoryTypeString( const victory_type_t type ) {
 			return "";
 		case VT_CONQUEST:
 			return "conquest";
+		case VT_TRANSCENDENCE:
+			return "transcendence";
 		default:
 			THROW( "Unknown victory type: " + std::to_string( type ) );
 	}
@@ -1382,6 +1396,10 @@ const std::string Game::GetVictoryTypeString( const victory_type_t type ) {
 const bool Game::ParseVictoryType( const std::string& value, victory_type_t& result ) {
 	if ( value == "conquest" ) {
 		result = VT_CONQUEST;
+		return true;
+	}
+	if ( value == "transcendence" ) {
+		result = VT_TRANSCENDENCE;
 		return true;
 	}
 	result = VT_NONE;

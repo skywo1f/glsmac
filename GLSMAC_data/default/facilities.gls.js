@@ -84,6 +84,7 @@ const project_effects = {
 	TheSingularityInductor: {granted_facility: 'QuantumConverter'},
 	TheBulkMatterTransmitter: {global_mineral_bonus: 2},
 	TheTelepathicMatrix: {global_prevent_riots: true},
+	TheAscentToTranscendence: {},
 };
 
 const partial_project_effects = {

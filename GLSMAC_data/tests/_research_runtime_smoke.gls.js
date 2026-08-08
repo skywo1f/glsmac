@@ -367,8 +367,26 @@
 					}
 				}
 
-				runtime_complete = true;
-				finish_if_ready();
+				base.add_facility('TheAscentToTranscendence');
+				let victory_wait_ticks = 0;
+				#async(100, () => {
+					victory_wait_ticks++;
+					if (!game.is_game_over()) {
+						if (victory_wait_ticks >= 100) {
+							fail('transcendence victory timed out');
+							return false;
+						}
+						return true;
+					}
+					const victory = game.get_victory_state();
+					if (victory != {type: 'transcendence', winner: player.id, turn: 2}) {
+						fail('transcendence victory state is invalid');
+						return false;
+					}
+					runtime_complete = true;
+					finish_if_ready();
+					return false;
+				});
 				return;
 			}
 

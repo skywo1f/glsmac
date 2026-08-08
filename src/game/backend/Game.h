@@ -336,6 +336,7 @@ public:
 	enum victory_type_t : uint8_t {
 		VT_NONE = 0,
 		VT_CONQUEST,
+		VT_TRANSCENDENCE,
 	};
 	struct victory_state_t {
 		victory_type_t type = VT_NONE;
