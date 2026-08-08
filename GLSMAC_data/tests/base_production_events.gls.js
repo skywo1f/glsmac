@@ -10,12 +10,21 @@ const mind_worms = {
 	name: 'Mind Worms',
 	production_kind: 'unit',
 	mineral_cost: 30,
+	can_found_base: false,
 };
 const spore_launcher = {
 	id: 'SporeLauncher',
 	name: 'Spore Launcher',
 	production_kind: 'unit',
 	mineral_cost: 50,
+	can_found_base: false,
+};
+const colony_pod = {
+	id: 'ColonyPod',
+	name: 'Colony Pod',
+	production_kind: 'unit',
+	mineral_cost: 30,
+	can_found_base: true,
 };
 const recycling_tanks = {
 	id: 'RecyclingTanks',
@@ -23,7 +32,7 @@ const recycling_tanks = {
 	production_kind: 'facility',
 	mineral_cost: 40,
 };
-const definitions = [mind_worms, spore_launcher, recycling_tanks];
+const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks];
 
 let production_queue = [];
 let built_facilities = [];
@@ -32,6 +41,18 @@ let pending_production = 7;
 let spawned_unit = #undefined;
 let spawn_data = #undefined;
 let despawned_unit = #undefined;
+let base_pops = [];
+
+const make_pop = (type, worked_tile) => {
+	let tile = worked_tile;
+	return {
+		get_type: () => { return type; },
+		get: (key) => { return key == 'worked_tile' ? tile : #undefined; },
+		has: (key) => { return key == 'worked_tile' && #is_defined(tile); },
+		clear_tile: () => { tile = #undefined; },
+		set_tile: (value) => { tile = value; },
+	};
+};
 
 const find_definition = (kind, id) => {
 	for (definition of definitions) {
@@ -89,6 +110,12 @@ const base = {
 	},
 	get_tile: () => {
 		return tile;
+	},
+	get_size: () => {
+		return #sizeof(base_pops);
+	},
+	get_pops: () => {
+		return base_pops;
 	},
 	get_production: () => {
 		return #sizeof(production_queue) > 0
@@ -185,6 +212,28 @@ const base = {
 	set_accumulated_minerals: (minerals) => {
 		accumulated_minerals = minerals;
 	},
+	unwork_pop_tile: (pop, worked_tile) => {
+		test.assert(pop.get('worked_tile') == worked_tile);
+		pop.clear_tile();
+	},
+	work_pop_tile: (pop, worked_tile) => {
+		test.assert(!pop.has('worked_tile'));
+		pop.set_tile(worked_tile);
+	},
+	destroy_pop: (pop) => {
+		let remaining = [];
+		for (candidate of base_pops) {
+			if (candidate != pop) {
+				remaining :+candidate;
+			}
+		}
+		base_pops = remaining;
+	},
+	create_pop: (data) => {
+		const pop = make_pop(data.type, #undefined);
+		base_pops :+pop;
+		return pop;
+	},
 };
 
 let turn_complete = false;
@@ -194,11 +243,24 @@ const game = {
 		return turn_complete;
 	},
 	get: (key) => {
-		test.assert(key == 'f_base_get_pending_production');
-		return (target_base) => {
-			test.assert(target_base == base);
-			return pending_production;
-		};
+		if (key == 'f_base_get_pending_production') {
+			return (target_base) => {
+				test.assert(target_base == base);
+				return pending_production;
+			};
+		}
+		if (key == 'f_base_select_population_for_reduction') {
+			return (target_base) => {
+				test.assert(target_base == base);
+				for (pop of base_pops) {
+					if (!pop.has('worked_tile')) {
+						return pop;
+					}
+				}
+				return #sizeof(base_pops) > 0 ? base_pops[0] : null;
+			};
+		}
+		throw Error('Unexpected game callback: ' + key);
 	},
 	um: {
 		spawn_unit: (data) => {
@@ -387,3 +449,35 @@ test.assert(!#is_defined(event.applied.completed_facility));
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 9);
 test.assert(get_queue_state() == []);
+
+const worked_tile = {id: 'worked-tile'};
+const worker_pop = make_pop('WORKER', worked_tile);
+production_queue = [colony_pod];
+base_pops = [worker_pop];
+accumulated_minerals = 25;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(accumulated_minerals == 32);
+test.assert(!#is_defined(spawned_unit));
+test.assert(#sizeof(base_pops) == 1);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 25);
+test.assert(#sizeof(base_pops) == 1);
+
+const doctor_pop = make_pop('DOCTOR', #undefined);
+base_pops = [worker_pop, doctor_pop];
+accumulated_minerals = 25;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(accumulated_minerals == 2);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == colony_pod.id);
+test.assert(#sizeof(base_pops) == 1);
+test.assert(base_pops[0] == worker_pop);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 25);
+test.assert(!#is_defined(spawned_unit));
+test.assert(#sizeof(base_pops) == 2);
+test.assert(base_pops[1].get_type() == 'DOCTOR');

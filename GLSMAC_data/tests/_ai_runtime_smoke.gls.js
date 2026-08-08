@@ -13,7 +13,7 @@
 	let ai_completed_improvement = false;
 	let ai_built_rover = false;
 	let ai_rover_moved_twice = false;
-	let rover_tiles = {};
+	let rover_states = {};
 	let ui_started = false;
 	let exit_scheduled = false;
 
@@ -22,11 +22,39 @@
 		glsmac.exit();
 	};
 
+	const monitor_rovers = () => {
+		for (unit of glsmac.game.get_um().get_units()) {
+			if (unit.owner != ai_id || unit.get_def().id != 'ReconRover') {
+				continue;
+			}
+			const key = #to_string(unit.id);
+			const tile = unit.get_tile();
+			const turn = glsmac.game.get_turn();
+			if (#is_defined(rover_states[key])) {
+				const previous = rover_states[key];
+				if (previous.x != tile.x || previous.y != tile.y) {
+					ai_moved = true;
+					const moves = previous.turn == turn ? previous.moves + 1 : 1;
+					if (moves >= 2) {
+						ai_rover_moved_twice = true;
+					}
+					rover_states[key] = {x: tile.x, y: tile.y, turn: turn, moves: moves};
+				} else if (previous.turn != turn) {
+					rover_states[key] = {x: tile.x, y: tile.y, turn: turn, moves: 0};
+				}
+			} else {
+				rover_states[key] = {x: tile.x, y: tile.y, turn: turn, moves: 0};
+			}
+		}
+		return !exit_scheduled;
+	};
+
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
 
 		game.on('start_ui', (e) => {
 			ui_started = true;
+			#async(25, monitor_rovers);
 			#async(500, () => { game.event('complete_turn', {}); });
 		});
 
@@ -101,6 +129,9 @@
 					ai_bases++;
 					if (turn_id <= 8) {
 						base.set_accumulated_minerals(100);
+						if (base.get_size() == 1) {
+							base.set('accumulated_nutrients', game.get('map_growth_base') * 2);
+						}
 					}
 					if (base.get_size() > 0) {
 						populated_ai_bases++;
@@ -142,19 +173,6 @@
 				}
 				if (unit.owner == ai_id && unit.get_def().id == 'ReconRover') {
 					ai_built_rover = true;
-					const unit_key = #to_string(unit.id);
-					const tile = unit.get_tile();
-					if (#is_defined(rover_tiles[unit_key])) {
-						const previous = rover_tiles[unit_key];
-						const distance = game.get_tm().get_distance(game.get_tm().get_tile(previous[0], previous[1]), tile);
-						if (distance > 0) {
-							ai_moved = true;
-						}
-						if (distance >= 2) {
-							ai_rover_moved_twice = true;
-						}
-					}
-					rover_tiles[unit_key] = [tile.x, tile.y];
 				}
 				if (scout == null && unit.owner == ai_id && unit.get_def().id == 'ScoutPatrol') {
 					scout = unit;

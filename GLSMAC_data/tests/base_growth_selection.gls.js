@@ -128,6 +128,12 @@ test.assert(events[0].name == 'remove_base_pop');
 test.assert(events[0].data.base == base);
 test.assert(events[0].data.pop == mineral_pop);
 
+const specialist_pop = {has: (key) => { return false; }};
+pops = [mineral_pop, specialist_pop];
+test.assert(values.f_base_select_population_for_reduction(base) == specialist_pop);
+pops = [mineral_pop, nutrient_pop];
+test.assert(values.f_base_select_population_for_reduction(base) == mineral_pop);
+
 events = [];
 base_size = 1;
 intake_nutrients = 0;

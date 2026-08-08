@@ -24,10 +24,17 @@ return {
 		const production = base.get_production();
 		let produced_unit = #undefined;
 		let completed_facility = #undefined;
+		let consumed_pops = [];
 
 		if (#is_defined(production)) {
 			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
-			if (updated_minerals >= production.mineral_cost) {
+			const population_cost = (
+				production.production_kind == 'unit' &&
+				#is_defined(production.can_found_base) &&
+				production.can_found_base
+			) ? 1 : 0;
+			const has_population = population_cost == 0 || base.get_size() > population_cost;
+			if (updated_minerals >= production.mineral_cost && has_population) {
 				updated_minerals -= production.mineral_cost;
 				const queue_size = #sizeof(base.get_production_queue());
 				if (production.production_kind == 'unit') {
@@ -38,6 +45,21 @@ return {
 						morale: 1,
 						health: 1.0,
 					});
+					for (let i = 0; i < population_cost; i++) {
+						const pop = e.game.get('f_base_select_population_for_reduction')(base);
+						if (pop == null) {
+							throw Error('Could not select population for unit production');
+						}
+						const worked_tile = pop.get('worked_tile');
+						consumed_pops :+{
+							type: pop.get_type(),
+							worked_tile: worked_tile,
+						};
+						if (#is_defined(worked_tile)) {
+							base.unwork_pop_tile(pop, worked_tile);
+						}
+						base.destroy_pop(pop);
+					}
 					if (queue_size > 1) {
 						base.remove_production(0);
 					}
@@ -57,6 +79,7 @@ return {
 			old_queue: old_queue,
 			produced_unit: produced_unit,
 			completed_facility: completed_facility,
+			consumed_pops: consumed_pops,
 		};
 	},
 
@@ -66,6 +89,12 @@ return {
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);
+		}
+		for (snapshot of e.applied.consumed_pops) {
+			const pop = e.data.base.create_pop({type: snapshot.type});
+			if (#is_defined(snapshot.worked_tile)) {
+				e.data.base.work_pop_tile(pop, snapshot.worked_tile);
+			}
 		}
 		e.data.base.set_production_queue(e.applied.old_queue);
 		e.data.base.set_accumulated_minerals(e.applied.old_minerals);

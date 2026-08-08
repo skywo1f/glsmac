@@ -301,6 +301,26 @@ const rebalance_workers = (base, target_worker_count) => {
 	}
 };
 
+const select_population_for_reduction = (base) => {
+	for (pop of base.get_pops()) {
+		if (!pop.has('worked_tile')) {
+			return pop;
+		}
+	}
+	const worst_tiles = find_best_or_worst_tiles(
+		base,
+		base.get_worked_tiles(),
+		1,
+		1,
+		base.get_size() - 1
+	);
+	if (#sizeof(worst_tiles) == 0) {
+		return null;
+	}
+	const pop = worst_tiles[0].get('working_pop');
+	return #is_defined(pop) ? pop : null;
+};
+
 const process_growth = (game, base, allocated_psych) => {
 	if (base.get_owner().type == 'ai') {
 		rebalance_workers(base, get_stable_worker_count(base, allocated_psych));
@@ -320,26 +340,9 @@ const process_growth = (game, base, allocated_psych) => {
 		if (!game.is_master()) {
 			return;
 		}
-		let pop = null;
-		// try to remove non-worker pop first
-		for (p of base.get_pops()) {
-			if (!p.has('worked_tile')) {
-				pop = p;
-				break;
-			}
-		}
+		const pop = select_population_for_reduction(base);
 		if (pop == null) {
-			const worst_tile = (find_best_or_worst_tiles(base, base.get_worked_tiles(), 1, 1, base.get_size() - 1))[0];
-			if (#is_defined(worst_tile)) {
-				const p = worst_tile.get('working_pop');
-				if (#is_defined(p)) {
-					pop = p;
-				} else {
-					#print('bug: could not find pop of worked tile');
-				}
-			} else {
-				#print('bug: could not find worst tile for depopulation');
-			}
+			throw Error('Could not select population for starvation');
 		}
 		game.event('remove_base_pop', {
 			base: base,
@@ -547,6 +550,7 @@ return (game) => {
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
 		game.set('f_base_rebalance_workers', rebalance_workers);
 		game.set('f_base_get_stable_worker_count', get_stable_worker_count);
+		game.set('f_base_select_population_for_reduction', select_population_for_reduction);
 
 		// new turn, process all bases
 		game.on('turn', (e) => {

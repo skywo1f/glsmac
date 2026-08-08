@@ -381,6 +381,13 @@ const play_turn = (game, player, done) => {
 		const all_bases = game.get_bm().get_bases();
 		let action_started = false;
 		let action_delay = MOVEMENT_ACTION_DELAY;
+		let waiting_for_animation = false;
+		for (unit of current_units) {
+			if (can_attempt_action(unit, action_attempts) && unit.get_tile().is_locked()) {
+				waiting_for_animation = true;
+				break;
+			}
+		}
 		for (unit of current_units) {
 			if (!can_attempt_action(unit, action_attempts)) {
 				continue;
@@ -430,6 +437,10 @@ const play_turn = (game, player, done) => {
 		steps++;
 		if (action_started && steps < 1000) {
 			#async(action_delay, play_next_action);
+			return;
+		}
+		if (waiting_for_animation && steps < 1000) {
+			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
 		game.event_as(player.id, 'complete_turn', {});
