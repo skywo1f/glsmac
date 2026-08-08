@@ -30,19 +30,26 @@ return {
 
 	apply: (e) => {
 		const old_tile = e.data.pop.get('worked_tile');
-		const old_type = e.data.pop.get_type();
+		let pop_type_snapshots = [];
+		for (pop of e.data.base.get_pops()) {
+			pop_type_snapshots :+{
+				pop: pop,
+				type: pop.get_type(),
+			};
+		}
 		e.game.get('f_base_pop_work_tile')(e.data.base, e.data.pop, e.data.tile);
+		const psych = e.game.get('f_economy_get_base_psych')(e.game, e.data.base);
+		e.game.get('f_base_process_psych')(e.game, e.data.base, psych);
 		return {
 			old_tile: old_tile,
-			old_type: old_type,
+			pop_type_snapshots: pop_type_snapshots,
 		};
 	},
 
 	rollback: (e) => {
 		e.game.get('f_base_pop_unwork_tile')(
 			e.data.base,
-			e.data.pop,
-			e.applied.old_type
+			e.data.pop
 		);
 		if (#is_defined(e.applied.old_tile)) {
 			e.game.get('f_base_pop_work_tile')(
@@ -50,6 +57,9 @@ return {
 				e.data.pop,
 				e.applied.old_tile
 			);
+		}
+		for (snapshot of e.applied.pop_type_snapshots) {
+			snapshot.pop.set_type(snapshot.type);
 		}
 	},
 
