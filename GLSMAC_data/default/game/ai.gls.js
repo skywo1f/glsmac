@@ -236,6 +236,7 @@ const queue_production = (game, player, bases, units) => {
 			needs_former: former_count < #sizeof(bases),
 			needs_colony: #sizeof(bases) + colony_count < metrics.desired_base_count,
 			needs_military: combat_count < #sizeof(bases) * 2,
+			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
 			can_expand: base.get_size() > 1,
@@ -265,9 +266,11 @@ const queue_production = (game, player, bases, units) => {
 			}
 		}
 		const queue = base.get_production_queue();
+		let production_changed = false;
 		if (selected == null) {
 			if (#sizeof(queue) > 0) {
 				game.event_as(player.id, 'remove_base_production', {base: base, index: 0});
+				production_changed = true;
 			}
 		} else if (
 			#sizeof(queue) == 0 ||
@@ -279,8 +282,9 @@ const queue_production = (game, player, bases, units) => {
 				kind: selected.kind,
 				id: selected.id,
 			});
+			production_changed = true;
 		}
-		if (selected != null) {
+		if (selected != null && !production_changed) {
 			context.kind = selected.kind;
 			context.hurry_cost = game.get('f_economy_get_hurry_cost')(base);
 			context.energy_credits = player.energy_credits;

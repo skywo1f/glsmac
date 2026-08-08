@@ -2,6 +2,8 @@ const UNIT_SUPPORT_SCORE_PENALTY = 5000;
 const MIN_HURRY_RESERVE = 20;
 const HURRY_RESERVE_TURNS = 3;
 const MIN_NONEMERGENCY_HURRY_MINERALS = 10;
+const BASIC_INFRASTRUCTURE_SCORE_BONUS = 60000;
+const EMERGENCY_GARRISON_SCORE = 1000000;
 
 const get_priority = (context, name, fallback) => {
 	return #is_defined(context.priorities) && #is_defined(context.priorities[name])
@@ -32,7 +34,7 @@ const score_unit = (def, context) => {
 		return null;
 	}
 	if (context.needs_garrison) {
-		return 100000 + def.defense * 1000 + def.offense * 100 +
+		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
 			#round(def.movement_per_turn * 10.0) - def.mineral_cost -
 			get_unit_support_penalty(context);
 	}
@@ -53,7 +55,11 @@ const score_facility = (def, context) => {
 	const psych_priority = get_priority(context, 'psych', context.needs_psych ? 100 : 0);
 	const nutrient_weight = 1000 + growth_priority * 15;
 	const psych_weight = 100 + psych_priority * 11;
-	return 30000 + get_priority(context, 'development', 50) * 200 +
+	const infrastructure_bonus = (
+		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
+	) ? BASIC_INFRASTRUCTURE_SCORE_BONUS : 0;
+	return 30000 + infrastructure_bonus +
+		get_priority(context, 'development', 50) * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
 		def.energy_maintenance * 250 - def.mineral_cost +

@@ -133,6 +133,20 @@ development_context.priorities.military = 100;
 development_context.priorities.development = 25;
 test.assert(production.choose(base, all_units, all_facilities, development_context).id == 'Laser');
 
+let infrastructure_context = context(false, false, true, false, 10);
+infrastructure_context.needs_infrastructure = true;
+infrastructure_context.priorities = {
+	expansion: 100,
+	terraforming: 0,
+	military: 75,
+	growth: 100,
+	psych: 0,
+	development: 25,
+};
+test.assert(production.choose(base, all_units, all_facilities, infrastructure_context).id == 'Recycling');
+infrastructure_context.needs_garrison = true;
+test.assert(production.choose(base, all_units, all_facilities, infrastructure_context).id == 'Defender');
+
 const hurry_context = (kind, cost, credits, accumulated, mineral_surplus) => {
 	let result = context(false, false, false, false, 10);
 	result.kind = kind;
