@@ -47,6 +47,71 @@ class FacilityRow:
     kind: str
 
 
+@dataclass(frozen=True)
+class ChassisRow:
+    name: str
+    speed: int
+    triad: int
+    range: int
+    missile: bool
+    cargo: int
+    cost: int
+    prerequisite_code: str
+
+
+@dataclass(frozen=True)
+class ReactorRow:
+    name: str
+    power: int
+    prerequisite_code: str
+
+
+@dataclass(frozen=True)
+class WeaponRow:
+    name: str
+    short_name: str
+    offense: int
+    mode: int
+    cost: int
+    icon: int
+    prerequisite_code: str
+
+
+@dataclass(frozen=True)
+class ArmorRow:
+    name: str
+    short_name: str
+    defense: int
+    mode: int
+    cost: int
+    prerequisite_code: str
+
+
+@dataclass(frozen=True)
+class AbilityRow:
+    name: str
+    cost: int
+    prerequisite_code: str
+    abbreviation: str
+    flags: str
+    effect: str
+
+
+@dataclass(frozen=True)
+class UnitRow:
+    name: str
+    chassis_name: str
+    weapon_name: str
+    armor_name: str
+    plan: int
+    mineral_cost: int
+    cargo: int
+    prerequisite_code: str
+    icon: int
+    ability_flags: str
+    hidden: bool
+
+
 def canonical_id(name: str) -> str:
     if name in TECHNOLOGY_ID_OVERRIDES:
         return TECHNOLOGY_ID_OVERRIDES[name]
@@ -118,6 +183,106 @@ def read_facilities(path: Path) -> list[FacilityRow]:
             )
         )
     return facilities
+
+
+def read_csv_section(path: Path, section: str) -> list[list[str]]:
+    rows: list[list[str]] = []
+    for line in read_section(path, section):
+        source = line.split(";", 1)[0].strip()
+        if not source:
+            continue
+        rows.append(
+            [value.strip() for value in next(csv.reader([source], skipinitialspace=True))]
+        )
+    return rows
+
+
+def read_unit_catalog(
+    path: Path,
+) -> tuple[
+    list[ChassisRow],
+    list[ReactorRow],
+    list[WeaponRow],
+    list[ArmorRow],
+    list[AbilityRow],
+    list[UnitRow],
+]:
+    chassis = [
+        ChassisRow(
+            name=row[0],
+            speed=int(row[8]),
+            triad=int(row[9]),
+            range=int(row[10]),
+            missile=bool(int(row[11])),
+            cargo=int(row[12]),
+            cost=int(row[13]),
+            prerequisite_code=row[14],
+        )
+        for row in read_csv_section(path, "CHASSIS")
+    ]
+    reactors = [
+        ReactorRow(name=row[0], power=int(row[2]), prerequisite_code=row[3])
+        for row in read_csv_section(path, "REACTORS")
+    ]
+    weapons = [
+        WeaponRow(
+            name=row[0],
+            short_name=row[1],
+            offense=int(row[2]),
+            mode=int(row[3]),
+            cost=int(row[4]),
+            icon=int(row[5]),
+            prerequisite_code=row[6],
+        )
+        for row in read_csv_section(path, "WEAPONS")
+    ]
+    armors = [
+        ArmorRow(
+            name=row[0],
+            short_name=row[1],
+            defense=int(row[2]),
+            mode=int(row[3]),
+            cost=int(row[4]),
+            prerequisite_code=row[5],
+        )
+        for row in read_csv_section(path, "DEFENSES")
+    ]
+    abilities = [
+        AbilityRow(
+            name=row[0],
+            cost=int(row[1]),
+            prerequisite_code=row[2],
+            abbreviation=row[3],
+            flags=row[4],
+            effect=row[5],
+        )
+        for row in read_csv_section(path, "ABILITIES")
+    ]
+    unit_rows = read_csv_section(path, "UNITS")
+    declared_unit_count = int(unit_rows.pop(0)[0])
+    units: list[UnitRow] = []
+    for row in unit_rows:
+        hidden = row[0].startswith("*")
+        units.append(
+            UnitRow(
+                name=row[0].lstrip("*"),
+                chassis_name=row[1],
+                weapon_name=row[2],
+                armor_name=row[3],
+                plan=int(row[4]),
+                mineral_cost=int(row[5]) * 10,
+                cargo=int(row[6]),
+                prerequisite_code=row[7],
+                icon=int(row[8]),
+                ability_flags=row[9],
+                hidden=hidden,
+            )
+        )
+    if len(units) != declared_unit_count:
+        raise ValueError(
+            f"UNITS declares {declared_unit_count} rows but contains {len(units)}"
+        )
+    return chassis, reactors, weapons, armors, abilities, units
 
 
 def quote(value: str) -> str:
@@ -277,11 +442,205 @@ def generate_facility_catalog(
     return "\n".join(output)
 
 
+def technology_reference(
+    code: str,
+    code_to_id: dict[str, str],
+) -> tuple[str, str]:
+    if code == "None":
+        return "always", ""
+    if code == "Disable":
+        return "disabled", ""
+    try:
+        return "technology", code_to_id[code]
+    except KeyError as exc:
+        raise ValueError(f"missing technology code {code}") from exc
+
+
+def generate_unit_catalog(
+    catalog: tuple[
+        list[ChassisRow],
+        list[ReactorRow],
+        list[WeaponRow],
+        list[ArmorRow],
+        list[AbilityRow],
+        list[UnitRow],
+    ],
+    technologies: list[TechnologyRow],
+) -> str:
+    chassis, reactors, weapons, armors, abilities, units = catalog
+    code_to_id = {
+        technology.code: canonical_id(technology.name)
+        for technology in technologies
+    }
+    triads = {0: "land", 1: "sea", 2: "air"}
+
+    def technology_fields(code: str) -> list[str]:
+        availability, technology_id = technology_reference(code, code_to_id)
+        return [
+            f"\t\tavailability: {quote(availability)},",
+            f"\t\trequired_technology: {quote(technology_id)},",
+        ]
+
+    output = [
+        "// Generated by tools/content/import_alpha.py from the original SMAC alpha.txt.",
+        "// Entries describe the complete base-game unit design catalog.",
+    ]
+
+    def begin_collection(name: str) -> None:
+        output.extend(["", f"const {name} = ["])
+
+    def end_collection() -> None:
+        output.append("];")
+
+    begin_collection("chassis")
+    for entry in chassis:
+        if entry.triad not in triads:
+            raise ValueError(f"{entry.name} has invalid triad {entry.triad}")
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tspeed: {entry.speed},",
+                f"\t\ttriad: {quote(triads[entry.triad])},",
+                f"\t\trange: {entry.range},",
+                f"\t\tmissile: {'true' if entry.missile else 'false'},",
+                f"\t\tcargo: {entry.cargo},",
+                f"\t\tcost: {entry.cost},",
+                *technology_fields(entry.prerequisite_code),
+                "\t},",
+            ]
+        )
+    end_collection()
+
+    begin_collection("reactors")
+    for entry in reactors:
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tpower: {entry.power},",
+                *technology_fields(entry.prerequisite_code),
+                "\t},",
+            ]
+        )
+    end_collection()
+
+    begin_collection("weapons")
+    for entry in weapons:
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tshort_name: {quote(entry.short_name)},",
+                f"\t\toffense: {entry.offense},",
+                f"\t\tmode: {entry.mode},",
+                f"\t\tcost: {entry.cost},",
+                f"\t\ticon: {entry.icon},",
+                *technology_fields(entry.prerequisite_code),
+                "\t},",
+            ]
+        )
+    end_collection()
+
+    begin_collection("armors")
+    for entry in armors:
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tshort_name: {quote(entry.short_name)},",
+                f"\t\tdefense: {entry.defense},",
+                f"\t\tmode: {entry.mode},",
+                f"\t\tcost: {entry.cost},",
+                *technology_fields(entry.prerequisite_code),
+                "\t},",
+            ]
+        )
+    end_collection()
+
+    begin_collection("abilities")
+    for entry in abilities:
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tcost: {entry.cost},",
+                f"\t\tabbreviation: {quote(entry.abbreviation)},",
+                f"\t\tflags: {quote(entry.flags)},",
+                f"\t\teffect: {quote(entry.effect)},",
+                *technology_fields(entry.prerequisite_code),
+                "\t},",
+            ]
+        )
+    end_collection()
+
+    chassis_ids = {entry.name: canonical_id(entry.name) for entry in chassis}
+    weapon_ids = {entry.short_name: canonical_id(entry.name) for entry in weapons}
+    armor_ids = {entry.short_name: canonical_id(entry.name) for entry in armors}
+    begin_collection("predefined_units")
+    for entry in units:
+        try:
+            chassis_id = chassis_ids[entry.chassis_name]
+            weapon_id = weapon_ids[entry.weapon_name]
+            armor_id = armor_ids[entry.armor_name]
+        except KeyError as exc:
+            raise ValueError(
+                f"{entry.name} references missing unit component {exc.args[0]}"
+            ) from exc
+        availability, technology_id = technology_reference(
+            entry.prerequisite_code,
+            code_to_id,
+        )
+        if entry.hidden:
+            availability = "disabled"
+            technology_id = ""
+        output.extend(
+            [
+                "\t{",
+                f"\t\tid: {quote(canonical_id(entry.name))},",
+                f"\t\tname: {quote(entry.name)},",
+                f"\t\tchassis: {quote(chassis_id)},",
+                f"\t\tweapon: {quote(weapon_id)},",
+                f"\t\tarmor: {quote(armor_id)},",
+                f"\t\tplan: {entry.plan},",
+                f"\t\tmineral_cost: {entry.mineral_cost},",
+                f"\t\tcargo: {entry.cargo},",
+                f"\t\ticon: {entry.icon},",
+                f"\t\tability_flags: {quote(entry.ability_flags)},",
+                f"\t\tavailability: {quote(availability)},",
+                f"\t\trequired_technology: {quote(technology_id)},",
+                "\t},",
+            ]
+        )
+    end_collection()
+    output.extend(
+        [
+            "",
+            "return {",
+            "\tchassis: chassis,",
+            "\treactors: reactors,",
+            "\tweapons: weapons,",
+            "\tarmors: armors,",
+            "\tabilities: abilities,",
+            "\tpredefined_units: predefined_units,",
+            "};",
+            "",
+        ]
+    )
+    return "\n".join(output)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--alpha", type=Path, required=True)
     parser.add_argument("--technologies-output", type=Path, required=True)
     parser.add_argument("--facilities-output", type=Path)
+    parser.add_argument("--units-output", type=Path)
     return parser.parse_args()
 
 
@@ -306,6 +665,18 @@ def main() -> None:
         print(
             f"wrote {facility_count} facilities and {project_count} projects "
             f"to {args.facilities_output}"
+        )
+    if args.units_output is not None:
+        unit_catalog = read_unit_catalog(args.alpha)
+        unit_output = generate_unit_catalog(unit_catalog, rows)
+        args.units_output.parent.mkdir(parents=True, exist_ok=True)
+        args.units_output.write_text(unit_output, encoding="ascii", newline="\n")
+        counts = [len(entries) for entries in unit_catalog]
+        print(
+            "wrote unit catalog "
+            f"(chassis={counts[0]}, reactors={counts[1]}, weapons={counts[2]}, "
+            f"armors={counts[3]}, abilities={counts[4]}, units={counts[5]}) "
+            f"to {args.units_output}"
         )
 
 

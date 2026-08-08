@@ -62,6 +62,76 @@ const unit_render_fields = {
 	morale_based_xshift: true,
 };
 
+const chassis_fields = {
+	id: true,
+	name: true,
+	speed: true,
+	triad: true,
+	range: true,
+	missile: true,
+	cargo: true,
+	cost: true,
+	availability: true,
+	required_technology: true,
+};
+
+const reactor_fields = {
+	id: true,
+	name: true,
+	power: true,
+	availability: true,
+	required_technology: true,
+};
+
+const weapon_fields = {
+	id: true,
+	name: true,
+	short_name: true,
+	offense: true,
+	mode: true,
+	cost: true,
+	icon: true,
+	availability: true,
+	required_technology: true,
+};
+
+const armor_fields = {
+	id: true,
+	name: true,
+	short_name: true,
+	defense: true,
+	mode: true,
+	cost: true,
+	availability: true,
+	required_technology: true,
+};
+
+const ability_fields = {
+	id: true,
+	name: true,
+	cost: true,
+	abbreviation: true,
+	flags: true,
+	effect: true,
+	availability: true,
+	required_technology: true,
+};
+
+const predefined_unit_fields = {
+	id: true,
+	name: true,
+	chassis: true,
+	weapon: true,
+	armor: true,
+	plan: true,
+	mineral_cost: true,
+	cargo: true,
+	icon: true,
+	ability_flags: true,
+	availability: true,
+	required_technology: true,
+};
+
 const faction_fields = {
 	starting_technologies: true,
 	is_naval: true,
@@ -144,6 +214,35 @@ const validate_bool = (object, key, path, errors, required) => {
 	}
 	if (#typeof(object[key]) != 'Bool') {
 		add_error(errors, path + '.' + key, 'must be a boolean');
+	}
+};
+
+const validate_availability = (entry, path, technologies, errors) => {
+	validate_string(entry, 'availability', path, errors, true);
+	validate_optional_string(entry, 'required_technology', path, errors);
+	if (!#is_defined(entry.availability)) {
+		return;
+	}
+	if (
+		entry.availability != 'always' &&
+		entry.availability != 'technology' &&
+		entry.availability != 'disabled'
+	) {
+		add_error(errors, path + '.availability', 'must be always, technology, or disabled');
+		return;
+	}
+	if (entry.availability == 'technology') {
+		if (!#is_defined(entry.required_technology) || entry.required_technology == '') {
+			add_error(errors, path + '.required_technology', 'is required for technology availability');
+		} else if (!#is_defined(technologies[entry.required_technology])) {
+			add_error(
+				errors,
+				path + '.required_technology',
+				'references missing technology ' + entry.required_technology
+			);
+		}
+	} else if (#is_defined(entry.required_technology) && entry.required_technology != '') {
+		add_error(errors, path + '.required_technology', 'must be empty unless availability is technology');
 	}
 };
 
@@ -560,6 +659,162 @@ const validate_units = (units, technologies, morale_ids, errors) => {
 	return count;
 };
 
+const validate_unit_manifest_entries = (
+	entries,
+	collection,
+	fields,
+	technologies,
+	errors,
+	validate_entry
+) => {
+	let count = 0;
+	let definitions = {};
+	const collection_path = 'unit_manifest.' + collection;
+	if (#typeof(entries) != 'Array') {
+		add_error(errors, collection_path, 'must be an array');
+		return {count: count, definitions: definitions};
+	}
+	for (let i = 0; i < #sizeof(entries); i++) {
+		const entry = entries[i];
+		const index_path = collection_path + '[' + #to_string(i) + ']';
+		if (#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' || entry.id == '') {
+			add_error(errors, index_path, 'must have a non-empty id');
+			continue;
+		}
+		const path = collection_path + '.' + entry.id;
+		if (#is_defined(definitions[entry.id])) {
+			add_error(errors, path, 'duplicates catalog id ' + entry.id);
+			continue;
+		}
+		definitions[entry.id] = entry;
+		count++;
+		validate_known_fields(entry, fields, path, errors);
+		validate_string(entry, 'name', path, errors, true);
+		validate_availability(entry, path, technologies, errors);
+		validate_entry(entry, path);
+	}
+	return {count: count, definitions: definitions};
+};
+
+const validate_unit_manifest = (manifest, technologies, errors) => {
+	if (#typeof(manifest) != 'Object') {
+		add_error(errors, 'unit_manifest', 'must be an object');
+		return {
+			chassis: {count: 0, definitions: {}},
+			reactors: {count: 0, definitions: {}},
+			weapons: {count: 0, definitions: {}},
+			armors: {count: 0, definitions: {}},
+			abilities: {count: 0, definitions: {}},
+			predefined_units: {count: 0, definitions: {}},
+		};
+	}
+	const chassis = validate_unit_manifest_entries(
+		manifest.chassis,
+		'chassis',
+		chassis_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			validate_int(entry, 'speed', path, errors, true, 0, 100);
+			validate_string(entry, 'triad', path, errors, true);
+			if (
+				#is_defined(entry.triad) &&
+				entry.triad != 'land' && entry.triad != 'sea' && entry.triad != 'air'
+			) {
+				add_error(errors, path + '.triad', 'must be land, sea, or air');
+			}
+			validate_int(entry, 'range', path, errors, true, 0, 100);
+			validate_bool(entry, 'missile', path, errors, true);
+			validate_int(entry, 'cargo', path, errors, true, 0, 100);
+			validate_int(entry, 'cost', path, errors, true, 0, 100);
+		}
+	);
+	const reactors = validate_unit_manifest_entries(
+		manifest.reactors,
+		'reactors',
+		reactor_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			validate_int(entry, 'power', path, errors, true, 1, 100);
+		}
+	);
+	const weapons = validate_unit_manifest_entries(
+		manifest.weapons,
+		'weapons',
+		weapon_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			validate_string(entry, 'short_name', path, errors, true);
+			validate_int(entry, 'offense', path, errors, true, 0 - 1, 100);
+			validate_int(entry, 'mode', path, errors, true, 0, 12);
+			validate_int(entry, 'cost', path, errors, true, 0, 100);
+			validate_int(entry, 'icon', path, errors, true, 0 - 1, 100);
+		}
+	);
+	const armors = validate_unit_manifest_entries(
+		manifest.armors,
+		'armors',
+		armor_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			validate_string(entry, 'short_name', path, errors, true);
+			validate_int(entry, 'defense', path, errors, true, 0 - 1, 100);
+			validate_int(entry, 'mode', path, errors, true, 0, 2);
+			validate_int(entry, 'cost', path, errors, true, 0, 100);
+		}
+	);
+	const abilities = validate_unit_manifest_entries(
+		manifest.abilities,
+		'abilities',
+		ability_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			validate_int(entry, 'cost', path, errors, true, 0 - 7, 100);
+			validate_optional_string(entry, 'abbreviation', path, errors);
+			validate_string(entry, 'flags', path, errors, true);
+			validate_string(entry, 'effect', path, errors, true);
+		}
+	);
+	const predefined_units = validate_unit_manifest_entries(
+		manifest.predefined_units,
+		'predefined_units',
+		predefined_unit_fields,
+		technologies,
+		errors,
+		(entry, path) => {
+			for (field of ['chassis', 'weapon', 'armor']) {
+				validate_string(entry, field, path, errors, true);
+			}
+			if (#is_defined(entry.chassis) && !#is_defined(chassis.definitions[entry.chassis])) {
+				add_error(errors, path + '.chassis', 'references missing chassis ' + entry.chassis);
+			}
+			if (#is_defined(entry.weapon) && !#is_defined(weapons.definitions[entry.weapon])) {
+				add_error(errors, path + '.weapon', 'references missing weapon ' + entry.weapon);
+			}
+			if (#is_defined(entry.armor) && !#is_defined(armors.definitions[entry.armor])) {
+				add_error(errors, path + '.armor', 'references missing armor ' + entry.armor);
+			}
+			validate_int(entry, 'plan', path, errors, true, 0 - 1, 12);
+			validate_int(entry, 'mineral_cost', path, errors, true, 0, MAX_DEFINITION_VALUE);
+			validate_int(entry, 'cargo', path, errors, true, 0, 100);
+			validate_int(entry, 'icon', path, errors, true, 0 - 1, 100);
+			validate_string(entry, 'ability_flags', path, errors, true);
+		}
+	);
+	return {
+		chassis: chassis,
+		reactors: reactors,
+		weapons: weapons,
+		armors: armors,
+		abilities: abilities,
+		predefined_units: predefined_units,
+	};
+};
+
 const validate_factions = (factions, technologies, errors) => {
 	let count = 0;
 	if (#typeof(factions) != 'Array') {
@@ -643,6 +898,11 @@ const validate = (catalog) => {
 		morale_result.ids,
 		errors
 	);
+	const unit_manifest_result = validate_unit_manifest(
+		catalog.unit_manifest,
+		catalog.technologies.definitions,
+		errors
+	);
 	const faction_count = validate_factions(
 		catalog.factions,
 		catalog.technologies.definitions,
@@ -656,6 +916,12 @@ const validate = (catalog) => {
 			base_facilities: facility_manifest_result.facility_count,
 			projects: facility_manifest_result.project_count,
 			units: unit_count,
+			chassis: unit_manifest_result.chassis.count,
+			reactors: unit_manifest_result.reactors.count,
+			weapons: unit_manifest_result.weapons.count,
+			armors: unit_manifest_result.armors.count,
+			abilities: unit_manifest_result.abilities.count,
+			predefined_units: unit_manifest_result.predefined_units.count,
 			moralesets: morale_result.count,
 			factions: faction_count,
 		},

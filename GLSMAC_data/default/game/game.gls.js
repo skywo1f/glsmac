@@ -21,6 +21,7 @@ return (glsmac) => {
 			facilities: facilities.definitions,
 			facility_manifest: facilities.manifest,
 			units: units.definitions,
+			unit_manifest: units.manifest,
 			moralesets: units.moralesets,
 			factions: factions.definitions,
 		});
@@ -39,6 +40,11 @@ return (glsmac) => {
 				#to_string(result.counts.base_facilities) +
 			' projects=0/' + #to_string(result.counts.projects) +
 			' units=' + #to_string(result.counts.units) +
+			' predefined_units=' + #to_string(result.counts.predefined_units) +
+			' components=' + #to_string(
+				result.counts.chassis + result.counts.reactors + result.counts.weapons +
+				result.counts.armors + result.counts.abilities
+			) +
 			' moralesets=' + #to_string(result.counts.moralesets) +
 			' factions=' + #to_string(result.counts.factions)
 		);

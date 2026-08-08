@@ -13,6 +13,7 @@ const make_catalog = () => {
 		facilities: #clone(facilities.definitions),
 		facility_manifest: #clone(facilities.manifest),
 		units: #clone(units.definitions),
+		unit_manifest: #clone(units.manifest),
 		moralesets: #clone(units.moralesets),
 		factions: #clone(factions.definitions),
 	};
@@ -27,6 +28,12 @@ test.assert(result.counts == {
 	base_facilities: 36,
 	projects: 35,
 	units: 10,
+	chassis: 9,
+	reactors: 4,
+	weapons: 21,
+	armors: 10,
+	abilities: 24,
+	predefined_units: 14,
 	moralesets: 2,
 	factions: 14,
 });
@@ -83,6 +90,18 @@ test.assert(validator.validate(invalid).errors == [
 ]);
 
 invalid = make_catalog();
+invalid.unit_manifest.weapons[1].required_technology = 'MissingTechnology';
+test.assert(validator.validate(invalid).errors == [
+	'unit_manifest.weapons.Laser.required_technology: references missing technology MissingTechnology',
+]);
+
+invalid = make_catalog();
+invalid.unit_manifest.predefined_units[0].chassis = 'MissingChassis';
+test.assert(validator.validate(invalid).errors == [
+	'unit_manifest.predefined_units.ColonyPod.chassis: references missing chassis MissingChassis',
+]);
+
+invalid = make_catalog();
 invalid.factions[0].data.starting_technologies :+'CentauriEcology';
 test.assert(validator.validate(invalid).errors == [
 	'factions.GAIANS.starting_technologies[1]: duplicates starting technology CentauriEcology',
@@ -99,6 +118,14 @@ const cyclic = validator.validate({
 	facilities: [],
 	facility_manifest: [],
 	units: [],
+	unit_manifest: {
+		chassis: [],
+		reactors: [],
+		weapons: [],
+		armors: [],
+		abilities: [],
+		predefined_units: [],
+	},
 	moralesets: [],
 	factions: [],
 });
