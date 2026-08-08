@@ -9,6 +9,27 @@ const get_queue_specs = (base) => {
 	return result;
 };
 
+const cancel_project_queues = (game, project_id, completing_base) => {
+	let snapshots = [];
+	for (candidate of game.get_bm().get_bases()) {
+		if (candidate == completing_base) {
+			continue;
+		}
+		const old_queue = get_queue_specs(candidate);
+		let removed = false;
+		for (let i = #sizeof(old_queue) - 1; i >= 0; i--) {
+			if (old_queue[i].kind == 'project' && old_queue[i].id == project_id) {
+				candidate.remove_production(i);
+				removed = true;
+			}
+		}
+		if (removed) {
+			snapshots :+{base: candidate, queue: old_queue};
+		}
+	}
+	return snapshots;
+};
+
 const get_production_morale = (game, base, production) => {
 	let morale = 1;
 	for (facility of base.get_facilities()) {
@@ -52,6 +73,7 @@ return {
 		const production = base.get_production();
 		let produced_unit = #undefined;
 		let completed_facility = #undefined;
+		let cancelled_project_queues = [];
 		let consumed_pops = [];
 		let pop_type_snapshots = [];
 
@@ -64,41 +86,58 @@ return {
 			) ? 1 : 0;
 			const has_population = population_cost == 0 || base.get_size() > population_cost;
 			if (updated_minerals >= production.mineral_cost && has_population) {
-				updated_minerals -= production.mineral_cost;
-				const queue_size = #sizeof(base.get_production_queue());
-				if (production.production_kind == 'unit') {
-					produced_unit = e.game.um.spawn_unit({
-						def: production.id,
-						owner: base.get_owner(),
-						tile: base.get_tile(),
-						morale: get_production_morale(e.game, base, production),
-						health: 1.0,
-						home_base_id: base.id,
-					});
-					for (let i = 0; i < population_cost; i++) {
-						const pop = e.game.get('f_base_select_population_for_reduction')(base);
-						if (pop == null) {
-							throw Error('Could not select population for unit production');
-						}
-						const worked_tile = pop.get('worked_tile');
-						consumed_pops :+{
-							type: pop.get_type(),
-							worked_tile: worked_tile,
-						};
-						if (#is_defined(worked_tile)) {
-							base.unwork_pop_tile(pop, worked_tile);
-						}
-						base.destroy_pop(pop);
-					}
-					if (queue_size > 1) {
-						base.remove_production(0);
-					}
-				} else if (production.production_kind == 'facility') {
+				const existing_project_base = production.production_kind == 'project'
+					? e.game.get_bm().get_project_base(production.id)
+					: #undefined;
+				if (#is_defined(existing_project_base)) {
 					base.remove_production(0);
-					base.add_facility(production.id);
-					completed_facility = production.id;
 				} else {
-					throw Error('Unknown production kind: ' + production.production_kind);
+					updated_minerals -= production.mineral_cost;
+					const queue_size = #sizeof(base.get_production_queue());
+					if (production.production_kind == 'unit') {
+						produced_unit = e.game.um.spawn_unit({
+							def: production.id,
+							owner: base.get_owner(),
+							tile: base.get_tile(),
+							morale: get_production_morale(e.game, base, production),
+							health: 1.0,
+							home_base_id: base.id,
+						});
+						for (let i = 0; i < population_cost; i++) {
+							const pop = e.game.get('f_base_select_population_for_reduction')(base);
+							if (pop == null) {
+								throw Error('Could not select population for unit production');
+							}
+							const worked_tile = pop.get('worked_tile');
+							consumed_pops :+{
+								type: pop.get_type(),
+								worked_tile: worked_tile,
+							};
+							if (#is_defined(worked_tile)) {
+								base.unwork_pop_tile(pop, worked_tile);
+							}
+							base.destroy_pop(pop);
+						}
+						if (queue_size > 1) {
+							base.remove_production(0);
+						}
+					} else if (
+						production.production_kind == 'facility' ||
+						production.production_kind == 'project'
+					) {
+						base.remove_production(0);
+						base.add_facility(production.id);
+						completed_facility = production.id;
+						if (production.production_kind == 'project') {
+							cancelled_project_queues = cancel_project_queues(
+								e.game,
+								production.id,
+								base
+							);
+						}
+					} else {
+						throw Error('Unknown production kind: ' + production.production_kind);
+					}
 				}
 			}
 			base.set_accumulated_minerals(updated_minerals);
@@ -119,6 +158,7 @@ return {
 			old_queue: old_queue,
 			produced_unit: produced_unit,
 			completed_facility: completed_facility,
+			cancelled_project_queues: cancelled_project_queues,
 			consumed_pops: consumed_pops,
 			pop_type_snapshots: pop_type_snapshots,
 		};
@@ -130,6 +170,9 @@ return {
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);
+		}
+		for (snapshot of e.applied.cancelled_project_queues) {
+			snapshot.base.set_production_queue(snapshot.queue);
 		}
 		for (snapshot of e.applied.pop_type_snapshots) {
 			snapshot.pop.set_type(snapshot.type);

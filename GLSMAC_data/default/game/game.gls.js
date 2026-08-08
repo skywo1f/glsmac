@@ -21,6 +21,7 @@ return (glsmac) => {
 			facilities: facilities.definitions,
 			facility_manifest: facilities.manifest,
 			facility_coverage: facilities.coverage,
+			project_coverage: facilities.project_coverage,
 			units: units.definitions,
 			unit_manifest: units.manifest,
 			moralesets: units.moralesets,
@@ -41,7 +42,10 @@ return (glsmac) => {
 				#to_string(result.counts.base_facilities) +
 				' (' + #to_string(result.counts.complete_facilities) + ' complete,' +
 				#to_string(result.counts.partial_facilities) + ' partial)' +
-			' projects=0/' + #to_string(result.counts.projects) +
+			' projects=' + #to_string(result.counts.implemented_projects) + '/' +
+				#to_string(result.counts.projects) +
+				' (' + #to_string(result.counts.complete_projects) + ' complete,' +
+				#to_string(result.counts.partial_projects) + ' partial)' +
 			' units=' + #to_string(result.counts.units) +
 			' predefined_units=' + #to_string(result.counts.predefined_units) +
 			' components=' + #to_string(

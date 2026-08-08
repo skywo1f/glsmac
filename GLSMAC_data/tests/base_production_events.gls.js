@@ -85,6 +85,13 @@ const recreation_commons = {
 	mineral_cost: 40,
 	unit_morale_bonus: 0,
 };
+const human_genome_project = {
+	id: 'TheHumanGenomeProject',
+	name: 'The Human Genome Project',
+	production_kind: 'project',
+	mineral_cost: 200,
+	unit_morale_bonus: 0,
+};
 const command_center = {
 	id: 'CommandCenter',
 	name: 'Command Center',
@@ -150,6 +157,7 @@ const definitions = [
 	air_patrol,
 	recycling_tanks,
 	recreation_commons,
+	human_genome_project,
 	command_center,
 	naval_yard,
 	aerospace_complex,
@@ -168,6 +176,8 @@ let spawn_data = #undefined;
 let despawned_unit = #undefined;
 let base_pops = [];
 let processed_psych = [];
+let completed_project_base = #undefined;
+let competing_production_queue = [];
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
@@ -208,8 +218,11 @@ const queue_is_valid = (candidate_queue) => {
 		if (!#is_defined(find_definition(item.production_kind, item.id))) {
 			return false;
 		}
-		if (item.production_kind == 'facility') {
+		if (item.production_kind == 'facility' || item.production_kind == 'project') {
 			if (has_facility(item.id)) {
+				return false;
+			}
+			if (item.production_kind == 'project' && #is_defined(completed_project_base)) {
 				return false;
 			}
 			for (facility_id of queued_facilities) {
@@ -256,7 +269,11 @@ const base = {
 	get_facilities: () => {
 		let result = [];
 		for (id of built_facilities) {
-			result :+find_definition('facility', id);
+			const facility = find_definition('facility', id);
+			const definition = #is_defined(facility)
+				? facility
+				: find_definition('project', id);
+			result :+definition;
 		}
 		return result;
 	},
@@ -327,6 +344,10 @@ const base = {
 	add_facility: (id) => {
 		test.assert(!has_facility(id));
 		built_facilities :+id;
+		if (#is_defined(find_definition('project', id))) {
+			test.assert(!#is_defined(completed_project_base));
+			completed_project_base = owner;
+		}
 	},
 	remove_facility: (id) => {
 		let updated_facilities = [];
@@ -340,6 +361,9 @@ const base = {
 		}
 		test.assert(removed);
 		built_facilities = updated_facilities;
+		if (#is_defined(find_definition('project', id))) {
+			completed_project_base = #undefined;
+		}
 	},
 	get_accumulated_minerals: () => {
 		return accumulated_minerals;
@@ -371,9 +395,35 @@ const base = {
 	},
 };
 
+const competing_base = {
+	get_production_queue: () => { return competing_production_queue; },
+	remove_production: (index) => {
+		let updated = [];
+		for (let i = 0; i < #sizeof(competing_production_queue); i++) {
+			if (i != index) {
+				updated :+competing_production_queue[i];
+			}
+		}
+		competing_production_queue = updated;
+	},
+	set_production_queue: (specs) => {
+		let restored = [];
+		for (spec of specs) {
+			restored :+find_definition(spec.kind, spec.id);
+		}
+		competing_production_queue = restored;
+	},
+};
+
 let turn_complete = false;
 let game = null;
 game = {
+	get_bm: () => {
+		return {
+			get_bases: () => { return [base, competing_base]; },
+			get_project_base: (id) => { return completed_project_base; },
+		};
+	},
 	is_turn_complete: (player_id) => {
 		test.assert(player_id == owner.id);
 		return turn_complete;
@@ -649,6 +699,25 @@ process_base_production.rollback(event);
 test.assert(accumulated_minerals == 35);
 test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:SporeLauncher']);
 test.assert(!has_facility('RecyclingTanks'));
+
+production_queue = [human_genome_project, spore_launcher];
+competing_production_queue = [land_patrol, human_genome_project, sea_patrol];
+built_facilities = [];
+completed_project_base = #undefined;
+accumulated_minerals = 195;
+event.applied = process_base_production.apply(event);
+test.assert(accumulated_minerals == 2);
+test.assert(get_queue_state() == ['unit:SporeLauncher']);
+test.assert(has_facility('TheHumanGenomeProject'));
+test.assert(completed_project_base == owner);
+test.assert(#sizeof(event.applied.cancelled_project_queues) == 1);
+test.assert(competing_production_queue == [land_patrol, sea_patrol]);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 195);
+test.assert(get_queue_state() == ['project:TheHumanGenomeProject', 'unit:SporeLauncher']);
+test.assert(competing_production_queue == [land_patrol, human_genome_project, sea_patrol]);
+test.assert(!has_facility('TheHumanGenomeProject'));
+test.assert(!#is_defined(completed_project_base));
 
 production_queue = [];
 accumulated_minerals = 9;

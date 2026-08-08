@@ -35,6 +35,7 @@ const facility_fields = {
 	air_defense_multiplier: true,
 	growth_rating_bonus: true,
 	native_lifecycle_bonus: true,
+	is_project: true,
 };
 
 const facility_manifest_fields = {
@@ -390,9 +391,10 @@ const validate_technologies = (definitions, order, errors) => {
 
 const validate_facilities = (facilities, technologies, errors) => {
 	let count = 0;
+	let project_count = 0;
 	if (#typeof(facilities) != 'Array') {
 		add_error(errors, 'facilities', 'must be an array');
-		return count;
+		return {facility_count: count, project_count: project_count};
 	}
 	let seen = {};
 	for (let i = 0; i < #sizeof(facilities); i++) {
@@ -412,13 +414,18 @@ const validate_facilities = (facilities, technologies, errors) => {
 			continue;
 		}
 		seen[entry.id] = true;
-		count++;
 		if (#typeof(entry.data) != 'Object') {
 			add_error(errors, path + '.data', 'must be an object');
 			continue;
 		}
 		const data = entry.data;
+		if (#is_defined(data.is_project) && data.is_project) {
+			project_count++;
+		} else {
+			count++;
+		}
 		validate_known_fields(data, facility_fields, path, errors);
+		validate_bool(data, 'is_project', path, errors, false);
 		validate_string(data, 'name', path, errors, true);
 		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -488,7 +495,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0) ||
 			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
 			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0);
-		if (!has_effect) {
+		if (!has_effect && !(#is_defined(data.is_project) && data.is_project)) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}
 	}
@@ -514,7 +521,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			);
 		}
 	}
-	return count;
+	return {facility_count: count, project_count: project_count};
 };
 
 const validate_facility_manifest = (manifest, technologies, errors) => {
@@ -591,14 +598,18 @@ const validate_facility_implementations = (facilities, manifest, errors) => {
 			add_error(errors, path, 'is not present in the base-game facility manifest');
 			continue;
 		}
-		if (manifest[entry.id].kind != 'facility') {
-			add_error(errors, path, 'cannot implement a secret project as a base facility');
-			continue;
-		}
 		if (#typeof(entry.data) != 'Object') {
 			continue;
 		}
 		const data = entry.data;
+		const is_project = #is_defined(data.is_project) && data.is_project;
+		if ((manifest[entry.id].kind == 'project') != is_project) {
+			add_error(
+				errors,
+				path + '.is_project',
+				'must match base-game manifest kind ' + manifest[entry.id].kind
+			);
+		}
 		for (field of ['name', 'mineral_cost', 'energy_maintenance', 'required_technology']) {
 			if (data[field] != manifest[entry.id][field]) {
 				add_error(
@@ -611,28 +622,33 @@ const validate_facility_implementations = (facilities, manifest, errors) => {
 	}
 };
 
-const validate_facility_coverage = (coverage, facilities, errors) => {
+const validate_facility_coverage = (coverage, facilities, errors, projects) => {
+	const coverage_path = projects ? 'project_coverage' : 'facility_coverage';
 	let result = {complete: 0, partial: 0};
 	if (#typeof(coverage) != 'Object') {
-		add_error(errors, 'facility_coverage', 'must be an object');
+		add_error(errors, coverage_path, 'must be an object');
 		return result;
 	}
-	validate_int(coverage, 'complete', 'facility_coverage', errors, true, 0, MAX_DEFINITION_VALUE);
-	validate_int(coverage, 'partial', 'facility_coverage', errors, true, 0, MAX_DEFINITION_VALUE);
+	validate_int(coverage, 'complete', coverage_path, errors, true, 0, MAX_DEFINITION_VALUE);
+	validate_int(coverage, 'partial', coverage_path, errors, true, 0, MAX_DEFINITION_VALUE);
 	if (#typeof(coverage.status) != 'Object') {
-		add_error(errors, 'facility_coverage.status', 'must be an object');
+		add_error(errors, coverage_path + '.status', 'must be an object');
 		return result;
 	}
 	let implemented = {};
 	if (#typeof(facilities) == 'Array') {
 		for (entry of facilities) {
 			if (#typeof(entry) == 'Object' && #typeof(entry.id) == 'String') {
-				implemented[entry.id] = true;
+				const is_project = #typeof(entry.data) == 'Object' &&
+					#is_defined(entry.data.is_project) && entry.data.is_project;
+				if (is_project == projects) {
+					implemented[entry.id] = true;
+				}
 			}
 		}
 	}
 	for (id in coverage.status) {
-		const path = 'facility_coverage.' + id;
+		const path = coverage_path + '.' + id;
 		if (!#is_defined(implemented[id])) {
 			add_error(errors, path, 'references a facility that is not implemented');
 		}
@@ -647,13 +663,13 @@ const validate_facility_coverage = (coverage, facilities, errors) => {
 	}
 	for (id in implemented) {
 		if (!#is_defined(coverage.status[id])) {
-			add_error(errors, 'facility_coverage.' + id, 'is missing an implementation status');
+			add_error(errors, coverage_path + '.' + id, 'is missing an implementation status');
 		}
 	}
 	if (#typeof(coverage.complete) == 'Int' && coverage.complete != result.complete) {
 		add_error(
 			errors,
-			'facility_coverage.complete',
+			coverage_path + '.complete',
 			'reports ' + #to_string(coverage.complete) +
 				' but contains ' + #to_string(result.complete)
 		);
@@ -661,7 +677,7 @@ const validate_facility_coverage = (coverage, facilities, errors) => {
 	if (#typeof(coverage.partial) == 'Int' && coverage.partial != result.partial) {
 		add_error(
 			errors,
-			'facility_coverage.partial',
+			coverage_path + '.partial',
 			'reports ' + #to_string(coverage.partial) +
 				' but contains ' + #to_string(result.partial)
 		);
@@ -1011,7 +1027,7 @@ const validate = (catalog) => {
 		catalog.technologies.definitions,
 		errors
 	);
-	const facility_count = validate_facilities(
+	const facility_result = validate_facilities(
 		catalog.facilities,
 		catalog.technologies.definitions,
 		errors
@@ -1024,7 +1040,14 @@ const validate = (catalog) => {
 	const facility_coverage_result = validate_facility_coverage(
 		catalog.facility_coverage,
 		catalog.facilities,
-		errors
+		errors,
+		false
+	);
+	const project_coverage_result = validate_facility_coverage(
+		catalog.project_coverage,
+		catalog.facilities,
+		errors,
+		true
 	);
 	const unit_count = validate_units(
 		catalog.units,
@@ -1046,9 +1069,12 @@ const validate = (catalog) => {
 		errors: errors,
 		counts: {
 			technologies: technology_count,
-			facilities: facility_count,
+			facilities: facility_result.facility_count,
 			complete_facilities: facility_coverage_result.complete,
 			partial_facilities: facility_coverage_result.partial,
+			implemented_projects: facility_result.project_count,
+			complete_projects: project_coverage_result.complete,
+			partial_projects: project_coverage_result.partial,
 			base_facilities: facility_manifest_result.facility_count,
 			projects: facility_manifest_result.project_count,
 			units: unit_count,

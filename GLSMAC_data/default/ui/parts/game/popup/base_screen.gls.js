@@ -158,7 +158,7 @@ return {
 
 		let facility_names = [];
 		for (facility of base.get_facilities()) {
-			facility_names :+facility.name;
+			facility_names :+(facility.is_project ? 'PROJECT: ' : '') + facility.name;
 		}
 		this.sections.facilities.set(facility_names);
 

@@ -65,6 +65,19 @@ base::FacilityDef* BaseManager::GetFacilityDef( const std::string& id ) const {
 		: it->second;
 }
 
+base::Base* BaseManager::GetProjectBase( const std::string& id ) const {
+	const auto* const def = GetFacilityDef( id );
+	if ( !def || !def->m_is_project ) {
+		return nullptr;
+	}
+	for ( const auto& it : m_bases ) {
+		if ( it.second->HasFacility( id ) ) {
+			return it.second;
+		}
+	}
+	return nullptr;
+}
+
 base::PopDef* BaseManager::GetPopDef( const std::string& id ) const {
 	const auto& it = m_base_popdefs.find( id );
 	if ( it != m_base_popdefs.end() ) {
@@ -136,6 +149,12 @@ void BaseManager::UndefineFacility( const std::string& id ) {
 }
 
 void BaseManager::SpawnBase( GSE_CALLABLE, base::Base* base ) {
+	for ( const auto& id : base->m_facilities ) {
+		const auto* const def = GetFacilityDef( id );
+		if ( def && def->m_is_project && GetProjectBase( id ) ) {
+			GSE_ERROR( gse::EC.INVALID_CALL, "Secret project already exists at another base: " + id );
+		}
+	}
 
 	auto* tile = base->GetTile();
 
@@ -342,6 +361,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( float, air_defense_multiplier, def, "air_defense_multiplier", Float, 1.0f );
 				N_GETPROP_OPT( int64_t, growth_rating_bonus, def, "growth_rating_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, native_lifecycle_bonus, def, "native_lifecycle_bonus", Int, 0 );
+				N_GETPROP_OPT( bool, is_project, def, "is_project", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -426,7 +446,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					water_defense_multiplier,
 					air_defense_multiplier,
 					growth_rating_bonus,
-					native_lifecycle_bonus
+					native_lifecycle_bonus,
+					is_project
 				) );
 				return VALUE( gse::value::Undefined );
 			} )
@@ -478,6 +499,17 @@ WRAPIMPL_BEGIN( BaseManager )
 					result.push_back( def->Wrap( GSE_CALL ) );
 				}
 				return VALUE( gse::value::Array,, result );
+			} )
+		},
+		{
+			"get_project_base",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( id, 0, String );
+				auto* const base = GetProjectBase( id );
+				return base
+					? base->Wrap( GSE_CALL )
+					: VALUE( gse::value::Undefined );
 			} )
 		},
 		{

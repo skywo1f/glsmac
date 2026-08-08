@@ -49,6 +49,7 @@ public:
 	enum production_kind_t : uint8_t {
 		PK_UNIT = 0,
 		PK_FACILITY = 1,
+		PK_PROJECT = 2,
 	};
 	struct production_t {
 		production_kind_t kind;

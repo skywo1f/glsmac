@@ -55,7 +55,8 @@ public:
 		const float water_defense_multiplier = 1.0f,
 		const float air_defense_multiplier = 1.0f,
 		const int64_t growth_rating_bonus = 0,
-		const int64_t native_lifecycle_bonus = 0
+		const int64_t native_lifecycle_bonus = 0,
+		const bool is_project = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -87,6 +88,7 @@ public:
 	const float m_air_defense_multiplier;
 	const int64_t m_growth_rating_bonus;
 	const int64_t m_native_lifecycle_bonus;
+	const bool m_is_project;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

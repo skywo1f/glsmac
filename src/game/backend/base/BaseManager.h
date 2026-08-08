@@ -48,6 +48,7 @@ public:
 
 	PopDef* GetPopDef( const std::string& id ) const;
 	FacilityDef* GetFacilityDef( const std::string& id ) const;
+	Base* GetProjectBase( const std::string& id ) const;
 	Base* GetBase( const size_t id ) const;
 	void DefinePop( base::PopDef* pop_def );
 	void UndefinePop( const std::string& id );

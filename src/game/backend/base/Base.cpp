@@ -197,6 +197,7 @@ gse::Wrappable* Base::GetProductionDef( const production_t& production ) const {
 		case PK_UNIT:
 			return m_game->GetUM()->GetUnitDef( production.id );
 		case PK_FACILITY:
+		case PK_PROJECT:
 			return m_game->GetBM()->GetFacilityDef( production.id );
 	}
 	return nullptr;
@@ -233,13 +234,16 @@ bool Base::CanProduce( const production_t& production ) const {
 	switch ( production.kind ) {
 		case PK_UNIT:
 			return CanProduceUnit( m_game->GetUM()->GetUnitDef( production.id ) );
-		case PK_FACILITY: {
+		case PK_FACILITY:
+		case PK_PROJECT: {
 			auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
 			const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
 			return
 				def &&
+				def->m_is_project == ( production.kind == PK_PROJECT ) &&
 				def->m_mineral_cost > 0 &&
 				!HasFacility( production.id ) &&
+				( !def->m_is_project || !m_game->GetBM()->GetProjectBase( production.id ) ) &&
 				( def->m_required_facility.empty() || HasFacility( def->m_required_facility ) ) &&
 				(
 					def->m_required_technology.empty() ||
@@ -317,8 +321,12 @@ bool Base::HasFacility( const std::string& id ) const {
 }
 
 void Base::AddFacility( GSE_CALLABLE, const std::string& id ) {
-	if ( !m_game->GetBM()->GetFacilityDef( id ) ) {
+	const auto* const def = m_game->GetBM()->GetFacilityDef( id );
+	if ( !def ) {
 		GSE_ERROR( gse::EC.INVALID_DEFINITION, "Unknown base facility: " + id );
+	}
+	if ( def->m_is_project && m_game->GetBM()->GetProjectBase( id ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Secret project is already complete: " + id );
 	}
 	if ( !m_facilities.insert( id ).second ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Base already has facility: " + id );
@@ -342,6 +350,10 @@ bool Base::ParseProductionKind( const std::string& value, production_kind_t& res
 		result = PK_FACILITY;
 		return true;
 	}
+	if ( value == "project" ) {
+		result = PK_PROJECT;
+		return true;
+	}
 	return false;
 }
 
@@ -351,6 +363,8 @@ const std::string Base::GetProductionKindString( const production_kind_t kind ) 
 			return "unit";
 		case PK_FACILITY:
 			return "facility";
+		case PK_PROJECT:
+			return "project";
 	}
 	return "unknown";
 }
@@ -524,7 +538,7 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	production_queue.reserve( production_count );
 	for ( size_t i = 0 ; i < production_count ; i++ ) {
 		const auto serialized_kind = buf.ReadInt();
-		if ( serialized_kind < PK_UNIT || serialized_kind > PK_FACILITY ) {
+		if ( serialized_kind < PK_UNIT || serialized_kind > PK_PROJECT ) {
 			THROW( "invalid serialized base production kind" );
 		}
 		const auto production_id = buf.ReadString();
@@ -1140,9 +1154,9 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 		error = "Production queue cannot contain more than " + std::to_string( MAX_PRODUCTION_QUEUE_SIZE ) + " entries";
 		return false;
 	}
-	std::unordered_set< std::string > queued_facilities = {};
+	std::unordered_set< std::string > queued_constructions = {};
 	for ( const auto& production : production_queue ) {
-		if ( production.kind < PK_UNIT || production.kind > PK_FACILITY || production.id.empty() ) {
+		if ( production.kind < PK_UNIT || production.kind > PK_PROJECT || production.id.empty() ) {
 			error = "Invalid production queue entry";
 			return false;
 		}
@@ -1150,8 +1164,11 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 			error = "Cannot produce " + GetProductionKindString( production.kind ) + ": " + production.id;
 			return false;
 		}
-		if ( production.kind == PK_FACILITY && !queued_facilities.insert( production.id ).second ) {
-			error = "Facility is already in the production queue: " + production.id;
+		if (
+			production.kind != PK_UNIT &&
+			!queued_constructions.insert( production.id ).second
+		) {
+			error = "Construction is already in the production queue: " + production.id;
 			return false;
 		}
 	}

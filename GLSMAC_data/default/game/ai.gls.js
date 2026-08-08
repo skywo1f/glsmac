@@ -304,7 +304,10 @@ const queue_production = (game, player, bases, units) => {
 					mobile_combat_count++;
 				}
 			}
-		} else if (selected != null && selected.kind == 'facility') {
+		} else if (
+			selected != null &&
+			(selected.kind == 'facility' || selected.kind == 'project')
+		) {
 			available_energy = production.get_remaining_maintenance_budget(
 				selected.def,
 				available_energy

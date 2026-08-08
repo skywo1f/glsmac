@@ -103,6 +103,25 @@ const score_facility = (def, context) => {
 		) * morale_weight;
 };
 
+const score_project = (def, context) => {
+	const has_effect =
+		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
+		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
+		def.defense_multiplier > 1.0 || def.economy_multiplier > 0.0 ||
+		def.unit_morale_bonus > 0 || def.research_bonus > 0 ||
+		def.mineral_multiplier > 0.0 || def.psych_multiplier > 0.0 ||
+		def.population_limit > 0 || def.drone_modifier != 0 || def.talent_bonus > 0 ||
+		def.suppress_psych || def.unit_morale_land_bonus > 0 ||
+		def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0 ||
+		def.water_defense_multiplier > 1.0 || def.air_defense_multiplier > 1.0 ||
+		def.growth_rating_bonus > 0 || def.native_lifecycle_bonus > 0;
+	if (!has_effect) {
+		return null;
+	}
+	return score_facility(def, context) +
+		get_priority(context, 'development', 50) * 500;
+};
+
 const score_hurry = (def, context) => {
 	if (context.hurry_cost <= 0 || context.hurry_cost > context.energy_credits) {
 		return null;
@@ -227,7 +246,13 @@ const choose = (base, unit_defs, facility_defs, context) => {
 		consider('unit', def, score_unit(def, context));
 	}
 	for (def of facility_defs) {
-		consider('facility', def, score_facility(def, context));
+		consider(
+			def.production_kind,
+			def,
+			def.production_kind == 'project'
+				? score_project(def, context)
+				: score_facility(def, context)
+		);
 	}
 	return best;
 };
@@ -236,6 +261,7 @@ return {
 	get_remaining_maintenance_budget: get_remaining_maintenance_budget,
 	score_unit: score_unit,
 	score_facility: score_facility,
+	score_project: score_project,
 	score_hurry: score_hurry,
 	choose_hurry: choose_hurry,
 	choose: choose,

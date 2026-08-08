@@ -37,7 +37,8 @@ FacilityDef::FacilityDef(
 	const float water_defense_multiplier,
 	const float air_defense_multiplier,
 	const int64_t growth_rating_bonus,
-	const int64_t native_lifecycle_bonus
+	const int64_t native_lifecycle_bonus,
+	const bool is_project
 )
 	: m_id( id )
 	, m_name( name )
@@ -66,7 +67,8 @@ FacilityDef::FacilityDef(
 	, m_water_defense_multiplier( water_defense_multiplier )
 	, m_air_defense_multiplier( air_defense_multiplier )
 	, m_growth_rating_bonus( growth_rating_bonus )
-	, m_native_lifecycle_bonus( native_lifecycle_bonus ) {
+	, m_native_lifecycle_bonus( native_lifecycle_bonus )
+	, m_is_project( is_project ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -152,6 +154,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_air_defense_multiplier );
 	buf.WriteInt( def->m_growth_rating_bonus );
 	buf.WriteInt( def->m_native_lifecycle_bonus );
+	buf.WriteBool( def->m_is_project );
 	return buf;
 }
 
@@ -184,6 +187,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto air_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	const auto growth_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto native_lifecycle_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto is_project = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -212,7 +216,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		water_defense_multiplier,
 		air_defense_multiplier,
 		growth_rating_bonus,
-		native_lifecycle_bonus
+		native_lifecycle_bonus,
+		is_project
 	);
 }
 
@@ -228,7 +233,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"production_kind",
-			VALUE( gse::value::String, , "facility" )
+			VALUE( gse::value::String, , m_is_project ? "project" : "facility" )
 		},
 		{
 			"mineral_cost",
@@ -333,6 +338,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"native_lifecycle_bonus",
 			VALUE( gse::value::Int, , m_native_lifecycle_bonus )
+		},
+		{
+			"is_project",
+			VALUE( gse::value::Bool, , m_is_project )
 		},
 	};
 WRAPIMPL_END_PTR()

@@ -12,9 +12,15 @@
 		['unit', 'SynthmetalSentinels', 'IndustrialBase'],
 	];
 	let facility_ids = [];
+	let project_ids = [];
 	for (entry of facility_catalog.definitions) {
-		facility_ids :+entry.id;
-		production_gates :+['facility', entry.id, entry.data.required_technology];
+		const kind = entry.data.is_project ? 'project' : 'facility';
+		if (entry.data.is_project) {
+			project_ids :+entry.id;
+		} else {
+			facility_ids :+entry.id;
+		}
+		production_gates :+[kind, entry.id, entry.data.required_technology];
 	}
 
 	let runtime_complete = false;
@@ -30,7 +36,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 26 facilities, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 31 facilities, 33 projects, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -163,6 +169,25 @@
 					return;
 				}
 				base.remove_facility('HabComplex');
+
+				if (#sizeof(project_ids) != 33) {
+					fail('secret project runtime catalog count is invalid');
+					return;
+				}
+				const supercollider = game.get_bm().get_facility_def('TheSupercollider');
+				const project_labs_before = game.get('f_technology_get_base_labs')(base).total;
+				base.add_facility(supercollider.id);
+				const project_labs_after = game.get('f_technology_get_base_labs')(base).total;
+				if (
+					supercollider.production_kind != 'project' || !supercollider.is_project ||
+					game.get_bm().get_project_base(supercollider.id) != base ||
+					base.can_set_production('project', supercollider.id) ||
+					project_labs_after <= project_labs_before
+				) {
+					fail('secret project ownership or local effect is invalid');
+					return;
+				}
+				base.remove_facility(supercollider.id);
 
 				const intake_before = base.get_intake();
 				const consumption_before = base.get_consumption().ENERGY;

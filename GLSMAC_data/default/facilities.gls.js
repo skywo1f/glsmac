@@ -54,12 +54,19 @@ const partial_effects = {
 	TempleOfPlanet: true,
 };
 
+const project_effects = {
+	TheSupercollider: {research_multiplier: 1.0},
+	TheTheoryOfEverything: {research_multiplier: 1.0},
+};
+
 const facilities = [];
 const coverage = {complete: 0, partial: 0, status: {}};
+const project_coverage = {complete: 0, partial: 0, status: {}};
 for (entry of manifest) {
-	if (entry.kind != 'facility' || !#is_defined(effects[entry.id])) {
+	if (entry.kind == 'facility' && !#is_defined(effects[entry.id])) {
 		continue;
 	}
+	const is_project = entry.kind == 'project';
 	let data = {
 		name: entry.name,
 		mineral_cost: entry.mineral_cost,
@@ -68,20 +75,31 @@ for (entry of manifest) {
 		energy_bonus: 0,
 		energy_maintenance: entry.energy_maintenance,
 		required_technology: entry.required_technology,
+		is_project: is_project,
 	};
-	for (key in effects[entry.id]) {
-		data[key] = effects[entry.id][key];
+	const implemented_effects = is_project ? project_effects[entry.id] : effects[entry.id];
+	if (#is_defined(implemented_effects)) {
+		for (key in implemented_effects) {
+			data[key] = implemented_effects[key];
+		}
 	}
 	facilities :+{id: entry.id, data: data};
-	const status = #is_defined(partial_effects[entry.id]) ? 'partial' : 'complete';
-	coverage.status[entry.id] = status;
-	coverage[status] = coverage[status] + 1;
+	if (is_project) {
+		const status = #is_defined(implemented_effects) ? 'complete' : 'partial';
+		project_coverage.status[entry.id] = status;
+		project_coverage[status] = project_coverage[status] + 1;
+	} else {
+		const status = #is_defined(partial_effects[entry.id]) ? 'partial' : 'complete';
+		coverage.status[entry.id] = status;
+		coverage[status] = coverage[status] + 1;
+	}
 }
 
 return {
 	definitions: facilities,
 	manifest: manifest,
 	coverage: coverage,
+	project_coverage: project_coverage,
 
 	define: (game) => {
 		for (facility of facilities) {
