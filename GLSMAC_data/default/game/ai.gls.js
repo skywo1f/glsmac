@@ -122,12 +122,17 @@ const attack_enemy_in_tiles = (game, player, unit, tiles) => {
 const queue_production = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
+	let combat_count = 0;
 	for (unit of units) {
-		const id = unit.get_def().id;
-		if (id == 'Former') {
+		const def = unit.get_def();
+		if (def.can_terraform) {
 			former_count++;
-		} else if (id == 'ColonyPod') {
+		}
+		if (def.can_found_base) {
 			colony_count++;
+		}
+		if (def.offense > 0) {
+			combat_count++;
 		}
 	}
 
@@ -144,13 +149,22 @@ const queue_production = (game, player, bases, units) => {
 	);
 	for (base of bases) {
 		let garrison_count = 0;
+		let supported_units = 0;
 		for (unit of base.get_tile().get_units()) {
 			if (unit.owner == player.id && unit.get_def().offense > 0) {
 				garrison_count++;
 			}
 		}
+		for (unit of units) {
+			if (unit.home_base_id == base.id) {
+				supported_units++;
+			}
+		}
 		const required_garrison = combat.get_required_garrison(tm, base, player.id, all_units);
 		const psych = game.get('f_economy_get_base_psych')(game, base);
+		const intake = base.get_intake();
+		const consumption = base.get_consumption();
+		const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
 		const selected = production.choose(
 			base,
 			unit_defs,
@@ -159,7 +173,14 @@ const queue_production = (game, player, bases, units) => {
 				needs_garrison: garrison_count < required_garrison,
 				needs_former: former_count < #sizeof(bases),
 				needs_colony: #sizeof(bases) + colony_count < desired_base_count,
+				needs_military: combat_count < #sizeof(bases) * 2,
 				needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
+				needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
+				can_expand: base.get_size() > 1,
+				nutrient_surplus: nutrient_surplus,
+				supported_units: supported_units,
+				free_support: #max(base.get_size(), 1),
+				base_labs: game.get('f_technology_get_base_labs')(base).total,
 				available_energy: available_energy,
 			}
 		);
@@ -169,6 +190,9 @@ const queue_production = (game, player, bases, units) => {
 			}
 			if (selected.def.can_found_base) {
 				colony_count++;
+			}
+			if (selected.def.offense > 0) {
+				combat_count++;
 			}
 		}
 		const queue = base.get_production_queue();

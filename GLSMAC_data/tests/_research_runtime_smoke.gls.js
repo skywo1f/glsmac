@@ -66,6 +66,7 @@
 				sentinels.offense != 1 ||
 				sentinels.defense != 2 ||
 				network_node.required_technology != 'InformationNetworks' ||
+				network_node.research_multiplier != 0.5 ||
 				network_node.energy_maintenance != 1 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
 				recreation_commons.energy_maintenance != 1 ||

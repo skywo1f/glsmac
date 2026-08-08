@@ -99,14 +99,16 @@ const get_base_labs = (base) => {
 	const consumption = base.get_consumption();
 	const energy_surplus = #max(intake.ENERGY - consumption.ENERGY, 0);
 	const allocated = #round(#to_float(energy_surplus) * allocation);
-	const network_bonus = base.has_facility('NetworkNode')
-		? #ceil(#to_float(allocated + base_bonus) * 0.5)
-		: 0;
+	let research_multiplier = 0.0;
+	for (facility of base.get_facilities()) {
+		research_multiplier += facility.research_multiplier;
+	}
+	const facility_bonus = #ceil(#to_float(allocated + base_bonus) * research_multiplier);
 	return {
 		allocation: allocation,
 		value: allocated,
-		bonus: base_bonus + network_bonus,
-		total: allocated + base_bonus + network_bonus,
+		bonus: base_bonus + facility_bonus,
+		total: allocated + base_bonus + facility_bonus,
 	};
 };
 

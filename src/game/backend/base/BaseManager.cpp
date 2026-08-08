@@ -19,6 +19,7 @@
 #include "gse/callable/Native.h"
 #include "gse/value/Bool.h"
 #include "gse/value/Array.h"
+#include "gse/value/Float.h"
 
 namespace game {
 namespace backend {
@@ -322,6 +323,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, energy_maintenance, def, "energy_maintenance", Int, 0 );
 				N_GETPROP_OPT( std::string, required_technology, def, "required_technology", String, "" );
 				N_GETPROP_OPT( int64_t, psych_bonus, def, "psych_bonus", Int, 0 );
+				N_GETPROP_OPT( float, research_multiplier, def, "research_multiplier", Float, 0.0f );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -336,7 +338,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					energy_maintenance < 0 ||
 					energy_maintenance > base::FacilityDef::MAX_ENERGY_MAINTENANCE ||
 					psych_bonus < 0 ||
-					psych_bonus > base::FacilityDef::MAX_RESOURCE_BONUS
+					psych_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					research_multiplier < 0.0f ||
+					research_multiplier > base::FacilityDef::MAX_RESEARCH_MULTIPLIER
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -352,7 +356,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					energy_bonus,
 					energy_maintenance,
 					required_technology,
-					psych_bonus
+					psych_bonus,
+					research_multiplier
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

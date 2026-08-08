@@ -382,7 +382,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					0,
 					0,
 					1,
-					"InformationNetworks"
+					"InformationNetworks",
+					0,
+					0.5f
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -391,6 +393,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					facility_roundtrip->m_required_technology == "InformationNetworks",
 					"facility technology prerequisite was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_research_multiplier == 0.5f,
+					"facility research multiplier was not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -407,6 +413,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					legacy_facility_parsed->m_required_technology.empty(),
 					"legacy facility definition gained a technology prerequisite"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_research_multiplier == 0.0f,
+					"legacy facility definition gained a research multiplier"
 				);
 
 				const auto make_unit_def = [](

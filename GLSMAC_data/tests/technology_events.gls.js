@@ -45,7 +45,7 @@ const base = {
 	get_consumption: () => {
 		return {ENERGY: 1};
 	},
-	has_facility: (id) => { return false; },
+	get_facilities: () => { return []; },
 };
 const labs = technologies.get_base_labs(base);
 test.assert(labs.allocation == 0.4);
@@ -55,7 +55,7 @@ test.assert(labs.total == 4);
 const network_base = {
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,
-	has_facility: (id) => { return id == 'NetworkNode'; },
+	get_facilities: () => { return [{research_multiplier: 0.5}]; },
 };
 const network_labs = technologies.get_base_labs(network_base);
 test.assert(network_labs.value == 2);
