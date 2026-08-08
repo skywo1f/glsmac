@@ -3,6 +3,7 @@ const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
 const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
+const strategy = #include('ai/strategy');
 const movement_rules = #include('movement_rules');
 
 const owned_bases = (game, player) => {
@@ -116,6 +117,13 @@ const queue_production = (game, player, bases, units) => {
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
 	const available_energy = game.get('f_economy_get_player')(game, player);
+	const tm = game.get_tm();
+	const desired_base_count = strategy.get_desired_base_count(
+		game.get_turn(),
+		tm.get_map_width(),
+		tm.get_map_height(),
+		#sizeof(game.get_players())
+	);
 	for (base of bases) {
 		let has_garrison = false;
 		for (unit of base.get_tile().get_units()) {
@@ -132,7 +140,7 @@ const queue_production = (game, player, bases, units) => {
 			{
 				needs_garrison: !has_garrison,
 				needs_former: former_count < #sizeof(bases),
-				needs_colony: #sizeof(bases) + colony_count < 3,
+				needs_colony: #sizeof(bases) + colony_count < desired_base_count,
 				needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 				available_energy: available_energy,
 			}

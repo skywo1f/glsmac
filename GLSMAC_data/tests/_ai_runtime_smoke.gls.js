@@ -127,9 +127,9 @@
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == ai_id) {
 					ai_bases++;
-					if (turn_id <= 8) {
+					if (turn_id <= 16) {
 						base.set_accumulated_minerals(100);
-						if (base.get_size() == 1) {
+						if (turn_id <= 8 && base.get_size() == 1) {
 							base.set('accumulated_nutrients', game.get('map_growth_base') * 2);
 						}
 					}
