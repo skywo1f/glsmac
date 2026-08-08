@@ -20,7 +20,8 @@ FacilityDef::FacilityDef(
 	const int64_t psych_bonus,
 	const float research_multiplier,
 	const float defense_multiplier,
-	const float economy_multiplier
+	const float economy_multiplier,
+	const int64_t unit_morale_bonus
 )
 	: m_id( id )
 	, m_name( name )
@@ -33,7 +34,8 @@ FacilityDef::FacilityDef(
 	, m_psych_bonus( psych_bonus )
 	, m_research_multiplier( research_multiplier )
 	, m_defense_multiplier( defense_multiplier )
-	, m_economy_multiplier( economy_multiplier ) {
+	, m_economy_multiplier( economy_multiplier )
+	, m_unit_morale_bonus( unit_morale_bonus ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -54,7 +56,9 @@ FacilityDef::FacilityDef(
 		m_defense_multiplier < 1.0f ||
 		m_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
 		m_economy_multiplier < 0.0f ||
-		m_economy_multiplier > MAX_ECONOMY_MULTIPLIER
+		m_economy_multiplier > MAX_ECONOMY_MULTIPLIER ||
+		m_unit_morale_bonus < 0 ||
+		m_unit_morale_bonus > MAX_UNIT_MORALE_BONUS
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -74,6 +78,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_research_multiplier );
 	buf.WriteFloat( def->m_defense_multiplier );
 	buf.WriteFloat( def->m_economy_multiplier );
+	buf.WriteInt( def->m_unit_morale_bonus );
 	return buf;
 }
 
@@ -90,6 +95,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto research_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	const auto economy_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
+	const auto unit_morale_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -102,7 +108,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		psych_bonus,
 		research_multiplier,
 		defense_multiplier,
-		economy_multiplier
+		economy_multiplier,
+		unit_morale_bonus
 	);
 }
 
@@ -159,6 +166,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"economy_multiplier",
 			VALUE( gse::value::Float, , m_economy_multiplier )
+		},
+		{
+			"unit_morale_bonus",
+			VALUE( gse::value::Int, , m_unit_morale_bonus )
 		},
 	};
 WRAPIMPL_END_PTR()

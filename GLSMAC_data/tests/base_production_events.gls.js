@@ -11,6 +11,8 @@ const mind_worms = {
 	production_kind: 'unit',
 	mineral_cost: 30,
 	can_found_base: false,
+	is_native: true,
+	morale_set: 'NATIVE',
 };
 const spore_launcher = {
 	id: 'SporeLauncher',
@@ -18,6 +20,8 @@ const spore_launcher = {
 	production_kind: 'unit',
 	mineral_cost: 50,
 	can_found_base: false,
+	is_native: true,
+	morale_set: 'NATIVE',
 };
 const colony_pod = {
 	id: 'ColonyPod',
@@ -25,20 +29,31 @@ const colony_pod = {
 	production_kind: 'unit',
 	mineral_cost: 30,
 	can_found_base: true,
+	is_native: false,
+	morale_set: 'STANDARD',
 };
 const recycling_tanks = {
 	id: 'RecyclingTanks',
 	name: 'Recycling Tanks',
 	production_kind: 'facility',
 	mineral_cost: 40,
+	unit_morale_bonus: 0,
 };
 const recreation_commons = {
 	id: 'RecreationCommons',
 	name: 'Recreation Commons',
 	production_kind: 'facility',
 	mineral_cost: 40,
+	unit_morale_bonus: 0,
 };
-const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks, recreation_commons];
+const command_center = {
+	id: 'CommandCenter',
+	name: 'Command Center',
+	production_kind: 'facility',
+	mineral_cost: 40,
+	unit_morale_bonus: 2,
+};
+const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks, recreation_commons, command_center];
 
 let production_queue = [];
 let built_facilities = [];
@@ -133,6 +148,13 @@ const base = {
 	},
 	get_production_queue: () => {
 		return production_queue;
+	},
+	get_facilities: () => {
+		let result = [];
+		for (id of built_facilities) {
+			result :+find_definition('facility', id);
+		}
+		return result;
 	},
 	can_set_production: (kind, id) => {
 		const definition = find_definition(kind, id);
@@ -310,6 +332,7 @@ game = {
 		throw Error('Unexpected game callback: ' + key);
 	},
 	um: {
+		get_moraleset: (id) => { return [0, 1, 2, 3, 4, 5, 6]; },
 		spawn_unit: (data) => {
 			spawn_data = data;
 			spawned_unit = {id: 17};
@@ -432,7 +455,7 @@ remove_base_production.rollback(event);
 test.assert(get_queue_state() == ['unit:MindWorms', 'facility:RecyclingTanks', 'unit:SporeLauncher']);
 
 production_queue = [mind_worms, spore_launcher];
-built_facilities = [];
+built_facilities = ['CommandCenter'];
 accumulated_minerals = 25;
 spawned_unit = #undefined;
 spawn_data = #undefined;
@@ -464,6 +487,7 @@ test.assert(accumulated_minerals == 25);
 test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
 test.assert(!#is_defined(spawned_unit));
 test.assert(despawned_unit.id == 17);
+built_facilities = [];
 
 production_queue = [mind_worms];
 accumulated_minerals = 25;
@@ -531,6 +555,7 @@ test.assert(#sizeof(base_pops) == 1);
 
 const doctor_pop = make_pop('DOCTOR', #undefined);
 base_pops = [worker_pop, doctor_pop];
+built_facilities = ['CommandCenter'];
 accumulated_minerals = 25;
 spawned_unit = #undefined;
 spawn_data = #undefined;
@@ -538,6 +563,7 @@ event.applied = process_base_production.apply(event);
 test.assert(accumulated_minerals == 2);
 test.assert(#is_defined(spawned_unit));
 test.assert(spawn_data.def == colony_pod.id);
+test.assert(spawn_data.morale == 3);
 test.assert(#sizeof(base_pops) == 1);
 test.assert(base_pops[0] == worker_pop);
 process_base_production.rollback(event);
@@ -545,6 +571,7 @@ test.assert(accumulated_minerals == 25);
 test.assert(!#is_defined(spawned_unit));
 test.assert(#sizeof(base_pops) == 2);
 test.assert(base_pops[1].get_type() == 'DOCTOR');
+built_facilities = [];
 
 const worker_a = make_pop('WORKER', {id: 'worker-a'});
 const worker_b = make_pop('WORKER', {id: 'worker-b'});

@@ -9,6 +9,17 @@ const get_queue_specs = (base) => {
 	return result;
 };
 
+const get_production_morale = (game, base, production) => {
+	let morale = 1;
+	if (!production.is_native) {
+		for (facility of base.get_facilities()) {
+			morale += facility.unit_morale_bonus;
+		}
+	}
+	const morale_set = game.um.get_moraleset(production.morale_set);
+	return #min(morale, #sizeof(morale_set) - 1);
+};
+
 return {
 
 	validate: (e) => {
@@ -43,7 +54,7 @@ return {
 						def: production.id,
 						owner: base.get_owner(),
 						tile: base.get_tile(),
-						morale: 1,
+						morale: get_production_morale(e.game, base, production),
 						health: 1.0,
 						home_base_id: base.id,
 					});

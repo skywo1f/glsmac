@@ -14,7 +14,7 @@ const unit = (id, required_technology, offense, defense, movement, can_found_bas
 		can_terraform: can_terraform,
 	};
 };
-const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier) => {
+const facility = (id, required_technology, nutrients, minerals, energy, psych, research_multiplier, defense_multiplier, economy_multiplier, unit_morale_bonus) => {
 	return {
 		id: id,
 		required_technology: required_technology,
@@ -25,6 +25,7 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		research_multiplier: research_multiplier,
 		defense_multiplier: #is_defined(defense_multiplier) ? defense_multiplier : 1.0,
 		economy_multiplier: #is_defined(economy_multiplier) ? economy_multiplier : 0.0,
+		unit_morale_bonus: #is_defined(unit_morale_bonus) ? unit_morale_bonus : 0,
 	};
 };
 const context = (needs_military, needs_psych) => {
@@ -83,6 +84,17 @@ low_development_context.priorities = {development: 0};
 test.assert(
 	research.score_technology(economics, [], [energy_bank], development_context) >
 	research.score_technology(economics, [], [energy_bank], low_development_context)
+);
+
+const doctrine = technology('Doctrine', 30);
+const command_center = facility('CommandCenter', 'Doctrine', 0, 0, 0, 0, 0.0, 1.0, 0.0, 2);
+let military_context = context(true, false);
+military_context.priorities = {military: 100};
+let low_military_context = context(false, false);
+low_military_context.priorities = {military: 0};
+test.assert(
+	research.score_technology(doctrine, [], [command_center], military_context) >
+	research.score_technology(doctrine, [], [command_center], low_military_context)
 );
 
 const expansion = technology('Expansion', 40);

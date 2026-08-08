@@ -61,6 +61,7 @@
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
+			const command_center = game.get_bm().get_facility_def('CommandCenter');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -88,7 +89,10 @@
 				perimeter_defense.defense_multiplier != 2.0 ||
 				energy_bank.required_technology != 'IndustrialEconomics' ||
 				energy_bank.energy_maintenance != 1 ||
-				energy_bank.economy_multiplier != 0.5
+				energy_bank.economy_multiplier != 0.5 ||
+				command_center.required_technology != 'DoctrineMobility' ||
+				command_center.energy_maintenance != 1 ||
+				command_center.unit_morale_bonus != 2
 			) {
 				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit or facility definitions are invalid');
 				glsmac.exit();
@@ -398,6 +402,7 @@
 					state.target != 'InformationNetworks' ||
 					!progress_is_valid ||
 					!base.can_set_production('unit', 'ReconRover') ||
+					!base.can_set_production('facility', 'CommandCenter') ||
 					base.can_set_production('facility', 'NetworkNode')
 				) {
 					#print('RESEARCH_RUNTIME_FAIL: Information Networks research or facility gate is invalid');
@@ -426,7 +431,8 @@
 					state.target != 'DoctrineMobility' ||
 					!progress_is_valid ||
 					!base.can_set_production('unit', 'Former') ||
-					base.can_set_production('unit', 'ReconRover')
+					base.can_set_production('unit', 'ReconRover') ||
+					base.can_set_production('facility', 'CommandCenter')
 				) {
 					#print('RESEARCH_RUNTIME_FAIL: chained Doctrine Mobility research or production gate is invalid');
 					glsmac.exit();

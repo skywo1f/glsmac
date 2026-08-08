@@ -76,6 +76,19 @@ const facilities = [
 			required_technology: 'IndustrialEconomics',
 		},
 	},
+	{
+		id: 'CommandCenter',
+		data: {
+			name: 'Command Center',
+			mineral_cost: 40,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 1,
+			unit_morale_bonus: 2,
+			required_technology: 'DoctrineMobility',
+		},
+	},
 ];
 
 return {

@@ -19,6 +19,7 @@ public:
 	static constexpr float MAX_RESEARCH_MULTIPLIER = 10.0f;
 	static constexpr float MAX_DEFENSE_MULTIPLIER = 10.0f;
 	static constexpr float MAX_ECONOMY_MULTIPLIER = 10.0f;
+	static constexpr int64_t MAX_UNIT_MORALE_BONUS = 10;
 
 	FacilityDef(
 		const std::string& id,
@@ -32,7 +33,8 @@ public:
 		const int64_t psych_bonus = 0,
 		const float research_multiplier = 0.0f,
 		const float defense_multiplier = 1.0f,
-		const float economy_multiplier = 0.0f
+		const float economy_multiplier = 0.0f,
+		const int64_t unit_morale_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -48,6 +50,7 @@ public:
 	const float m_research_multiplier;
 	const float m_defense_multiplier;
 	const float m_economy_multiplier;
+	const int64_t m_unit_morale_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

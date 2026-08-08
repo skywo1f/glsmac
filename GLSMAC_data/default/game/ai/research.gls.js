@@ -65,6 +65,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		score += #round(
 			def.economy_multiplier * #to_float(5000 + development_priority * 300)
 		);
+		score += def.unit_morale_bonus * (
+			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
+		);
 	}
 	return score;
 };
