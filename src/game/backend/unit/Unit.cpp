@@ -15,6 +15,8 @@
 #include "game/backend/slot/Slots.h"
 #include "game/backend/map/Map.h"
 #include "game/backend/map/tile/Tile.h"
+#include "game/backend/base/Base.h"
+#include "game/backend/base/BaseManager.h"
 #include "MoraleSet.h"
 #include "StaticDef.h"
 #include "UnitManager.h"
@@ -268,6 +270,25 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_LINK( "get_def", m_def )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
+	{
+		"set_home_base_id",
+		NATIVE_CALL( this ) {
+			m_um->m_game->CheckRW( GSE_CALL );
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( home_base_id, 0, Int );
+			if ( home_base_id < 0 ) {
+				GSE_ERROR( gse::EC.INVALID_CALL, "Home base ID cannot be negative" );
+			}
+			if ( home_base_id > 0 ) {
+				const auto* const base = m_um->m_game->GetBM()->GetBase( static_cast< size_t >( home_base_id ) );
+				if ( !base || base->m_owner != m_owner ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Home base must exist and belong to the unit owner" );
+				}
+			}
+			m_home_base_id = static_cast< size_t >( home_base_id );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"move_to_tile",
 		NATIVE_CALL( this ) {

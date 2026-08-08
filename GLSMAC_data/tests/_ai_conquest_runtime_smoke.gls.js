@@ -37,6 +37,16 @@
 			const victory = game.get_victory_state();
 			let ai_occupies_base = false;
 			let promoted_ai_occupies_base = false;
+			let surviving_unit_rehomed = false;
+			for (unit of game.get_um().get_units()) {
+				if (
+					unit.owner == game.get_player().id &&
+					unit.get_def().can_terraform &&
+					unit.home_base_id == 0
+				) {
+					surviving_unit_rehomed = true;
+				}
+			}
 			for (unit of captured_base.get_tile().get_units()) {
 				if (unit.owner == ai_id) {
 					ai_occupies_base = true;
@@ -50,6 +60,7 @@
 				victory.winner != ai_id ||
 				captured_base.get_owner().id != ai_id ||
 				game.get_um().has_unit(defender_id) ||
+				!surviving_unit_rehomed ||
 				!ai_occupies_base ||
 				!promoted_ai_occupies_base
 			) {
@@ -115,13 +126,46 @@
 					break;
 				}
 			}
-			if (staging_tile == null) {
-				fail('no legal adjacent staging tile is available');
+			let supported_unit_tile = null;
+			if (staging_tile != null) {
+				const tm = game.get_tm();
+				for (let y = 0; y < tm.get_map_height(); y++) {
+					for (let x = 0; x < tm.get_map_width(); x++) {
+						if (x % 2 != y % 2) {
+							continue;
+						}
+						const candidate = tm.get_tile(x, y);
+						if (
+							candidate.is_land &&
+							!candidate.is_locked() &&
+							candidate.get_base() == null &&
+							#sizeof(candidate.get_units()) == 0 &&
+							tm.get_distance(staging_tile, candidate) > 4
+						) {
+							supported_unit_tile = candidate;
+							break;
+						}
+					}
+					if (supported_unit_tile != null) {
+						break;
+					}
+				}
+			}
+			if (staging_tile == null || supported_unit_tile == null) {
+				fail('not enough legal adjacent staging tiles are available');
 				return;
 			}
 
 			defender_id = defender.id;
 			defender.health = 0.01;
+			game.event('spawn_unit', {
+				owner: human,
+				tile: supported_unit_tile,
+				type: 'Former',
+				morale: 1,
+				health: 1.0,
+				home_base_id: human_base.id,
+			});
 			game.event('spawn_unit', {
 				owner: ai,
 				tile: staging_tile,

@@ -721,8 +721,16 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let stopped_animations_id = 0;
 	let tiles_locked = true;
 	let base_owner_changes = 0;
+	let support_bases = [];
 	const attacker_owner = {id: owner.id};
 	const defender_owner = {id: 2};
+	let supported_unit = null;
+	supported_unit = {
+		owner: defender_owner.id,
+		home_base_id: 9,
+		get_tile: () => { return {x: 8, y: 8}; },
+		set_home_base_id: (id) => { supported_unit.home_base_id = id; },
+	};
 	const src_tile = {
 		is_land: true,
 		is_water: false,
@@ -776,6 +784,15 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 					tiles_locked = false;
 				},
 			},
+			bm: {
+				get_bases: () => { return support_bases; },
+			},
+			um: {
+				get_units: () => { return [supported_unit]; },
+			},
+			tm: {
+				get_distance: (source, destination) => { return destination.distance; },
+			},
 		},
 		data: {
 			unit: unit,
@@ -795,6 +812,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	destination_units = [];
 	let current_base_owner = defender_owner;
 	destination_base = {
+		id: 9,
 		get_owner: () => {
 			return current_base_owner;
 		},
@@ -803,6 +821,17 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			current_base_owner = new_owner;
 		},
 	};
+	const higher_id_base = {
+		id: 11,
+		get_owner: () => { return defender_owner; },
+		get_tile: () => { return {distance: 2}; },
+	};
+	const lower_id_base = {
+		id: 10,
+		get_owner: () => { return defender_owner; },
+		get_tile: () => { return {distance: 2}; },
+	};
+	support_bases = [destination_base, higher_id_base, lower_id_base];
 	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
 
 	event.applied = advance_unit_after_combat.apply(event);
@@ -814,6 +843,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(move_calls == 1);
 	test.assert(current_base_owner == attacker_owner);
 	test.assert(base_owner_changes == 1);
+	test.assert(#sizeof(event.applied.rehomed_units) == 1);
+	test.assert(supported_unit.home_base_id == lower_id_base.id);
 	test.assert(unit.movement == 0.0);
 	test.assert(unit.moved_this_turn == true);
 	advance_unit_after_combat.rollback(event);
@@ -821,6 +852,13 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(move_calls == 2);
 	test.assert(current_base_owner == defender_owner);
 	test.assert(base_owner_changes == 2);
+	test.assert(supported_unit.home_base_id == destination_base.id);
+
+	support_bases = [destination_base];
+	event.applied = advance_unit_after_combat.apply(event);
+	test.assert(supported_unit.home_base_id == 0);
+	advance_unit_after_combat.rollback(event);
+	test.assert(supported_unit.home_base_id == destination_base.id);
 }
 
 {
