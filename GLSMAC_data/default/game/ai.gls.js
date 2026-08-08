@@ -18,14 +18,18 @@ const owned_bases = (game, player) => {
 	return result;
 };
 
-const owned_units = (game, player) => {
+const filter_owned_units = (units, player) => {
 	let result = [];
-	for (unit of game.get_um().get_units()) {
+	for (unit of units) {
 		if (unit.owner == player.id) {
 			result :+unit;
 		}
 	}
 	return result;
+};
+
+const owned_units = (game, player) => {
+	return filter_owned_units(game.get_um().get_units(), player);
 };
 
 const choose_tile = (tiles, score) => {
@@ -100,17 +104,19 @@ const record_action_attempt = (unit, action_attempts) => {
 	action_attempts[unit_key] = #is_defined(action_attempts[unit_key]) ? action_attempts[unit_key] + 1 : 1;
 };
 
-const attack_enemy_on_tile = (game, player, unit, tile) => {
-	if (tile.is_locked()) {
-		return false;
-	}
-	for (enemy of tile.get_units()) {
-		if (enemy.owner != player.id) {
-			game.event_as(player.id, 'attack_unit', {attacker: unit, defender: enemy});
-			return true;
+const attack_enemy_in_tiles = (game, player, unit, tiles) => {
+	let available_tiles = [];
+	for (tile of tiles) {
+		if (!tile.is_locked()) {
+			available_tiles :+tile;
 		}
 	}
-	return false;
+	const target = combat.choose_attack_target(unit, player.id, available_tiles);
+	if (target == null) {
+		return false;
+	}
+	game.event_as(player.id, 'attack_unit', {attacker: unit, defender: target});
+	return true;
 };
 
 const queue_production = (game, player, bases, units) => {
@@ -317,7 +323,7 @@ const move_former = (game, player, unit, all_bases) => {
 	return false;
 };
 
-const move_combat = (game, player, unit, all_bases) => {
+const move_combat = (game, player, unit, all_bases, all_units) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return 0;
@@ -360,40 +366,38 @@ const move_combat = (game, player, unit, all_bases) => {
 			game.get_tm(),
 			current_base,
 			player.id,
-			game.get_um().get_units()
+			all_units
 		);
 		if (defenders <= required_garrison) {
 			return 0;
 		}
 	}
-	for (nearby of tile.get_surrounding_tiles()) {
-		if (attack_enemy_on_tile(game, player, unit, nearby)) {
-			return 1000;
-		}
+	if (attack_enemy_in_tiles(game, player, unit, tile.get_surrounding_tiles())) {
+		return 1000;
 	}
 	if (unit.get_def().id == 'SporeLauncher') {
+		let ranged_tiles = [];
 		for (nearby of tile.get_surrounding_tiles()) {
 			for (ranged of nearby.get_surrounding_tiles()) {
-				if (
-					game.get_tm().get_distance(tile, ranged) == 2 &&
-					attack_enemy_on_tile(game, player, unit, ranged)
-				) {
-					return 1000;
+				if (game.get_tm().get_distance(tile, ranged) == 2) {
+					ranged_tiles :+ranged;
 				}
 			}
 		}
-	}
-	let enemy_base = null;
-	let enemy_distance = 100000;
-	for (base of all_bases) {
-		if (base.get_owner().id != player.id) {
-			const distance = game.get_tm().get_distance(tile, base.get_tile());
-			if (distance < enemy_distance) {
-				enemy_base = base;
-				enemy_distance = distance;
-			}
+		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles)) {
+			return 1000;
 		}
 	}
+	const enemy_base = combat.choose_assault_target(
+		game.get_tm(),
+		unit,
+		player.id,
+		all_bases,
+		all_units
+	);
+	const enemy_distance = enemy_base == null
+		? 100000
+		: game.get_tm().get_distance(tile, enemy_base.get_tile());
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!can_enter(unit, candidate)) {
 			return 0 - 100000;
@@ -435,7 +439,8 @@ const play_turn = (game, player, done) => {
 			done();
 			return;
 		}
-		const current_units = owned_units(game, player);
+		const all_units = game.get_um().get_units();
+		const current_units = filter_owned_units(all_units, player);
 		const all_bases = game.get_bm().get_bases();
 		let action_started = false;
 		let action_delay = MOVEMENT_ACTION_DELAY;
@@ -480,7 +485,7 @@ const play_turn = (game, player, done) => {
 					continue;
 				}
 				if (unit.get_def().offense > 0) {
-					const combat_delay = move_combat(game, player, unit, all_bases);
+					const combat_delay = move_combat(game, player, unit, all_bases, all_units);
 					if (combat_delay > 0) {
 						action_started = true;
 						action_delay = combat_delay;

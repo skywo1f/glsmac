@@ -5,18 +5,28 @@ const other_player_id = 2;
 
 const make_tile = (x, y) => {
 	let base = null;
+	let units = [];
 	return {
 		x: x,
 		y: y,
+		is_land: true,
+		is_water: false,
+		rockiness: 1,
+		features: {xenofungus: false},
+		terraforming: {bunker: false},
 		get_base: () => { return base; },
 		set_base: (value) => { base = value; },
+		get_units: () => { return units; },
+		add_unit: (unit) => { units :+unit; },
 	};
 };
 
-const make_base = (owner_id, tile) => {
+const make_base = (owner_id, tile, size) => {
+	const base_size = #is_defined(size) ? size : 1;
 	const base = {
 		get_owner: () => { return {id: owner_id}; },
 		get_tile: () => { return tile; },
+		get_size: () => { return base_size; },
 	};
 	tile.set_base(base);
 	return base;
@@ -54,12 +64,31 @@ test.assert(combat.get_repair_destination(tm, make_unit(north_tile, 0.79), playe
 test.assert(combat.get_repair_destination(tm, make_unit(north_tile, 0.8), player_id, bases) == null);
 test.assert(combat.get_repair_destination(tm, make_unit(enemy_tile, 0.49), player_id, bases) == north_base);
 
-const make_combat_unit = (owner_id, tile, offense) => {
-	return {
+let next_unit_id = 1;
+const make_combat_unit = (owner_id, tile, offense, defense, health, morale) => {
+	const unit_defense = #is_defined(defense) ? defense : 1;
+	const unit_health = #is_defined(health) ? health : 1.0;
+	const unit_morale = #is_defined(morale) ? morale : 2;
+	const unit = {
+		id: next_unit_id++,
 		owner: owner_id,
+		health: unit_health,
+		morale: unit_morale,
+		movement: 1.0,
+		is_land: true,
+		is_water: false,
 		get_tile: () => { return tile; },
-		get_def: () => { return {offense: offense}; },
+		get_def: () => {
+			return {
+				id: 'TestUnit',
+				is_native: false,
+				offense: offense,
+				defense: unit_defense,
+			};
+		},
 	};
+	tile.add_unit(unit);
+	return unit;
 };
 
 const home_tile = make_tile(0, 0);
@@ -78,3 +107,69 @@ test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy])
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy, far_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [friendly, colony, far_enemy]) == 1);
+
+const attack_origin = make_tile(10, 10);
+const north_target_tile = make_tile(10, 9);
+const east_target_tile = make_tile(11, 10);
+const water_target_tile = make_tile(10, 11);
+water_target_tile.is_land = false;
+water_target_tile.is_water = true;
+const attacker = make_combat_unit(player_id, attack_origin, 2, 1, 1.0, 2);
+const healthy_defender = make_combat_unit(other_player_id, north_target_tile, 1, 1, 1.0, 2);
+const wounded_defender = make_combat_unit(other_player_id, east_target_tile, 1, 2, 0.2, 2);
+make_combat_unit(other_player_id, water_target_tile, 1, 1, 0.01, 2);
+make_combat_unit(player_id, east_target_tile, 1, 1, 0.01, 2);
+
+test.assert(
+	combat.choose_attack_target(
+		attacker,
+		player_id,
+		[north_target_tile, water_target_tile, east_target_tile]
+	) == wounded_defender
+);
+test.assert(combat.get_attack_score(attacker, wounded_defender) > combat.get_attack_score(attacker, healthy_defender));
+
+const tie_north_tile = make_tile(20, 19);
+const tie_east_tile = make_tile(21, 20);
+const tie_north = make_combat_unit(other_player_id, tie_north_tile, 1, 1, 1.0, 2);
+make_combat_unit(other_player_id, tie_east_tile, 1, 1, 1.0, 2);
+test.assert(combat.choose_attack_target(attacker, player_id, [tie_east_tile, tie_north_tile]) == tie_north);
+
+const assault_origin = make_tile(30, 30);
+const assault_attacker = make_combat_unit(player_id, assault_origin, 2, 1, 1.0, 2);
+const nearby_base_tile = make_tile(32, 30);
+const farther_base_tile = make_tile(34, 30);
+const nearby_base = make_base(other_player_id, nearby_base_tile);
+const farther_base = make_base(other_player_id, farther_base_tile);
+const strong_defender = make_combat_unit(other_player_id, nearby_base_tile, 1, 3, 1.0, 2);
+test.assert(
+	combat.choose_assault_target(
+		tm,
+		assault_attacker,
+		player_id,
+		[nearby_base, farther_base],
+		[assault_attacker, strong_defender]
+	) == farther_base
+);
+
+const close_open_tile = make_tile(31, 30);
+const distant_open_tile = make_tile(35, 30);
+const close_open_base = make_base(other_player_id, close_open_tile);
+const distant_open_base = make_base(other_player_id, distant_open_tile);
+test.assert(
+	combat.choose_assault_target(
+		tm,
+		assault_attacker,
+		player_id,
+		[distant_open_base, close_open_base],
+		[assault_attacker]
+	) == close_open_base
+);
+
+const water_base_tile = make_tile(30, 31);
+water_base_tile.is_land = false;
+water_base_tile.is_water = true;
+const water_base = make_base(other_player_id, water_base_tile, 10);
+test.assert(
+	combat.choose_assault_target(tm, assault_attacker, player_id, [water_base], [assault_attacker]) == null
+);

@@ -1,10 +1,7 @@
 const MIN_DAMAGE_VALUE = 0.1;
 const MAX_DAMAGE_VALUE = 0.3;
 const MIN_BOMBARDMENT_HEALTH = 0.1;
-
-const is_artillery = (def) => {
-	return def.id == 'SporeLauncher';
-};
+const combat_rules = #include('../combat_rules');
 
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
@@ -49,56 +46,6 @@ const restore_unit = (e, backup) => {
 const promote_unit = (um, unit) => {
 	const morale_set = um.get_moraleset(unit.get_def().morale_set);
 	unit.morale = #min(unit.morale + 1, #sizeof(morale_set) - 1);
-};
-
-const get_morale_multiplier = (unit) => {
-	return 0.75 + #to_float(unit.morale) * 0.125;
-};
-
-const get_combat_powers = (attacker, defender) => {
-	const attacker_def = attacker.get_def();
-	const defender_def = defender.get_def();
-	let attack_strength = #to_float(attacker_def.offense);
-	let defence_strength = #to_float(defender_def.defense);
-	if (attacker_def.is_native || defender_def.is_native) {
-		attack_strength = defender.is_land ? 3.0 : 1.0;
-		defence_strength = defender.is_land ? 2.0 : 1.0;
-	}
-
-	let attack_modifier = 1.0;
-	let defence_modifier = 1.0;
-	const defender_tile = defender.get_tile();
-	if (defender_tile.rockiness >= 3) {
-		defence_modifier += 0.5;
-	}
-	if (defender_tile.features.xenofungus) {
-		if (attacker_def.is_native) {
-			attack_modifier += 0.5;
-		} else {
-			defence_modifier += 0.5;
-		}
-	}
-	if (defender_tile.get_base() != null || defender_tile.terraforming.bunker) {
-		defence_modifier += 0.25;
-	}
-	if (attacker.is_land && !attacker_def.is_native && attacker.movement < 1.0) {
-		attack_modifier *= attacker.movement;
-	}
-	return {
-		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health * attack_modifier,
-		defence: defence_strength * get_morale_multiplier(defender) * defender.health * defence_modifier,
-	};
-};
-
-const get_artillery_powers = (attacker, defender) => {
-	const attacker_def = attacker.get_def();
-	const defender_def = defender.get_def();
-	return {
-		attack: #to_float(attacker_def.offense) * get_morale_multiplier(attacker) * attacker.health,
-		defence: #to_float(
-			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
-		) * get_morale_multiplier(defender) * defender.health,
-	};
 };
 
 return {
@@ -147,7 +94,7 @@ return {
 			return 'Defender tile is same as attacker tile';
 		}
 		const attacker_def = e.data.attacker.get_def();
-		const attacker_is_artillery = is_artillery(attacker_def);
+		const attacker_is_artillery = combat_rules.is_artillery(attacker_def);
 		if (!attacker_tile.is_adjactent_to(defender_tile)) {
 			if (!attacker_is_artillery || e.game.tm.get_distance(attacker_tile, defender_tile) > 2) {
 				return attacker_is_artillery
@@ -173,11 +120,11 @@ return {
 	resolve: (e) => {
 		const attacker = e.data.attacker;
 		const defender = e.data.defender;
-		const attacker_is_artillery = is_artillery(attacker.get_def());
-		const defender_is_artillery = is_artillery(defender.get_def());
+		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
+		const defender_is_artillery = combat_rules.is_artillery(defender.get_def());
 
 		if (attacker_is_artillery && !defender_is_artillery) {
-			const powers = get_artillery_powers(attacker, defender);
+			const powers = combat_rules.get_artillery_powers(attacker, defender);
 			let damage_sequence = [];
 			const combat_roll = e.game.random.get_float(0.0, powers.attack + powers.defence);
 			if (combat_roll < powers.attack && defender.health > MIN_BOMBARDMENT_HEALTH) {
@@ -194,8 +141,8 @@ return {
 		}
 
 		const powers = attacker_is_artillery
-			? get_artillery_powers(attacker, defender)
-			: get_combat_powers(attacker, defender);
+			? combat_rules.get_artillery_powers(attacker, defender)
+			: combat_rules.get_combat_powers(attacker, defender);
 		const attack_power = powers.attack;
 		const defence_power = powers.defence;
 
