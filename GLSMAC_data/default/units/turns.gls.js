@@ -1,6 +1,19 @@
 const terraforming = #include('terraforming');
 
+const get_repair = (unit, def) => {
+	if (unit.moved_this_turn || unit.terraforming != 'none' || unit.health >= def.health_max) {
+		return 0.0;
+	}
+	let repair = def.health_per_turn;
+	const base = unit.get_tile().get_base();
+	if (base != null && base.get_owner().id == unit.owner) {
+		repair *= 2.0;
+	}
+	return #min(repair, def.health_max - unit.health);
+};
+
 const result = {
+	get_repair: get_repair,
 
 	configure: (game) => {
 
@@ -8,10 +21,9 @@ const result = {
 
 		um.on('unit_turn', (e) => {
 			const def = e.unit.get_def();
-			if (!e.unit.moved_this_turn) {
-				if (e.unit.health < def.health_max) {
-					e.unit.health = #min(e.unit.health + def.health_per_turn, def.health_max);
-				}
+			const repair = get_repair(e.unit, def);
+			if (repair > 0.0) {
+				e.unit.health = e.unit.health + repair;
 			}
 			let is_still_terraforming = false;
 			if (e.unit.terraforming != 'none') {

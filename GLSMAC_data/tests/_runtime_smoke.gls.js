@@ -10,6 +10,7 @@
 	let lifecycle_verified = false;
 	let expansion_verified = false;
 	let terraforming_verified = false;
+	let repair_verified = false;
 	let turn_three_advance_requested = false;
 	let former_id = 0;
 	let terraform_site = null;
@@ -20,7 +21,7 @@
 	const expansion_base_name = 'Runtime Expansion Base';
 
 	const finish_if_ready = () => {
-		if (lifecycle_verified && expansion_verified && terraforming_verified && ui_started && !exit_scheduled) {
+		if (lifecycle_verified && expansion_verified && terraforming_verified && repair_verified && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print('RUNTIME_SMOKE_PASS: reached turn 5 with production, lifecycle, expansion, and terraforming state intact');
 			#async(500, () => {
@@ -130,6 +131,7 @@
 
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
+				smoke_unit.health = 0.5;
 				const research_state = game.get_player().get_research_state();
 				const rover = um.get_unit_def('ReconRover');
 				if (
@@ -206,7 +208,7 @@
 					owner: game.get_player(),
 					tile: terraform_site,
 					morale: 2,
-					health: 1.0,
+					health: 0.5,
 				});
 				const former_def = former.get_def();
 				if (
@@ -275,6 +277,9 @@
 				}
 				const former = game.get_um().get_unit(former_id);
 				if (
+					game.get_um().get_unit(1).health < 0.699 ||
+					game.get_um().get_unit(1).health > 0.701 ||
+					former.health != 0.5 ||
 					former.terraforming != 'farm' ||
 					former.terraforming_turns_remaining != 3 ||
 					former.movement != 0.0 ||
@@ -291,15 +296,19 @@
 			}
 			else if (turn_id == 3) {
 				const bases = game.get_bm().get_bases();
+				const former = game.get_um().get_unit(former_id);
 				if (
 					#sizeof(bases) == 0 ||
 					!bases[0].has_facility('RecyclingTanks') ||
-					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count
+					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count ||
+					former.health != 0.5
 				) {
 					#print('RUNTIME_SMOKE_FAIL: queued unit production or facility persistence failed');
 					glsmac.exit();
 					return;
 				}
+				repair_verified = true;
+				#print('RUNTIME_SMOKE_UNIT_REPAIR_PASS');
 				#print('RUNTIME_SMOKE_BASE_PRODUCTION_PASS');
 
 				let lifecycle_base = null;
