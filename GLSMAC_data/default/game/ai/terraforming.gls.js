@@ -1,3 +1,5 @@
+const WORKED_TILE_BONUS = 2000;
+
 const get_order = (tile, prioritize_nutrients) => {
 	if (
 		tile.get_base() != null ||
@@ -22,11 +24,14 @@ const get_order = (tile, prioritize_nutrients) => {
 	return null;
 };
 
-const get_target_score = (tile, player, pending_growth, distance) => {
+const get_target_score = (tile, player, pending_growth, distance, is_worked) => {
 	const resources = tile.get_resources(player);
 	let score = resources.NUTRIENTS * 30 + resources.MINERALS * 20 + resources.ENERGY * 10;
 	if (pending_growth <= 0) {
 		score += 10000 + resources.NUTRIENTS * 100;
+	}
+	if (#is_defined(is_worked) && is_worked) {
+		score += WORKED_TILE_BONUS;
 	}
 	return score - distance * 100;
 };

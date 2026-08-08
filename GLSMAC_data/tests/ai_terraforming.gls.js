@@ -39,3 +39,4 @@ const food = make_tile(2, 1, 3, 0, 0);
 const minerals = make_tile(1, 2, 0, 3, 0);
 test.assert(terraforming.get_target_score(food, owner, 0, 2) > terraforming.get_target_score(minerals, owner, 1, 1));
 test.assert(terraforming.get_target_score(food, owner, 1, 1) > terraforming.get_target_score(food, owner, 1, 2));
+test.assert(terraforming.get_target_score(food, owner, 1, 2, true) > terraforming.get_target_score(food, owner, 1, 1, false));

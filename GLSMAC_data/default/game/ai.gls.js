@@ -245,9 +245,27 @@ const move_former = (game, player, unit, all_bases) => {
 		return false;
 	}
 	const tm = game.get_tm();
-	let strategic_target = null;
-	let strategic_order = null;
-	let strategic_score = 0;
+	let strategic_targets = {};
+	const consider_target = (candidate, pending_growth, prioritize_nutrients, is_worked) => {
+		if (has_other_former(candidate, unit)) {
+			return;
+		}
+		const order = terraforming.get_order(candidate, prioritize_nutrients);
+		if (order == null) {
+			return;
+		}
+		const key = #to_string(candidate.x) + '_' + #to_string(candidate.y);
+		const worked = is_worked || candidate.has('working_pop');
+		const score = terraforming.get_target_score(candidate, player, pending_growth, 0, worked);
+		if (!#is_defined(strategic_targets[key]) || score > strategic_targets[key].score) {
+			strategic_targets[key] = {
+				order: order,
+				pending_growth: pending_growth,
+				is_worked: worked,
+				score: score,
+			};
+		}
+	};
 	for (base of all_bases) {
 		if (base.get_owner().id != player.id) {
 			continue;
@@ -255,50 +273,37 @@ const move_former = (game, player, unit, all_bases) => {
 		const pending_growth = game.get('f_base_get_pending_growth')(base);
 		const prioritize_nutrients = pending_growth <= 0;
 		for (worked_tile of base.get_worked_tiles()) {
-			if (has_other_former(worked_tile, unit)) {
-				continue;
-			}
-			const order = terraforming.get_order(worked_tile, prioritize_nutrients);
-			if (order == null) {
-				continue;
-			}
-			const score = terraforming.get_target_score(
-				worked_tile,
-				player,
-				pending_growth,
-				tm.get_distance(tile, worked_tile)
-			);
-			if (
-				strategic_target == null ||
-				score > strategic_score ||
-				(
-					score == strategic_score &&
-					(
-						worked_tile.y < strategic_target.y ||
-						(worked_tile.y == strategic_target.y && worked_tile.x < strategic_target.x)
-					)
-				)
-			) {
-				strategic_target = worked_tile;
-				strategic_order = order;
-				strategic_score = score;
-			}
+			consider_target(worked_tile, pending_growth, prioritize_nutrients, true);
+		}
+		for (unworked_tile of base.get_unworked_tiles()) {
+			consider_target(unworked_tile, pending_growth, prioritize_nutrients, false);
 		}
 	}
-	if (strategic_target != null) {
-		if (tile == strategic_target && !has_other_active_former(tile, unit)) {
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: strategic_order});
+	const destination = pathfinding.find_best_reachable(tm, unit, (source, candidate) => {
+		return can_enter(unit, candidate, source);
+	}, (candidate, distance) => {
+		const key = #to_string(candidate.x) + '_' + #to_string(candidate.y);
+		if (!#is_defined(strategic_targets[key])) {
+			return null;
+		}
+		const target = strategic_targets[key];
+		return terraforming.get_target_score(
+			candidate,
+			player,
+			target.pending_growth,
+			distance,
+			target.is_worked
+		);
+	});
+	if (destination != null) {
+		const key = #to_string(destination.target.x) + '_' + #to_string(destination.target.y);
+		const target = strategic_targets[key];
+		if (destination.target == tile && !has_other_active_former(tile, unit)) {
+			game.event_as(player.id, 'terraform_tile', {unit: unit, type: target.order});
 			return true;
 		}
-		if (tile.is_adjactent_to(strategic_target) && can_enter(unit, strategic_target)) {
-			game.event_as(player.id, 'move_unit', {unit: unit, tile: strategic_target});
-			return true;
-		}
-		const path_step = pathfinding.find_path_step(tm, unit, strategic_target, (source, candidate) => {
-			return can_enter(unit, candidate, source);
-		});
-		if (path_step != null) {
-			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
+		if (destination.step != null && can_enter(unit, destination.step)) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: destination.step});
 			return true;
 		}
 	}
