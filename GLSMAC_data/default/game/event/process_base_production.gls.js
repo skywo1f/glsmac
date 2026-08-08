@@ -25,6 +25,7 @@ return {
 		let produced_unit = #undefined;
 		let completed_facility = #undefined;
 		let consumed_pops = [];
+		let pop_type_snapshots = [];
 
 		if (#is_defined(production)) {
 			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
@@ -74,6 +75,16 @@ return {
 			}
 			base.set_accumulated_minerals(updated_minerals);
 		}
+		if (#sizeof(consumed_pops) > 0 || #is_defined(completed_facility)) {
+			for (pop of base.get_pops()) {
+				pop_type_snapshots :+{
+					pop: pop,
+					type: pop.get_type(),
+				};
+			}
+			const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
+			e.game.get('f_base_process_psych')(e.game, base, psych);
+		}
 
 		return {
 			old_minerals: old_minerals,
@@ -81,6 +92,7 @@ return {
 			produced_unit: produced_unit,
 			completed_facility: completed_facility,
 			consumed_pops: consumed_pops,
+			pop_type_snapshots: pop_type_snapshots,
 		};
 	},
 
@@ -90,6 +102,9 @@ return {
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);
+		}
+		for (snapshot of e.applied.pop_type_snapshots) {
+			snapshot.pop.set_type(snapshot.type);
 		}
 		for (snapshot of e.applied.consumed_pops) {
 			const pop = e.data.base.create_pop({type: snapshot.type});

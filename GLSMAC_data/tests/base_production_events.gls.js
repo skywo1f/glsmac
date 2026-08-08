@@ -32,7 +32,13 @@ const recycling_tanks = {
 	production_kind: 'facility',
 	mineral_cost: 40,
 };
-const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks];
+const recreation_commons = {
+	id: 'RecreationCommons',
+	name: 'Recreation Commons',
+	production_kind: 'facility',
+	mineral_cost: 40,
+};
+const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks, recreation_commons];
 
 let production_queue = [];
 let built_facilities = [];
@@ -42,11 +48,13 @@ let spawned_unit = #undefined;
 let spawn_data = #undefined;
 let despawned_unit = #undefined;
 let base_pops = [];
+let processed_psych = [];
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
 	return {
 		get_type: () => { return type; },
+		set_type: (value) => { type = value; },
 		get: (key) => { return key == 'worked_tile' ? tile : #undefined; },
 		has: (key) => { return key == 'worked_tile' && #is_defined(tile); },
 		clear_tile: () => { tile = #undefined; },
@@ -238,7 +246,8 @@ const base = {
 };
 
 let turn_complete = false;
-const game = {
+let game = null;
+game = {
 	is_turn_complete: (player_id) => {
 		test.assert(player_id == owner.id);
 		return turn_complete;
@@ -259,6 +268,43 @@ const game = {
 					}
 				}
 				return #sizeof(base_pops) > 0 ? base_pops[0] : null;
+			};
+		}
+		if (key == 'f_economy_get_base_psych') {
+			return (target_game, target_base) => {
+				test.assert(target_game == game && target_base == base);
+				return has_facility('RecreationCommons') ? 4 : 0;
+			};
+		}
+		if (key == 'f_base_process_psych') {
+			return (target_game, target_base, psych) => {
+				test.assert(target_game == game && target_base == base);
+				processed_psych :+psych;
+				let laborer_count = 0;
+				for (pop of base_pops) {
+					if (pop.has('worked_tile')) {
+						pop.set_type(laborer_count < 3 ? 'WORKER' : 'DRONE');
+						laborer_count++;
+					}
+				}
+				for (pop of base_pops) {
+					if (psych < 2) {
+						break;
+					}
+					if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
+						pop.set_type('WORKER');
+						psych -= 2;
+					}
+				}
+				for (pop of base_pops) {
+					if (psych < 2) {
+						break;
+					}
+					if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
+						pop.set_type('TALENT');
+						psych -= 2;
+					}
+				}
 			};
 		}
 		throw Error('Unexpected game callback: ' + key);
@@ -483,3 +529,49 @@ test.assert(accumulated_minerals == 25);
 test.assert(!#is_defined(spawned_unit));
 test.assert(#sizeof(base_pops) == 2);
 test.assert(base_pops[1].get_type() == 'DOCTOR');
+
+const worker_a = make_pop('WORKER', {id: 'worker-a'});
+const worker_b = make_pop('WORKER', {id: 'worker-b'});
+const worker_c = make_pop('WORKER', {id: 'worker-c'});
+const drone_d = make_pop('DRONE', {id: 'drone-d'});
+production_queue = [colony_pod];
+base_pops = [worker_a, worker_b, worker_c, drone_d];
+accumulated_minerals = 25;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+processed_psych = [];
+event.applied = process_base_production.apply(event);
+test.assert(processed_psych == [0]);
+test.assert(#sizeof(base_pops) == 3);
+test.assert(base_pops[0].get_type() == 'WORKER');
+test.assert(base_pops[1].get_type() == 'WORKER');
+test.assert(base_pops[2].get_type() == 'WORKER');
+process_base_production.rollback(event);
+test.assert(#sizeof(base_pops) == 4);
+test.assert(base_pops[0].get_type() == 'WORKER');
+test.assert(base_pops[1].get_type() == 'WORKER');
+test.assert(base_pops[2].get_type() == 'DRONE');
+test.assert(base_pops[3].get_type() == 'WORKER');
+
+const commons_worker_a = make_pop('WORKER', {id: 'commons-a'});
+const commons_worker_b = make_pop('WORKER', {id: 'commons-b'});
+const commons_worker_c = make_pop('WORKER', {id: 'commons-c'});
+const commons_drone_d = make_pop('DRONE', {id: 'commons-d'});
+production_queue = [recreation_commons];
+base_pops = [commons_worker_a, commons_worker_b, commons_worker_c, commons_drone_d];
+built_facilities = [];
+accumulated_minerals = 35;
+processed_psych = [];
+event.applied = process_base_production.apply(event);
+test.assert(has_facility('RecreationCommons'));
+test.assert(processed_psych == [4]);
+test.assert(base_pops[0].get_type() == 'TALENT');
+test.assert(base_pops[1].get_type() == 'WORKER');
+test.assert(base_pops[2].get_type() == 'WORKER');
+test.assert(base_pops[3].get_type() == 'WORKER');
+process_base_production.rollback(event);
+test.assert(!has_facility('RecreationCommons'));
+test.assert(base_pops[0].get_type() == 'WORKER');
+test.assert(base_pops[1].get_type() == 'WORKER');
+test.assert(base_pops[2].get_type() == 'WORKER');
+test.assert(base_pops[3].get_type() == 'DRONE');

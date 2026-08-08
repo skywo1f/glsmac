@@ -386,7 +386,6 @@ const process_growth = (game, base, allocated_psych) => {
 		if (best_tile != null) {
 			globals.reserved_growth_tiles[#to_string(best_tile.x) + '_' + #to_string(best_tile.y)] = true;
 			// found tile to work, spawn worker
-			// TODO: talents logic
 			game.event('add_base_pop', {
 				base: base,
 				type: 'WORKER',
