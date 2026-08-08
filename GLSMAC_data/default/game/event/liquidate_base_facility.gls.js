@@ -13,11 +13,27 @@ return {
 	},
 
 	apply: (e) => {
-		e.data.base.remove_facility(e.data.facility_id);
-		return {facility_id: e.data.facility_id};
+		const base = e.data.base;
+		let pop_type_snapshots = [];
+		for (pop of base.get_pops()) {
+			pop_type_snapshots :+{
+				pop: pop,
+				type: pop.get_type(),
+			};
+		}
+		base.remove_facility(e.data.facility_id);
+		const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
+		e.game.get('f_base_process_psych')(e.game, base, psych);
+		return {
+			facility_id: e.data.facility_id,
+			pop_type_snapshots: pop_type_snapshots,
+		};
 	},
 
 	rollback: (e) => {
 		e.data.base.add_facility(e.applied.facility_id);
+		for (snapshot of e.applied.pop_type_snapshots) {
+			snapshot.pop.set_type(snapshot.type);
+		}
 	},
 };

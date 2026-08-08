@@ -155,6 +155,7 @@ const poor_base = {
 	get_intake: () => { return {ENERGY: 0}; },
 	get_consumption: () => { return {ENERGY: poor_has_node ? 2 : 1}; },
 	get_facilities: () => { return poor_has_node ? [network_node] : []; },
+	get_pops: () => { return []; },
 	has_facility: (id) => { return poor_has_node && id == 'NetworkNode'; },
 	remove_facility: (id) => { poor_has_node = false; },
 	add_facility: (id) => { poor_has_node = true; },
@@ -164,6 +165,8 @@ let poor_values = {
 	f_technology_get_base_labs: (base) => {
 		return {allocation: 0.4, value: 0, bonus: 0, total: 0};
 	},
+	f_economy_get_base_psych: (game, base) => { return 0; },
+	f_base_process_psych: (game, base, psych) => {},
 };
 let poor_events = [];
 let poor_game = null;
