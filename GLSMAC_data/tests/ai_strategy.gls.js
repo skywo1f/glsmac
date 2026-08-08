@@ -15,6 +15,12 @@ test.assert(desired(100, 80, 40, 7) == 17);
 
 test.assert(desired(0, 20, 10, 0) == 1);
 
+test.assert(!strategy.can_expand_safely(2, 0, 2, 0));
+test.assert(strategy.can_expand_safely(2, 0, 3, 0));
+test.assert(!strategy.can_expand_safely(2, 1, 3, 0));
+test.assert(strategy.can_expand_safely(2, 1, 4, 0));
+test.assert(!strategy.can_expand_safely(2, 0, 4, 1));
+
 test.assert(strategy.get_gap_priority(1, 1) == 0);
 test.assert(strategy.get_gap_priority(0, 1) == 75);
 test.assert(strategy.get_gap_priority(0, 2) == 100);
@@ -87,3 +93,21 @@ const dominant = priorities(2, 2, 0, 2, 4, 0, 0, 0, 5, 20.0, 10.0);
 test.assert(dominant.rival_pressure == 0);
 test.assert(dominant.military == 0);
 test.assert(dominant.development == 100);
+
+const immobile_force = strategy.get_priorities({
+	base_count: 2,
+	desired_base_count: 2,
+	colony_count: 0,
+	former_count: 2,
+	combat_count: 4,
+	mobile_combat_count: 0,
+	underdefended_bases: 0,
+	growth_stalled_bases: 0,
+	unstable_bases: 0,
+	energy_income: 5,
+	own_combat_power: 20.0,
+	strongest_rival_power: 10.0,
+});
+test.assert(immobile_force.mobility == 75);
+test.assert(immobile_force.military == 75);
+test.assert(immobile_force.development == 82);

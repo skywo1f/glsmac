@@ -8,6 +8,7 @@ const facilities = [
 			mineral_bonus: 1,
 			energy_bonus: 1,
 			energy_maintenance: 0,
+			required_technology: 'Biogenetics',
 		},
 	},
 	{

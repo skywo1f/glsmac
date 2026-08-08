@@ -401,6 +401,7 @@
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
 				recycling_tanks.mineral_cost != 40 ||
+				recycling_tanks.required_technology != 'Biogenetics' ||
 				recycling_tanks.nutrient_bonus != 1 ||
 				recycling_tanks.mineral_bonus != 1 ||
 				recycling_tanks.energy_bonus != 1 ||

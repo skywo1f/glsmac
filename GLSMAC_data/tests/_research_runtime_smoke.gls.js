@@ -10,13 +10,14 @@
 	let physics_accelerated = false;
 	let industry_accelerated = false;
 	let social_accelerated = false;
+	let biogenetics_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: six-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: seven-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -51,6 +52,7 @@
 			const rover = game.get_um().get_unit_def('ReconRover');
 			const laser = game.get_um().get_unit_def('LaserInfantry');
 			const sentinels = game.get_um().get_unit_def('SynthmetalSentinels');
+			const recycling_tanks = game.get_bm().get_facility_def('RecyclingTanks');
 			const network_node = game.get_bm().get_facility_def('NetworkNode');
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			if (
@@ -65,6 +67,7 @@
 				sentinels.required_technology != 'IndustrialBase' ||
 				sentinels.offense != 1 ||
 				sentinels.defense != 2 ||
+				recycling_tanks.required_technology != 'Biogenetics' ||
 				network_node.required_technology != 'InformationNetworks' ||
 				network_node.research_multiplier != 0.5 ||
 				network_node.energy_maintenance != 1 ||
@@ -93,16 +96,50 @@
 				}
 			}
 
-			if (player.has_technology('SocialPsych')) {
+			if (player.has_technology('Biogenetics')) {
 				if (
-					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
 					state.target != '' ||
 					state.progress != 0 ||
+					!base.can_set_production('facility', 'RecyclingTanks') ||
 					!base.can_set_production('unit', 'LaserInfantry') ||
 					!base.can_set_production('unit', 'SynthmetalSentinels') ||
+					!base.has_facility('RecreationCommons')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Biogenetics did not unlock Recycling Tanks');
+					glsmac.exit();
+					return;
+				}
+				const intake_before = base.get_intake();
+				base.add_facility('RecyclingTanks');
+				const intake_after = base.get_intake();
+				if (
+					intake_after.NUTRIENTS != intake_before.NUTRIENTS + 1 ||
+					intake_after.MINERALS != intake_before.MINERALS + 1 ||
+					intake_after.ENERGY != intake_before.ENERGY + 1
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Recycling Tanks resource bonus is invalid');
+					glsmac.exit();
+					return;
+				}
+				research_complete = true;
+				finish_if_ready();
+				return;
+			}
+
+			if (player.has_technology('SocialPsych')) {
+				const biogenetics = game.get('f_technology_get_definition')('Biogenetics');
+				const progress_is_valid = biogenetics_accelerated
+					? state.progress == biogenetics.cost - 1
+					: state.progress >= 0 && state.progress < biogenetics.cost;
+				if (
+					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
+					state.target != 'Biogenetics' ||
+					!progress_is_valid ||
+					base.can_set_production('facility', 'RecyclingTanks') ||
 					!base.can_set_production('facility', 'RecreationCommons')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Social Psych did not unlock Recreation Commons');
+					#print('RESEARCH_RUNTIME_FAIL: Social Psych did not advance to Biogenetics');
 					glsmac.exit();
 					return;
 				}
@@ -117,8 +154,15 @@
 					glsmac.exit();
 					return;
 				}
-				research_complete = true;
-				finish_if_ready();
+				if (!biogenetics_accelerated) {
+					biogenetics_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych'],
+						target: 'Biogenetics',
+						progress: biogenetics.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

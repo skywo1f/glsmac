@@ -59,6 +59,7 @@ const get_strategy_metrics = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
 	let combat_count = 0;
+	let mobile_combat_count = 0;
 	for (unit of units) {
 		const def = unit.get_def();
 		if (def.can_terraform) {
@@ -69,6 +70,9 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		if (def.offense > 0) {
 			combat_count++;
+			if (def.movement_per_turn > 1.0) {
+				mobile_combat_count++;
+			}
 		}
 	}
 
@@ -108,6 +112,7 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		former_count: former_count,
 		colony_count: colony_count,
 		combat_count: combat_count,
+		mobile_combat_count: mobile_combat_count,
 		underdefended_bases: underdefended_bases,
 		growth_stalled_bases: growth_stalled_bases,
 		unstable_bases: unstable_bases,
@@ -118,13 +123,14 @@ const get_strategy_metrics = (game, player, bases, units) => {
 	};
 };
 
-const get_strategy_priorities = (metrics, former_count, colony_count, combat_count) => {
+const get_strategy_priorities = (metrics, former_count, colony_count, combat_count, mobile_combat_count) => {
 	return strategy.get_priorities({
 		base_count: metrics.base_count,
 		desired_base_count: metrics.desired_base_count,
 		former_count: former_count,
 		colony_count: colony_count,
 		combat_count: combat_count,
+		mobile_combat_count: mobile_combat_count,
 		underdefended_bases: metrics.underdefended_bases,
 		growth_stalled_bases: metrics.growth_stalled_bases,
 		unstable_bases: metrics.unstable_bases,
@@ -217,6 +223,7 @@ const queue_production = (game, player, bases, units) => {
 	let former_count = metrics.former_count;
 	let colony_count = metrics.colony_count;
 	let combat_count = metrics.combat_count;
+	let mobile_combat_count = metrics.mobile_combat_count;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
 	let available_energy = #max(metrics.energy_income, 0);
@@ -241,13 +248,24 @@ const queue_production = (game, player, bases, units) => {
 			metrics,
 			former_count,
 			colony_count,
-			combat_count
+			combat_count,
+			mobile_combat_count
 		);
 		const context = {
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: former_count < #sizeof(bases),
-			needs_colony: #sizeof(bases) + colony_count < metrics.desired_base_count,
-			needs_military: combat_count < #sizeof(bases) * 2 || priorities.rival_pressure > 0,
+			needs_colony:
+				#sizeof(bases) + colony_count < metrics.desired_base_count &&
+				strategy.can_expand_safely(
+					#sizeof(bases),
+					colony_count,
+					combat_count,
+					metrics.underdefended_bases
+				),
+			needs_military:
+				combat_count < #sizeof(bases) * 2 ||
+				priorities.rival_pressure > 0 ||
+				priorities.mobility > 0,
 			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
@@ -275,6 +293,9 @@ const queue_production = (game, player, bases, units) => {
 			}
 			if (selected.def.offense > 0) {
 				combat_count++;
+				if (selected.def.movement_per_turn > 1.0) {
+					mobile_combat_count++;
+				}
 			}
 		} else if (selected != null && selected.kind == 'facility') {
 			available_energy = production.get_remaining_maintenance_budget(
@@ -331,7 +352,8 @@ const choose_research_target = (game, player, available) => {
 		metrics,
 		metrics.former_count,
 		metrics.colony_count,
-		metrics.combat_count
+		metrics.combat_count,
+		metrics.mobile_combat_count
 	);
 	return research.choose_id(
 		available,
@@ -341,7 +363,7 @@ const choose_research_target = (game, player, available) => {
 		{
 			needs_colony: metrics.base_count + metrics.colony_count < metrics.desired_base_count,
 			needs_former: metrics.former_count < metrics.base_count,
-			needs_military: metrics.combat_count < metrics.base_count * 2 || priorities.rival_pressure > 0,
+			needs_military: priorities.military > 0,
 			needs_growth: metrics.growth_stalled_bases > 0,
 			needs_psych: metrics.unstable_bases > 0,
 			base_labs: metrics.base_labs,

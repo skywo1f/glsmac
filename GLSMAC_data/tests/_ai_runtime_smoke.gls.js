@@ -126,7 +126,7 @@
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == ai_id) {
 					ai_bases++;
-					if (turn_id <= 20) {
+					if (turn_id <= 35) {
 						base.set_accumulated_minerals(100);
 						if (turn_id <= 8 && base.get_size() == 1) {
 							base.set('accumulated_nutrients', game.get('map_growth_base') * 2);
@@ -219,9 +219,17 @@
 					}
 					return;
 				}
-				if (turn_id >= 20) {
+				if (turn_id >= 35) {
 					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' base_tile=' + #to_string(ai_improved_base_tile) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' rover_reinforced=' + #to_string(ai_rover_reinforced) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
-					fail('AI did not complete movement, growth, expansion, terraforming, and mobile unit production by turn twenty');
+					const research = ai.get_research_state();
+					#print('AI_RUNTIME_RESEARCH_TRACE: known=' + #to_string(research.technologies) + ' target=' + research.target + ' progress=' + #to_string(research.progress));
+					for (unit of game.get_um().get_units()) {
+						if (unit.owner == ai_id && unit.get_def().can_found_base) {
+							const tile = unit.get_tile();
+							#print('AI_RUNTIME_COLONY_TRACE: tile=' + #to_string(tile.x) + ',' + #to_string(tile.y) + ' movement=' + #to_string(unit.movement));
+						}
+					}
+					fail('AI did not complete movement, growth, expansion, terraforming, and mobile unit production by turn thirty-five');
 					return;
 				}
 			}

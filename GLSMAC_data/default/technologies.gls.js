@@ -36,6 +36,12 @@ const definitions = {
 		cost: 40,
 		prerequisites: ['CentauriEcology'],
 	},
+	Biogenetics: {
+		id: 'Biogenetics',
+		name: 'Biogenetics',
+		cost: 30,
+		prerequisites: [],
+	},
 };
 
 const technology_order = [
@@ -45,6 +51,7 @@ const technology_order = [
 	'AppliedPhysics',
 	'IndustrialBase',
 	'SocialPsych',
+	'Biogenetics',
 ];
 
 const get_definition = (id) => {

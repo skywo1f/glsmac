@@ -200,9 +200,21 @@
 				if (
 					recycling_tanks.production_kind != 'facility' ||
 					recycling_tanks.mineral_cost != 40 ||
+					recycling_tanks.required_technology != 'Biogenetics' ||
+					base.can_set_production('facility', recycling_tanks.id) ||
 					base.has_facility(recycling_tanks.id)
 				) {
 					#print('RUNTIME_SMOKE_FAIL: Recycling Tanks definition or starting state is invalid');
+					glsmac.exit();
+					return;
+				}
+				game.get_player().set_research_state({
+					technologies: ['CentauriEcology', 'Biogenetics'],
+					target: 'DoctrineMobility',
+					progress: 0,
+				});
+				if (!base.can_set_production('facility', recycling_tanks.id)) {
+					#print('RUNTIME_SMOKE_FAIL: Biogenetics did not unlock Recycling Tanks');
 					glsmac.exit();
 					return;
 				}

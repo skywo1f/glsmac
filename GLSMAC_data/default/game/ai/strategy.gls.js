@@ -50,6 +50,13 @@ const get_desired_base_count = (turn, map_width, map_height, player_count) => {
 	return #min(map_capacity, expansion_tempo);
 };
 
+const can_expand_safely = (base_count, colony_count, combat_count, underdefended_bases) => {
+	return (
+		underdefended_bases <= 0 &&
+		combat_count > base_count + colony_count
+	);
+};
+
 const get_priorities = (context) => {
 	const bases = #max(context.base_count, 0);
 	const expansion = get_gap_priority(
@@ -71,9 +78,13 @@ const get_priorities = (context) => {
 		? #max(context.strongest_rival_power, 0.0)
 		: 0.0;
 	const rival_pressure = get_rival_pressure_priority(own_power, rival_power);
+	const mobile_combat_count = #is_defined(context.mobile_combat_count)
+		? #max(context.mobile_combat_count, 0)
+		: (bases > 0 ? 1 : 0);
+	const mobility = get_gap_priority(mobile_combat_count, bases > 0 ? 1 : 0);
 	const military = #max(
 		#max(
-			defense,
+			#max(defense, mobility),
 			get_gap_priority(
 				#max(context.combat_count, 0),
 				bases * UNITS_PER_BASE
@@ -105,6 +116,7 @@ const get_priorities = (context) => {
 		expansion: expansion,
 		terraforming: terraforming,
 		defense: defense,
+		mobility: mobility,
 		rival_pressure: rival_pressure,
 		military: military,
 		growth: growth,
@@ -115,6 +127,7 @@ const get_priorities = (context) => {
 
 return {
 	get_desired_base_count: get_desired_base_count,
+	can_expand_safely: can_expand_safely,
 	get_gap_priority: get_gap_priority,
 	get_pressure_priority: get_pressure_priority,
 	get_rival_pressure_priority: get_rival_pressure_priority,
