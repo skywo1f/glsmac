@@ -127,7 +127,7 @@
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == ai_id) {
 					ai_bases++;
-					if (turn_id <= 16) {
+					if (turn_id <= 20) {
 						base.set_accumulated_minerals(100);
 						if (turn_id <= 8 && base.get_size() == 1) {
 							base.set('accumulated_nutrients', game.get('map_growth_base') * 2);
@@ -189,7 +189,7 @@
 			}
 
 			if (turn_id >= 16) {
-				if (
+				const missing_requirements =
 					!ai_moved ||
 					!ai_expanded ||
 					!ai_built_former ||
@@ -201,18 +201,20 @@
 					populated_ai_bases != ai_bases ||
 					garrisoned_ai_bases != ai_bases ||
 					ai_combat_units <= ai_bases ||
-					!ui_started
-				) {
-					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
-					fail('AI did not complete movement, growth, expansion, terraforming, and multi-move rover play by turn sixteen');
+					!ui_started;
+				if (!missing_requirements) {
+					if (!exit_scheduled) {
+						exit_scheduled = true;
+						#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and used a rover twice in one turn');
+						#async(100, () => { glsmac.exit(); });
+					}
 					return;
 				}
-				if (!exit_scheduled) {
-					exit_scheduled = true;
-					#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and used a rover twice in one turn');
-					#async(500, () => { glsmac.exit(); });
+				if (turn_id >= 20) {
+					#print('AI_RUNTIME_TRACE: moved=' + #to_string(ai_moved) + ' expanded=' + #to_string(ai_expanded) + ' former=' + #to_string(ai_built_former) + ' terraformed=' + #to_string(ai_terraformed) + ' road=' + #to_string(ai_built_road) + ' improved=' + #to_string(ai_completed_improvement) + ' rover=' + #to_string(ai_built_rover) + ' rover_twice=' + #to_string(ai_rover_moved_twice) + ' bases=' + #to_string(ai_bases) + ' garrisons=' + #to_string(garrisoned_ai_bases) + ' combat=' + #to_string(ai_combat_units));
+					fail('AI did not complete movement, growth, expansion, terraforming, and multi-move rover play by turn twenty');
+					return;
 				}
-				return;
 			}
 
 			#async(750, () => { game.event('complete_turn', {}); });

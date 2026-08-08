@@ -5,6 +5,7 @@ const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
 const strategy = #include('ai/strategy');
+const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
 
 const owned_bases = (game, player) => {
@@ -69,6 +70,15 @@ const can_enter = (unit, tile, source) => {
 const has_other_active_former = (tile, unit) => {
 	for (other of tile.get_units()) {
 		if (other.id != unit.id && other.terraforming != 'none') {
+			return true;
+		}
+	}
+	return false;
+};
+
+const has_other_former = (tile, unit) => {
+	for (other of tile.get_units()) {
+		if (other.id != unit.id && other.get_def().can_terraform) {
 			return true;
 		}
 	}
@@ -220,55 +230,84 @@ const move_colony = (game, player, unit, all_bases) => {
 	return false;
 };
 
-const move_former = (game, player, unit) => {
+const move_former = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return false;
 	}
-	if (
-		tile.get_base() == null &&
-		!tile.is_water &&
-		!tile.features.monolith &&
-		!tile.features.xenofungus &&
-		!has_other_active_former(tile, unit)
-	) {
-		if (!tile.terraforming.road) {
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'road'});
+	const tm = game.get_tm();
+	let strategic_target = null;
+	let strategic_order = null;
+	let strategic_score = 0;
+	for (base of all_bases) {
+		if (base.get_owner().id != player.id) {
+			continue;
+		}
+		const pending_growth = game.get('f_base_get_pending_growth')(base);
+		const prioritize_nutrients = pending_growth <= 0;
+		for (worked_tile of base.get_worked_tiles()) {
+			if (has_other_former(worked_tile, unit)) {
+				continue;
+			}
+			const order = terraforming.get_order(worked_tile, prioritize_nutrients);
+			if (order == null) {
+				continue;
+			}
+			const score = terraforming.get_target_score(
+				worked_tile,
+				player,
+				pending_growth,
+				tm.get_distance(tile, worked_tile)
+			);
+			if (
+				strategic_target == null ||
+				score > strategic_score ||
+				(
+					score == strategic_score &&
+					(
+						worked_tile.y < strategic_target.y ||
+						(worked_tile.y == strategic_target.y && worked_tile.x < strategic_target.x)
+					)
+				)
+			) {
+				strategic_target = worked_tile;
+				strategic_order = order;
+				strategic_score = score;
+			}
+		}
+	}
+	if (strategic_target != null) {
+		if (tile == strategic_target && !has_other_active_former(tile, unit)) {
+			game.event_as(player.id, 'terraform_tile', {unit: unit, type: strategic_order});
 			return true;
 		}
-		if (!tile.terraforming.forest && !tile.terraforming.farm) {
-			const type = tile.moisture <= 1 || tile.rockiness >= 2 ? 'forest' : 'farm';
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: type});
+		if (tile.is_adjactent_to(strategic_target) && can_enter(unit, strategic_target)) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: strategic_target});
 			return true;
 		}
-		if (tile.terraforming.farm && !tile.terraforming.mine && !tile.terraforming.solar) {
-			game.event_as(player.id, 'terraform_tile', {unit: unit, type: 'solar'});
+		const path_step = pathfinding.find_path_step(tm, unit, strategic_target, (source, candidate) => {
+			return can_enter(unit, candidate, source);
+		});
+		if (path_step != null) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
 			return true;
 		}
 	}
+	const local_order = terraforming.get_order(tile, false);
+	if (local_order != null && !has_other_active_former(tile, unit)) {
+		game.event_as(player.id, 'terraform_tile', {unit: unit, type: local_order});
+		return true;
+	}
 	const is_candidate = (candidate) => {
 		return can_enter(unit, candidate) &&
-			candidate.get_base() == null &&
-			!candidate.is_water &&
-			!candidate.features.monolith &&
-			!candidate.features.xenofungus &&
-			!has_other_active_former(candidate, unit);
+			terraforming.get_order(candidate, false) != null &&
+			!has_other_former(candidate, unit);
 	};
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!is_candidate(candidate)) {
 			return 0 - 100000;
 		}
-		const resources = candidate.get_resources(player);
-		let score = resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
-		if (!candidate.terraforming.road) {
-			score += 12;
-		}
-		if (!candidate.terraforming.forest && !candidate.terraforming.farm) {
-			score += 20;
-		} else if (candidate.terraforming.farm && !candidate.terraforming.mine && !candidate.terraforming.solar) {
-			score += 8;
-		}
-		return score;
+		return terraforming.get_target_score(candidate, player, 1, 1);
 	});
 	if (target != null && is_candidate(target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
@@ -420,7 +459,7 @@ const play_turn = (game, player, done) => {
 				}
 				const def = unit.get_def();
 				if (def.can_terraform) {
-					action_started = move_former(game, player, unit);
+						action_started = move_former(game, player, unit, all_bases);
 				}
 				if (action_started) {
 					record_action_attempt(unit, action_attempts);
