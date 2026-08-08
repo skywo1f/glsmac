@@ -33,6 +33,11 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		drone_modifier: 0,
 		talent_bonus: 0,
 		suppress_psych: false,
+		unit_morale_land_bonus: 0,
+		unit_morale_water_bonus: 0,
+		unit_morale_air_bonus: 0,
+		water_defense_multiplier: 1.0,
+		air_defense_multiplier: 1.0,
 	};
 };
 const context = (needs_military, needs_psych) => {
@@ -101,7 +106,8 @@ test.assert(
 );
 
 const doctrine = technology('Doctrine', 30);
-const command_center = facility('CommandCenter', 'Doctrine', 0, 0, 0, 0, 0.0, 1.0, 0.0, 2);
+const command_center = facility('CommandCenter', 'Doctrine', 0, 0, 0, 0, 0.0);
+command_center.unit_morale_land_bonus = 2;
 let military_context = context(true, false);
 military_context.priorities = {military: 100};
 let low_military_context = context(false, false);

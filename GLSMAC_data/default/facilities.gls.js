@@ -25,7 +25,9 @@ const effects = {
 	HabComplex: {population_limit: 14},
 	HabitationDome: {population_limit: 1000000, required_facility: 'HabComplex'},
 	PressureDome: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
-	CommandCenter: {unit_morale_bonus: 2},
+	CommandCenter: {unit_morale_land_bonus: 2},
+	NavalYard: {unit_morale_water_bonus: 2, water_defense_multiplier: 2.0},
+	AerospaceComplex: {unit_morale_air_bonus: 2, air_defense_multiplier: 2.0},
 	BioenhancementCenter: {unit_morale_bonus: 2},
 };
 
@@ -41,6 +43,8 @@ const partial_effects = {
 	PunishmentSphere: true,
 	PressureDome: true,
 	CommandCenter: true,
+	NavalYard: true,
+	AerospaceComplex: true,
 	BioenhancementCenter: true,
 };
 

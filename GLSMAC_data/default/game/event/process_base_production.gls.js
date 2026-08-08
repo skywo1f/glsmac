@@ -14,6 +14,19 @@ const get_production_morale = (game, base, production) => {
 	if (!production.is_native) {
 		for (facility of base.get_facilities()) {
 			morale += facility.unit_morale_bonus;
+			if (#is_defined(production.is_land) && production.is_land) {
+				morale += #is_defined(facility.unit_morale_land_bonus)
+					? facility.unit_morale_land_bonus
+					: 0;
+			} else if (#is_defined(production.is_water) && production.is_water) {
+				morale += #is_defined(facility.unit_morale_water_bonus)
+					? facility.unit_morale_water_bonus
+					: 0;
+			} else if (#is_defined(production.is_air) && production.is_air) {
+				morale += #is_defined(facility.unit_morale_air_bonus)
+					? facility.unit_morale_air_bonus
+					: 0;
+			}
 		}
 	}
 	const morale_set = game.um.get_moraleset(production.morale_set);

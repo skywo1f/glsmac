@@ -395,7 +395,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"HabComplex",
 					-2,
 					2,
-					true
+					true,
+					1,
+					2,
+					3,
+					1.5f,
+					2.0f
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -427,6 +432,14 @@ void AddTests( task::gsetests::GSETests* task ) {
 					facility_roundtrip->m_talent_bonus == 2 &&
 					facility_roundtrip->m_suppress_psych,
 					"facility social effects were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_unit_morale_land_bonus == 1 &&
+					facility_roundtrip->m_unit_morale_water_bonus == 2 &&
+					facility_roundtrip->m_unit_morale_air_bonus == 3 &&
+					facility_roundtrip->m_water_defense_multiplier == 1.5f &&
+					facility_roundtrip->m_air_defense_multiplier == 2.0f,
+					"facility triad effects were not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -463,6 +476,14 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy_facility_parsed->m_talent_bonus == 0 &&
 					!legacy_facility_parsed->m_suppress_psych,
 					"legacy facility definition gained a social effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_unit_morale_land_bonus == 0 &&
+					legacy_facility_parsed->m_unit_morale_water_bonus == 0 &&
+					legacy_facility_parsed->m_unit_morale_air_bonus == 0 &&
+					legacy_facility_parsed->m_water_defense_multiplier == 1.0f &&
+					legacy_facility_parsed->m_air_defense_multiplier == 1.0f,
+					"legacy facility definition gained a triad effect"
 				);
 
 				const auto make_unit_def = [](

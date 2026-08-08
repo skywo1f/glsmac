@@ -183,6 +183,8 @@
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			const command_center = game.get_bm().get_facility_def('CommandCenter');
+			const naval_yard = game.get_bm().get_facility_def('NavalYard');
+			const aerospace_complex = game.get_bm().get_facility_def('AerospaceComplex');
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const research_hospital = game.get_bm().get_facility_def('ResearchHospital');
@@ -212,6 +214,11 @@
 				recycling_tanks.drone_modifier != 0 ||
 				recycling_tanks.talent_bonus != 0 ||
 				recycling_tanks.suppress_psych ||
+				recycling_tanks.unit_morale_land_bonus != 0 ||
+				recycling_tanks.unit_morale_water_bonus != 0 ||
+				recycling_tanks.unit_morale_air_bonus != 0 ||
+				recycling_tanks.water_defense_multiplier != 1.0 ||
+				recycling_tanks.air_defense_multiplier != 1.0 ||
 				recreation_commons.psych_bonus != 0 ||
 				recreation_commons.drone_modifier != -2 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
@@ -220,7 +227,12 @@
 				energy_bank.required_technology != 'IndustrialEconomics' ||
 				energy_bank.economy_multiplier != 0.5 ||
 				command_center.required_technology != 'DoctrineMobility' ||
-				command_center.unit_morale_bonus != 2 ||
+				command_center.unit_morale_bonus != 0 ||
+				command_center.unit_morale_land_bonus != 2 ||
+				naval_yard.unit_morale_water_bonus != 2 ||
+				naval_yard.water_defense_multiplier != 2.0 ||
+				aerospace_complex.unit_morale_air_bonus != 2 ||
+				aerospace_complex.air_defense_multiplier != 2.0 ||
 				biology_lab.required_technology != 'CentauriEmpathy' ||
 				biology_lab.research_bonus != 2 ||
 				hologram_theatre.psych_multiplier != 0.5 ||

@@ -34,9 +34,9 @@ const result = validator.validate(make_catalog());
 test.assert(result.errors == []);
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 26,
-	complete_facilities: 14,
-	partial_facilities: 12,
+		facilities: 28,
+		complete_facilities: 14,
+		partial_facilities: 14,
 	base_facilities: 38,
 	projects: 33,
 	units: 10,

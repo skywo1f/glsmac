@@ -31,6 +31,45 @@ const colony_pod = {
 	can_found_base: true,
 	is_native: false,
 	morale_set: 'STANDARD',
+	is_land: true,
+	is_water: false,
+	is_air: false,
+};
+const land_patrol = {
+	id: 'LandPatrol',
+	name: 'Land Patrol',
+	production_kind: 'unit',
+	mineral_cost: 20,
+	can_found_base: false,
+	is_native: false,
+	morale_set: 'STANDARD',
+	is_land: true,
+	is_water: false,
+	is_air: false,
+};
+const sea_patrol = {
+	id: 'SeaPatrol',
+	name: 'Sea Patrol',
+	production_kind: 'unit',
+	mineral_cost: 20,
+	can_found_base: false,
+	is_native: false,
+	morale_set: 'STANDARD',
+	is_land: false,
+	is_water: true,
+	is_air: false,
+};
+const air_patrol = {
+	id: 'AirPatrol',
+	name: 'Air Patrol',
+	production_kind: 'unit',
+	mineral_cost: 20,
+	can_found_base: false,
+	is_native: false,
+	morale_set: 'STANDARD',
+	is_land: false,
+	is_water: false,
+	is_air: true,
 };
 const recycling_tanks = {
 	id: 'RecyclingTanks',
@@ -51,9 +90,46 @@ const command_center = {
 	name: 'Command Center',
 	production_kind: 'facility',
 	mineral_cost: 40,
+	unit_morale_bonus: 0,
+	unit_morale_land_bonus: 2,
+};
+const naval_yard = {
+	id: 'NavalYard',
+	name: 'Naval Yard',
+	production_kind: 'facility',
+	mineral_cost: 80,
+	unit_morale_bonus: 0,
+	unit_morale_water_bonus: 2,
+};
+const aerospace_complex = {
+	id: 'AerospaceComplex',
+	name: 'Aerospace Complex',
+	production_kind: 'facility',
+	mineral_cost: 80,
+	unit_morale_bonus: 0,
+	unit_morale_air_bonus: 2,
+};
+const bioenhancement_center = {
+	id: 'BioenhancementCenter',
+	name: 'Bioenhancement Center',
+	production_kind: 'facility',
+	mineral_cost: 100,
 	unit_morale_bonus: 2,
 };
-const definitions = [mind_worms, spore_launcher, colony_pod, recycling_tanks, recreation_commons, command_center];
+const definitions = [
+	mind_worms,
+	spore_launcher,
+	colony_pod,
+	land_patrol,
+	sea_patrol,
+	air_patrol,
+	recycling_tanks,
+	recreation_commons,
+	command_center,
+	naval_yard,
+	aerospace_complex,
+	bioenhancement_center,
+];
 
 let production_queue = [];
 let built_facilities = [];
@@ -571,6 +647,27 @@ test.assert(accumulated_minerals == 25);
 test.assert(!#is_defined(spawned_unit));
 test.assert(#sizeof(base_pops) == 2);
 test.assert(base_pops[1].get_type() == 'DOCTOR');
+built_facilities = [];
+
+for (triad_unit of [land_patrol, sea_patrol, air_patrol]) {
+	production_queue = [triad_unit];
+	built_facilities = [
+		'CommandCenter',
+		'NavalYard',
+		'AerospaceComplex',
+		'BioenhancementCenter',
+	];
+	accumulated_minerals = 13;
+	spawned_unit = #undefined;
+	spawn_data = #undefined;
+	event.applied = process_base_production.apply(event);
+	test.assert(#is_defined(spawned_unit));
+	test.assert(spawn_data.def == triad_unit.id);
+	test.assert(spawn_data.morale == 5);
+	process_base_production.rollback(event);
+	test.assert(accumulated_minerals == 13);
+	test.assert(!#is_defined(spawned_unit));
+}
 built_facilities = [];
 
 const worker_a = make_pop('WORKER', {id: 'worker-a'});

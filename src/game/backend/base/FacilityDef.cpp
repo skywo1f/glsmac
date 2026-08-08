@@ -30,7 +30,12 @@ FacilityDef::FacilityDef(
 	const std::string& required_facility,
 	const int64_t drone_modifier,
 	const int64_t talent_bonus,
-	const bool suppress_psych
+	const bool suppress_psych,
+	const int64_t unit_morale_land_bonus,
+	const int64_t unit_morale_water_bonus,
+	const int64_t unit_morale_air_bonus,
+	const float water_defense_multiplier,
+	const float air_defense_multiplier
 )
 	: m_id( id )
 	, m_name( name )
@@ -52,7 +57,12 @@ FacilityDef::FacilityDef(
 	, m_required_facility( required_facility )
 	, m_drone_modifier( drone_modifier )
 	, m_talent_bonus( talent_bonus )
-	, m_suppress_psych( suppress_psych ) {
+	, m_suppress_psych( suppress_psych )
+	, m_unit_morale_land_bonus( unit_morale_land_bonus )
+	, m_unit_morale_water_bonus( unit_morale_water_bonus )
+	, m_unit_morale_air_bonus( unit_morale_air_bonus )
+	, m_water_defense_multiplier( water_defense_multiplier )
+	, m_air_defense_multiplier( air_defense_multiplier ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -88,7 +98,17 @@ FacilityDef::FacilityDef(
 		m_drone_modifier < -MAX_DRONE_MODIFIER ||
 		m_drone_modifier > MAX_DRONE_MODIFIER ||
 		m_talent_bonus < 0 ||
-		m_talent_bonus > MAX_RESOURCE_BONUS
+		m_talent_bonus > MAX_RESOURCE_BONUS ||
+		m_unit_morale_land_bonus < 0 ||
+		m_unit_morale_land_bonus > MAX_UNIT_MORALE_BONUS ||
+		m_unit_morale_water_bonus < 0 ||
+		m_unit_morale_water_bonus > MAX_UNIT_MORALE_BONUS ||
+		m_unit_morale_air_bonus < 0 ||
+		m_unit_morale_air_bonus > MAX_UNIT_MORALE_BONUS ||
+		m_water_defense_multiplier < 1.0f ||
+		m_water_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
+		m_air_defense_multiplier < 1.0f ||
+		m_air_defense_multiplier > MAX_DEFENSE_MULTIPLIER
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -117,6 +137,11 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_drone_modifier );
 	buf.WriteInt( def->m_talent_bonus );
 	buf.WriteBool( def->m_suppress_psych );
+	buf.WriteInt( def->m_unit_morale_land_bonus );
+	buf.WriteInt( def->m_unit_morale_water_bonus );
+	buf.WriteInt( def->m_unit_morale_air_bonus );
+	buf.WriteFloat( def->m_water_defense_multiplier );
+	buf.WriteFloat( def->m_air_defense_multiplier );
 	return buf;
 }
 
@@ -142,6 +167,11 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto drone_modifier = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto talent_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto suppress_psych = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto unit_morale_land_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto unit_morale_water_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto unit_morale_air_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto water_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto air_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	return new FacilityDef(
 		id,
 		name,
@@ -163,7 +193,12 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		required_facility,
 		drone_modifier,
 		talent_bonus,
-		suppress_psych
+		suppress_psych,
+		unit_morale_land_bonus,
+		unit_morale_water_bonus,
+		unit_morale_air_bonus,
+		water_defense_multiplier,
+		air_defense_multiplier
 	);
 }
 
@@ -256,6 +291,26 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"suppress_psych",
 			VALUE( gse::value::Bool, , m_suppress_psych )
+		},
+		{
+			"unit_morale_land_bonus",
+			VALUE( gse::value::Int, , m_unit_morale_land_bonus )
+		},
+		{
+			"unit_morale_water_bonus",
+			VALUE( gse::value::Int, , m_unit_morale_water_bonus )
+		},
+		{
+			"unit_morale_air_bonus",
+			VALUE( gse::value::Int, , m_unit_morale_air_bonus )
+		},
+		{
+			"water_defense_multiplier",
+			VALUE( gse::value::Float, , m_water_defense_multiplier )
+		},
+		{
+			"air_defense_multiplier",
+			VALUE( gse::value::Float, , m_air_defense_multiplier )
 		},
 	};
 WRAPIMPL_END_PTR()

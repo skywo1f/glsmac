@@ -64,6 +64,12 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 				#to_float(5000 + defense_priority * 400)
 		);
 		score += #round(
+			(
+				#max(def.water_defense_multiplier - 1.0, 0.0) +
+				#max(def.air_defense_multiplier - 1.0, 0.0)
+			) * #to_float(5000 + defense_priority * 400)
+		);
+		score += #round(
 			def.economy_multiplier * #to_float(5000 + development_priority * 300)
 		);
 		score += #round(
@@ -82,7 +88,10 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		if (def.suppress_psych && context.needs_psych) {
 			score += 50000;
 		}
-		score += def.unit_morale_bonus * (
+		score += (
+			def.unit_morale_bonus + def.unit_morale_land_bonus +
+			def.unit_morale_water_bonus + def.unit_morale_air_bonus
+		) * (
 			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
 		);
 	}

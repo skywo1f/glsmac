@@ -31,6 +31,11 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		drone_modifier: 0,
 		talent_bonus: 0,
 		suppress_psych: false,
+		unit_morale_land_bonus: 0,
+		unit_morale_water_bonus: 0,
+		unit_morale_air_bonus: 0,
+		water_defense_multiplier: 1.0,
+		air_defense_multiplier: 1.0,
 	};
 };
 
@@ -45,7 +50,11 @@ const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
 const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
 const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
 const energy_bank = facility('EnergyBank', 0, 0, 0, 0, 0.0, 1, 80, 1.0, 0.5);
-const command_center = facility('CommandCenter', 0, 0, 0, 0, 0.0, 1, 40, 1.0, 0.0, 2);
+const command_center = facility('CommandCenter', 0, 0, 0, 0, 0.0, 1, 40);
+command_center.unit_morale_land_bonus = 2;
+const naval_yard = facility('NavalYard', 0, 0, 0, 0, 0.0, 2, 80);
+naval_yard.unit_morale_water_bonus = 2;
+naval_yard.water_defense_multiplier = 2.0;
 const biology_lab = facility('BiologyLab', 0, 0, 0, 0, 0.0, 1, 60, 1.0, 0.0, 0, 2);
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
@@ -151,6 +160,10 @@ low_military_context.priorities = {military: 0, development: 25};
 test.assert(
 	production.score_facility(command_center, military_context) >
 	production.score_facility(command_center, low_military_context)
+);
+test.assert(
+	production.score_facility(naval_yard, military_context) >
+	production.score_facility(naval_yard, low_military_context)
 );
 
 locked = {};

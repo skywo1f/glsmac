@@ -6,7 +6,7 @@ const get_morale_multiplier = (unit) => {
 	return 0.75 + #to_float(unit.morale) * 0.125;
 };
 
-const get_base_defense_multiplier = (defender) => {
+const get_base_defense_multiplier = (defender, attacker) => {
 	const base = defender.get_tile().get_base();
 	if (
 		base == null ||
@@ -19,6 +19,17 @@ const get_base_defense_multiplier = (defender) => {
 	let multiplier = 1.0;
 	for (facility of base.get_facilities()) {
 		multiplier += #max(facility.defense_multiplier - 1.0, 0.0);
+		if (#is_defined(attacker) && attacker.is_water) {
+			const scoped_multiplier = #is_defined(facility.water_defense_multiplier)
+				? facility.water_defense_multiplier
+				: 1.0;
+			multiplier += #max(scoped_multiplier - 1.0, 0.0);
+		} else if (#is_defined(attacker) && attacker.is_air) {
+			const scoped_multiplier = #is_defined(facility.air_defense_multiplier)
+				? facility.air_defense_multiplier
+				: 1.0;
+			multiplier += #max(scoped_multiplier - 1.0, 0.0);
+		}
 	}
 	return multiplier;
 };
@@ -51,7 +62,7 @@ const get_combat_powers = (attacker, defender) => {
 		defence_modifier += 0.25;
 	}
 	if (!is_psi_combat) {
-		defence_modifier *= get_base_defense_multiplier(defender);
+		defence_modifier *= get_base_defense_multiplier(defender, attacker);
 	}
 	if (attacker.is_land && !attacker_def.is_native && attacker.movement < 1.0) {
 		attack_modifier *= attacker.movement;

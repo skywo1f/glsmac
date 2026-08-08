@@ -156,6 +156,11 @@
 				let research_bonus = 0;
 				let defense_multiplier = 1.0;
 				let morale_bonus = 0;
+				let land_morale_bonus = 0;
+				let water_morale_bonus = 0;
+				let air_morale_bonus = 0;
+				let water_defense_multiplier = 1.0;
+				let air_defense_multiplier = 1.0;
 				let drone_modifier = 0;
 				let talent_bonus = 0;
 				let suppress_psych = 0;
@@ -172,6 +177,17 @@
 					research_bonus += definition.research_bonus;
 					defense_multiplier += #max(definition.defense_multiplier - 1.0, 0.0);
 					morale_bonus += definition.unit_morale_bonus;
+					land_morale_bonus += definition.unit_morale_land_bonus;
+					water_morale_bonus += definition.unit_morale_water_bonus;
+					air_morale_bonus += definition.unit_morale_air_bonus;
+					water_defense_multiplier += #max(
+						definition.water_defense_multiplier - 1.0,
+						0.0
+					);
+					air_defense_multiplier += #max(
+						definition.air_defense_multiplier - 1.0,
+						0.0
+					);
 					drone_modifier += definition.drone_modifier;
 					talent_bonus += definition.talent_bonus;
 					suppress_psych += definition.suppress_psych ? 1 : 0;
@@ -181,12 +197,15 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 26 ||
+					#sizeof(facility_ids) != 28 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 62 || mineral_multiplier != 2.0 ||
+					maintenance != 66 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
 					research_multiplier != 2.0 || research_bonus != 2 ||
-					defense_multiplier != 3.0 || morale_bonus != 4 ||
+					defense_multiplier != 3.0 || morale_bonus != 2 ||
+					land_morale_bonus != 2 || water_morale_bonus != 2 ||
+					air_morale_bonus != 2 || water_defense_multiplier != 2.0 ||
+					air_defense_multiplier != 2.0 ||
 					drone_modifier != -5 || talent_bonus != 2 || suppress_psych != 1 ||
 					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus ||
 					intake_after.MINERALS != #ceil(

@@ -47,7 +47,12 @@ public:
 		const std::string& required_facility = "",
 		const int64_t drone_modifier = 0,
 		const int64_t talent_bonus = 0,
-		const bool suppress_psych = false
+		const bool suppress_psych = false,
+		const int64_t unit_morale_land_bonus = 0,
+		const int64_t unit_morale_water_bonus = 0,
+		const int64_t unit_morale_air_bonus = 0,
+		const float water_defense_multiplier = 1.0f,
+		const float air_defense_multiplier = 1.0f
 	);
 	virtual ~FacilityDef() = default;
 
@@ -72,6 +77,11 @@ public:
 	const int64_t m_drone_modifier;
 	const int64_t m_talent_bonus;
 	const bool m_suppress_psych;
+	const int64_t m_unit_morale_land_bonus;
+	const int64_t m_unit_morale_water_bonus;
+	const int64_t m_unit_morale_air_bonus;
+	const float m_water_defense_multiplier;
+	const float m_air_defense_multiplier;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

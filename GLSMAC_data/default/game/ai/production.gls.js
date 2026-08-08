@@ -80,6 +80,8 @@ const score_facility = (def, context) => {
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
 		def.research_bonus * research_weight +
 		#round(#max(def.defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
+		#round(#max(def.water_defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
+		#round(#max(def.air_defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
 		#round(def.economy_multiplier * #to_float(economy_weight)) +
 		#round(
 			def.mineral_multiplier * #to_float(#max(context.mineral_surplus, 1)) * 1000.0
@@ -93,7 +95,10 @@ const score_facility = (def, context) => {
 		(#max(0 - def.drone_modifier, 0) + def.talent_bonus) * psych_weight * 2 -
 		#max(def.drone_modifier, 0) * psych_weight * 2 +
 		(def.suppress_psych && context.needs_psych ? 100000 : 0) +
-		def.unit_morale_bonus * morale_weight;
+		(
+			def.unit_morale_bonus + def.unit_morale_land_bonus +
+			def.unit_morale_water_bonus + def.unit_morale_air_bonus
+		) * morale_weight;
 };
 
 const score_hurry = (def, context) => {
@@ -159,13 +164,19 @@ const score_hurry = (def, context) => {
 		if (def.research_bonus > 0) {
 			urgency += def.research_bonus * get_priority(context, 'development', 50) * 100;
 		}
-		if (def.defense_multiplier > 1.0) {
+		if (
+			def.defense_multiplier > 1.0 || def.water_defense_multiplier > 1.0 ||
+			def.air_defense_multiplier > 1.0
+		) {
 			urgency += get_priority(context, 'defense', 0) * 400;
 		}
 		if (def.economy_multiplier > 0.0) {
 			urgency += get_priority(context, 'development', 50) * 200;
 		}
-		if (def.unit_morale_bonus > 0) {
+		if (
+			def.unit_morale_bonus > 0 || def.unit_morale_land_bonus > 0 ||
+			def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0
+		) {
 			urgency += get_priority(context, 'military', 0) * 200;
 		}
 	}

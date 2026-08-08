@@ -28,6 +28,11 @@ const facility_fields = {
 	drone_modifier: true,
 	talent_bonus: true,
 	suppress_psych: true,
+	unit_morale_land_bonus: true,
+	unit_morale_water_bonus: true,
+	unit_morale_air_bonus: true,
+	water_defense_multiplier: true,
+	air_defense_multiplier: true,
 };
 
 const facility_manifest_fields = {
@@ -439,6 +444,11 @@ const validate_facilities = (facilities, technologies, errors) => {
 		);
 		validate_int(data, 'talent_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_bool(data, 'suppress_psych', path, errors, false);
+		validate_int(data, 'unit_morale_land_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'unit_morale_water_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'unit_morale_air_bonus', path, errors, false, 0, 10);
+		validate_number(data, 'water_defense_multiplier', path, errors, false, 1.0, 10.0);
+		validate_number(data, 'air_defense_multiplier', path, errors, false, 1.0, 10.0);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -466,7 +476,12 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.population_limit) && data.population_limit > 0) ||
 			(#is_defined(data.drone_modifier) && data.drone_modifier != 0) ||
 			(#is_defined(data.talent_bonus) && data.talent_bonus > 0) ||
-			(#is_defined(data.suppress_psych) && data.suppress_psych);
+			(#is_defined(data.suppress_psych) && data.suppress_psych) ||
+			(#is_defined(data.unit_morale_land_bonus) && data.unit_morale_land_bonus > 0) ||
+			(#is_defined(data.unit_morale_water_bonus) && data.unit_morale_water_bonus > 0) ||
+			(#is_defined(data.unit_morale_air_bonus) && data.unit_morale_air_bonus > 0) ||
+			(#is_defined(data.water_defense_multiplier) && data.water_defense_multiplier > 1.0) ||
+			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0);
 		if (!has_effect) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}
