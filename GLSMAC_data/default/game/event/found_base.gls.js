@@ -1,3 +1,5 @@
+const MAX_BASE_NAME_LENGTH = 64;
+
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
 	return {
@@ -36,6 +38,14 @@ return {
 
 	validate: (e) => {
 		const unit = e.data.unit;
+		if (#is_defined(e.data.name)) {
+			if (#typeof(e.data.name) != 'String' || e.data.name == '') {
+				return 'Base name must be a non-empty string';
+			}
+			if (#sizeof(e.data.name) > MAX_BASE_NAME_LENGTH) {
+				return 'Base name is too long';
+			}
+		}
 		if (unit.owner != e.caller) {
 			return 'A colony pod can only be ordered by its owner';
 		}

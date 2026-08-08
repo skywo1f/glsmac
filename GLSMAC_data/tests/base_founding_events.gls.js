@@ -116,6 +116,20 @@ validation_state.occupants = [unit, {owner: owner.id}];
 test.assert(!#is_defined(found_base.validate(validation_event)));
 test.assert(#is_defined(found_base.resolve(validation_event)));
 
+validation_event.data.name = 1;
+test.assert(#is_defined(found_base.validate(validation_event)));
+validation_event.data.name = '';
+test.assert(#is_defined(found_base.validate(validation_event)));
+let long_base_name = '';
+while (#sizeof(long_base_name) < 64) {
+	long_base_name += 'x';
+}
+validation_event.data.name = long_base_name;
+test.assert(!#is_defined(found_base.validate(validation_event)));
+validation_event.data.name = long_base_name + 'x';
+test.assert(#is_defined(found_base.validate(validation_event)));
+validation_event.data.name = #undefined;
+
 {
 	const state = {
 		active_unit: unit,

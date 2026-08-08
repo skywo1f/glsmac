@@ -18,6 +18,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (#typeof(e.data.kind) != 'String' || #typeof(e.data.id) != 'String') {
+			return 'Production kind and item ID must be strings';
+		}
 		if (!e.data.base.can_queue_production(e.data.kind, e.data.id)) {
 			return 'Item cannot be added to this production queue';
 		}

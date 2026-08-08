@@ -4,6 +4,9 @@ return {
 
 	validate: (e) => {
 		const unit = e.data.unit;
+		if (#typeof(e.data.type) != 'String') {
+			return 'Terraforming order must be identified by name';
+		}
 		const order = terraforming.get_order(e.data.type);
 		if (order == null) {
 			return 'Unknown terraforming order';

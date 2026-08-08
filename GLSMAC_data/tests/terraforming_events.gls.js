@@ -80,6 +80,8 @@ const event = {
 test.assert(!#is_defined(terraform_tile.validate(event)));
 test.assert(terraform_tile.resolve(event) == {});
 
+event.data.type = 1;
+test.assert(#is_defined(terraform_tile.validate(event)));
 event.data.type = 'unknown';
 test.assert(#is_defined(terraform_tile.validate(event)));
 event.data.type = 'farm';
