@@ -43,17 +43,14 @@ return {
 			orig_tile: unit.get_tile(),
 			base: base,
 			orig_base_owner: base == null ? null : base.get_owner(),
+			base_capture: null,
 			rehomed_units: [],
 		};
 		e.game.am.stop_animations(e.data.animations_id);
 		unit.move_to_tile(e.data.tile, () => {});
 		if (base != null && applied.orig_base_owner.id != unit.owner) {
-			applied.rehomed_units = base_capture.rehome_units(
-				e.game,
-				base,
-				applied.orig_base_owner.id
-			);
-			base.set_owner(unit.get_owner());
+			applied.base_capture = base_capture.capture_base(e.game, base, unit.get_owner());
+			applied.rehomed_units = applied.base_capture.rehomed_units;
 		}
 		return applied;
 	},
@@ -63,13 +60,9 @@ return {
 		if (unit.get_tile() != e.applied.orig_tile) {
 			unit.move_to_tile(e.applied.orig_tile, () => {});
 		}
-		if (
-			e.applied.base != null &&
-			e.applied.base.get_owner().id != e.applied.orig_base_owner.id
-		) {
-			e.applied.base.set_owner(e.applied.orig_base_owner);
+		if (e.applied.base_capture != null) {
+			base_capture.restore_base(e.applied.base, e.applied.base_capture);
 		}
-		base_capture.restore_units(e.applied.rehomed_units);
 	},
 
 };

@@ -40,7 +40,49 @@ const restore_units = (snapshots) => {
 	}
 };
 
+const get_queue_specs = (base) => {
+	let result = [];
+	for (production of base.get_production_queue()) {
+		result :+{
+			kind: production.production_kind,
+			id: production.id,
+		};
+	}
+	return result;
+};
+
+const capture_base = (game, base, new_owner) => {
+	const old_owner = base.get_owner();
+	const old_queue = get_queue_specs(base);
+	const rehomed_units = rehome_units(game, base, old_owner.id);
+
+	base.set_owner(new_owner);
+	let valid_queue = [];
+	for (production of old_queue) {
+		if (base.can_produce(production.kind, production.id)) {
+			valid_queue :+production;
+		}
+	}
+	base.set_production_queue(valid_queue);
+
+	return {
+		old_owner: old_owner,
+		old_queue: old_queue,
+		rehomed_units: rehomed_units,
+	};
+};
+
+const restore_base = (base, snapshot) => {
+	if (base.get_owner().id != snapshot.old_owner.id) {
+		base.set_owner(snapshot.old_owner);
+	}
+	base.set_production_queue(snapshot.old_queue);
+	restore_units(snapshot.rehomed_units);
+};
+
 return {
 	rehome_units: rehome_units,
 	restore_units: restore_units,
+	capture_base: capture_base,
+	restore_base: restore_base,
 };

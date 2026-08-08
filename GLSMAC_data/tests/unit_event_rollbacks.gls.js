@@ -811,6 +811,10 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(!#is_defined(advance_unit_after_combat.validate(event)));
 	destination_units = [];
 	let current_base_owner = defender_owner;
+	let destination_production_queue = [
+		{production_kind: 'unit', id: 'LockedUnit'},
+		{production_kind: 'unit', id: 'AvailableUnit'},
+	];
 	destination_base = {
 		id: 9,
 		get_owner: () => {
@@ -819,6 +823,19 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		set_owner: (new_owner) => {
 			base_owner_changes++;
 			current_base_owner = new_owner;
+		},
+		get_production_queue: () => { return destination_production_queue; },
+		can_produce: (kind, id) => {
+			return current_base_owner.id != attacker_owner.id || id != 'LockedUnit';
+		},
+		set_production_queue: (queue) => {
+			destination_production_queue = [];
+			for (production of queue) {
+				destination_production_queue :+{
+					production_kind: production.kind,
+					id: production.id,
+				};
+			}
 		},
 	};
 	const higher_id_base = {
@@ -843,6 +860,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(move_calls == 1);
 	test.assert(current_base_owner == attacker_owner);
 	test.assert(base_owner_changes == 1);
+	test.assert(#sizeof(destination_production_queue) == 1);
+	test.assert(destination_production_queue[0].id == 'AvailableUnit');
 	test.assert(#sizeof(event.applied.rehomed_units) == 1);
 	test.assert(supported_unit.home_base_id == lower_id_base.id);
 	test.assert(unit.movement == 0.0);
@@ -852,6 +871,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(move_calls == 2);
 	test.assert(current_base_owner == defender_owner);
 	test.assert(base_owner_changes == 2);
+	test.assert(#sizeof(destination_production_queue) == 2);
+	test.assert(destination_production_queue[0].id == 'LockedUnit');
 	test.assert(supported_unit.home_base_id == destination_base.id);
 
 	support_bases = [destination_base];

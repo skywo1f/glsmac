@@ -144,6 +144,7 @@ return {
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,
+			base_capture: null,
 			rehomed_units: [],
 		};
 
@@ -162,12 +163,8 @@ return {
 		if (e.resolved.is_movement_successful) {
 			unit.move_to_tile(dst_tile, () => {});
 			if (dst_base != null && dst_base.get_owner().id != unit.owner) {
-				result.rehomed_units = base_capture.rehome_units(
-					e.game,
-					dst_base,
-					result.orig.base_owner.id
-				);
-				dst_base.set_owner(unit.get_owner());
+				result.base_capture = base_capture.capture_base(e.game, dst_base, unit.get_owner());
+				result.rehomed_units = result.base_capture.rehomed_units;
 			}
 			finish_movement();
 		} else {
@@ -190,11 +187,9 @@ return {
 		if (e.applied.movement_started) {
 			unit.move_to_tile(orig.tile, () => {});
 		}
-		const captured_base = #is_defined(e.data.tile.get_base) ? e.data.tile.get_base() : null;
-		if (captured_base != null && orig.base_owner != null && captured_base.get_owner().id != orig.base_owner.id) {
-			captured_base.set_owner(orig.base_owner);
+		if (e.applied.base_capture != null) {
+			base_capture.restore_base(e.data.tile.get_base(), e.applied.base_capture);
 		}
-		base_capture.restore_units(e.applied.rehomed_units);
 		unit.movement = orig.movement;
 		unit.moved_this_turn = orig.moved_this_turn;
 	},
