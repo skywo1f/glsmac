@@ -2,6 +2,7 @@ const ready_or_not = #include('../default/game/event/ready_or_not');
 
 let is_ready = true;
 let set_ready_calls = 0;
+let game_started = false;
 
 const player = {
 	is_ready: () => {
@@ -14,6 +15,9 @@ const player = {
 };
 
 const game = {
+	is_started: () => {
+		return game_started;
+	},
 	get_player: (id) => {
 		return player;
 	},
@@ -26,6 +30,14 @@ let event = {
 		ready: true,
 	},
 };
+
+test.assert(!#is_defined(ready_or_not.validate(event)));
+event.data.ready = 1;
+test.assert(#is_defined(ready_or_not.validate(event)));
+event.data.ready = true;
+game_started = true;
+test.assert(#is_defined(ready_or_not.validate(event)));
+game_started = false;
 
 event.applied = ready_or_not.apply(event);
 test.assert(event.applied.was_ready == true);

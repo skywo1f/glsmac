@@ -4,6 +4,9 @@ return {
 		if (e.game.is_started()) {
 			return 'Game has already started';
 		}
+		if (#typeof(e.data.ready) != 'Bool') {
+			return 'Ready state must be a boolean';
+		}
 	},
 
 	apply: (e) => {
