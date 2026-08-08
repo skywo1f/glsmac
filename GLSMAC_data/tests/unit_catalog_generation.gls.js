@@ -8,6 +8,10 @@ let ids = {};
 let found_late_land_assault = false;
 let found_sea_unit = false;
 let found_air_unit = false;
+let found_clean_unit = false;
+let found_trained_unit = false;
+let found_super_former = false;
+let found_fungicidal_former = false;
 for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const entry = units.definitions[i];
 	test.assert(!#is_defined(ids[entry.id]));
@@ -25,8 +29,23 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);
-	test.assert(data.offense > 0);
+	test.assert(data.offense > 0 || data.can_terraform);
 	test.assert(technologies.get_definition(data.required_technology) != null);
+	for (ability of data.abilities) {
+		if (ability == 'CleanReactor') {
+			found_clean_unit = true;
+		} else if (ability == 'HighMorale') {
+			found_trained_unit = true;
+		} else if (ability == 'SuperFormer' && data.can_terraform) {
+			found_super_former = true;
+		} else if (ability == 'FungicideTanks' && data.can_terraform) {
+			found_fungicidal_former = true;
+		}
+	}
+	if (data.can_terraform) {
+		test.assert(data.movement_type == 'land');
+		test.assert(data.weapon == 'TerraformingUnit');
+	}
 	if (data.movement_type == 'water') {
 		found_sea_unit = true;
 	} else if (data.movement_type == 'air') {
@@ -40,3 +59,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 test.assert(found_late_land_assault);
 test.assert(found_sea_unit);
 test.assert(found_air_unit);
+test.assert(found_clean_unit);
+test.assert(found_trained_unit);
+test.assert(found_super_former);
+test.assert(found_fungicidal_former);

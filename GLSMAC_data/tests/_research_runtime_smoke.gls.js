@@ -138,6 +138,9 @@
 				let found_late_land_unit = false;
 				let found_sea_unit = false;
 				let found_air_unit = false;
+				let found_clean_unit = false;
+				let found_trained_unit = false;
+				let found_improved_former = false;
 				for (unit_def of unit_defs) {
 					if (unit_def.offense >= 20 && unit_def.is_land) {
 						found_late_land_unit = base.can_set_production('unit', unit_def.id);
@@ -148,10 +151,23 @@
 					if (unit_def.offense > 1 && unit_def.is_air) {
 						found_air_unit = base.can_set_production('unit', unit_def.id);
 					}
+					for (ability of unit_def.abilities) {
+						if (ability == 'CleanReactor') {
+							found_clean_unit = base.can_set_production('unit', unit_def.id);
+						} else if (ability == 'HighMorale') {
+							found_trained_unit = base.can_set_production('unit', unit_def.id);
+						} else if (
+							unit_def.can_terraform &&
+							(ability == 'SuperFormer' || ability == 'FungicideTanks')
+						) {
+							found_improved_former = base.can_set_production('unit', unit_def.id);
+						}
+					}
 				}
 				if (
-					#sizeof(unit_defs) != 102 || !found_late_land_unit ||
-					!found_sea_unit || !found_air_unit
+					#sizeof(unit_defs) < 102 || !found_late_land_unit ||
+					!found_sea_unit || !found_air_unit || !found_clean_unit ||
+					!found_trained_unit || !found_improved_former
 				) {
 					fail('generated unit catalog is unavailable at runtime');
 					return;

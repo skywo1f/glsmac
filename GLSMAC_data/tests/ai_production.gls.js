@@ -164,6 +164,25 @@ test.assert(
 	production.score_unit(clean_laser, supported_context) ==
 	production.score_unit(laser, supported_context) + 5000
 );
+const trained_laser = unit('TrainedLaser', 2, 1, 1.0, 25, false, false);
+trained_laser.abilities = ['HighMorale'];
+test.assert(
+	production.score_unit(trained_laser, context(false, false, false, false, 0)) >
+	production.score_unit(laser, context(false, false, false, false, 0))
+);
+const super_former = unit('SuperFormer', 0, 1, 1.0, 25, false, true);
+super_former.abilities = ['SuperFormer'];
+const fungicidal_former = unit('FungicidalFormer', 0, 1, 1.0, 25, false, true);
+fungicidal_former.abilities = ['FungicideTanks'];
+let former_context = context(false, true, false, false, 0);
+test.assert(
+	production.score_unit(super_former, former_context) >
+	production.score_unit(former, former_context)
+);
+test.assert(
+	production.score_unit(fungicidal_former, former_context) >
+	production.score_unit(former, former_context)
+);
 
 let growth_context = context(false, false, false, false, 10);
 growth_context.needs_growth = true;

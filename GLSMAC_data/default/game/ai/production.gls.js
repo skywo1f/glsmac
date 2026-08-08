@@ -21,6 +21,20 @@ const get_unit_support_penalty = (def, context) => {
 	return projected_overage * UNIT_SUPPORT_SCORE_PENALTY;
 };
 
+const get_unit_ability_score = (def) => {
+	let score = unit_abilities.get_morale_bonus(def) * 4000;
+	if (def.can_terraform) {
+		const general_rate = unit_abilities.get_terraforming_rate_multiplier(def, 'farm');
+		const fungus_rate = unit_abilities.get_terraforming_rate_multiplier(
+			def,
+			'remove_fungus'
+		);
+		score += #round((general_rate - 1.0) * 15000.0);
+		score += #round((fungus_rate - general_rate) * 5000.0);
+	}
+	return score;
+};
+
 const get_remaining_maintenance_budget = (def, available_energy) => {
 	const budget = #max(available_energy, 0);
 	return def.energy_maintenance <= budget
@@ -39,7 +53,8 @@ const score_unit = (def, context) => {
 	if (def.can_terraform) {
 		return context.needs_former
 			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
-				def.mineral_cost - get_unit_support_penalty(def, context)
+				def.mineral_cost + #round(def.movement_per_turn * 1000.0) +
+				get_unit_ability_score(def) - get_unit_support_penalty(def, context)
 			: null;
 	}
 	if (def.offense <= 0) {
@@ -47,7 +62,7 @@ const score_unit = (def, context) => {
 	}
 	if (context.needs_garrison) {
 		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
-			#round(def.movement_per_turn * 10.0) - def.mineral_cost -
+			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def) - def.mineral_cost -
 			get_unit_support_penalty(def, context);
 	}
 	if (!context.needs_military) {
@@ -55,7 +70,7 @@ const score_unit = (def, context) => {
 	}
 	return 20000 + get_priority(context, 'military', 33) * 300 +
 		def.offense * 1000 + def.defense * 250 +
-		#round(def.movement_per_turn * 100.0) - def.mineral_cost -
+		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def) - def.mineral_cost -
 		get_unit_support_penalty(def, context);
 };
 
@@ -296,6 +311,7 @@ const choose = (base, unit_defs, facility_defs, context) => {
 
 return {
 	get_remaining_maintenance_budget: get_remaining_maintenance_budget,
+	get_unit_ability_score: get_unit_ability_score,
 	score_unit: score_unit,
 	score_facility: score_facility,
 	score_project: score_project,

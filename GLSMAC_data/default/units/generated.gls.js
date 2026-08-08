@@ -78,6 +78,8 @@ const find_component = (entries, id) => {
 };
 
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
+const no_armor = find_component(manifest.armors, 'NoArmor');
+const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
 
 const get_role_abilities = (known, role) => {
@@ -104,7 +106,7 @@ const get_role_abilities = (known, role) => {
 };
 
 const get_render = (chassis, role) => {
-	let x = role == 'assault' ? 206 : 2;
+	let x = role == 'assault' || role == 'former' ? 206 : 2;
 	let y = 156;
 	if (chassis.triad == 'land' && chassis.speed > 1) {
 		x = 104;
@@ -141,9 +143,12 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 		ability_ids :+ability.id;
 		ability_suffix += ability.id;
 	}
-	const name = role == 'artillery'
-		? weapon.short_name + ' Artillery ' + chassis.name
-		: ability_name + role_name + ' ' + chassis.name;
+	let name = ability_name + role_name + ' ' + chassis.name;
+	if (role == 'artillery') {
+		name = weapon.short_name + ' Artillery ' + chassis.name;
+	} else if (role == 'former') {
+		name = ability_name + (chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
+	}
 	return {
 		id: 'Generated' + chassis.id + weapon.id + armor.id + ability_suffix,
 		data: {
@@ -153,7 +158,7 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			offense: weapon.offense,
 			defense: armor.defense,
 			can_found_base: false,
-			can_terraform: false,
+			can_terraform: role == 'former',
 			required_technology: technology_id,
 			chassis: chassis.id,
 			weapon: weapon.id,
@@ -176,6 +181,7 @@ seen['Infantry|HandWeapons|NoArmor|'] = true;
 seen['Speeder|HandWeapons|NoArmor|'] = true;
 seen['Infantry|Laser|NoArmor|'] = true;
 seen['Infantry|HandWeapons|SynthmetalArmor|'] = true;
+seen['Infantry|TerraformingUnit|NoArmor|'] = true;
 
 const add_design = (technology_id, chassis, weapon, armor, role, abilities) => {
 	let ability_signature = '';
@@ -213,6 +219,46 @@ const add_milestone_designs = (technology_id) => {
 		}
 		if (triad != 'air' && is_available(heavy_artillery, known)) {
 			add_design(technology_id, chassis, weapon, armor, 'artillery', [heavy_artillery]);
+		}
+	}
+	const infantry = find_component(manifest.chassis, 'Infantry');
+	for (ability_id of ['HighMorale', 'CleanReactor']) {
+		const ability = find_component(manifest.abilities, ability_id);
+		if (is_available(ability, known)) {
+			add_design(technology_id, infantry, hand_weapons, no_armor, 'garrison', [ability]);
+		}
+	}
+
+	const former_chassis = chassis_by_triad['land'];
+	if (#is_defined(former_chassis) && is_available(terraforming_unit, known)) {
+		add_design(technology_id, former_chassis, terraforming_unit, no_armor, 'former', []);
+		let former_abilities = [];
+		for (ability_id of ['SuperFormer', 'FungicideTanks']) {
+			const ability = find_component(manifest.abilities, ability_id);
+			if (is_available(ability, known)) {
+				former_abilities :+ability;
+			}
+		}
+		if (#sizeof(former_abilities) > 0) {
+			add_design(
+				technology_id,
+				former_chassis,
+				terraforming_unit,
+				no_armor,
+				'former',
+				former_abilities
+			);
+		}
+		const clean_reactor = find_component(manifest.abilities, 'CleanReactor');
+		if (is_available(clean_reactor, known)) {
+			add_design(
+				technology_id,
+				former_chassis,
+				terraforming_unit,
+				no_armor,
+				'former',
+				[clean_reactor]
+			);
 		}
 	}
 };
