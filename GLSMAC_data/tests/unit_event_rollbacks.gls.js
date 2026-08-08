@@ -42,6 +42,54 @@ test.assert(
 );
 
 {
+	let units = [];
+	const stack_tile = {
+		rockiness: 1,
+		features: {xenofungus: false},
+		terraforming: {bunker: false},
+		get_base: () => { return null; },
+		get_units: () => { return units; },
+	};
+	const make_stack_unit = (id, defense) => {
+		return {
+			id: id,
+			owner: owner.id + 1,
+			morale: 2,
+			health: 1.0,
+			is_land: true,
+			get_tile: () => { return stack_tile; },
+			get_def: () => {
+				return {id: 'StackDefender', is_native: false, offense: 1, defense: defense};
+			},
+		};
+	};
+	const weak = make_stack_unit(10, 1);
+	const strong = make_stack_unit(20, 4);
+	units = [weak, strong];
+	const stack_attacker = {
+		id: 1,
+		owner: owner.id,
+		morale: 2,
+		health: 1.0,
+		movement: 1.0,
+		is_land: true,
+		get_tile: () => { return open_combat_tile; },
+		get_def: () => {
+			return {id: 'StackAttacker', is_native: false, offense: 2, defense: 1};
+		},
+	};
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => { return min; },
+			},
+		},
+		data: {attacker: stack_attacker, defender: weak},
+	});
+	test.assert(resolved.defender_id == strong.id);
+}
+
+{
 	const ranged_attacker_tile = {
 		is_locked: () => { return false; },
 		is_adjactent_to: (tile) => { return false; },

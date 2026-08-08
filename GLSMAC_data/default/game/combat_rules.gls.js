@@ -105,6 +105,32 @@ const get_attack_powers = (attacker, defender, game) => {
 		: get_combat_powers(attacker, defender, game);
 };
 
+const get_attack_score = (attacker, defender, game) => {
+	const powers = get_attack_powers(attacker, defender, game);
+	const total = powers.attack + powers.defence;
+	return total > 0.0 ? powers.attack / total : 0.0;
+};
+
+const get_best_defender = (attacker, tile, game) => {
+	let best = null;
+	let best_attack_score = 2.0;
+	for (defender of tile.get_units()) {
+		if (defender.owner == attacker.owner || defender.health <= 0.0) {
+			continue;
+		}
+		const attack_score = get_attack_score(attacker, defender, game);
+		if (
+			best == null ||
+			attack_score < best_attack_score ||
+			(attack_score == best_attack_score && defender.id < best.id)
+		) {
+			best = defender;
+			best_attack_score = attack_score;
+		}
+	}
+	return best;
+};
+
 return {
 	is_artillery: is_artillery,
 	get_morale_multiplier: get_morale_multiplier,
@@ -112,4 +138,6 @@ return {
 	get_combat_powers: get_combat_powers,
 	get_artillery_powers: get_artillery_powers,
 	get_attack_powers: get_attack_powers,
+	get_attack_score: get_attack_score,
+	get_best_defender: get_best_defender,
 };

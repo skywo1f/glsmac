@@ -147,9 +147,7 @@ const choose_reinforcement_target = (tm, unit, player_id, bases, units, reservat
 };
 
 const get_attack_score = (attacker, defender) => {
-	const powers = combat_rules.get_attack_powers(attacker, defender);
-	const total = powers.attack + powers.defence;
-	return total > 0.0 ? powers.attack / total : 0.0;
+	return combat_rules.get_attack_score(attacker, defender);
 };
 
 const get_attack_commitment_score = (tm, attacker, defender, player_id, units) => {
@@ -199,34 +197,29 @@ const choose_attack_target = (attacker, player_id, tiles, tm, units) => {
 		) {
 			continue;
 		}
-		for (unit of tile.get_units()) {
-			if (
-				unit.owner == player_id ||
-				unit.health <= 0.0 ||
-				!can_commit_attack(tm, attacker, unit, player_id, units)
-			) {
-				continue;
-			}
-			const score = get_attack_score(attacker, unit);
-			if (
-				best == null ||
-				score > best_score ||
+		const unit = combat_rules.get_best_defender(attacker, tile);
+		if (unit == null || !can_commit_attack(tm, attacker, unit, player_id, units)) {
+			continue;
+		}
+		const score = get_attack_score(attacker, unit);
+		if (
+			best == null ||
+			score > best_score ||
+			(
+				score == best_score &&
 				(
-					score == best_score &&
+					tile.y < best.get_tile().y ||
+					(tile.y == best.get_tile().y && tile.x < best.get_tile().x) ||
 					(
-						tile.y < best.get_tile().y ||
-						(tile.y == best.get_tile().y && tile.x < best.get_tile().x) ||
-						(
-							tile.y == best.get_tile().y &&
-							tile.x == best.get_tile().x &&
-							unit.id < best.id
-						)
+						tile.y == best.get_tile().y &&
+						tile.x == best.get_tile().x &&
+						unit.id < best.id
 					)
 				)
-			) {
-				best = unit;
-				best_score = score;
-			}
+			)
+		) {
+			best = unit;
+			best_score = score;
 		}
 	}
 	return best;

@@ -141,6 +141,7 @@ water_target_tile.is_water = true;
 const attacker = make_combat_unit(player_id, attack_origin, 2, 1, 1.0, 2);
 const healthy_defender = make_combat_unit(other_player_id, north_target_tile, 1, 1, 1.0, 2);
 const wounded_defender = make_combat_unit(other_player_id, east_target_tile, 1, 2, 0.2, 2);
+const east_stack_defender = make_combat_unit(other_player_id, east_target_tile, 1, 3, 1.0, 2);
 make_combat_unit(other_player_id, water_target_tile, 1, 1, 0.01, 2);
 make_combat_unit(player_id, east_target_tile, 1, 1, 0.01, 2);
 
@@ -149,9 +150,10 @@ test.assert(
 		attacker,
 		player_id,
 		[north_target_tile, water_target_tile, east_target_tile]
-	) == wounded_defender
+	) == healthy_defender
 );
 test.assert(combat.get_attack_score(attacker, wounded_defender) > combat.get_attack_score(attacker, healthy_defender));
+test.assert(combat.get_attack_score(attacker, east_stack_defender) < combat.get_attack_score(attacker, healthy_defender));
 
 const tie_north_tile = make_tile(20, 19);
 const tie_east_tile = make_tile(21, 20);

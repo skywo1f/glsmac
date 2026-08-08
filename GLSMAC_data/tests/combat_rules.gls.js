@@ -2,12 +2,15 @@ const combat_rules = #include('../default/game/combat_rules');
 
 const make_tile = () => {
 	let base = null;
+	let units = [];
 	return {
 		rockiness: 1,
 		features: {xenofungus: false},
 		terraforming: {bunker: false},
 		get_base: () => { return base; },
 		set_base: (value) => { base = value; },
+		get_units: () => { return units; },
+		add_unit: (unit) => { units :+unit; },
 	};
 };
 
@@ -21,7 +24,8 @@ const make_base = (tile, owner, facilities) => {
 };
 
 const make_unit = (tile, owner, offense, defense, is_native, movement_type) => {
-	return {
+	const unit = {
+		id: owner,
 		owner: owner,
 		morale: 2,
 		health: 1.0,
@@ -39,6 +43,8 @@ const make_unit = (tile, owner, offense, defense, is_native, movement_type) => {
 			};
 		},
 	};
+	tile.add_unit(unit);
+	return unit;
 };
 
 const attack_tile = make_tile();
@@ -104,3 +110,19 @@ test.assert(
 	combat_rules.get_base_defense_multiplier(defender, attacker, project_defense_game) == 2.0
 );
 test.assert(combat_rules.get_combat_powers(attacker, defender, project_defense_game).defence == 5.0);
+
+const stack_tile = make_tile();
+const weak_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');
+weak_defender.id = 20;
+const strong_defender = make_unit(stack_tile, 2, 1, 4, false, 'land');
+strong_defender.id = 30;
+test.assert(combat_rules.get_best_defender(attacker, stack_tile) == strong_defender);
+
+strong_defender.health = 0.25;
+test.assert(combat_rules.get_best_defender(attacker, stack_tile) == weak_defender);
+weak_defender.health = 0.0;
+test.assert(combat_rules.get_best_defender(attacker, stack_tile) == strong_defender);
+
+const tied_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');
+tied_defender.id = 10;
+test.assert(combat_rules.get_best_defender(attacker, stack_tile) == tied_defender);
