@@ -198,6 +198,7 @@
 			const punishment_sphere = game.get_bm().get_facility_def('PunishmentSphere');
 			const centauri_preserve = game.get_bm().get_facility_def('CentauriPreserve');
 			const temple_of_planet = game.get_bm().get_facility_def('TempleOfPlanet');
+			const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -215,6 +216,7 @@
 				recycling_tanks.psych_multiplier != 0.0 ||
 				recycling_tanks.population_limit != 0 ||
 				recycling_tanks.required_facility != '' ||
+				recycling_tanks.required_project != '' ||
 				recycling_tanks.drone_modifier != 0 ||
 				recycling_tanks.talent_bonus != 0 ||
 				recycling_tanks.suppress_psych ||
@@ -256,7 +258,8 @@
 				punishment_sphere.research_multiplier != -0.5 ||
 				!punishment_sphere.suppress_psych ||
 				centauri_preserve.native_lifecycle_bonus != 1 ||
-				temple_of_planet.native_lifecycle_bonus != 1
+				temple_of_planet.native_lifecycle_bonus != 1 ||
+				ascent.required_project != 'TheVoiceOfPlanet'
 			) {
 				return 'built Recycling Tanks definition is invalid';
 			}

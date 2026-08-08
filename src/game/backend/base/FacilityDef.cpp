@@ -57,7 +57,8 @@ FacilityDef::FacilityDef(
 	const float global_psi_attack_multiplier,
 	const float global_psi_defense_multiplier,
 	const float global_naval_movement_bonus,
-	const bool global_full_repair
+	const bool global_full_repair,
+	const std::string& required_project
 )
 	: m_id( id )
 	, m_name( name )
@@ -106,7 +107,8 @@ FacilityDef::FacilityDef(
 	, m_global_psi_attack_multiplier( global_psi_attack_multiplier )
 	, m_global_psi_defense_multiplier( global_psi_defense_multiplier )
 	, m_global_naval_movement_bonus( global_naval_movement_bonus )
-	, m_global_full_repair( global_full_repair ) {
+	, m_global_full_repair( global_full_repair )
+	, m_required_project( required_project ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -139,6 +141,7 @@ FacilityDef::FacilityDef(
 		m_population_limit < 0 ||
 		m_population_limit > MAX_POPULATION_LIMIT ||
 		m_required_facility == m_id ||
+		m_required_project == m_id ||
 		m_drone_modifier < -MAX_DRONE_MODIFIER ||
 		m_drone_modifier > MAX_DRONE_MODIFIER ||
 		m_talent_bonus < 0 ||
@@ -265,6 +268,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_global_psi_defense_multiplier );
 	buf.WriteFloat( def->m_global_naval_movement_bonus );
 	buf.WriteBool( def->m_global_full_repair );
+	buf.WriteString( def->m_required_project );
 	return buf;
 }
 
@@ -317,6 +321,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto global_psi_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	const auto global_naval_movement_bonus = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto global_full_repair = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto required_project = buf.GetRemaining() > 0 ? buf.ReadString() : "";
 	return new FacilityDef(
 		id,
 		name,
@@ -365,7 +370,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		global_psi_attack_multiplier,
 		global_psi_defense_multiplier,
 		global_naval_movement_bonus,
-		global_full_repair
+		global_full_repair,
+		required_project
 	);
 }
 
@@ -446,6 +452,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"required_facility",
 			VALUE( gse::value::String, , m_required_facility )
+		},
+		{
+			"required_project",
+			VALUE( gse::value::String, , m_required_project )
 		},
 		{
 			"drone_modifier",

@@ -388,6 +388,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( float, global_psi_defense_multiplier, def, "global_psi_defense_multiplier", Float, 1.0f );
 				N_GETPROP_OPT( float, global_naval_movement_bonus, def, "global_naval_movement_bonus", Float, 0.0f );
 				N_GETPROP_OPT( bool, global_full_repair, def, "global_full_repair", Bool, false );
+				N_GETPROP_OPT( std::string, required_project, def, "required_project", String, "" );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -420,6 +421,7 @@ WRAPIMPL_BEGIN( BaseManager )
 					population_limit < 0 ||
 					population_limit > base::FacilityDef::MAX_POPULATION_LIMIT ||
 					required_facility == id ||
+					required_project == id ||
 					drone_modifier < -base::FacilityDef::MAX_DRONE_MODIFIER ||
 					drone_modifier > base::FacilityDef::MAX_DRONE_MODIFIER ||
 					talent_bonus < 0 ||
@@ -470,6 +472,13 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_psi_defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					global_naval_movement_bonus < 0.0f ||
 					global_naval_movement_bonus > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
+					(
+						!required_project.empty() &&
+						(
+							m_facility_defs.find( required_project ) == m_facility_defs.end() ||
+							!m_facility_defs.at( required_project )->m_is_project
+						)
+					) ||
 					(
 						!granted_facility.empty() &&
 						(
@@ -552,7 +561,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_psi_attack_multiplier,
 					global_psi_defense_multiplier,
 					global_naval_movement_bonus,
-					global_full_repair
+					global_full_repair,
+					required_project
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

@@ -708,6 +708,7 @@ const definitions = [
 		mineral_cost: 2000,
 		energy_maintenance: 0,
 		required_technology: 'ThresholdOfTranscendence',
+		required_project: 'TheVoiceOfPlanet',
 		obsolete_technology: '',
 		effect: 'End of Human Era, 0',
 	},

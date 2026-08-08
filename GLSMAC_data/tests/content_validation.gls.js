@@ -30,6 +30,26 @@ const get_facility = (catalog, id) => {
 	return null;
 };
 
+const set_manifest_required_project = (catalog, id, required_project) => {
+	for (let i = 0; i < #sizeof(catalog.facility_manifest); i++) {
+		const entry = catalog.facility_manifest[i];
+		if (entry.id == id) {
+			catalog.facility_manifest[i] = {
+				id: entry.id,
+				name: entry.name,
+				kind: entry.kind,
+				mineral_cost: entry.mineral_cost,
+				energy_maintenance: entry.energy_maintenance,
+				required_technology: entry.required_technology,
+				required_project: required_project,
+				obsolete_technology: entry.obsolete_technology,
+				effect: entry.effect,
+			};
+			return;
+		}
+	}
+};
+
 const result = validator.validate(make_catalog());
 
 test.assert(result.errors == []);
@@ -84,6 +104,28 @@ invalid = make_catalog();
 get_facility(invalid, 'HabitationDome').data.required_facility = 'MissingFacility';
 test.assert(validator.validate(invalid).errors == [
 	'facilities.HabitationDome.required_facility: references missing facility MissingFacility',
+]);
+
+invalid = make_catalog();
+get_facility(invalid, 'TheAscentToTranscendence').data.required_project = 'MissingProject';
+test.assert(validator.validate(invalid).errors == [
+	'facilities.TheAscentToTranscendence.required_project: references missing project MissingProject',
+	'facilities.TheAscentToTranscendence.required_project: does not match base-game manifest value TheVoiceOfPlanet',
+]);
+
+invalid = make_catalog();
+get_facility(invalid, 'TheAscentToTranscendence').data.required_project = 'RecyclingTanks';
+test.assert(validator.validate(invalid).errors == [
+	'facilities.TheAscentToTranscendence.required_project: must reference a project',
+	'facilities.TheAscentToTranscendence.required_project: does not match base-game manifest value TheVoiceOfPlanet',
+]);
+
+invalid = make_catalog();
+set_manifest_required_project(invalid, 'TheVoiceOfPlanet', 'TheAscentToTranscendence');
+get_facility(invalid, 'TheVoiceOfPlanet').data.required_project =
+	'TheAscentToTranscendence';
+test.assert(validator.validate(invalid).errors == [
+	'facility_manifest: project dependency cycle prevents resolution of: TheVoiceOfPlanet, TheAscentToTranscendence',
 ]);
 
 invalid = make_catalog();

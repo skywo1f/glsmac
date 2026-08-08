@@ -115,6 +115,7 @@ for (entry of manifest) {
 		energy_bonus: 0,
 		energy_maintenance: entry.energy_maintenance,
 		required_technology: entry.required_technology,
+		required_project: #is_defined(entry.required_project) ? entry.required_project : '',
 		is_project: is_project,
 	};
 	const implemented_effects = is_project ? project_effects[entry.id] : effects[entry.id];

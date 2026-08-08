@@ -246,6 +246,10 @@ bool Base::CanProduce( const production_t& production ) const {
 				( !def->m_is_project || !m_game->GetBM()->GetProjectBase( production.id ) ) &&
 				( def->m_required_facility.empty() || HasFacility( def->m_required_facility ) ) &&
 				(
+					def->m_required_project.empty() ||
+					m_game->GetBM()->GetProjectBase( def->m_required_project )
+				) &&
+				(
 					def->m_required_technology.empty() ||
 					( owner && owner->HasTechnology( def->m_required_technology ) )
 				);

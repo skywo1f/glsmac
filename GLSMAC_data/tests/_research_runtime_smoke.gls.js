@@ -173,7 +173,8 @@
 					return;
 				}
 				for (gate of production_gates) {
-					const expected_available = gate[1] != 'HabitationDome';
+					const expected_available =
+						gate[1] != 'HabitationDome' && gate[1] != 'TheAscentToTranscendence';
 					if (base.can_set_production(gate[0], gate[1]) != expected_available) {
 						fail('full-catalog production gate stayed locked: ' + gate[1]);
 						return;
@@ -367,7 +368,20 @@
 					}
 				}
 
-				base.add_facility('TheAscentToTranscendence');
+				const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
+				if (
+					ascent.required_project != 'TheVoiceOfPlanet' ||
+					base.can_set_production('project', ascent.id)
+				) {
+					fail('Ascent was available before Voice of Planet');
+					return;
+				}
+				base.add_facility('TheVoiceOfPlanet');
+				if (!base.can_set_production('project', ascent.id)) {
+					fail('Ascent stayed locked after Voice of Planet');
+					return;
+				}
+				base.add_facility(ascent.id);
 				let victory_wait_ticks = 0;
 				#async(100, () => {
 					victory_wait_ticks++;

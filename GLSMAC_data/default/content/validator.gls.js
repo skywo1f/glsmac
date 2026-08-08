@@ -25,6 +25,7 @@ const facility_fields = {
 	psych_multiplier: true,
 	population_limit: true,
 	required_facility: true,
+	required_project: true,
 	drone_modifier: true,
 	talent_bonus: true,
 	suppress_psych: true,
@@ -64,6 +65,7 @@ const facility_manifest_fields = {
 	mineral_cost: true,
 	energy_maintenance: true,
 	required_technology: true,
+	required_project: true,
 	obsolete_technology: true,
 	effect: true,
 };
@@ -502,6 +504,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_number(data, 'psych_multiplier', path, errors, false, 0.0, 10.0);
 		validate_int(data, 'population_limit', path, errors, false, 1, MAX_DEFINITION_VALUE);
 		validate_optional_string(data, 'required_facility', path, errors);
+		validate_optional_string(data, 'required_project', path, errors);
 		validate_int(
 			data,
 			'drone_modifier',
@@ -605,6 +608,16 @@ const validate_facilities = (facilities, technologies, errors) => {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}
 	}
+	let project_ids = {};
+	for (entry of facilities) {
+		if (
+			#typeof(entry) == 'Object' && #typeof(entry.id) == 'String' &&
+			#typeof(entry.data) == 'Object' &&
+			#is_defined(entry.data.is_project) && entry.data.is_project
+		) {
+			project_ids[entry.id] = true;
+		}
+	}
 	for (entry of facilities) {
 		if (
 			#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' ||
@@ -629,6 +642,34 @@ const validate_facilities = (facilities, technologies, errors) => {
 	}
 	for (entry of facilities) {
 		if (
+			#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' ||
+			#typeof(entry.data) != 'Object' ||
+			!#is_defined(entry.data.required_project) || entry.data.required_project == ''
+		) {
+			continue;
+		}
+		if (entry.data.required_project == entry.id) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.required_project',
+				'cannot reference itself'
+			);
+		} else if (!#is_defined(seen[entry.data.required_project])) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.required_project',
+				'references missing project ' + entry.data.required_project
+			);
+		} else if (!#is_defined(project_ids[entry.data.required_project])) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.required_project',
+				'must reference a project'
+			);
+		}
+	}
+	for (entry of facilities) {
+		if (
 			#typeof(entry) != 'Object' || #typeof(entry.data) != 'Object' ||
 			!#is_defined(entry.data.granted_facility) || entry.data.granted_facility == ''
 		) {
@@ -648,6 +689,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 const validate_facility_manifest = (manifest, technologies, errors) => {
 	let facility_count = 0;
 	let project_count = 0;
+	let definition_count = 0;
 	let definitions = {};
 	if (#typeof(manifest) != 'Array') {
 		add_error(errors, 'facility_manifest', 'must be an array');
@@ -670,6 +712,7 @@ const validate_facility_manifest = (manifest, technologies, errors) => {
 			continue;
 		}
 		definitions[entry.id] = entry;
+		definition_count++;
 		validate_known_fields(entry, facility_manifest_fields, path, errors);
 		validate_string(entry, 'name', path, errors, true);
 		validate_string(entry, 'kind', path, errors, true);
@@ -683,6 +726,7 @@ const validate_facility_manifest = (manifest, technologies, errors) => {
 		validate_int(entry, 'mineral_cost', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(entry, 'energy_maintenance', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_optional_string(entry, 'required_technology', path, errors);
+		validate_optional_string(entry, 'required_project', path, errors);
 		validate_optional_string(entry, 'obsolete_technology', path, errors);
 		validate_string(entry, 'effect', path, errors, true);
 		for (technology_field of ['required_technology', 'obsolete_technology']) {
@@ -697,6 +741,67 @@ const validate_facility_manifest = (manifest, technologies, errors) => {
 					'references missing technology ' + entry[technology_field]
 				);
 			}
+		}
+	}
+	let project_graph_is_valid = true;
+	for (entry of manifest) {
+		if (
+			#typeof(entry) != 'Object' || #typeof(entry.id) != 'String' ||
+			!#is_defined(entry.required_project) || entry.required_project == ''
+		) {
+			continue;
+		}
+		const path = 'facility_manifest.' + entry.id + '.required_project';
+		if (entry.required_project == entry.id) {
+			add_error(errors, path, 'cannot reference itself');
+			project_graph_is_valid = false;
+		} else if (!#is_defined(definitions[entry.required_project])) {
+			add_error(errors, path, 'references missing project ' + entry.required_project);
+			project_graph_is_valid = false;
+		} else if (definitions[entry.required_project].kind != 'project') {
+			add_error(errors, path, 'must reference a project');
+			project_graph_is_valid = false;
+		}
+	}
+	if (project_graph_is_valid) {
+		let resolved = {};
+		let resolved_count = 0;
+		let changed = true;
+		while (changed) {
+			changed = false;
+			for (entry of manifest) {
+				if (#typeof(entry) != 'Object' || #typeof(entry.id) != 'String') {
+					continue;
+				}
+				if (
+					#is_defined(resolved[entry.id]) ||
+					(
+						#is_defined(entry.required_project) && entry.required_project != '' &&
+						!#is_defined(resolved[entry.required_project])
+					)
+				) {
+					continue;
+				}
+				resolved[entry.id] = true;
+				resolved_count++;
+				changed = true;
+			}
+		}
+		if (resolved_count != definition_count) {
+			let blocked = '';
+			for (entry of manifest) {
+				if (
+					#typeof(entry) == 'Object' && #typeof(entry.id) == 'String' &&
+					!#is_defined(resolved[entry.id])
+				) {
+					blocked = blocked == '' ? entry.id : blocked + ', ' + entry.id;
+				}
+			}
+			add_error(
+				errors,
+				'facility_manifest',
+				'project dependency cycle prevents resolution of: ' + blocked
+			);
 		}
 	}
 	return {
@@ -739,6 +844,16 @@ const validate_facility_implementations = (facilities, manifest, errors) => {
 					'does not match base-game manifest value ' + #to_string(manifest[entry.id][field])
 				);
 			}
+		}
+		const manifest_required_project = #is_defined(manifest[entry.id].required_project)
+			? manifest[entry.id].required_project
+			: '';
+		if (data.required_project != manifest_required_project) {
+			add_error(
+				errors,
+				path + '.required_project',
+				'does not match base-game manifest value ' + manifest_required_project
+			);
 		}
 	}
 };
