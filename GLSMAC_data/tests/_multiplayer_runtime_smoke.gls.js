@@ -30,6 +30,7 @@
 	let colony_pod_spawn_requested = false;
 	let former_spawn_requested = false;
 	let terraform_site_coords = null;
+	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
 	const expansion_base_name = 'Multiplayer Expansion Probe';
 
@@ -299,17 +300,17 @@
 						order_requested = true;
 						game.event('terraform_tile', {
 							unit: former,
-							type: 'farm',
+							type: terraform_order,
 						});
 					}
 				}
 				else if (game.get_um().has_unit(former_id)) {
 					const former = game.get_um().get_unit(former_id);
-					if (former.terraforming == 'farm') {
+					if (former.terraforming == terraform_order) {
 						if (
 							former.terraforming_turns_remaining != 4 ||
 							former.movement != 0.0 ||
-							former.get_tile().terraforming.farm
+							former.get_tile().terraforming[terraform_order]
 						) {
 							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: accepted Former order is invalid');
 							glsmac.exit();
@@ -1122,10 +1123,10 @@
 					expansion_base_invalid ||
 					find_client_colony_pod() != null ||
 					client_former == null ||
-					client_former.terraforming != 'farm' ||
+					client_former.terraforming != terraform_order ||
 					client_former.terraforming_turns_remaining != 3 ||
 					client_former.movement != 0.0 ||
-					client_former.get_tile().terraforming.farm
+					client_former.get_tile().terraforming[terraform_order]
 				) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +

@@ -34,20 +34,13 @@ return {
 		if (tile.is_locked()) {
 			return 'Terraforming site is locked';
 		}
-		if (tile.is_water) {
-			return 'Land Formers cannot terraform sea squares';
-		}
-		if (tile.get_base() != null) {
-			return 'This improvement cannot be built at a base';
-		}
-		if (tile.features.monolith) {
-			return 'Monoliths cannot be terraformed';
-		}
-		if (tile.features.xenofungus) {
-			return 'Xenofungus must be removed before building this improvement';
-		}
-		if (tile.terraforming[e.data.type]) {
-			return 'Tile already has this improvement';
+		const unavailable = terraforming.get_unavailable_reason(
+			tile,
+			unit.get_owner(),
+			e.data.type
+		);
+		if (unavailable != null) {
+			return unavailable;
 		}
 		for (other of tile.get_units()) {
 			if (other.id != unit.id && other.terraforming != 'none') {

@@ -1,27 +1,45 @@
+const orders = #include('../../units/terraforming');
+
 const WORKED_TILE_BONUS = 2000;
 
-const get_order = (tile, prioritize_nutrients) => {
-	if (
-		tile.get_base() != null ||
-		tile.is_water ||
-		tile.features.monolith ||
-		tile.features.xenofungus
-	) {
-		return null;
+const get_order = (tile, prioritize_nutrients, player) => {
+	const is_available = (type) => {
+		return orders.get_unavailable_reason(tile, player, type) == null;
+	};
+	if (tile.features.xenofungus) {
+		return is_available('remove_fungus') ? 'remove_fungus' : null;
+	}
+	if (tile.rockiness == 3) {
+		if (is_available('mine')) {
+			return 'mine';
+		}
+		if (is_available('road')) {
+			return 'road';
+		}
+		return is_available('mag_tube') ? 'mag_tube' : null;
 	}
 	if (!tile.terraforming.forest && !tile.terraforming.farm) {
-		if (prioritize_nutrients && tile.moisture > 0 && tile.rockiness < 3) {
+		if (prioritize_nutrients && tile.moisture > 0 && is_available('farm')) {
 			return 'farm';
 		}
-		return tile.moisture <= 1 || tile.rockiness >= 2 ? 'forest' : 'farm';
+		const basic = tile.moisture <= 1 || tile.rockiness >= 2 ? 'forest' : 'farm';
+		return is_available(basic) ? basic : null;
 	}
-	if (!tile.terraforming.road) {
+	if (is_available('road')) {
 		return 'road';
 	}
-	if (tile.terraforming.farm && !tile.terraforming.mine && !tile.terraforming.solar) {
-		return 'solar';
+	if (tile.terraforming.farm) {
+		if (prioritize_nutrients && is_available('condenser')) {
+			return 'condenser';
+		}
+		if (is_available('soil_enricher')) {
+			return 'soil_enricher';
+		}
+		if (is_available('solar')) {
+			return 'solar';
+		}
 	}
-	return null;
+	return is_available('mag_tube') ? 'mag_tube' : null;
 };
 
 const get_target_score = (tile, player, pending_growth, distance, is_worked) => {

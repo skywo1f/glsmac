@@ -13,7 +13,9 @@
 	let repair_verified = false;
 	let turn_three_advance_requested = false;
 	let former_id = 0;
+	let fungus_former_id = 0;
 	let terraform_site = null;
+	let fungus_site = null;
 	let terraform_site_resources = null;
 	let ui_started = false;
 	let exit_scheduled = false;
@@ -241,6 +243,7 @@
 					if (
 						candidate != lifecycle_tile &&
 						candidate.is_land &&
+						candidate.rockiness < 3 &&
 						!candidate.features.xenofungus &&
 						candidate.get_base() == null &&
 						#sizeof(candidate.get_units()) == 0
@@ -280,6 +283,43 @@
 				former.set_terraforming_order('forest', 1);
 				former.set_terraforming_order('none', 0);
 				former_id = former.id;
+
+				const tm = game.get_tm();
+				for (let y = 0; y < tm.get_map_height(); y++) {
+					for (let x = 0; x < tm.get_map_width(); x++) {
+						if (x % 2 != y % 2) {
+							continue;
+						}
+						const candidate = tm.get_tile(x, y);
+						if (
+							candidate.is_land &&
+							candidate.features.xenofungus &&
+							!candidate.is_locked() &&
+							candidate.get_base() == null &&
+							#sizeof(candidate.get_units()) == 0
+						) {
+							fungus_site = candidate;
+							break;
+						}
+					}
+					if (fungus_site != null) {
+						break;
+					}
+				}
+				if (fungus_site == null) {
+					#print('RUNTIME_SMOKE_FAIL: no fungus removal site is available');
+					glsmac.exit();
+					return;
+				}
+				const fungus_former = um.spawn_unit({
+					def: 'Former',
+					owner: game.get_player(),
+					tile: fungus_site,
+					morale: 1,
+					health: 1.0,
+				});
+				fungus_former.set_terraforming_order('remove_fungus', 1);
+				fungus_former_id = fungus_former.id;
 
 				game.event('unit_skip_turn', {
 					unit: smoke_unit,
@@ -328,6 +368,7 @@
 					return;
 				}
 				const former = game.get_um().get_unit(former_id);
+				const fungus_former = game.get_um().get_unit(fungus_former_id);
 				if (
 					game.get_um().get_unit(1).health < 0.699 ||
 					game.get_um().get_unit(1).health > 0.701 ||
@@ -341,7 +382,21 @@
 					glsmac.exit();
 					return;
 				}
+				if (
+					fungus_former.terraforming != 'none' ||
+					fungus_former.terraforming_turns_remaining != 0
+				) {
+					#print('RUNTIME_SMOKE_FAIL: xenofungus removal order did not complete');
+					glsmac.exit();
+					return;
+				}
+				if (fungus_site.features.xenofungus) {
+					#print('RUNTIME_SMOKE_FAIL: xenofungus removal did not update the wrapped tile feature');
+					glsmac.exit();
+					return;
+				}
 				#print('RUNTIME_SMOKE_TERRAFORM_ORDER_PASS');
+				#print('RUNTIME_SMOKE_FUNGUS_REMOVAL_PASS');
 				#print('RUNTIME_SMOKE_FACILITY_PRODUCTION_PASS');
 				base.set_accumulated_minerals(queue[0].mineral_cost);
 				game.event('complete_turn', {});

@@ -16,6 +16,7 @@
 	const former_snapshot_unit_id = 5;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
+	const terraform_order = 'forest';
 
 	glsmac.on('configure_state', (e) => {
 		#async(100, () => {
@@ -238,12 +239,12 @@
 				tile.get_base() != null ||
 				tile.features.monolith ||
 				tile.features.xenofungus ||
-				tile.terraforming.farm
+				tile.terraforming[terraform_order]
 			) {
 				return 'Former owner or tile state is invalid';
 			}
 			if (
-				former.terraforming != 'farm' ||
+				former.terraforming != terraform_order ||
 				former.terraforming_turns_remaining != turns_remaining ||
 				former.movement != 0.0 ||
 				former.moved_this_turn != moved_this_turn
@@ -281,7 +282,7 @@
 					terraform_requested = true;
 					game.event('terraform_tile', {
 						unit: former,
-						type: 'farm',
+						type: terraform_order,
 					});
 				}
 				if (!founding_requested) {
@@ -317,7 +318,7 @@
 					const former = game.get_um().has_unit(former_snapshot_unit_id)
 						? game.get_um().get_unit(former_snapshot_unit_id)
 						: null;
-					if (expansion_base != null && former != null && former.terraforming == 'farm') {
+					if (expansion_base != null && former != null && former.terraforming == terraform_order) {
 						const production = expansion_base.get_production();
 						if (
 							game.get_um().has_unit(colony_pod_id) ||

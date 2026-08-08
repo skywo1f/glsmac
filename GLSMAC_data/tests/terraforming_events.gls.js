@@ -7,7 +7,17 @@ let tile_state = {
 	is_locked: false,
 	base: null,
 	other_units: [],
+	nearby_tiles: [],
 	updates: 0,
+	feature_updates: 0,
+};
+
+let known_technologies = {};
+const owner = {
+	id: 1,
+	has_technology: (id) => {
+		return #is_defined(known_technologies[id]);
+	},
 };
 
 let tile = null;
@@ -19,11 +29,22 @@ tile = {
 	},
 	terraforming: {
 		road: false,
+		mag_tube: false,
 		forest: false,
 		farm: false,
+		soil_enricher: false,
 		mine: false,
 		solar: false,
+		condenser: false,
+		mirror: false,
+		borehole: false,
+		sensor: false,
+		bunker: false,
+		airbase: false,
+		remove_fungus: false,
+		plant_fungus: false,
 	},
+	rockiness: 1,
 	is_locked: () => {
 		return tile_state.is_locked;
 	},
@@ -33,11 +54,20 @@ tile = {
 	get_units: () => {
 		return tile_state.other_units;
 	},
+	get_surrounding_tiles: () => {
+		return tile_state.nearby_tiles;
+	},
 	update_terraforming: (changes) => {
 		for (type in changes) {
 			tile.terraforming[type] = changes[type];
 		}
 		tile_state.updates = tile_state.updates + 1;
+	},
+	update_features: (changes) => {
+		for (type in changes) {
+			tile.features[type] = changes[type];
+		}
+		tile_state.feature_updates = tile_state.feature_updates + 1;
 	},
 };
 
@@ -57,7 +87,7 @@ unit = {
 	get_tile: () => {
 		return tile;
 	},
-	get_owner: () => { return {id: 1}; },
+	get_owner: () => { return owner; },
 	set_terraforming_order: (type, turns) => {
 		unit.terraforming = type;
 		unit.terraforming_turns_remaining = turns;
@@ -116,6 +146,52 @@ tile_state.other_units = [{id: 11, terraforming: 'mine'}];
 test.assert(#is_defined(terraform_tile.validate(event)));
 tile_state.other_units = [];
 
+event.data.type = 'condenser';
+test.assert(#is_defined(terraform_tile.validate(event)));
+known_technologies.EcologicalEngineering = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+known_technologies = {};
+
+event.data.type = 'farm';
+tile.rockiness = 3;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.rockiness = 1;
+
+event.data.type = 'soil_enricher';
+known_technologies.AdvancedEcologicalEngineering = true;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.terraforming.farm = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile.terraforming.farm = false;
+known_technologies = {};
+
+event.data.type = 'mag_tube';
+known_technologies.MonopoleMagnets = true;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.terraforming.road = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile.terraforming.road = false;
+known_technologies = {};
+
+event.data.type = 'borehole';
+known_technologies.EcologicalEngineering = true;
+tile_state.nearby_tiles = [{terraforming: {borehole: true}}];
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile_state.nearby_tiles = [];
+test.assert(!#is_defined(terraform_tile.validate(event)));
+known_technologies = {};
+
+event.data.type = 'remove_fungus';
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.features.xenofungus = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+event.data.type = 'plant_fungus';
+known_technologies.EcologicalEngineering = true;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.features.xenofungus = false;
+known_technologies = {};
+
+event.data.type = 'farm';
 event.applied = terraform_tile.apply(event);
 test.assert(unit.terraforming == 'farm');
 test.assert(unit.terraforming_turns_remaining == 4);
@@ -177,6 +253,30 @@ test.assert(!tile.terraforming.forest);
 test.assert(tile.terraforming.solar);
 test.assert(!tile.terraforming.mine);
 test.assert(tile_state.updates == 5);
+
+tile.features.xenofungus = true;
+unit.set_terraforming_order('remove_fungus', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(!tile.features.xenofungus);
+test.assert(tile_state.updates == 5);
+test.assert(tile_state.feature_updates == 1);
+
+tile.terraforming.farm = true;
+tile.terraforming.soil_enricher = true;
+tile.terraforming.solar = true;
+unit.set_terraforming_order('plant_fungus', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.features.xenofungus);
+test.assert(!tile.terraforming.farm);
+test.assert(!tile.terraforming.soil_enricher);
+test.assert(!tile.terraforming.solar);
+test.assert(tile_state.updates == 6);
+test.assert(tile_state.feature_updates == 2);
+
+unit.set_terraforming_order('borehole', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.terraforming.borehole);
+test.assert(tile_state.updates == 7);
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;

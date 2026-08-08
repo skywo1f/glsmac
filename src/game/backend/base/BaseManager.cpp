@@ -274,8 +274,16 @@ void BaseManager::ProcessUnprocessed( GSE_CALLABLE ) {
 
 void BaseManager::PushUpdates() {
 	if ( m_game->IsRunning() && !m_base_updates.empty() ) {
+		// A tile can lose one base and gain another in the same backend tick.
+		// Despawn the old frontend objects before creating their replacements.
 		for ( const auto& it : m_base_updates ) {
-			const auto base_id = it.first;
+			if ( it.second.ops & BUO_DESPAWN ) {
+				auto fr = FrontendRequest( FrontendRequest::FR_BASE_DESPAWN );
+				fr.data.base_despawn.base_id = it.first;
+				m_game->AddFrontendRequest( fr );
+			}
+		}
+		for ( const auto& it : m_base_updates ) {
 			const auto& bu = it.second;
 			const auto& base = bu.base;
 			if ( bu.ops & BUO_SPAWN ) {
@@ -297,6 +305,10 @@ void BaseManager::PushUpdates() {
 				NEW( fr.data.base_spawn.name, std::string, base->m_name );
 				m_game->AddFrontendRequest( fr );
 			}
+		}
+		for ( const auto& it : m_base_updates ) {
+			const auto& bu = it.second;
+			const auto& base = bu.base;
 			if ( bu.ops & BUO_REFRESH ) {
 				auto fr = FrontendRequest( FrontendRequest::FR_BASE_UPDATE );
 				fr.data.base_update.base_id = base->m_id;
@@ -312,11 +324,6 @@ void BaseManager::PushUpdates() {
 						}
 					);
 				}
-				m_game->AddFrontendRequest( fr );
-			}
-			if ( bu.ops & BUO_DESPAWN ) {
-				auto fr = FrontendRequest( FrontendRequest::FR_BASE_DESPAWN );
-				fr.data.base_despawn.base_id = base_id;
 				m_game->AddFrontendRequest( fr );
 			}
 		}

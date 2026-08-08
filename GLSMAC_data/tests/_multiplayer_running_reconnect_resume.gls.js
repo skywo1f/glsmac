@@ -13,6 +13,7 @@
 	const former_snapshot_unit_id = 5;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
+	const terraform_order = 'forest';
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
@@ -93,12 +94,12 @@
 				tile.get_base() != null ||
 				tile.features.monolith ||
 				tile.features.xenofungus ||
-				tile.terraforming.farm
+				tile.terraforming[terraform_order]
 			) {
 				return 'Former tile state was not restored';
 			}
 			if (
-				former.terraforming != 'farm' ||
+				former.terraforming != terraform_order ||
 				former.terraforming_turns_remaining != turns_remaining ||
 				former.movement != 0.0 ||
 				former.moved_this_turn != moved_this_turn

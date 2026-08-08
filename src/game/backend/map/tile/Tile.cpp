@@ -48,6 +48,12 @@ static const std::unordered_map< std::string, terraforming_t > s_terraforming_by
 #undef X_TERRAFORMING
 };
 
+static const std::unordered_map< std::string, feature_t > s_feature_by_name = {
+#define X_FEATURE( _x, _i ) { util::String::GetLowerCase( #_x ), FEATURE_ ## _x },
+	X_FEATURES
+#undef X_FEATURE
+};
+
 static const std::unordered_map< terraforming_t, std::string > s_terraforming_names = {
 	{ TERRAFORMING_NONE, "none" },
 #define X_TERRAFORMING( _x, _i ) { TERRAFORMING_ ## _x, util::String::GetLowerCase( #_x ) },
@@ -227,6 +233,13 @@ const std::string Tile::ToString() const {
 	return "@[ " + std::to_string( coord.x ) + " " + std::to_string( coord.y ) + " ]";
 }
 
+feature_t Tile::GetFeatureFromString( const std::string& name ) {
+	const auto& it = s_feature_by_name.find( util::String::GetLowerCase( name ) );
+	return it == s_feature_by_name.end()
+		? FEATURE_NONE
+		: it->second;
+}
+
 terraforming_t Tile::GetTerraformingFromString( const std::string& name ) {
 	if ( util::String::GetLowerCase( name ) == "none" ) {
 		return TERRAFORMING_NONE;
@@ -243,6 +256,32 @@ const std::string& Tile::GetTerraformingString( const terraforming_t value ) {
 		THROW( "unknown single terraforming value: " + std::to_string( value ) );
 	}
 	return it->second;
+}
+
+void Tile::SetFeatures( GSE_CALLABLE, const feature_t value ) {
+	if ( value & static_cast< feature_t >( ~FEATURE_ALL ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile features value: " + std::to_string( value ) );
+	}
+	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+	if ( features != value ) {
+		features = value;
+		for ( auto* const wrapobj : m_wrapobjs ) {
+			const auto& property_it = wrapobj->value.find( "features" );
+			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no features property" );
+			ASSERT( property_it->second->type == gse::VT_OBJECT, "tile features property is not an object" );
+			const auto* const wrapped_features = (gse::value::Object*)property_it->second;
+#define X_FEATURE( _x, _i ) \
+			{ \
+				const auto& flag_it = wrapped_features->value.find( util::String::GetLowerCase( #_x ) ); \
+				ASSERT( flag_it != wrapped_features->value.end(), "tile wrapper has no feature flag" ); \
+				ASSERT( flag_it->second->type == gse::VT_BOOL, "tile feature flag is not a bool" ); \
+				( (gse::value::Bool*)flag_it->second )->value = ( features & FEATURE_ ## _x ) != 0; \
+			}
+			X_FEATURES
+#undef X_FEATURE
+		}
+		tiles->GetMap()->RefreshTile( this );
+	}
 }
 
 void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
@@ -397,6 +436,28 @@ WRAPIMPL_BEGIN( Tile )
 		{ "features", GetFeatures( GSE_CALL ) },
 		{ "bonuses", GetBonuses( GSE_CALL ) },
 		{ "terraforming", GetTerraformings( GSE_CALL ) },
+		{
+			"update_features",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( changes, 0, Object );
+				auto updated = features;
+				for ( const auto& change : changes ) {
+					const auto flag = GetFeatureFromString( change.first );
+					if ( flag == FEATURE_NONE || change.second->type != gse::VT_BOOL ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid feature update: " + change.first );
+					}
+					if ( ( (gse::value::Bool*)change.second )->value ) {
+						updated |= flag;
+					}
+					else {
+						updated &= static_cast< feature_t >( ~flag );
+					}
+				}
+				SetFeatures( GSE_CALL, updated );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
 		{
 			"update_terraforming",
 			NATIVE_CALL( this ) {

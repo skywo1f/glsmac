@@ -153,7 +153,9 @@ static constexpr feature_t FEATURE_ALL = X_FEATURES FEATURE_NONE;
 	X_TERRAFORMING( BOREHOLE, 9 ) \
 	X_TERRAFORMING( SENSOR, 10 ) \
 	X_TERRAFORMING( BUNKER, 11 ) \
-	X_TERRAFORMING( AIRBASE, 12 )
+	X_TERRAFORMING( AIRBASE, 12 ) \
+	X_TERRAFORMING( REMOVE_FUNGUS, 13 ) \
+	X_TERRAFORMING( PLANT_FUNGUS, 14 )
 
 static constexpr terraforming_t TERRAFORMING_NONE = 0;
 #define X_TERRAFORMING( _x, _i ) static constexpr terraforming_t TERRAFORMING_ ## _x = 1 << _i;

@@ -1,3 +1,5 @@
+const terraforming = #include('../../../../units/terraforming');
+
 return {
 
 	get_morale: (type, value) => {
@@ -16,9 +18,49 @@ return {
 	},
 
 	close_terraform_menu: () => {
-		this.terraform_menu.hide();
+		if (this.terraform_menu != null) {
+			this.terraform_menu.hide();
+		}
 		this.terraform_menu_open = false;
 		this.action_button.active = false;
+	},
+
+	on_terraform_click: (e) => {
+		if (this.action_unit != null && this.action_mode == 'terraform') {
+			this.p.game.event('terraform_tile', {
+				unit: this.action_unit,
+				type: e.value,
+			});
+		}
+		this.close_terraform_menu();
+		return true;
+	},
+
+	init_terraform_menu: () => {
+		this.terraform_menu = this.p.ui.root.panel({
+			class: 'game-menu',
+			zindex: 0.95,
+			align: 'bottom left',
+			left: 6,
+			bottom: 256,
+			height: 18,
+		});
+		this.terraform_menu.surface({class: 'game-menu-top-border'});
+		this.terraform_menu.surface({class: 'game-menu-bottom-border'});
+		let top = 0;
+		for (type of terraforming.order_ids) {
+			const order = terraforming.get_order(type);
+			const button = this.terraform_menu.button({
+				class: 'game-menu-item',
+				text: order.name + ' (' + #to_string(order.turns) + ')',
+				top: top,
+				value: type,
+			});
+			button.on('click', this.on_terraform_click);
+			top += 18;
+		}
+		this.terraform_menu.height = top > 0 ? top : 18;
+		this.terraform_menu.hide();
 	},
 
 	set_image: (object) => {
@@ -119,15 +161,9 @@ return {
 				}
 
 				if (object.terraforming != 'none') {
-					const names = {
-						road: 'Road',
-						forest: 'Forest',
-						farm: 'Farm',
-						mine: 'Mine',
-						solar: 'Solar Collector',
-					};
+					const order = terraforming.get_order(object.terraforming);
 					f_line(
-						names[object.terraforming] + ': ' +
+						order.name + ': ' +
 						#to_string(object.terraforming_turns_remaining) + ' turns',
 						14,
 						'left'
@@ -145,12 +181,16 @@ return {
 					if (object.terraforming == 'none') {
 						this.action_mode = 'terraform';
 						this.action_button.text = 'TERRAFORM';
+						this.close_terraform_menu();
+						this.action_button.show();
 					} else {
 						this.action_mode = 'cancel_terraform';
 						this.action_button.text = 'CANCEL ORDER';
 						this.close_terraform_menu();
 					}
-					this.action_button.show();
+					if (object.terraforming != 'none') {
+						this.action_button.show();
+					}
 				} else {
 					this.action_unit = null;
 					this.action_mode = null;
@@ -198,6 +238,7 @@ return {
 		this.action_unit = null;
 		this.action_mode = null;
 		this.terraform_menu_open = false;
+		this.terraform_menu = null;
 
 		this.p = p;
 		this.um = p.game.get_um();
@@ -251,43 +292,7 @@ return {
 			return true;
 		});
 
-		this.terraform_menu = p.ui.root.panel({
-			class: 'game-menu',
-			zindex: 0.95,
-			align: 'bottom left',
-			left: 6,
-			bottom: 256,
-			height: 90,
-		});
-		this.terraform_menu.surface({class: 'game-menu-top-border'});
-		this.terraform_menu.surface({class: 'game-menu-bottom-border'});
-		let terraform_top = 0;
-		for (entry of [
-			{type: 'road', label: 'Road (2 turns)'},
-			{type: 'forest', label: 'Forest (4 turns)'},
-			{type: 'farm', label: 'Farm (4 turns)'},
-			{type: 'mine', label: 'Mine (8 turns)'},
-			{type: 'solar', label: 'Solar (4 turns)'},
-		]) {
-			const terraform_entry = entry;
-			const button = this.terraform_menu.button({
-				class: 'game-menu-item',
-				text: terraform_entry.label,
-				top: terraform_top,
-			});
-			button.on('click', (e) => {
-				if (this.action_unit != null && this.action_mode == 'terraform') {
-					p.game.event('terraform_tile', {
-						unit: this.action_unit,
-						type: terraform_entry.type,
-					});
-				}
-				this.close_terraform_menu();
-				return true;
-			});
-			terraform_top += 18;
-		}
-		this.terraform_menu.hide();
+		this.init_terraform_menu();
 
 		this.frame.on('keydown', (e) => {
 			if (

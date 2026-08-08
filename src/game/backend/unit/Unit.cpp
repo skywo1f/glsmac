@@ -34,11 +34,9 @@ static const bool IsValidTerraformingOrder(
 	const uint16_t turns_remaining
 ) {
 	const bool is_supported_order =
-		terraforming == map::tile::TERRAFORMING_ROAD ||
-		terraforming == map::tile::TERRAFORMING_FOREST ||
-		terraforming == map::tile::TERRAFORMING_FARM ||
-		terraforming == map::tile::TERRAFORMING_MINE ||
-		terraforming == map::tile::TERRAFORMING_SOLAR;
+		terraforming != map::tile::TERRAFORMING_NONE &&
+		( terraforming & static_cast< map::tile::terraforming_t >( ~map::tile::TERRAFORMING_ALL ) ) == 0 &&
+		( terraforming & ( terraforming - 1 ) ) == 0;
 	return
 		(
 			terraforming == map::tile::TERRAFORMING_NONE &&

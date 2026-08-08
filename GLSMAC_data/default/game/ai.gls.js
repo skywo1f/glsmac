@@ -428,7 +428,7 @@ const move_former = (game, player, unit, all_bases) => {
 		if (has_other_former(candidate, unit)) {
 			return;
 		}
-		const order = terraforming.get_order(candidate, prioritize_nutrients);
+		const order = terraforming.get_order(candidate, prioritize_nutrients, player);
 		if (order == null) {
 			return;
 		}
@@ -485,14 +485,14 @@ const move_former = (game, player, unit, all_bases) => {
 			return true;
 		}
 	}
-	const local_order = terraforming.get_order(tile, false);
+	const local_order = terraforming.get_order(tile, false, player);
 	if (local_order != null && !has_other_active_former(tile, unit)) {
 		game.event_as(player.id, 'terraform_tile', {unit: unit, type: local_order});
 		return true;
 	}
 	const is_candidate = (candidate) => {
 		return can_enter(unit, candidate) &&
-			terraforming.get_order(candidate, false) != null &&
+			terraforming.get_order(candidate, false, player) != null &&
 			!has_other_former(candidate, unit);
 	};
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {

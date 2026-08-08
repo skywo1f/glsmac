@@ -718,7 +718,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"unknown tile feature accepted"
 				);
 				GT_ASSERT(
-					rejects_tile( serialize_source( source.moisture, source.features, static_cast< terraforming_t >( 1 << 13 ) ) ),
+					rejects_tile( serialize_source( source.moisture, source.features, static_cast< terraforming_t >( 1 << 15 ) ) ),
 					"unknown tile terraforming accepted"
 				);
 				auto trailing_tile = source.Serialize();

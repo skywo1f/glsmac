@@ -160,8 +160,29 @@ int Engine::Run() {
 		}
 		Log( "Shutting down" );
 
-		for ( auto& thread : m_threads ) {
-			thread->T_Stop();
+		if ( m_threads.size() > 1 ) {
+			// The backend references GSE state owned by MAIN. Stop it before MAIN
+			// destroys that state, with collectors quiesced first.
+			for ( const auto& thread_name : { "GC", "GAME", "MAIN", "NETWORK" } ) {
+				for ( auto& thread : m_threads ) {
+					if ( thread->GetThreadName() == thread_name ) {
+						if ( thread->T_IsRunning() ) {
+							thread->T_Stop();
+							while ( thread->T_IsRunning() ) {
+								std::this_thread::sleep_for( std::chrono::milliseconds( 1 ) );
+							}
+						}
+						break;
+					}
+				}
+			}
+		}
+		else {
+			for ( auto& thread : m_threads ) {
+				if ( thread->T_IsRunning() ) {
+					thread->T_Stop();
+				}
+			}
 		}
 #ifdef DEBUG
 		util::Timer thread_running_timer;
@@ -192,10 +213,24 @@ int Engine::Run() {
 			}
 		}
 
+		for ( const auto& thread : m_threads ) {
+			if ( thread->T_GetException() ) {
+				std::rethrow_exception( thread->T_GetException() );
+			}
+		}
+
 	}
 	catch ( std::runtime_error& e ) {
 		m_exit_code = EXIT_FAILURE;
 		m_error_handler->HandleError( e );
+	}
+	catch ( const std::exception& e ) {
+		m_exit_code = EXIT_FAILURE;
+		m_error_handler->HandleError( std::runtime_error( e.what() ) );
+	}
+	catch ( ... ) {
+		m_exit_code = EXIT_FAILURE;
+		m_error_handler->HandleError( std::runtime_error( "unknown worker thread exception" ) );
 	}
 
 	return m_exit_code.load();
