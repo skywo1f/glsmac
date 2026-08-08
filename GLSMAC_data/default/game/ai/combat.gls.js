@@ -6,6 +6,9 @@ const ASSAULT_DEFENSE_WEIGHT = 2.0;
 const ASSAULT_SUPPORT_DISTANCE = 3;
 const ASSAULT_SUPPORT_WEIGHT = 0.5;
 const ASSAULT_BASE_SIZE_WEIGHT = 0.25;
+const MIN_DIRECT_ATTACK_SCORE = 0.5;
+const MIN_GROUP_ATTACK_SCORE = 0.55;
+const ATTACK_SUPPORT_DISTANCE = 1;
 const combat_rules = #include('../combat_rules');
 
 const find_nearest_friendly_base = (tm, player_id, tile, bases) => {
@@ -123,7 +126,43 @@ const get_attack_score = (attacker, defender) => {
 	return total > 0.0 ? powers.attack / total : 0.0;
 };
 
-const choose_attack_target = (attacker, player_id, tiles) => {
+const get_attack_commitment_score = (tm, attacker, defender, player_id, units) => {
+	const target_tile = defender.get_tile();
+	let support = 0.0;
+	let defense = 0.0;
+	for (unit of units) {
+		const def = unit.get_def();
+		if (
+			unit.owner == player_id &&
+			def.offense > 0 &&
+			!combat_rules.is_artillery(def) &&
+			(!#is_defined(unit.is_immovable) || unit.is_immovable == false) &&
+			unit.health >= RETREAT_HEALTH &&
+			unit.movement > 0.0 &&
+			tm.get_distance(unit.get_tile(), target_tile) <= ATTACK_SUPPORT_DISTANCE &&
+			!((unit.is_land && target_tile.is_water) || (unit.is_water && target_tile.is_land))
+		) {
+			support += combat_rules.get_attack_powers(unit, defender).attack;
+		} else if (unit.owner != player_id && unit.health > 0.0 && unit.get_tile() == target_tile) {
+			defense += combat_rules.get_attack_powers(attacker, unit).defence;
+		}
+	}
+	const total = support + defense;
+	return total > 0.0 ? support / total : 0.0;
+};
+
+const can_commit_attack = (tm, attacker, defender, player_id, units) => {
+	if (combat_rules.is_artillery(attacker.get_def())) {
+		return true;
+	}
+	if (get_attack_score(attacker, defender) >= MIN_DIRECT_ATTACK_SCORE) {
+		return true;
+	}
+	return #is_defined(tm) && #is_defined(units) &&
+		get_attack_commitment_score(tm, attacker, defender, player_id, units) >= MIN_GROUP_ATTACK_SCORE;
+};
+
+const choose_attack_target = (attacker, player_id, tiles, tm, units) => {
 	let best = null;
 	let best_score = 0.0;
 	const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
@@ -135,7 +174,11 @@ const choose_attack_target = (attacker, player_id, tiles) => {
 			continue;
 		}
 		for (unit of tile.get_units()) {
-			if (unit.owner == player_id || unit.health <= 0.0) {
+			if (
+				unit.owner == player_id ||
+				unit.health <= 0.0 ||
+				!can_commit_attack(tm, attacker, unit, player_id, units)
+			) {
 				continue;
 			}
 			const score = get_attack_score(attacker, unit);
@@ -227,6 +270,8 @@ return {
 	get_reinforcement_score: get_reinforcement_score,
 	choose_reinforcement_target: choose_reinforcement_target,
 	get_attack_score: get_attack_score,
+	get_attack_commitment_score: get_attack_commitment_score,
+	can_commit_attack: can_commit_attack,
 	choose_attack_target: choose_attack_target,
 	get_assault_score: get_assault_score,
 	choose_assault_target: choose_assault_target,

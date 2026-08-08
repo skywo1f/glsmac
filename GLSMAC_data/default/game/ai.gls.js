@@ -112,7 +112,13 @@ const attack_enemy_in_tiles = (game, player, unit, tiles) => {
 			available_tiles :+tile;
 		}
 	}
-	const target = combat.choose_attack_target(unit, player.id, available_tiles);
+	const target = combat.choose_attack_target(
+		unit,
+		player.id,
+		available_tiles,
+		game.get_tm(),
+		game.get_um().get_units()
+	);
 	if (target == null) {
 		return false;
 	}

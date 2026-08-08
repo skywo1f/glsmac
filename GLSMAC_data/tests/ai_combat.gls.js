@@ -221,3 +221,57 @@ test.assert(
 		{}
 	) == null
 );
+
+const commitment_origin = make_tile(60, 60);
+const commitment_target_tile = make_tile(61, 60);
+const commitment_support_tile = make_tile(61, 59);
+make_base(other_player_id, commitment_target_tile);
+const cautious_attacker = make_combat_unit(player_id, commitment_origin, 1, 1, 1.0, 2);
+const fortified_defender = make_combat_unit(other_player_id, commitment_target_tile, 1, 1, 1.0, 2);
+test.assert(combat.get_attack_score(cautious_attacker, fortified_defender) < 0.5);
+test.assert(
+	combat.choose_attack_target(
+		cautious_attacker,
+		player_id,
+		[commitment_target_tile],
+		tm,
+		[cautious_attacker, fortified_defender]
+	) == null
+);
+const ready_support = make_combat_unit(player_id, commitment_support_tile, 1, 1, 1.0, 2);
+const supported_force = [cautious_attacker, ready_support, fortified_defender];
+test.assert(
+	combat.get_attack_commitment_score(
+		tm,
+		cautious_attacker,
+		fortified_defender,
+		player_id,
+		supported_force
+	) > 0.55
+);
+test.assert(
+	combat.choose_attack_target(
+		cautious_attacker,
+		player_id,
+		[commitment_target_tile],
+		tm,
+		supported_force
+	) == fortified_defender
+);
+const second_fortified_defender = make_combat_unit(
+	other_player_id,
+	commitment_target_tile,
+	1,
+	1,
+	1.0,
+	2
+);
+test.assert(
+	combat.choose_attack_target(
+		cautious_attacker,
+		player_id,
+		[commitment_target_tile],
+		tm,
+		[cautious_attacker, ready_support, fortified_defender, second_fortified_defender]
+	) == null
+);
