@@ -62,6 +62,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 			#max(def.defense_multiplier - 1.0, 0.0) *
 				#to_float(5000 + defense_priority * 400)
 		);
+		score += #round(
+			def.economy_multiplier * #to_float(5000 + development_priority * 300)
+		);
 	}
 	return score;
 };

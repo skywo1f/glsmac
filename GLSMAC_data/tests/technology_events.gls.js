@@ -41,6 +41,10 @@ const doctrine_loyalty = technologies.get_definition('DoctrineLoyalty');
 test.assert(doctrine_loyalty.name == 'Doctrine: Loyalty');
 test.assert(doctrine_loyalty.cost == 60);
 test.assert(doctrine_loyalty.prerequisites == ['DoctrineMobility', 'SocialPsych']);
+const industrial_economics = technologies.get_definition('IndustrialEconomics');
+test.assert(industrial_economics.name == 'Industrial Economics');
+test.assert(industrial_economics.cost == 70);
+test.assert(industrial_economics.prerequisites == ['IndustrialBase']);
 test.assert(technologies.get_definition('UnknownTechnology') == null);
 test.assert(technologies.get_available_targets([]) == ['CentauriEcology', 'Biogenetics']);
 test.assert(technologies.get_available_targets(['CentauriEcology']) == ['DoctrineMobility', 'SocialPsych', 'Biogenetics']);
@@ -53,7 +57,8 @@ test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility',
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych']) == 'Biogenetics');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics']) == 'PlanetaryNetworks');
 test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks']) == 'DoctrineLoyalty');
-test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty']) == '');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty']) == 'IndustrialEconomics');
+test.assert(technologies.get_next_target(['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics']) == '');
 
 const base = {
 	get_intake: () => {
@@ -176,6 +181,22 @@ test.assert(technologies.get_initial_state(make_initial_player([
 	'DoctrineLoyalty',
 ])) == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
+	target: 'IndustrialEconomics',
+	progress: 0,
+});
+test.assert(technologies.get_initial_state(make_initial_player([
+	'CentauriEcology',
+	'DoctrineMobility',
+	'InformationNetworks',
+	'AppliedPhysics',
+	'IndustrialBase',
+	'SocialPsych',
+	'Biogenetics',
+	'PlanetaryNetworks',
+	'DoctrineLoyalty',
+	'IndustrialEconomics',
+])) == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
 	target: '',
 	progress: 0,
 });
@@ -493,11 +514,27 @@ event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(research_state == {
 	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
-	target: '',
+	target: 'IndustrialEconomics',
 	progress: 0,
 });
 process_research.rollback(event);
 test.assert(research_state.target == 'DoctrineLoyalty');
+
+research_state = {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
+	target: 'IndustrialEconomics',
+	progress: 69,
+};
+event.data.technology = industrial_economics;
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(research_state == {
+	technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty', 'IndustrialEconomics'],
+	target: '',
+	progress: 0,
+});
+process_research.rollback(event);
+test.assert(research_state.target == 'IndustrialEconomics');
 
 event.data.technology = {
 	id: 'WrongTarget',

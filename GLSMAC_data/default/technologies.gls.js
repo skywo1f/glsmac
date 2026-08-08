@@ -54,6 +54,12 @@ const definitions = {
 		cost: 60,
 		prerequisites: ['DoctrineMobility', 'SocialPsych'],
 	},
+	IndustrialEconomics: {
+		id: 'IndustrialEconomics',
+		name: 'Industrial Economics',
+		cost: 70,
+		prerequisites: ['IndustrialBase'],
+	},
 };
 
 const technology_order = [
@@ -66,6 +72,7 @@ const technology_order = [
 	'Biogenetics',
 	'PlanetaryNetworks',
 	'DoctrineLoyalty',
+	'IndustrialEconomics',
 ];
 
 const get_definition = (id) => {

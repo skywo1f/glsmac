@@ -16,11 +16,12 @@ other_player = {
 	energy_credits: 0,
 	set_energy_credits: (value) => { other_player.energy_credits = value; },
 };
+let positive_economy_multiplier = 0.0;
 const positive_base = {
 	get_owner: () => { return player; },
 	get_intake: () => { return {ENERGY: 10}; },
 	get_consumption: () => { return {ENERGY: 0}; },
-	get_facilities: () => { return [{psych_bonus: 4}]; },
+	get_facilities: () => { return [{psych_bonus: 4, economy_multiplier: positive_economy_multiplier}]; },
 };
 const deficit_base = {
 	get_owner: () => { return player; },
@@ -64,6 +65,12 @@ const positive_allocation = values.f_economy_get_base_allocation(game, positive_
 test.assert(positive_allocation.psych.value == 2);
 test.assert(positive_allocation.psych.bonus == 4);
 test.assert(values.f_economy_get_base_psych(game, positive_base) == 6);
+positive_economy_multiplier = 0.5;
+const bank_allocation = values.f_economy_get_base_allocation(game, positive_base);
+test.assert(bank_allocation.economy.value == 4);
+test.assert(bank_allocation.economy.bonus == 2);
+test.assert(values.f_economy_get_base(game, positive_base) == 6);
+positive_economy_multiplier = 0.0;
 
 let hurry_minerals = 10;
 let hurry_production = {production_kind: 'unit', mineral_cost: 20};

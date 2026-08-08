@@ -13,13 +13,14 @@
 	let biogenetics_accelerated = false;
 	let planetary_networks_accelerated = false;
 	let doctrine_loyalty_accelerated = false;
+	let industrial_economics_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: nine-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: ten-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -59,6 +60,7 @@
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
+			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -83,7 +85,10 @@
 				hologram_theatre.psych_bonus != 4 ||
 				perimeter_defense.required_technology != 'DoctrineLoyalty' ||
 				perimeter_defense.energy_maintenance != 0 ||
-				perimeter_defense.defense_multiplier != 2.0
+				perimeter_defense.defense_multiplier != 2.0 ||
+				energy_bank.required_technology != 'IndustrialEconomics' ||
+				energy_bank.energy_maintenance != 1 ||
+				energy_bank.economy_multiplier != 0.5
 			) {
 				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit or facility definitions are invalid');
 				glsmac.exit();
@@ -106,17 +111,54 @@
 				}
 			}
 
-			if (player.has_technology('DoctrineLoyalty')) {
+			if (player.has_technology('IndustrialEconomics')) {
 				if (
-					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'IndustrialEconomics', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
 					state.target != '' ||
 					state.progress != 0 ||
+					!base.can_set_production('facility', 'EnergyBank') ||
 					!base.can_set_production('facility', 'PerimeterDefense') ||
-					!base.can_set_production('facility', 'HologramTheatre') ||
+					!base.has_facility('HologramTheatre') ||
 					!base.has_facility('RecreationCommons') ||
 					!base.has_facility('RecyclingTanks')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Doctrine Loyalty did not unlock Perimeter Defense');
+					#print('RESEARCH_RUNTIME_FAIL: Industrial Economics did not unlock Energy Bank');
+					glsmac.exit();
+					return;
+				}
+				const allocation_before = game.get('f_economy_get_base_allocation')(game, base);
+				const consumption_before = base.get_consumption().ENERGY;
+				base.add_facility('EnergyBank');
+				const allocation_after = game.get('f_economy_get_base_allocation')(game, base);
+				if (
+					base.get_consumption().ENERGY != consumption_before + 1 ||
+					allocation_after.economy.value != allocation_before.economy.value - 1 ||
+					allocation_after.economy.bonus != #ceil(
+						#to_float(#max(allocation_after.economy.value, 0)) * 0.5
+					)
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Energy Bank maintenance or economy bonus is invalid');
+					glsmac.exit();
+					return;
+				}
+				research_complete = true;
+				finish_if_ready();
+				return;
+			}
+
+			if (player.has_technology('DoctrineLoyalty')) {
+				const industrial_economics = game.get('f_technology_get_definition')('IndustrialEconomics');
+				const progress_is_valid = industrial_economics_accelerated
+					? state.progress == industrial_economics.cost - 1
+					: state.progress >= 0 && state.progress < industrial_economics.cost;
+				if (
+					state.technologies != ['AppliedPhysics', 'Biogenetics', 'CentauriEcology', 'DoctrineLoyalty', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'PlanetaryNetworks', 'SocialPsych'] ||
+					state.target != 'IndustrialEconomics' ||
+					!progress_is_valid ||
+					base.can_set_production('facility', 'EnergyBank') ||
+					!base.can_set_production('facility', 'PerimeterDefense')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Doctrine Loyalty did not advance to Industrial Economics');
 					glsmac.exit();
 					return;
 				}
@@ -131,8 +173,15 @@
 					glsmac.exit();
 					return;
 				}
-				research_complete = true;
-				finish_if_ready();
+				if (!industrial_economics_accelerated) {
+					industrial_economics_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase', 'SocialPsych', 'Biogenetics', 'PlanetaryNetworks', 'DoctrineLoyalty'],
+						target: 'IndustrialEconomics',
+						progress: industrial_economics.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

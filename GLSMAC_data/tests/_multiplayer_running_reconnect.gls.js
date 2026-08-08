@@ -398,6 +398,7 @@
 			const recycling_tanks = facilities[0];
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
+			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -408,10 +409,13 @@
 				recycling_tanks.energy_bonus != 1 ||
 				recycling_tanks.psych_bonus != 0 ||
 				recycling_tanks.defense_multiplier != 1.0 ||
+				recycling_tanks.economy_multiplier != 0.0 ||
 				recreation_commons.psych_bonus != 4 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
 				perimeter_defense.required_technology != 'DoctrineLoyalty' ||
-				perimeter_defense.defense_multiplier != 2.0
+				perimeter_defense.defense_multiplier != 2.0 ||
+				energy_bank.required_technology != 'IndustrialEconomics' ||
+				energy_bank.economy_multiplier != 0.5
 			) {
 				return 'built Recycling Tanks definition is invalid';
 			}

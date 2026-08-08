@@ -63,6 +63,19 @@ const facilities = [
 			required_technology: 'DoctrineLoyalty',
 		},
 	},
+	{
+		id: 'EnergyBank',
+		data: {
+			name: 'Energy Bank',
+			mineral_cost: 80,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 1,
+			economy_multiplier: 0.5,
+			required_technology: 'IndustrialEconomics',
+		},
+	},
 ];
 
 return {
