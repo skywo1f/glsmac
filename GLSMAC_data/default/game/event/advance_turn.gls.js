@@ -4,6 +4,16 @@ return {
 		if (e.caller != 0) {
 			return 'Only host can advance turn';
 		}
+		if (#typeof(e.data.turn_id) != 'Int' || e.data.turn_id <= 0) {
+			return 'Turn ID must be a positive whole number';
+		}
+		const current_turn = e.game.get_turn();
+		if (
+			(e.data.turn_id == 1 && current_turn > 1) ||
+			(e.data.turn_id != 1 && e.data.turn_id != current_turn + 1)
+		) {
+			return 'Turn ID must advance sequentially';
+		}
 		if (e.data.turn_id != 1) {
 			for (player of e.game.get_players()) {
 				if (!e.game.is_turn_complete(player.id)) {

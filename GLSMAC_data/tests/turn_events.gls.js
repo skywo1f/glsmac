@@ -100,8 +100,22 @@ test.assert(advanced_turns == [5]);
 advance_turn.rollback(advance_event);
 test.assert(current_turn == 5);
 
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+advance_event.data.turn_id = 7;
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+advance_event.data.turn_id = 4;
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+advance_event.data.turn_id = 0;
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+advance_event.data.turn_id = 6.0;
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+
 advance_event.data.turn_id = 1;
 completed = [false, false];
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+current_turn = 0;
+test.assert(!#is_defined(advance_turn.validate(advance_event)));
+current_turn = 1;
 test.assert(!#is_defined(advance_turn.validate(advance_event)));
 
 let movement = 0.75;
