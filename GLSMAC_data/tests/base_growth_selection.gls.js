@@ -83,6 +83,7 @@ const base = {
 	get_intake: () => { return {NUTRIENTS: intake_nutrients, MINERALS: 1, ENERGY: 1}; },
 	get_consumption: () => { return {NUTRIENTS: consumption_nutrients, MINERALS: 0, ENERGY: 0}; },
 	get_unworked_tiles: () => { return unworked_tiles; },
+	get_workable_tiles: () => { return unworked_tiles; },
 	get_worked_tiles: () => { return worked_tiles; },
 	get_pops: () => { return pops; },
 	get: (key) => {
@@ -96,6 +97,14 @@ const base = {
 };
 
 const find_tiles = values.f_base_find_best_or_worst_tiles;
+const get_assignable_tiles = values.f_base_get_assignable_worker_tiles;
+test.assert(get_assignable_tiles(base) == [mineral_tile, nutrient_tile]);
+const own_pop = {id: 1};
+mineral_tile.set_working_pop(own_pop);
+pops = [own_pop];
+test.assert(get_assignable_tiles(base) == [mineral_tile, nutrient_tile]);
+mineral_tile.set_working_pop(#undefined);
+pops = [];
 test.assert((find_tiles(base, [mineral_tile, nutrient_tile], 1, 1))[0] == mineral_tile);
 test.assert((find_tiles(base, [mineral_tile, nutrient_tile], 1, 1, 2))[0] == nutrient_tile);
 let reserved_tiles = {};

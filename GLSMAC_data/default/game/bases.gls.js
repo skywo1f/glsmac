@@ -161,6 +161,31 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, 
 	return result;
 };
 
+const get_assignable_worker_tiles = (base) => {
+	const pops = base.get_pops();
+	let result = [];
+	for (tile of base.get_workable_tiles()) {
+		if (tile.get_base() != null) {
+			continue;
+		}
+		if (tile.has('working_pop')) {
+			const working_pop = tile.get('working_pop');
+			let belongs_to_base = false;
+			for (pop of pops) {
+				if (pop == working_pop) {
+					belongs_to_base = true;
+					break;
+				}
+			}
+			if (!belongs_to_base) {
+				continue;
+			}
+		}
+		result :+tile;
+	}
+	return result;
+};
+
 const select_worker_tiles = (base, candidates, count) => {
 	let selected = [];
 	let selected_keys = {};
@@ -561,6 +586,7 @@ return (game) => {
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
+		game.set('f_base_get_assignable_worker_tiles', get_assignable_worker_tiles);
 		game.set('f_base_rebalance_workers', rebalance_workers);
 		game.set('f_base_get_stable_worker_count', get_stable_worker_count);
 		game.set('f_base_select_population_for_reduction', select_population_for_reduction);
