@@ -75,6 +75,7 @@ const score_facility = (def, context) => {
 	return 30000 + infrastructure_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
+		def.growth_rating_bonus * nutrient_weight * 4 +
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
 		def.energy_maintenance * 250 - def.mineral_cost +
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
@@ -97,7 +98,8 @@ const score_facility = (def, context) => {
 		(def.suppress_psych && context.needs_psych ? 100000 : 0) +
 		(
 			def.unit_morale_bonus + def.unit_morale_land_bonus +
-			def.unit_morale_water_bonus + def.unit_morale_air_bonus
+			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
+			def.native_lifecycle_bonus
 		) * morale_weight;
 };
 
@@ -146,6 +148,9 @@ const score_hurry = (def, context) => {
 		if (def.nutrient_bonus > 0 && context.needs_growth) {
 			urgency += 30000;
 		}
+		if (def.growth_rating_bonus > 0 && context.needs_growth) {
+			urgency += 60000;
+		}
 		if (def.population_limit > context.base_size && context.needs_population_capacity) {
 			urgency += 100000;
 		}
@@ -175,7 +180,8 @@ const score_hurry = (def, context) => {
 		}
 		if (
 			def.unit_morale_bonus > 0 || def.unit_morale_land_bonus > 0 ||
-			def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0
+			def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0 ||
+			def.native_lifecycle_bonus > 0
 		) {
 			urgency += get_priority(context, 'military', 0) * 200;
 		}

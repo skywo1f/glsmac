@@ -183,6 +183,7 @@
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
 			const command_center = game.get_bm().get_facility_def('CommandCenter');
+			const childrens_creche = game.get_bm().get_facility_def('ChildrenSCreche');
 			const naval_yard = game.get_bm().get_facility_def('NavalYard');
 			const aerospace_complex = game.get_bm().get_facility_def('AerospaceComplex');
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
@@ -194,6 +195,8 @@
 			const paradise_garden = game.get_bm().get_facility_def('ParadiseGarden');
 			const genejack_factory = game.get_bm().get_facility_def('GenejackFactory');
 			const punishment_sphere = game.get_bm().get_facility_def('PunishmentSphere');
+			const centauri_preserve = game.get_bm().get_facility_def('CentauriPreserve');
+			const temple_of_planet = game.get_bm().get_facility_def('TempleOfPlanet');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -219,6 +222,8 @@
 				recycling_tanks.unit_morale_air_bonus != 0 ||
 				recycling_tanks.water_defense_multiplier != 1.0 ||
 				recycling_tanks.air_defense_multiplier != 1.0 ||
+				recycling_tanks.growth_rating_bonus != 0 ||
+				recycling_tanks.native_lifecycle_bonus != 0 ||
 				recreation_commons.psych_bonus != 0 ||
 				recreation_commons.drone_modifier != -2 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
@@ -229,12 +234,14 @@
 				command_center.required_technology != 'DoctrineMobility' ||
 				command_center.unit_morale_bonus != 0 ||
 				command_center.unit_morale_land_bonus != 2 ||
+				childrens_creche.growth_rating_bonus != 2 ||
 				naval_yard.unit_morale_water_bonus != 2 ||
 				naval_yard.water_defense_multiplier != 2.0 ||
 				aerospace_complex.unit_morale_air_bonus != 2 ||
 				aerospace_complex.air_defense_multiplier != 2.0 ||
 				biology_lab.required_technology != 'CentauriEmpathy' ||
 				biology_lab.research_bonus != 2 ||
+				biology_lab.native_lifecycle_bonus != 1 ||
 				hologram_theatre.psych_multiplier != 0.5 ||
 				research_hospital.research_multiplier != 0.5 ||
 				research_hospital.psych_multiplier != 0.25 ||
@@ -246,7 +253,9 @@
 				genejack_factory.mineral_multiplier != 0.5 ||
 				genejack_factory.drone_modifier != 1 ||
 				punishment_sphere.research_multiplier != -0.5 ||
-				!punishment_sphere.suppress_psych
+				!punishment_sphere.suppress_psych ||
+				centauri_preserve.native_lifecycle_bonus != 1 ||
+				temple_of_planet.native_lifecycle_bonus != 1
 			) {
 				return 'built Recycling Tanks definition is invalid';
 			}

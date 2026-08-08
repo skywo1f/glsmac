@@ -2,13 +2,14 @@ const manifest = #include('content/base_facilities');
 
 const effects = {
 	Headquarters: {energy_bonus: 1},
+	ChildrenSCreche: {growth_rating_bonus: 2},
 	RecyclingTanks: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
 	PerimeterDefense: {defense_multiplier: 2.0},
 	TachyonField: {defense_multiplier: 2.0},
 	RecreationCommons: {drone_modifier: -2},
 	EnergyBank: {economy_multiplier: 0.5},
 	NetworkNode: {research_multiplier: 0.5},
-	BiologyLab: {research_bonus: 2},
+	BiologyLab: {research_bonus: 2, native_lifecycle_bonus: 1},
 	HologramTheatre: {drone_modifier: -2, psych_multiplier: 0.5},
 	ParadiseGarden: {talent_bonus: 2},
 	TreeFarm: {economy_multiplier: 0.5, psych_multiplier: 0.5},
@@ -28,11 +29,14 @@ const effects = {
 	CommandCenter: {unit_morale_land_bonus: 2},
 	NavalYard: {unit_morale_water_bonus: 2, water_defense_multiplier: 2.0},
 	AerospaceComplex: {unit_morale_air_bonus: 2, air_defense_multiplier: 2.0},
-	BioenhancementCenter: {unit_morale_bonus: 2},
+	BioenhancementCenter: {unit_morale_bonus: 2, native_lifecycle_bonus: 1},
+	CentauriPreserve: {native_lifecycle_bonus: 1},
+	TempleOfPlanet: {native_lifecycle_bonus: 1},
 };
 
 const partial_effects = {
 	Headquarters: true,
+	ChildrenSCreche: true,
 	NetworkNode: true,
 	BiologyLab: true,
 	TreeFarm: true,
@@ -46,6 +50,8 @@ const partial_effects = {
 	NavalYard: true,
 	AerospaceComplex: true,
 	BioenhancementCenter: true,
+	CentauriPreserve: true,
+	TempleOfPlanet: true,
 };
 
 const facilities = [];

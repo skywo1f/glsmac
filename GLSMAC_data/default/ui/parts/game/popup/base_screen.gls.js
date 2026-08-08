@@ -135,6 +135,7 @@ return {
 		this.sections.nutrients.set({
 			rows: base.get_size() + 1,
 			columns: game.get('map_growth_base'),
+			capacity: game.get('f_base_get_nutrients_for_growth')(game, base),
 			filled: base.get('accumulated_nutrients'),
 			pending: game.get('f_base_get_pending_growth')(base),
 		});
@@ -203,7 +204,7 @@ return {
 		this.sections.bottom_bar.frame.show();
 	},
 
-	set_cells: (total_width, total_height, columns, rows, filled, pending, cells_el, cell_baseclass, label_el, f_label) => {
+	set_cells: (total_width, total_height, columns, rows, filled, pending, cells_el, cell_baseclass, label_el, f_label, capacity_in) => {
 		cells_el.clear();
 
 		const width = #floor(#to_float(total_width) / #to_float(columns));
@@ -220,6 +221,7 @@ return {
 
 		let i = 0;
 		let cls = '';
+		const capacity = #is_defined(capacity_in) ? capacity_in : rows * columns;
 
 		for (let y = 0; y < rows; y++) {
 			for (let x = 0; x < columns; x++) {
@@ -235,11 +237,13 @@ return {
 					cls = 'empty';
 				}
 				i++;
-				cells_el.panel({
-					class: cell_baseclass + '-' + cls,
-					left: left + 1,
-					top: top + 1,
-				});
+				if (i <= capacity) {
+					cells_el.panel({
+						class: cell_baseclass + '-' + cls,
+						left: left + 1,
+						top: top + 1,
+					});
+				}
 				left += width;
 			}
 			top += height;
@@ -248,7 +252,7 @@ return {
 
 		let progress_in = 0;
 		if (pending > 0) {
-			progress_in = #ceil(#to_float(rows * columns - filled) / #to_float(pending));
+			progress_in = #ceil(#to_float(capacity - filled) / #to_float(pending));
 		}
 		label_el.text = f_label(progress_in);
 	},

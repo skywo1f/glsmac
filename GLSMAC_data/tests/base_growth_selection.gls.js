@@ -121,6 +121,19 @@ test.assert(events[0].data.type == 'WORKER');
 test.assert(events[0].data.worked_tile == nutrient_tile);
 
 events = [];
+facilities = [{growth_rating_bonus: 2}];
+accumulated_nutrients = 15;
+values.f_base_process_growth(game, base);
+test.assert(events == []);
+test.assert(values.f_base_get_nutrients_for_growth(game, base) == 16);
+callbacks.turn({});
+accumulated_nutrients = 16;
+values.f_base_process_growth(game, base);
+test.assert(#sizeof(events) == 1);
+test.assert(events[0].name == 'add_base_pop');
+facilities = [];
+
+events = [];
 base_size = 7;
 accumulated_nutrients = 200;
 values.f_base_process_growth(game, base);

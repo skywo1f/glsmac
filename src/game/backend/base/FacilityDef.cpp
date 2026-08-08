@@ -35,7 +35,9 @@ FacilityDef::FacilityDef(
 	const int64_t unit_morale_water_bonus,
 	const int64_t unit_morale_air_bonus,
 	const float water_defense_multiplier,
-	const float air_defense_multiplier
+	const float air_defense_multiplier,
+	const int64_t growth_rating_bonus,
+	const int64_t native_lifecycle_bonus
 )
 	: m_id( id )
 	, m_name( name )
@@ -62,7 +64,9 @@ FacilityDef::FacilityDef(
 	, m_unit_morale_water_bonus( unit_morale_water_bonus )
 	, m_unit_morale_air_bonus( unit_morale_air_bonus )
 	, m_water_defense_multiplier( water_defense_multiplier )
-	, m_air_defense_multiplier( air_defense_multiplier ) {
+	, m_air_defense_multiplier( air_defense_multiplier )
+	, m_growth_rating_bonus( growth_rating_bonus )
+	, m_native_lifecycle_bonus( native_lifecycle_bonus ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -108,7 +112,11 @@ FacilityDef::FacilityDef(
 		m_water_defense_multiplier < 1.0f ||
 		m_water_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
 		m_air_defense_multiplier < 1.0f ||
-		m_air_defense_multiplier > MAX_DEFENSE_MULTIPLIER
+		m_air_defense_multiplier > MAX_DEFENSE_MULTIPLIER ||
+		m_growth_rating_bonus < 0 ||
+		m_growth_rating_bonus > MAX_GROWTH_RATING_BONUS ||
+		m_native_lifecycle_bonus < 0 ||
+		m_native_lifecycle_bonus > MAX_UNIT_MORALE_BONUS
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -142,6 +150,8 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_unit_morale_air_bonus );
 	buf.WriteFloat( def->m_water_defense_multiplier );
 	buf.WriteFloat( def->m_air_defense_multiplier );
+	buf.WriteInt( def->m_growth_rating_bonus );
+	buf.WriteInt( def->m_native_lifecycle_bonus );
 	return buf;
 }
 
@@ -172,6 +182,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto unit_morale_air_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto water_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
 	const auto air_defense_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto growth_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto native_lifecycle_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -198,7 +210,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		unit_morale_water_bonus,
 		unit_morale_air_bonus,
 		water_defense_multiplier,
-		air_defense_multiplier
+		air_defense_multiplier,
+		growth_rating_bonus,
+		native_lifecycle_bonus
 	);
 }
 
@@ -311,6 +325,14 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"air_defense_multiplier",
 			VALUE( gse::value::Float, , m_air_defense_multiplier )
+		},
+		{
+			"growth_rating_bonus",
+			VALUE( gse::value::Int, , m_growth_rating_bonus )
+		},
+		{
+			"native_lifecycle_bonus",
+			VALUE( gse::value::Int, , m_native_lifecycle_bonus )
 		},
 	};
 WRAPIMPL_END_PTR()

@@ -36,6 +36,8 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		unit_morale_air_bonus: 0,
 		water_defense_multiplier: 1.0,
 		air_defense_multiplier: 1.0,
+		growth_rating_bonus: 0,
+		native_lifecycle_bonus: 0,
 	};
 };
 
@@ -56,6 +58,9 @@ const naval_yard = facility('NavalYard', 0, 0, 0, 0, 0.0, 2, 80);
 naval_yard.unit_morale_water_bonus = 2;
 naval_yard.water_defense_multiplier = 2.0;
 const biology_lab = facility('BiologyLab', 0, 0, 0, 0, 0.0, 1, 60, 1.0, 0.0, 0, 2);
+biology_lab.native_lifecycle_bonus = 1;
+const childrens_creche = facility('ChildrenSCreche', 0, 0, 0, 0, 0.0, 1, 50);
+childrens_creche.growth_rating_bonus = 2;
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -127,6 +132,10 @@ growth_context.needs_growth = true;
 test.assert(
 	production.score_facility(recycling, growth_context) >
 	production.score_facility(recycling, context(false, false, false, false, 10))
+);
+test.assert(
+	production.score_facility(childrens_creche, growth_context) >
+	production.score_facility(childrens_creche, context(false, false, false, false, 10))
 );
 
 let defense_context = context(false, false, false, false, 10);

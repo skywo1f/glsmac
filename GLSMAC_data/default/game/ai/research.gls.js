@@ -52,6 +52,7 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		const defense_priority = get_priority(context, 'defense', 0);
 		score += 1000 + development_priority * 10;
 		score += def.nutrient_bonus * (500 + growth_priority * 45);
+		score += def.growth_rating_bonus * (2000 + growth_priority * 300);
 		score += def.mineral_bonus * 1500 + def.energy_bonus * 1000;
 		score += def.psych_bonus * (100 + psych_priority * 119);
 		score += #round(
@@ -90,7 +91,8 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		}
 		score += (
 			def.unit_morale_bonus + def.unit_morale_land_bonus +
-			def.unit_morale_water_bonus + def.unit_morale_air_bonus
+			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
+			def.native_lifecycle_bonus
 		) * (
 			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
 		);

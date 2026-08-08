@@ -115,6 +115,31 @@ const bioenhancement_center = {
 	production_kind: 'facility',
 	mineral_cost: 100,
 	unit_morale_bonus: 2,
+	native_lifecycle_bonus: 1,
+};
+const biology_lab = {
+	id: 'BiologyLab',
+	name: 'Biology Lab',
+	production_kind: 'facility',
+	mineral_cost: 60,
+	unit_morale_bonus: 0,
+	native_lifecycle_bonus: 1,
+};
+const centauri_preserve = {
+	id: 'CentauriPreserve',
+	name: 'Centauri Preserve',
+	production_kind: 'facility',
+	mineral_cost: 100,
+	unit_morale_bonus: 0,
+	native_lifecycle_bonus: 1,
+};
+const temple_of_planet = {
+	id: 'TempleOfPlanet',
+	name: 'Temple of Planet',
+	production_kind: 'facility',
+	mineral_cost: 200,
+	unit_morale_bonus: 0,
+	native_lifecycle_bonus: 1,
 };
 const definitions = [
 	mind_worms,
@@ -129,6 +154,9 @@ const definitions = [
 	naval_yard,
 	aerospace_complex,
 	bioenhancement_center,
+	biology_lab,
+	centauri_preserve,
+	temple_of_planet,
 ];
 
 let production_queue = [];
@@ -563,6 +591,24 @@ test.assert(accumulated_minerals == 25);
 test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
 test.assert(!#is_defined(spawned_unit));
 test.assert(despawned_unit.id == 17);
+built_facilities = [];
+
+production_queue = [mind_worms];
+built_facilities = [
+	'BiologyLab',
+	'BioenhancementCenter',
+	'CentauriPreserve',
+	'TempleOfPlanet',
+];
+accumulated_minerals = 25;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == mind_worms.id);
+test.assert(spawn_data.morale == 5);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 25);
 built_facilities = [];
 
 production_queue = [mind_worms];

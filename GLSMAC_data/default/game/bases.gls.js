@@ -120,7 +120,17 @@ const process_psych = (game, base, allocated_psych) => {
 };
 
 const get_nutrients_for_growth = (game, base) => {
-	return globals.map_growth_base * (base.get_size() + 1);
+	let growth_rating_bonus = 0;
+	if (#is_defined(base.get_facilities)) {
+		for (facility of base.get_facilities()) {
+			growth_rating_bonus += #is_defined(facility.growth_rating_bonus)
+				? facility.growth_rating_bonus
+				: 0;
+		}
+	}
+	const base_cost = globals.map_growth_base * (base.get_size() + 1);
+	const cost_scale = #max(10 - growth_rating_bonus, 1);
+	return #ceil(#to_float(base_cost * cost_scale) / 10.0);
 };
 
 const get_pending_growth = (base) => {
@@ -649,6 +659,7 @@ return (game) => {
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
+		game.set('f_base_get_nutrients_for_growth', get_nutrients_for_growth);
 		game.set('f_base_get_population_limit', get_population_limit);
 		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
 		game.set('f_base_reset_nutrients', reset_nutrients);

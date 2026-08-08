@@ -340,6 +340,8 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, unit_morale_air_bonus, def, "unit_morale_air_bonus", Int, 0 );
 				N_GETPROP_OPT( float, water_defense_multiplier, def, "water_defense_multiplier", Float, 1.0f );
 				N_GETPROP_OPT( float, air_defense_multiplier, def, "air_defense_multiplier", Float, 1.0f );
+				N_GETPROP_OPT( int64_t, growth_rating_bonus, def, "growth_rating_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, native_lifecycle_bonus, def, "native_lifecycle_bonus", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -385,7 +387,11 @@ WRAPIMPL_BEGIN( BaseManager )
 					water_defense_multiplier < 1.0f ||
 					water_defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					air_defense_multiplier < 1.0f ||
-					air_defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER
+					air_defense_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
+					growth_rating_bonus < 0 ||
+					growth_rating_bonus > base::FacilityDef::MAX_GROWTH_RATING_BONUS ||
+					native_lifecycle_bonus < 0 ||
+					native_lifecycle_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -418,7 +424,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					unit_morale_water_bonus,
 					unit_morale_air_bonus,
 					water_defense_multiplier,
-					air_defense_multiplier
+					air_defense_multiplier,
+					growth_rating_bonus,
+					native_lifecycle_bonus
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

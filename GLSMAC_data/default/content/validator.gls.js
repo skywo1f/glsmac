@@ -33,6 +33,8 @@ const facility_fields = {
 	unit_morale_air_bonus: true,
 	water_defense_multiplier: true,
 	air_defense_multiplier: true,
+	growth_rating_bonus: true,
+	native_lifecycle_bonus: true,
 };
 
 const facility_manifest_fields = {
@@ -449,6 +451,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'unit_morale_air_bonus', path, errors, false, 0, 10);
 		validate_number(data, 'water_defense_multiplier', path, errors, false, 1.0, 10.0);
 		validate_number(data, 'air_defense_multiplier', path, errors, false, 1.0, 10.0);
+		validate_int(data, 'growth_rating_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'native_lifecycle_bonus', path, errors, false, 0, 10);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -481,7 +485,9 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.unit_morale_water_bonus) && data.unit_morale_water_bonus > 0) ||
 			(#is_defined(data.unit_morale_air_bonus) && data.unit_morale_air_bonus > 0) ||
 			(#is_defined(data.water_defense_multiplier) && data.water_defense_multiplier > 1.0) ||
-			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0);
+			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0) ||
+			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
+			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0);
 		if (!has_effect) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}

@@ -161,6 +161,8 @@
 				let air_morale_bonus = 0;
 				let water_defense_multiplier = 1.0;
 				let air_defense_multiplier = 1.0;
+				let growth_rating_bonus = 0;
+				let native_lifecycle_bonus = 0;
 				let drone_modifier = 0;
 				let talent_bonus = 0;
 				let suppress_psych = 0;
@@ -188,6 +190,8 @@
 						definition.air_defense_multiplier - 1.0,
 						0.0
 					);
+					growth_rating_bonus += definition.growth_rating_bonus;
+					native_lifecycle_bonus += definition.native_lifecycle_bonus;
 					drone_modifier += definition.drone_modifier;
 					talent_bonus += definition.talent_bonus;
 					suppress_psych += definition.suppress_psych ? 1 : 0;
@@ -197,15 +201,16 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 28 ||
+					#sizeof(facility_ids) != 31 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 66 || mineral_multiplier != 2.0 ||
+					maintenance != 72 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
 					research_multiplier != 2.0 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 2 ||
 					land_morale_bonus != 2 || water_morale_bonus != 2 ||
 					air_morale_bonus != 2 || water_defense_multiplier != 2.0 ||
-					air_defense_multiplier != 2.0 ||
+					air_defense_multiplier != 2.0 || growth_rating_bonus != 2 ||
+					native_lifecycle_bonus != 4 ||
 					drone_modifier != -5 || talent_bonus != 2 || suppress_psych != 1 ||
 					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus ||
 					intake_after.MINERALS != #ceil(

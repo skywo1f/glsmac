@@ -400,7 +400,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					2,
 					3,
 					1.5f,
-					2.0f
+					2.0f,
+					2,
+					1
 				);
 				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
 				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
@@ -440,6 +442,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					facility_roundtrip->m_water_defense_multiplier == 1.5f &&
 					facility_roundtrip->m_air_defense_multiplier == 2.0f,
 					"facility triad effects were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_growth_rating_bonus == 2 &&
+					facility_roundtrip->m_native_lifecycle_bonus == 1,
+					"facility growth or native lifecycle effect was not serialized"
 				);
 
 				types::Buffer legacy_facility;
@@ -484,6 +491,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy_facility_parsed->m_water_defense_multiplier == 1.0f &&
 					legacy_facility_parsed->m_air_defense_multiplier == 1.0f,
 					"legacy facility definition gained a triad effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_growth_rating_bonus == 0 &&
+					legacy_facility_parsed->m_native_lifecycle_bonus == 0,
+					"legacy facility definition gained a growth or lifecycle effect"
 				);
 
 				const auto make_unit_def = [](

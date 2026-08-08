@@ -25,6 +25,7 @@ public:
 	static constexpr int64_t MAX_UNIT_MORALE_BONUS = 10;
 	static constexpr int64_t MAX_POPULATION_LIMIT = 1000000;
 	static constexpr int64_t MAX_DRONE_MODIFIER = 1000000;
+	static constexpr int64_t MAX_GROWTH_RATING_BONUS = 10;
 
 	FacilityDef(
 		const std::string& id,
@@ -52,7 +53,9 @@ public:
 		const int64_t unit_morale_water_bonus = 0,
 		const int64_t unit_morale_air_bonus = 0,
 		const float water_defense_multiplier = 1.0f,
-		const float air_defense_multiplier = 1.0f
+		const float air_defense_multiplier = 1.0f,
+		const int64_t growth_rating_bonus = 0,
+		const int64_t native_lifecycle_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -82,6 +85,8 @@ public:
 	const int64_t m_unit_morale_air_bonus;
 	const float m_water_defense_multiplier;
 	const float m_air_defense_multiplier;
+	const int64_t m_growth_rating_bonus;
+	const int64_t m_native_lifecycle_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

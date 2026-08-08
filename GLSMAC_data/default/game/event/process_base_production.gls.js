@@ -11,8 +11,12 @@ const get_queue_specs = (base) => {
 
 const get_production_morale = (game, base, production) => {
 	let morale = 1;
-	if (!production.is_native) {
-		for (facility of base.get_facilities()) {
+	for (facility of base.get_facilities()) {
+		if (production.is_native) {
+			morale += #is_defined(facility.native_lifecycle_bonus)
+				? facility.native_lifecycle_bonus
+				: 0;
+		} else {
 			morale += facility.unit_morale_bonus;
 			if (#is_defined(production.is_land) && production.is_land) {
 				morale += #is_defined(facility.unit_morale_land_bonus)
