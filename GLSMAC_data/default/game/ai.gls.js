@@ -666,7 +666,7 @@ const play_turn = (game, player, done) => {
 		let action_delay = MOVEMENT_ACTION_DELAY;
 		let waiting_for_animation = false;
 		for (unit of current_units) {
-			if (can_attempt_action(unit, action_attempts) && unit.get_tile().is_locked()) {
+			if (unit.get_tile().is_locked()) {
 				waiting_for_animation = true;
 				break;
 			}

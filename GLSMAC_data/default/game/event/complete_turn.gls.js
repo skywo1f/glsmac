@@ -1,8 +1,13 @@
+const turn_rules = #include('../turn_rules');
+
 return {
 
 	validate: (e) => {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Turn already completed by this player';
+		}
+		if (turn_rules.has_pending_owned_animation(e.game, e.caller)) {
+			return 'Player has a unit animation still in progress';
 		}
 	},
 

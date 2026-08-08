@@ -10,6 +10,7 @@ let uncompleted_calls = [];
 let advanced_turns = [];
 let current_turn = 4;
 let is_master = true;
+let unit_tile_locked = false;
 
 const players = [
 	{id: 0},
@@ -36,6 +37,22 @@ const game = {
 	get_turn: () => {
 		return current_turn;
 	},
+	get_um: () => {
+		return {
+			get_units: () => {
+				return [
+					{
+						owner: 1,
+						get_tile: () => { return {is_locked: () => { return unit_tile_locked; }}; },
+					},
+					{
+						owner: 0,
+						get_tile: () => { return {is_locked: () => { return true; }}; },
+					},
+				];
+			},
+		};
+	},
 	event: (name, data) => {
 		emitted_events :+{
 			name: name,
@@ -55,6 +72,9 @@ let event = {
 };
 
 test.assert(!#is_defined(complete_turn.validate(event)));
+unit_tile_locked = true;
+test.assert(complete_turn.validate(event) == 'Player has a unit animation still in progress');
+unit_tile_locked = false;
 complete_turn.apply(event);
 test.assert(completed == [false, true]);
 test.assert(completed_calls == [1]);

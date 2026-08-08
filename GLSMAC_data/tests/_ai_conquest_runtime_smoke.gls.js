@@ -169,7 +169,7 @@
 			game.event('spawn_unit', {
 				owner: ai,
 				tile: staging_tile,
-				type: 'ReconRover',
+				type: 'ScoutPatrol',
 				morale: 5,
 				health: 1.0,
 			});
