@@ -255,6 +255,15 @@ const queue_production = (game, player, bases, units) => {
 			combat_count,
 			mobile_combat_count
 		);
+		const can_start_project =
+			#sizeof(bases) >= 3 &&
+			former_count >= #sizeof(bases) &&
+			metrics.underdefended_bases == 0 &&
+			#sizeof(bases) + colony_count >= metrics.desired_base_count;
+		const get_project_effects = game.get('f_project_get_effects');
+		const project_effects = #is_defined(get_project_effects)
+			? get_project_effects(base)
+			: {support_bonus: 0};
 		const context = {
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: former_count < #sizeof(bases),
@@ -277,10 +286,11 @@ const queue_production = (game, player, bases, units) => {
 				base.get_size() >= game.get('f_base_get_population_limit')(base),
 			base_size: base.get_size(),
 			can_expand: base.get_size() > 1,
+			can_start_project: can_start_project,
 			nutrient_surplus: nutrient_surplus,
 			mineral_surplus: mineral_surplus,
 			supported_units: supported_units,
-			free_support: #max(base.get_size(), 1),
+			free_support: #max(base.get_size(), 1) + project_effects.support_bonus,
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			available_energy: available_energy,
 			priorities: priorities,

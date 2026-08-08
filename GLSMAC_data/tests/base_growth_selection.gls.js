@@ -133,6 +133,19 @@ test.assert(#sizeof(events) == 1);
 test.assert(events[0].name == 'add_base_pop');
 facilities = [];
 
+values.f_project_get_effects = (target_base) => {
+	test.assert(target_base == base);
+	return {
+		growth_rating_bonus: 10,
+		population_limit_bonus: 2,
+	};
+};
+base_size = 1;
+test.assert(values.f_base_get_nutrients_for_growth(game, base) == 2);
+base_size = 7;
+test.assert(values.f_base_get_population_limit(base) == 9);
+values.f_project_get_effects = #undefined;
+
 events = [];
 base_size = 7;
 accumulated_nutrients = 200;

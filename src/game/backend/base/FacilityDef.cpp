@@ -38,7 +38,19 @@ FacilityDef::FacilityDef(
 	const float air_defense_multiplier,
 	const int64_t growth_rating_bonus,
 	const int64_t native_lifecycle_bonus,
-	const bool is_project
+	const bool is_project,
+	const std::string& granted_facility,
+	const int64_t global_talent_bonus,
+	const int64_t global_growth_rating_bonus,
+	const int64_t global_population_limit_bonus,
+	const int64_t global_mineral_bonus,
+	const int64_t global_support_bonus,
+	const float global_maintenance_multiplier,
+	const int64_t global_native_lifecycle_bonus,
+	const int64_t network_node_drone_modifier,
+	const int64_t network_node_research_bonus,
+	const int64_t worked_tile_energy_bonus,
+	const bool global_prevent_riots
 )
 	: m_id( id )
 	, m_name( name )
@@ -68,7 +80,19 @@ FacilityDef::FacilityDef(
 	, m_air_defense_multiplier( air_defense_multiplier )
 	, m_growth_rating_bonus( growth_rating_bonus )
 	, m_native_lifecycle_bonus( native_lifecycle_bonus )
-	, m_is_project( is_project ) {
+	, m_is_project( is_project )
+	, m_granted_facility( granted_facility )
+	, m_global_talent_bonus( global_talent_bonus )
+	, m_global_growth_rating_bonus( global_growth_rating_bonus )
+	, m_global_population_limit_bonus( global_population_limit_bonus )
+	, m_global_mineral_bonus( global_mineral_bonus )
+	, m_global_support_bonus( global_support_bonus )
+	, m_global_maintenance_multiplier( global_maintenance_multiplier )
+	, m_global_native_lifecycle_bonus( global_native_lifecycle_bonus )
+	, m_network_node_drone_modifier( network_node_drone_modifier )
+	, m_network_node_research_bonus( network_node_research_bonus )
+	, m_worked_tile_energy_bonus( worked_tile_energy_bonus )
+	, m_global_prevent_riots( global_prevent_riots ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -118,7 +142,41 @@ FacilityDef::FacilityDef(
 		m_growth_rating_bonus < 0 ||
 		m_growth_rating_bonus > MAX_GROWTH_RATING_BONUS ||
 		m_native_lifecycle_bonus < 0 ||
-		m_native_lifecycle_bonus > MAX_UNIT_MORALE_BONUS
+		m_native_lifecycle_bonus > MAX_UNIT_MORALE_BONUS ||
+		!m_is_project && (
+			!m_granted_facility.empty() ||
+			m_global_talent_bonus != 0 ||
+			m_global_growth_rating_bonus != 0 ||
+			m_global_population_limit_bonus != 0 ||
+			m_global_mineral_bonus != 0 ||
+			m_global_support_bonus != 0 ||
+			m_global_maintenance_multiplier != 1.0f ||
+			m_global_native_lifecycle_bonus != 0 ||
+			m_network_node_drone_modifier != 0 ||
+			m_network_node_research_bonus != 0 ||
+			m_worked_tile_energy_bonus != 0 ||
+			m_global_prevent_riots
+		) ||
+		m_global_talent_bonus < 0 ||
+		m_global_talent_bonus > MAX_RESOURCE_BONUS ||
+		m_global_growth_rating_bonus < 0 ||
+		m_global_growth_rating_bonus > MAX_GROWTH_RATING_BONUS ||
+		m_global_population_limit_bonus < 0 ||
+		m_global_population_limit_bonus > MAX_POPULATION_LIMIT ||
+		m_global_mineral_bonus < 0 ||
+		m_global_mineral_bonus > MAX_RESOURCE_BONUS ||
+		m_global_support_bonus < 0 ||
+		m_global_support_bonus > MAX_RESOURCE_BONUS ||
+		m_global_maintenance_multiplier < 0.0f ||
+		m_global_maintenance_multiplier > 1.0f ||
+		m_global_native_lifecycle_bonus < 0 ||
+		m_global_native_lifecycle_bonus > MAX_UNIT_MORALE_BONUS ||
+		m_network_node_drone_modifier < -MAX_DRONE_MODIFIER ||
+		m_network_node_drone_modifier > MAX_DRONE_MODIFIER ||
+		m_network_node_research_bonus < 0 ||
+		m_network_node_research_bonus > MAX_RESOURCE_BONUS ||
+		m_worked_tile_energy_bonus < 0 ||
+		m_worked_tile_energy_bonus > MAX_RESOURCE_BONUS
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -155,6 +213,18 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_growth_rating_bonus );
 	buf.WriteInt( def->m_native_lifecycle_bonus );
 	buf.WriteBool( def->m_is_project );
+	buf.WriteString( def->m_granted_facility );
+	buf.WriteInt( def->m_global_talent_bonus );
+	buf.WriteInt( def->m_global_growth_rating_bonus );
+	buf.WriteInt( def->m_global_population_limit_bonus );
+	buf.WriteInt( def->m_global_mineral_bonus );
+	buf.WriteInt( def->m_global_support_bonus );
+	buf.WriteFloat( def->m_global_maintenance_multiplier );
+	buf.WriteInt( def->m_global_native_lifecycle_bonus );
+	buf.WriteInt( def->m_network_node_drone_modifier );
+	buf.WriteInt( def->m_network_node_research_bonus );
+	buf.WriteInt( def->m_worked_tile_energy_bonus );
+	buf.WriteBool( def->m_global_prevent_riots );
 	return buf;
 }
 
@@ -188,6 +258,18 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto growth_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto native_lifecycle_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto is_project = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto granted_facility = buf.GetRemaining() > 0 ? buf.ReadString() : "";
+	const auto global_talent_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_growth_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_population_limit_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_mineral_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_support_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_maintenance_multiplier = buf.GetRemaining() > 0 ? buf.ReadFloat() : 1.0f;
+	const auto global_native_lifecycle_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto network_node_drone_modifier = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto network_node_research_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto worked_tile_energy_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto global_prevent_riots = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -217,7 +299,19 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		air_defense_multiplier,
 		growth_rating_bonus,
 		native_lifecycle_bonus,
-		is_project
+		is_project,
+		granted_facility,
+		global_talent_bonus,
+		global_growth_rating_bonus,
+		global_population_limit_bonus,
+		global_mineral_bonus,
+		global_support_bonus,
+		global_maintenance_multiplier,
+		global_native_lifecycle_bonus,
+		network_node_drone_modifier,
+		network_node_research_bonus,
+		worked_tile_energy_bonus,
+		global_prevent_riots
 	);
 }
 
@@ -342,6 +436,54 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"is_project",
 			VALUE( gse::value::Bool, , m_is_project )
+		},
+		{
+			"granted_facility",
+			VALUE( gse::value::String, , m_granted_facility )
+		},
+		{
+			"global_talent_bonus",
+			VALUE( gse::value::Int, , m_global_talent_bonus )
+		},
+		{
+			"global_growth_rating_bonus",
+			VALUE( gse::value::Int, , m_global_growth_rating_bonus )
+		},
+		{
+			"global_population_limit_bonus",
+			VALUE( gse::value::Int, , m_global_population_limit_bonus )
+		},
+		{
+			"global_mineral_bonus",
+			VALUE( gse::value::Int, , m_global_mineral_bonus )
+		},
+		{
+			"global_support_bonus",
+			VALUE( gse::value::Int, , m_global_support_bonus )
+		},
+		{
+			"global_maintenance_multiplier",
+			VALUE( gse::value::Float, , m_global_maintenance_multiplier )
+		},
+		{
+			"global_native_lifecycle_bonus",
+			VALUE( gse::value::Int, , m_global_native_lifecycle_bonus )
+		},
+		{
+			"network_node_drone_modifier",
+			VALUE( gse::value::Int, , m_network_node_drone_modifier )
+		},
+		{
+			"network_node_research_bonus",
+			VALUE( gse::value::Int, , m_network_node_research_bonus )
+		},
+		{
+			"worked_tile_energy_bonus",
+			VALUE( gse::value::Int, , m_worked_tile_energy_bonus )
+		},
+		{
+			"global_prevent_riots",
+			VALUE( gse::value::Bool, , m_global_prevent_riots )
 		},
 	};
 WRAPIMPL_END_PTR()

@@ -7,7 +7,33 @@ const DOCTOR_PSYCH = 2;
 const FREE_SUPPORTED_UNITS_PER_POP = 1;
 const DEFAULT_POPULATION_LIMIT = 7;
 
-const is_rioting = (base) => {
+const get_effective_facilities = (game, base) => {
+	const resolver = #is_defined(game.get)
+		? game.get('f_base_get_effective_facilities')
+		: #undefined;
+	return #is_defined(resolver) ? resolver(base) : base.get_facilities();
+};
+
+const get_project_effects = (game, base) => {
+	const resolver = #is_defined(game.get) ? game.get('f_project_get_effects') : #undefined;
+	return #is_defined(resolver) ? resolver(base) : {
+		talent_bonus: 0,
+		growth_rating_bonus: 0,
+		population_limit_bonus: 0,
+		mineral_bonus: 0,
+		support_bonus: 0,
+		maintenance_multiplier: 1.0,
+		native_lifecycle_bonus: 0,
+		network_node_drone_modifier: 0,
+		network_node_research_bonus: 0,
+		prevent_riots: false,
+	};
+};
+
+const is_rioting = (game, base) => {
+	if (get_project_effects(game, base).prevent_riots) {
+		return false;
+	}
 	let talents = 0;
 	let drones = 0;
 	for (pop of base.get_pops()) {
@@ -46,16 +72,16 @@ const get_psych_state = (game, base) => {
 			result.specialists = result.specialists + 1;
 		}
 	}
-	result.is_rioting = is_rioting(base);
+	result.is_rioting = is_rioting(game, base);
 	return result;
 };
 
-const get_social_facility_effects = (base) => {
+const get_social_facility_effects = (game, base) => {
 	let result = {drone_modifier: 0, talent_bonus: 0, suppress_psych: false};
 	if (!#is_defined(base.get_facilities)) {
 		return result;
 	}
-	for (facility of base.get_facilities()) {
+	for (facility of get_effective_facilities(game, base)) {
 		result.drone_modifier = result.drone_modifier + (
 			#is_defined(facility.drone_modifier) ? facility.drone_modifier : 0
 		);
@@ -65,6 +91,12 @@ const get_social_facility_effects = (base) => {
 		result.suppress_psych = result.suppress_psych || (
 			#is_defined(facility.suppress_psych) && facility.suppress_psych
 		);
+	}
+	const project_effects = get_project_effects(game, base);
+	result.talent_bonus = result.talent_bonus + project_effects.talent_bonus;
+	if (#is_defined(base.has_facility) && base.has_facility('NetworkNode')) {
+		result.drone_modifier = result.drone_modifier +
+			project_effects.network_node_drone_modifier;
 	}
 	return result;
 };
@@ -93,7 +125,7 @@ const apply_psych_improvements = (base, improvements) => {
 const process_psych = (game, base, allocated_psych) => {
 	let laborer_count = 0;
 	let psych = allocated_psych;
-	const effects = get_social_facility_effects(base);
+	const effects = get_social_facility_effects(game, base);
 	const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
 	for (pop of base.get_pops()) {
 		if (pop.has('worked_tile')) {
@@ -122,12 +154,13 @@ const process_psych = (game, base, allocated_psych) => {
 const get_nutrients_for_growth = (game, base) => {
 	let growth_rating_bonus = 0;
 	if (#is_defined(base.get_facilities)) {
-		for (facility of base.get_facilities()) {
+		for (facility of get_effective_facilities(game, base)) {
 			growth_rating_bonus += #is_defined(facility.growth_rating_bonus)
 				? facility.growth_rating_bonus
 				: 0;
 		}
 	}
+	growth_rating_bonus += get_project_effects(game, base).growth_rating_bonus;
 	const base_cost = globals.map_growth_base * (base.get_size() + 1);
 	const cost_scale = #max(10 - growth_rating_bonus, 1);
 	return #ceil(#to_float(base_cost * cost_scale) / 10.0);
@@ -166,17 +199,17 @@ const get_tile_score = (base, tile, projected_size) => {
 	return score;
 };
 
-const get_population_limit = (base) => {
+const get_population_limit = (game, base) => {
 	let limit = DEFAULT_POPULATION_LIMIT;
 	if (!#is_defined(base.get_facilities)) {
 		return limit;
 	}
-	for (facility of base.get_facilities()) {
+	for (facility of get_effective_facilities(game, base)) {
 		if (#is_defined(facility.population_limit)) {
 			limit = #max(limit, facility.population_limit);
 		}
 	}
-	return limit;
+	return limit + get_project_effects(game, base).population_limit_bonus;
 };
 
 const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, require_available, excluded_keys) => { // modifier 1 to find best tiles, -1 to find worst tiles
@@ -288,9 +321,9 @@ const select_worker_tiles = (base, candidates, count) => {
 	return selected;
 };
 
-const get_stable_worker_count = (base, allocated_psych) => {
+const get_stable_worker_count = (game, base, allocated_psych) => {
 	const population = #sizeof(base.get_pops());
-	const effects = get_social_facility_effects(base);
+	const effects = get_social_facility_effects(game, base);
 	if (effects.suppress_psych) {
 		return population;
 	}
@@ -413,14 +446,14 @@ const select_population_for_reduction = (base) => {
 	return #is_defined(pop) ? pop : null;
 };
 
-const rebalance_ai_workers = (base, allocated_psych) => {
+const rebalance_ai_workers = (game, base, allocated_psych) => {
 	if (base.get_owner().type == 'ai') {
-		rebalance_workers(base, get_stable_worker_count(base, allocated_psych));
+		rebalance_workers(base, get_stable_worker_count(game, base, allocated_psych));
 	}
 };
 
 const process_growth = (game, base, allocated_psych) => {
-	rebalance_ai_workers(base, allocated_psych);
+	rebalance_ai_workers(game, base, allocated_psych);
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
@@ -447,7 +480,7 @@ const process_growth = (game, base, allocated_psych) => {
 		return;
 	}
 	base.set('accumulated_nutrients', accumulated);
-	const population_limit = get_population_limit(base);
+	const population_limit = get_population_limit(game, base);
 	if (base.get_size() >= population_limit) {
 		base.set(
 			'accumulated_nutrients',
@@ -533,7 +566,7 @@ const pop_work_tile = (base, pop, tile) => {
 };
 
 const get_pending_production = (game, base) => {
-	if (is_rioting(base)) {
+	if (is_rioting(game, base)) {
 		return 0;
 	}
 	const intake = base.get_intake();
@@ -562,24 +595,32 @@ return (game) => {
 			ENERGY: 0,
 		};
 
+		const facilities = get_effective_facilities(game, e.base);
+		let worked_tile_energy_bonus = 0;
+		for (facility of facilities) {
+			worked_tile_energy_bonus += #is_defined(facility.worked_tile_energy_bonus)
+				? facility.worked_tile_energy_bonus
+				: 0;
+		}
 		const f_add_tile = (tile) => {
 			const r = tile.get_resources(e.base.get_owner());
 			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS;
 			result.MINERALS = result.MINERALS + r.MINERALS;
-			result.ENERGY = result.ENERGY + r.ENERGY;
+			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus;
 		};
 
 		f_add_tile(e.base.get_tile());
 		for (tile of e.base.get_worked_tiles()) {
 			f_add_tile(tile);
 		}
-		for (facility of e.base.get_facilities()) {
+		for (facility of facilities) {
 			result.NUTRIENTS = result.NUTRIENTS + facility.nutrient_bonus;
 			result.MINERALS = result.MINERALS + facility.mineral_bonus;
 			result.ENERGY = result.ENERGY + facility.energy_bonus;
 		}
+		result.MINERALS = result.MINERALS + get_project_effects(game, e.base).mineral_bonus;
 		let mineral_multiplier = 0.0;
-		for (facility of e.base.get_facilities()) {
+		for (facility of facilities) {
 			mineral_multiplier += #is_defined(facility.mineral_multiplier)
 				? facility.mineral_multiplier
 				: 0.0;
@@ -604,11 +645,16 @@ return (game) => {
 				supported_units++;
 			}
 		}
-		const free_support = #max(e.base.get_size(), 1) * FREE_SUPPORTED_UNITS_PER_POP;
+		const project_effects = get_project_effects(game, e.base);
+		const free_support = #max(e.base.get_size(), 1) * FREE_SUPPORTED_UNITS_PER_POP +
+			project_effects.support_bonus;
 		result.MINERALS = #max(supported_units - free_support, 0);
-		for (facility of e.base.get_facilities()) {
+		for (facility of get_effective_facilities(game, e.base)) {
 			result.ENERGY = result.ENERGY + facility.energy_maintenance;
 		}
+		result.ENERGY = #ceil(
+			#to_float(result.ENERGY) * project_effects.maintenance_multiplier
+		);
 
 		return result;
 	});
@@ -660,7 +706,7 @@ return (game) => {
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
 		game.set('f_base_get_nutrients_for_growth', get_nutrients_for_growth);
-		game.set('f_base_get_population_limit', get_population_limit);
+		game.set('f_base_get_population_limit', (base) => { return get_population_limit(game, base); });
 		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);
@@ -671,7 +717,10 @@ return (game) => {
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
 		game.set('f_base_get_assignable_worker_tiles', get_assignable_worker_tiles);
 		game.set('f_base_rebalance_workers', rebalance_workers);
-		game.set('f_base_get_stable_worker_count', get_stable_worker_count);
+		game.set(
+			'f_base_get_stable_worker_count',
+			(base, psych) => { return get_stable_worker_count(game, base, psych); }
+		);
 		game.set('f_base_select_population_for_reduction', select_population_for_reduction);
 
 		// new turn, process all bases

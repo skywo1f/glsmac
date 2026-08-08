@@ -62,6 +62,28 @@ const base = {
 const labs = technologies.get_base_labs(base);
 test.assert(labs == {allocation: 0.4, value: 2, bonus: 2, total: 4});
 
+const network_backbone_game = {
+	get: (key) => {
+		if (key == 'f_base_get_effective_facilities') {
+			return (base) => { return base.get_facilities(); };
+		}
+		if (key == 'f_project_get_effects') {
+			return (base) => { return {network_node_research_bonus: 1}; };
+		}
+		return #undefined;
+	},
+};
+const network_backbone_base = {
+	get_intake: base.get_intake,
+	get_consumption: base.get_consumption,
+	get_facilities: () => { return []; },
+	has_facility: (id) => { return id == 'NetworkNode'; },
+};
+test.assert(
+	technologies.get_base_labs(network_backbone_base, network_backbone_game)
+	== {allocation: 0.4, value: 2, bonus: 3, total: 5}
+);
+
 const network_labs = technologies.get_base_labs({
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,

@@ -1,5 +1,10 @@
 const PSYCH_ALLOCATION = 0.2;
 
+const get_effective_facilities = (game, base) => {
+	const resolver = game.get('f_base_get_effective_facilities');
+	return #is_defined(resolver) ? resolver(base) : base.get_facilities();
+};
+
 const get_base_allocation = (game, base) => {
 	const intake = base.get_intake();
 	const consumption = base.get_consumption();
@@ -10,7 +15,7 @@ const get_base_allocation = (game, base) => {
 	let psych_bonus = 0;
 	let psych_multiplier = 0.0;
 	let economy_multiplier = 0.0;
-	for (facility of base.get_facilities()) {
+	for (facility of get_effective_facilities(game, base)) {
 		psych_bonus += facility.psych_bonus;
 		psych_multiplier += #is_defined(facility.psych_multiplier)
 			? facility.psych_multiplier

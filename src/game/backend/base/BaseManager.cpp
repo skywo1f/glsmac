@@ -362,6 +362,18 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, growth_rating_bonus, def, "growth_rating_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, native_lifecycle_bonus, def, "native_lifecycle_bonus", Int, 0 );
 				N_GETPROP_OPT( bool, is_project, def, "is_project", Bool, false );
+				N_GETPROP_OPT( std::string, granted_facility, def, "granted_facility", String, "" );
+				N_GETPROP_OPT( int64_t, global_talent_bonus, def, "global_talent_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_growth_rating_bonus, def, "global_growth_rating_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_population_limit_bonus, def, "global_population_limit_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_mineral_bonus, def, "global_mineral_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_support_bonus, def, "global_support_bonus", Int, 0 );
+				N_GETPROP_OPT( float, global_maintenance_multiplier, def, "global_maintenance_multiplier", Float, 1.0f );
+				N_GETPROP_OPT( int64_t, global_native_lifecycle_bonus, def, "global_native_lifecycle_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, network_node_drone_modifier, def, "network_node_drone_modifier", Int, 0 );
+				N_GETPROP_OPT( int64_t, network_node_research_bonus, def, "network_node_research_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, worked_tile_energy_bonus, def, "worked_tile_energy_bonus", Int, 0 );
+				N_GETPROP_OPT( bool, global_prevent_riots, def, "global_prevent_riots", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -411,7 +423,48 @@ WRAPIMPL_BEGIN( BaseManager )
 					growth_rating_bonus < 0 ||
 					growth_rating_bonus > base::FacilityDef::MAX_GROWTH_RATING_BONUS ||
 					native_lifecycle_bonus < 0 ||
-					native_lifecycle_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS
+					native_lifecycle_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					global_talent_bonus < 0 ||
+					global_talent_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					global_growth_rating_bonus < 0 ||
+					global_growth_rating_bonus > base::FacilityDef::MAX_GROWTH_RATING_BONUS ||
+					global_population_limit_bonus < 0 ||
+					global_population_limit_bonus > base::FacilityDef::MAX_POPULATION_LIMIT ||
+					global_mineral_bonus < 0 ||
+					global_mineral_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					global_support_bonus < 0 ||
+					global_support_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					global_maintenance_multiplier < 0.0f ||
+					global_maintenance_multiplier > 1.0f ||
+					global_native_lifecycle_bonus < 0 ||
+					global_native_lifecycle_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					network_node_drone_modifier < -base::FacilityDef::MAX_DRONE_MODIFIER ||
+					network_node_drone_modifier > base::FacilityDef::MAX_DRONE_MODIFIER ||
+					network_node_research_bonus < 0 ||
+					network_node_research_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					worked_tile_energy_bonus < 0 ||
+					worked_tile_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					(
+						!granted_facility.empty() &&
+						(
+							m_facility_defs.find( granted_facility ) == m_facility_defs.end() ||
+							m_facility_defs.at( granted_facility )->m_is_project
+						)
+					) ||
+					!is_project && (
+						!granted_facility.empty() ||
+						global_talent_bonus != 0 ||
+						global_growth_rating_bonus != 0 ||
+						global_population_limit_bonus != 0 ||
+						global_mineral_bonus != 0 ||
+						global_support_bonus != 0 ||
+						global_maintenance_multiplier != 1.0f ||
+						global_native_lifecycle_bonus != 0 ||
+						network_node_drone_modifier != 0 ||
+						network_node_research_bonus != 0 ||
+						worked_tile_energy_bonus != 0 ||
+						global_prevent_riots
+					)
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -447,7 +500,19 @@ WRAPIMPL_BEGIN( BaseManager )
 					air_defense_multiplier,
 					growth_rating_bonus,
 					native_lifecycle_bonus,
-					is_project
+					is_project,
+					granted_facility,
+					global_talent_bonus,
+					global_growth_rating_bonus,
+					global_population_limit_bonus,
+					global_mineral_bonus,
+					global_support_bonus,
+					global_maintenance_multiplier,
+					global_native_lifecycle_bonus,
+					network_node_drone_modifier,
+					network_node_research_bonus,
+					worked_tile_energy_bonus,
+					global_prevent_riots
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

@@ -2,6 +2,11 @@ const define_bases = #include('../default/game/bases');
 
 const callbacks = {};
 let units = [];
+let project_effects = {
+	mineral_bonus: 0,
+	support_bonus: 0,
+	maintenance_multiplier: 1.0,
+};
 const game = {
 	get_bm: () => {
 		return {
@@ -15,6 +20,11 @@ const game = {
 	},
 	event: (name, data) => {},
 	on: (name, callback) => {},
+	get: (key) => {
+		return key == 'f_project_get_effects'
+			? (base) => { return project_effects; }
+			: #undefined;
+	},
 };
 
 define_bases(game);
@@ -43,6 +53,19 @@ units = [
 
 let consumption = callbacks.get_base_consumption({base: base});
 test.assert(consumption == {NUTRIENTS: 4, MINERALS: 2, ENERGY: 2});
+
+project_effects = {
+	mineral_bonus: 0,
+	support_bonus: 2,
+	maintenance_multiplier: 0.5,
+};
+consumption = callbacks.get_base_consumption({base: base});
+test.assert(consumption == {NUTRIENTS: 4, MINERALS: 0, ENERGY: 1});
+project_effects = {
+	mineral_bonus: 0,
+	support_bonus: 0,
+	maintenance_multiplier: 1.0,
+};
 
 base_size = 4;
 consumption = callbacks.get_base_consumption({base: base});

@@ -104,6 +104,13 @@ const score_facility = (def, context) => {
 };
 
 const score_project = (def, context) => {
+	if (
+		!#is_defined(context.can_start_project) || !context.can_start_project ||
+		context.needs_garrison || context.needs_former ||
+		(context.needs_colony && context.can_expand)
+	) {
+		return null;
+	}
 	const has_effect =
 		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
 		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
@@ -114,12 +121,27 @@ const score_project = (def, context) => {
 		def.suppress_psych || def.unit_morale_land_bonus > 0 ||
 		def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0 ||
 		def.water_defense_multiplier > 1.0 || def.air_defense_multiplier > 1.0 ||
-		def.growth_rating_bonus > 0 || def.native_lifecycle_bonus > 0;
+		def.growth_rating_bonus > 0 || def.native_lifecycle_bonus > 0 ||
+		def.granted_facility != '' || def.global_talent_bonus > 0 ||
+		def.global_growth_rating_bonus > 0 || def.global_population_limit_bonus > 0 ||
+		def.global_mineral_bonus > 0 || def.global_support_bonus > 0 ||
+		def.global_maintenance_multiplier < 1.0 ||
+		def.global_native_lifecycle_bonus > 0 || def.network_node_drone_modifier != 0 ||
+		def.network_node_research_bonus > 0 || def.worked_tile_energy_bonus > 0 ||
+		def.global_prevent_riots;
 	if (!has_effect) {
 		return null;
 	}
 	return score_facility(def, context) +
-		get_priority(context, 'development', 50) * 500;
+		get_priority(context, 'development', 50) * 500 +
+		def.global_talent_bonus * 30000 + def.global_mineral_bonus * 20000 +
+		def.global_support_bonus * 15000 + def.global_growth_rating_bonus * 5000 +
+		def.global_population_limit_bonus * 5000 +
+		def.global_native_lifecycle_bonus * 20000 +
+		def.network_node_research_bonus * 15000 + def.worked_tile_energy_bonus * 20000 +
+		(def.granted_facility != '' ? 50000 : 0) +
+		(def.global_maintenance_multiplier < 1.0 ? 40000 : 0) +
+		(def.global_prevent_riots ? 50000 : 0);
 };
 
 const score_hurry = (def, context) => {

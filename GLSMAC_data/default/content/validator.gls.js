@@ -36,6 +36,18 @@ const facility_fields = {
 	growth_rating_bonus: true,
 	native_lifecycle_bonus: true,
 	is_project: true,
+	granted_facility: true,
+	global_talent_bonus: true,
+	global_growth_rating_bonus: true,
+	global_population_limit_bonus: true,
+	global_mineral_bonus: true,
+	global_support_bonus: true,
+	global_maintenance_multiplier: true,
+	global_native_lifecycle_bonus: true,
+	network_node_drone_modifier: true,
+	network_node_research_bonus: true,
+	worked_tile_energy_bonus: true,
+	global_prevent_riots: true,
 };
 
 const facility_manifest_fields = {
@@ -426,6 +438,26 @@ const validate_facilities = (facilities, technologies, errors) => {
 		}
 		validate_known_fields(data, facility_fields, path, errors);
 		validate_bool(data, 'is_project', path, errors, false);
+		validate_optional_string(data, 'granted_facility', path, errors);
+		validate_int(data, 'global_talent_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'global_growth_rating_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'global_population_limit_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'global_mineral_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'global_support_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_number(data, 'global_maintenance_multiplier', path, errors, false, 0.0, 1.0);
+		validate_int(data, 'global_native_lifecycle_bonus', path, errors, false, 0, 10);
+		validate_int(
+			data,
+			'network_node_drone_modifier',
+			path,
+			errors,
+			false,
+			0 - MAX_DEFINITION_VALUE,
+			MAX_DEFINITION_VALUE
+		);
+		validate_int(data, 'network_node_research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'worked_tile_energy_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_bool(data, 'global_prevent_riots', path, errors, false);
 		validate_string(data, 'name', path, errors, true);
 		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -494,7 +526,31 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.water_defense_multiplier) && data.water_defense_multiplier > 1.0) ||
 			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0) ||
 			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
-			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0);
+			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0) ||
+			(#is_defined(data.granted_facility) && data.granted_facility != '') ||
+			(#is_defined(data.global_talent_bonus) && data.global_talent_bonus > 0) ||
+			(#is_defined(data.global_growth_rating_bonus) && data.global_growth_rating_bonus > 0) ||
+			(#is_defined(data.global_population_limit_bonus) && data.global_population_limit_bonus > 0) ||
+			(#is_defined(data.global_mineral_bonus) && data.global_mineral_bonus > 0) ||
+			(#is_defined(data.global_support_bonus) && data.global_support_bonus > 0) ||
+			(
+				#is_defined(data.global_maintenance_multiplier) &&
+				data.global_maintenance_multiplier < 1.0
+			) ||
+			(
+				#is_defined(data.global_native_lifecycle_bonus) &&
+				data.global_native_lifecycle_bonus > 0
+			) ||
+			(
+				#is_defined(data.network_node_drone_modifier) &&
+				data.network_node_drone_modifier != 0
+			) ||
+			(
+				#is_defined(data.network_node_research_bonus) &&
+				data.network_node_research_bonus > 0
+			) ||
+			(#is_defined(data.worked_tile_energy_bonus) && data.worked_tile_energy_bonus > 0) ||
+			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots);
 		if (!has_effect && !(#is_defined(data.is_project) && data.is_project)) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}
@@ -518,6 +574,21 @@ const validate_facilities = (facilities, technologies, errors) => {
 				errors,
 				'facilities.' + entry.id + '.required_facility',
 				'references missing facility ' + entry.data.required_facility
+			);
+		}
+	}
+	for (entry of facilities) {
+		if (
+			#typeof(entry) != 'Object' || #typeof(entry.data) != 'Object' ||
+			!#is_defined(entry.data.granted_facility) || entry.data.granted_facility == ''
+		) {
+			continue;
+		}
+		if (!#is_defined(seen[entry.data.granted_facility])) {
+			add_error(
+				errors,
+				'facilities.' + entry.id + '.granted_facility',
+				'references missing facility ' + entry.data.granted_facility
 			);
 		}
 	}

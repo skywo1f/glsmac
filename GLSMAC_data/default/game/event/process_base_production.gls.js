@@ -32,7 +32,9 @@ const cancel_project_queues = (game, project_id, completing_base) => {
 
 const get_production_morale = (game, base, production) => {
 	let morale = 1;
-	for (facility of base.get_facilities()) {
+	const resolver = game.get('f_base_get_effective_facilities');
+	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	for (facility of facilities) {
 		if (production.is_native) {
 			morale += #is_defined(facility.native_lifecycle_bonus)
 				? facility.native_lifecycle_bonus
@@ -52,6 +54,12 @@ const get_production_morale = (game, base, production) => {
 					? facility.unit_morale_air_bonus
 					: 0;
 			}
+		}
+	}
+	if (production.is_native) {
+		const get_project_effects = game.get('f_project_get_effects');
+		if (#is_defined(get_project_effects)) {
+			morale += get_project_effects(base).native_lifecycle_bonus;
 		}
 	}
 	const morale_set = game.um.get_moraleset(production.morale_set);

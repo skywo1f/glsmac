@@ -211,7 +211,6 @@
 					return;
 				}
 				exit_scheduled = true;
-				game.event_as(ai.id, 'complete_turn', {});
 				#async(100, finish_success);
 				return;
 			}

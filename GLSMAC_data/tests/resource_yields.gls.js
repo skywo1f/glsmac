@@ -64,11 +64,31 @@ const bm = {
 	},
 };
 const game_callbacks = {};
+let effective_facilities = #undefined;
+let global_mineral_bonus = 0;
 const game = {
 	get_bm: () => { return bm; },
 	event: (name, data) => {},
 	on: (name, callback) => {
 		game_callbacks[name] = callback;
+	},
+	get: (key) => {
+		if (key == 'f_base_get_effective_facilities' && #is_defined(effective_facilities)) {
+			return (base) => { return effective_facilities; };
+		}
+		if (key == 'f_project_get_effects') {
+			return (base) => { return {
+				mineral_bonus: global_mineral_bonus,
+				support_bonus: 0,
+				maintenance_multiplier: 1.0,
+				growth_rating_bonus: 0,
+				population_limit_bonus: 0,
+				talent_bonus: 0,
+				network_node_drone_modifier: 0,
+				prevent_riots: false,
+			}; };
+		}
+		return #undefined;
 	},
 };
 define_bases(game);
@@ -102,3 +122,14 @@ base.get_facilities = () => { return [
 ]; };
 const multiplied_intake = bm_callbacks.get_base_intake({base: base});
 test.assert(multiplied_intake == {NUTRIENTS: 3, MINERALS: 6, ENERGY: 3});
+
+effective_facilities = base.get_facilities() + [{
+	nutrient_bonus: 0,
+	mineral_bonus: 0,
+	energy_bonus: 0,
+	mineral_multiplier: 0.0,
+	worked_tile_energy_bonus: 1,
+}];
+global_mineral_bonus = 2;
+const project_intake = bm_callbacks.get_base_intake({base: base});
+test.assert(project_intake == {NUTRIENTS: 3, MINERALS: 10, ENERGY: 5});

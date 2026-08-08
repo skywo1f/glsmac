@@ -101,6 +101,19 @@ test.assert(state.drones == 3);
 test.assert(state.is_rioting == true);
 test.assert(previous == ['TALENT', 'TALENT', 'TALENT', 'WORKER', 'WORKER', 'WORKER', 'TECHNICIAN']);
 
+values.f_project_get_effects = (target_base) => {
+	test.assert(target_base == base);
+	return {
+		talent_bonus: 0,
+		network_node_drone_modifier: 0,
+		prevent_riots: true,
+	};
+};
+state = values.f_base_get_psych(base);
+test.assert(state.is_rioting == false);
+test.assert(values.f_base_get_pending_production(base) == 8);
+values.f_project_get_effects = #undefined;
+
 facilities = [{drone_modifier: -2, talent_bonus: 0, suppress_psych: false}];
 values.f_base_process_psych(game, base, 0);
 state = values.f_base_get_psych(base);

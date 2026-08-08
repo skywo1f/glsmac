@@ -429,6 +429,9 @@ game = {
 		return turn_complete;
 	},
 	get: (key) => {
+		if (key == 'f_base_get_effective_facilities' || key == 'f_project_get_effects') {
+			return #undefined;
+		}
 		if (key == 'f_base_get_pending_production') {
 			return (target_base) => {
 				test.assert(target_base == base);

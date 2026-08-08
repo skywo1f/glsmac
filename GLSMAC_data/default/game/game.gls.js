@@ -58,7 +58,7 @@ return (glsmac) => {
 		content_validation_complete = true;
 	};
 
-	const modules = ['bases', 'conquest', 'economy', 'ai'];
+	const modules = ['projects', 'bases', 'conquest', 'economy', 'ai'];
 	let m = {};
 	for (module of modules) {
 		m[module] = #include(module);

@@ -144,7 +144,7 @@ return {
 
 		const powers = attacker_is_artillery
 			? combat_rules.get_artillery_powers(attacker, defender)
-			: combat_rules.get_combat_powers(attacker, defender);
+			: combat_rules.get_combat_powers(attacker, defender, e.game);
 		const attack_power = powers.attack;
 		const defence_power = powers.defence;
 

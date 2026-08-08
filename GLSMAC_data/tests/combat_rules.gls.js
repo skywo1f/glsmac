@@ -73,3 +73,15 @@ test.assert(combat_rules.get_base_defense_multiplier(defender, water_attacker) =
 test.assert(combat_rules.get_base_defense_multiplier(defender, air_attacker) == 3.5);
 test.assert(combat_rules.get_combat_powers(water_attacker, defender).defence == 8.75);
 test.assert(combat_rules.get_combat_powers(air_attacker, defender).defence == 8.75);
+
+facilities = [];
+const project_defense_game = {
+	get: (key) => {
+		test.assert(key == 'f_base_get_effective_facilities');
+		return (base) => { return [{defense_multiplier: 2.0}]; };
+	},
+};
+test.assert(
+	combat_rules.get_base_defense_multiplier(defender, attacker, project_defense_game) == 2.0
+);
+test.assert(combat_rules.get_combat_powers(attacker, defender, project_defense_game).defence == 5.0);

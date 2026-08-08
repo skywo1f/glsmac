@@ -53,7 +53,7 @@ const get_initial_state = (player, choose_target) => {
 	};
 };
 
-const get_base_labs = (base) => {
+const get_base_labs = (base, game) => {
 	const allocation = 0.4;
 	const base_bonus = 2;
 	const intake = base.get_intake();
@@ -62,9 +62,17 @@ const get_base_labs = (base) => {
 	const allocated = #round(#to_float(energy_surplus) * allocation);
 	let research_multiplier = 0.0;
 	let fixed_facility_bonus = 0;
-	for (facility of base.get_facilities()) {
+	const resolver = #is_defined(game) ? game.get('f_base_get_effective_facilities') : #undefined;
+	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	for (facility of facilities) {
 		research_multiplier += facility.research_multiplier;
 		fixed_facility_bonus += #is_defined(facility.research_bonus) ? facility.research_bonus : 0;
+	}
+	if (#is_defined(game) && base.has_facility('NetworkNode')) {
+		const get_project_effects = game.get('f_project_get_effects');
+		if (#is_defined(get_project_effects)) {
+			fixed_facility_bonus += get_project_effects(base).network_node_research_bonus;
+		}
 	}
 	const facility_bonus = #ceil(
 		#to_float(allocated + base_bonus + fixed_facility_bonus) * research_multiplier
@@ -81,7 +89,7 @@ const get_player_labs = (game, player) => {
 	let labs = 0;
 	for (base of game.get_bm().get_bases()) {
 		if (base.get_owner().id == player.id) {
-			labs += get_base_labs(base).total;
+			labs += get_base_labs(base, game).total;
 		}
 	}
 	return labs;
@@ -118,8 +126,8 @@ return {
 				return available[0];
 			};
 			game.set('f_technology_get_definition', get_definition);
+			game.set('f_technology_get_base_labs', (base) => { return get_base_labs(base, game); });
 			game.set('f_technology_get_next_target', choose_next_target);
-			game.set('f_technology_get_base_labs', get_base_labs);
 			game.set('f_technology_get_player_labs', get_player_labs);
 
 			if (game.is_master()) {

@@ -189,6 +189,58 @@
 				}
 				base.remove_facility(supercollider.id);
 
+				const effect_project_ids = [
+					'TheHumanGenomeProject',
+					'TheCommandNexus',
+					'TheMerchantExchange',
+					'TheCitizensDefenseForce',
+					'TheVirtualWorld',
+					'TheSupercollider',
+					'TheAsceticVirtues',
+					'ThePholusMutagen',
+					'TheCyborgFactory',
+					'TheTheoryOfEverything',
+					'TheNetworkBackbone',
+					'TheLivingRefinery',
+					'TheCloningVats',
+					'TheSelfAwareColony',
+					'ClinicalImmortality',
+					'TheSingularityInductor',
+					'TheBulkMatterTransmitter',
+					'TheTelepathicMatrix',
+				];
+				for (project_id of effect_project_ids) {
+					base.add_facility(project_id);
+				}
+				const project_effects = game.get('f_project_get_effects')(base);
+				let effective_ids = {};
+				for (definition of game.get('f_base_get_effective_facilities')(base)) {
+					effective_ids[definition.id] = true;
+				}
+				if (
+					#sizeof(game.get('f_project_get_owned')(base)) != 18 ||
+					project_effects.talent_bonus != 2 ||
+					project_effects.growth_rating_bonus != 10 ||
+					project_effects.population_limit_bonus != 2 ||
+					project_effects.mineral_bonus != 2 ||
+					project_effects.support_bonus != 2 ||
+					project_effects.maintenance_multiplier != 0.5 ||
+					project_effects.native_lifecycle_bonus != 1 ||
+					project_effects.network_node_drone_modifier != -2 ||
+					project_effects.network_node_research_bonus != 1 ||
+					!project_effects.prevent_riots ||
+					!#is_defined(effective_ids.CommandCenter) ||
+					!#is_defined(effective_ids.PerimeterDefense) ||
+					!#is_defined(effective_ids.BioenhancementCenter) ||
+					!#is_defined(effective_ids.QuantumConverter)
+				) {
+					fail('batch secret project effects are invalid');
+					return;
+				}
+				for (project_id of effect_project_ids) {
+					base.remove_facility(project_id);
+				}
+
 				const intake_before = base.get_intake();
 				const consumption_before = base.get_consumption().ENERGY;
 				const labs_before = game.get('f_technology_get_base_labs')(base).total;

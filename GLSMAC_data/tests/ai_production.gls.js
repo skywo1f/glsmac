@@ -3,6 +3,7 @@ const production = #include('../default/game/ai/production');
 const unit = (id, offense, defense, movement, cost, can_found_base, can_terraform) => {
 	return {
 		id: id,
+		production_kind: 'facility',
 		offense: offense,
 		defense: defense,
 		movement_per_turn: movement,
@@ -38,6 +39,18 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		air_defense_multiplier: 1.0,
 		growth_rating_bonus: 0,
 		native_lifecycle_bonus: 0,
+		granted_facility: '',
+		global_talent_bonus: 0,
+		global_growth_rating_bonus: 0,
+		global_population_limit_bonus: 0,
+		global_mineral_bonus: 0,
+		global_support_bonus: 0,
+		global_maintenance_multiplier: 1.0,
+		global_native_lifecycle_bonus: 0,
+		network_node_drone_modifier: 0,
+		network_node_research_bonus: 0,
+		worked_tile_energy_bonus: 0,
+		global_prevent_riots: false,
 	};
 };
 
@@ -61,6 +74,9 @@ const biology_lab = facility('BiologyLab', 0, 0, 0, 0, 0.0, 1, 60, 1.0, 0.0, 0, 
 biology_lab.native_lifecycle_bonus = 1;
 const childrens_creche = facility('ChildrenSCreche', 0, 0, 0, 0, 0.0, 1, 50);
 childrens_creche.growth_rating_bonus = 2;
+const command_nexus = facility('TheCommandNexus', 0, 0, 0, 0, 0.0, 0, 200);
+command_nexus.production_kind = 'project';
+command_nexus.granted_facility = 'CommandCenter';
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -76,6 +92,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 		needs_psych: needs_psych,
 		needs_growth: false,
 		can_expand: true,
+		can_start_project: false,
 		nutrient_surplus: 1,
 		mineral_surplus: 2,
 		supported_units: 0,
@@ -92,6 +109,13 @@ test.assert(production.choose(base, all_units, all_facilities, context(false, tr
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, true, true, 10)).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
+
+test.assert(production.score_project(command_nexus, context(false, true, false, false, 10)) == null);
+test.assert(production.score_project(command_nexus, context(false, false, true, false, 10)) == null);
+test.assert(production.score_project(command_nexus, context(true, false, false, false, 10)) == null);
+let project_ready_context = context(false, false, false, false, 10);
+project_ready_context.can_start_project = true;
+test.assert(production.score_project(command_nexus, project_ready_context) != null);
 locked.Recycling = true;
 locked.Recreation = true;
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 0)).id == 'Laser');

@@ -55,8 +55,33 @@ const partial_effects = {
 };
 
 const project_effects = {
+	TheHumanGenomeProject: {global_talent_bonus: 1},
+	TheCommandNexus: {granted_facility: 'CommandCenter'},
+	TheMerchantExchange: {worked_tile_energy_bonus: 1},
+	TheCitizensDefenseForce: {granted_facility: 'PerimeterDefense'},
+	TheVirtualWorld: {network_node_drone_modifier: -2},
 	TheSupercollider: {research_multiplier: 1.0},
+	TheAsceticVirtues: {global_population_limit_bonus: 2},
+	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
+	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
+	TheNetworkBackbone: {network_node_research_bonus: 1},
+	TheLivingRefinery: {global_support_bonus: 2},
+	TheCloningVats: {global_growth_rating_bonus: 10},
+	TheSelfAwareColony: {global_maintenance_multiplier: 0.5},
+	ClinicalImmortality: {global_talent_bonus: 1},
+	TheSingularityInductor: {granted_facility: 'QuantumConverter'},
+	TheBulkMatterTransmitter: {global_mineral_bonus: 2},
+	TheTelepathicMatrix: {global_prevent_riots: true},
+};
+
+const partial_project_effects = {
+	TheAsceticVirtues: true,
+	ThePholusMutagen: true,
+	TheNetworkBackbone: true,
+	TheCloningVats: true,
+	TheSelfAwareColony: true,
+	TheTelepathicMatrix: true,
 };
 
 const facilities = [];
@@ -85,7 +110,10 @@ for (entry of manifest) {
 	}
 	facilities :+{id: entry.id, data: data};
 	if (is_project) {
-		const status = #is_defined(implemented_effects) ? 'complete' : 'partial';
+		const status = #is_defined(implemented_effects) &&
+			!#is_defined(partial_project_effects[entry.id])
+			? 'complete'
+			: 'partial';
 		project_coverage.status[entry.id] = status;
 		project_coverage[status] = project_coverage[status] + 1;
 	} else {

@@ -56,7 +56,19 @@ public:
 		const float air_defense_multiplier = 1.0f,
 		const int64_t growth_rating_bonus = 0,
 		const int64_t native_lifecycle_bonus = 0,
-		const bool is_project = false
+		const bool is_project = false,
+		const std::string& granted_facility = "",
+		const int64_t global_talent_bonus = 0,
+		const int64_t global_growth_rating_bonus = 0,
+		const int64_t global_population_limit_bonus = 0,
+		const int64_t global_mineral_bonus = 0,
+		const int64_t global_support_bonus = 0,
+		const float global_maintenance_multiplier = 1.0f,
+		const int64_t global_native_lifecycle_bonus = 0,
+		const int64_t network_node_drone_modifier = 0,
+		const int64_t network_node_research_bonus = 0,
+		const int64_t worked_tile_energy_bonus = 0,
+		const bool global_prevent_riots = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -89,6 +101,18 @@ public:
 	const int64_t m_growth_rating_bonus;
 	const int64_t m_native_lifecycle_bonus;
 	const bool m_is_project;
+	const std::string m_granted_facility;
+	const int64_t m_global_talent_bonus;
+	const int64_t m_global_growth_rating_bonus;
+	const int64_t m_global_population_limit_bonus;
+	const int64_t m_global_mineral_bonus;
+	const int64_t m_global_support_bonus;
+	const float m_global_maintenance_multiplier;
+	const int64_t m_global_native_lifecycle_bonus;
+	const int64_t m_network_node_drone_modifier;
+	const int64_t m_network_node_research_bonus;
+	const int64_t m_worked_tile_energy_bonus;
+	const bool m_global_prevent_riots;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );
