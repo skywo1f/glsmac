@@ -489,6 +489,7 @@
 					glsmac.exit();
 					return;
 				}
+				game.select_tile(terraform_site);
 				terraforming_verified = true;
 				#print('RUNTIME_SMOKE_TERRAFORMING_PASS');
 				finish_if_ready();

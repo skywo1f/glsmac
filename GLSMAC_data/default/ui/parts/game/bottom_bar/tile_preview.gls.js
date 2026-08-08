@@ -63,6 +63,26 @@ return {
 		}
 	},
 
+	get_terraforming_name: (terraforming) => {
+		switch (terraforming) {
+			case 'forest': {
+				return 'Forest';
+			}
+			case 'farm': {
+				return 'Farm';
+			}
+			case 'mine': {
+				return 'Mine';
+			}
+			case 'solar': {
+				return 'Solar Collector';
+			}
+			case 'road': {
+				return 'Road';
+			}
+		}
+	},
+
 	set_image: () => {
 		const tile = this.tile;
 		if (!#is_defined(this.preview)) {
@@ -150,7 +170,11 @@ return {
 				}
 			}
 
-			// TODO: terraforming
+			for (terraforming of ['forest', 'farm', 'mine', 'solar', 'road']) {
+				if (tile.terraforming[terraforming]) {
+					this.line(this.get_terraforming_name(terraforming));
+				}
+			}
 
 		}
 
