@@ -25,7 +25,8 @@ public:
 		const int64_t mineral_bonus,
 		const int64_t energy_bonus,
 		const int64_t energy_maintenance,
-		const std::string& required_technology = ""
+		const std::string& required_technology = "",
+		const int64_t psych_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -37,6 +38,7 @@ public:
 	const int64_t m_energy_bonus;
 	const int64_t m_energy_maintenance;
 	const std::string m_required_technology;
+	const int64_t m_psych_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

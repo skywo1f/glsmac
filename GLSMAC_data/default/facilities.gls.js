@@ -22,6 +22,19 @@ const facilities = [
 			required_technology: 'InformationNetworks',
 		},
 	},
+	{
+		id: 'RecreationCommons',
+		data: {
+			name: 'Recreation Commons',
+			mineral_cost: 40,
+			nutrient_bonus: 0,
+			mineral_bonus: 0,
+			energy_bonus: 0,
+			energy_maintenance: 1,
+			psych_bonus: 4,
+			required_technology: 'SocialPsych',
+		},
+	},
 ];
 
 return {

@@ -123,6 +123,7 @@ const queue_production = (game, player, bases, units) => {
 				break;
 			}
 		}
+		const psych = game.get('f_economy_get_base_psych')(game, base);
 		const selected = production.choose(
 			base,
 			unit_defs,
@@ -131,6 +132,7 @@ const queue_production = (game, player, bases, units) => {
 				needs_garrison: !has_garrison,
 				needs_former: former_count < #sizeof(bases),
 				needs_colony: #sizeof(bases) + colony_count < 3,
+				needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 				available_energy: available_energy,
 			}
 		);

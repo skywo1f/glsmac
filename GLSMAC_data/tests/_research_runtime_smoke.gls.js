@@ -9,13 +9,14 @@
 	let information_accelerated = false;
 	let physics_accelerated = false;
 	let industry_accelerated = false;
+	let social_accelerated = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 
 	const finish_if_ready = () => {
 		if (research_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('RESEARCH_RUNTIME_PASS: five-tier research unlocked facilities and specialized units');
+			#print('RESEARCH_RUNTIME_PASS: six-tier research unlocked facilities and specialized units');
 			#async(500, () => {
 				glsmac.exit();
 			});
@@ -51,6 +52,7 @@
 			const laser = game.get_um().get_unit_def('LaserInfantry');
 			const sentinels = game.get_um().get_unit_def('SynthmetalSentinels');
 			const network_node = game.get_bm().get_facility_def('NetworkNode');
+			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			if (
 				former.required_technology != 'CentauriEcology' ||
 				rover.required_technology != 'DoctrineMobility' ||
@@ -64,7 +66,10 @@
 				sentinels.offense != 1 ||
 				sentinels.defense != 2 ||
 				network_node.required_technology != 'InformationNetworks' ||
-				network_node.energy_maintenance != 1
+				network_node.energy_maintenance != 1 ||
+				recreation_commons.required_technology != 'SocialPsych' ||
+				recreation_commons.energy_maintenance != 1 ||
+				recreation_commons.psych_bonus != 4
 			) {
 				#print('RESEARCH_RUNTIME_FAIL: technology-gated unit definitions are invalid');
 				glsmac.exit();
@@ -87,20 +92,58 @@
 				}
 			}
 
-			if (player.has_technology('IndustrialBase')) {
+			if (player.has_technology('SocialPsych')) {
 				if (
-					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks'] ||
+					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks', 'SocialPsych'] ||
 					state.target != '' ||
 					state.progress != 0 ||
 					!base.can_set_production('unit', 'LaserInfantry') ||
-					!base.can_set_production('unit', 'SynthmetalSentinels')
+					!base.can_set_production('unit', 'SynthmetalSentinels') ||
+					!base.can_set_production('facility', 'RecreationCommons')
 				) {
-					#print('RESEARCH_RUNTIME_FAIL: Industrial Base did not unlock defensive production');
+					#print('RESEARCH_RUNTIME_FAIL: Social Psych did not unlock Recreation Commons');
+					glsmac.exit();
+					return;
+				}
+				const consumption_before = base.get_consumption().ENERGY;
+				const psych_before = game.get('f_economy_get_base_psych')(game, base);
+				base.add_facility('RecreationCommons');
+				if (
+					base.get_consumption().ENERGY != consumption_before + 1 ||
+					game.get('f_economy_get_base_psych')(game, base) != psych_before + 4
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Recreation Commons maintenance or psych bonus is invalid');
 					glsmac.exit();
 					return;
 				}
 				research_complete = true;
 				finish_if_ready();
+				return;
+			}
+
+			if (player.has_technology('IndustrialBase')) {
+				const social = game.get('f_technology_get_definition')('SocialPsych');
+				const expected_progress = social_accelerated ? social.cost - 1 : 0;
+				if (
+					state.technologies != ['AppliedPhysics', 'CentauriEcology', 'DoctrineMobility', 'IndustrialBase', 'InformationNetworks'] ||
+					state.target != 'SocialPsych' ||
+					state.progress != expected_progress ||
+					!base.can_set_production('unit', 'SynthmetalSentinels') ||
+					base.can_set_production('facility', 'RecreationCommons')
+				) {
+					#print('RESEARCH_RUNTIME_FAIL: Industrial Base did not advance to Social Psych');
+					glsmac.exit();
+					return;
+				}
+				if (!social_accelerated) {
+					social_accelerated = true;
+					player.set_research_state({
+						technologies: ['CentauriEcology', 'DoctrineMobility', 'InformationNetworks', 'AppliedPhysics', 'IndustrialBase'],
+						target: 'SocialPsych',
+						progress: social.cost - 1,
+					});
+				}
+				game.event('complete_turn', {});
 				return;
 			}
 

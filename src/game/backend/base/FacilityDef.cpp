@@ -15,7 +15,8 @@ FacilityDef::FacilityDef(
 	const int64_t mineral_bonus,
 	const int64_t energy_bonus,
 	const int64_t energy_maintenance,
-	const std::string& required_technology
+	const std::string& required_technology,
+	const int64_t psych_bonus
 )
 	: m_id( id )
 	, m_name( name )
@@ -24,7 +25,8 @@ FacilityDef::FacilityDef(
 	, m_mineral_bonus( mineral_bonus )
 	, m_energy_bonus( energy_bonus )
 	, m_energy_maintenance( energy_maintenance )
-	, m_required_technology( required_technology ) {
+	, m_required_technology( required_technology )
+	, m_psych_bonus( psych_bonus ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -37,7 +39,9 @@ FacilityDef::FacilityDef(
 		m_energy_bonus < 0 ||
 		m_energy_bonus > MAX_RESOURCE_BONUS ||
 		m_energy_maintenance < 0 ||
-		m_energy_maintenance > MAX_ENERGY_MAINTENANCE
+		m_energy_maintenance > MAX_ENERGY_MAINTENANCE ||
+		m_psych_bonus < 0 ||
+		m_psych_bonus > MAX_RESOURCE_BONUS
 	) {
 		THROW( "invalid base facility definition: " + m_id );
 	}
@@ -53,6 +57,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_energy_bonus );
 	buf.WriteInt( def->m_energy_maintenance );
 	buf.WriteString( def->m_required_technology );
+	buf.WriteInt( def->m_psych_bonus );
 	return buf;
 }
 
@@ -65,6 +70,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto energy_bonus = buf.ReadInt();
 	const auto energy_maintenance = buf.ReadInt();
 	const auto required_technology = buf.GetRemaining() > 0 ? buf.ReadString() : "";
+	const auto psych_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -73,7 +79,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		mineral_bonus,
 		energy_bonus,
 		energy_maintenance,
-		required_technology
+		required_technology,
+		psych_bonus
 	);
 }
 
@@ -114,6 +121,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"required_technology",
 			VALUE( gse::value::String, , m_required_technology )
+		},
+		{
+			"psych_bonus",
+			VALUE( gse::value::Int, , m_psych_bonus )
 		},
 	};
 WRAPIMPL_END_PTR()

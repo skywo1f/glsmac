@@ -8,6 +8,10 @@ const get_base_allocation = (game, base) => {
 	const energy_surplus = #max(total_energy, 0);
 	const labs = game.get('f_technology_get_base_labs')(base);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
+	let psych_bonus = 0;
+	for (facility of base.get_facilities()) {
+		psych_bonus += facility.psych_bonus;
+	}
 	return {
 		economy: {
 			allocation: 1.0 - labs.allocation - PSYCH_ALLOCATION,
@@ -18,7 +22,7 @@ const get_base_allocation = (game, base) => {
 		psych: {
 			allocation: PSYCH_ALLOCATION,
 			value: psych,
-			bonus: 0,
+			bonus: psych_bonus,
 		},
 	};
 };
@@ -29,7 +33,8 @@ const get_base_economy = (game, base) => {
 };
 
 const get_base_psych = (game, base) => {
-	return get_base_allocation(game, base).psych.value;
+	const psych = get_base_allocation(game, base).psych;
+	return psych.value + psych.bonus;
 };
 
 const get_hurry_cost = (base) => {

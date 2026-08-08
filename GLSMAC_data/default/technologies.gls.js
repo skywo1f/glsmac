@@ -30,6 +30,12 @@ const definitions = {
 		cost: 50,
 		prerequisites: ['AppliedPhysics'],
 	},
+	SocialPsych: {
+		id: 'SocialPsych',
+		name: 'Social Psych',
+		cost: 40,
+		prerequisites: ['CentauriEcology'],
+	},
 };
 
 const technology_order = [
@@ -38,6 +44,7 @@ const technology_order = [
 	'InformationNetworks',
 	'AppliedPhysics',
 	'IndustrialBase',
+	'SocialPsych',
 ];
 
 const get_definition = (id) => {

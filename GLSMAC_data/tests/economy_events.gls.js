@@ -19,11 +19,13 @@ const positive_base = {
 	get_owner: () => { return player; },
 	get_intake: () => { return {ENERGY: 10}; },
 	get_consumption: () => { return {ENERGY: 0}; },
+	get_facilities: () => { return [{psych_bonus: 4}]; },
 };
 const deficit_base = {
 	get_owner: () => { return player; },
 	get_intake: () => { return {ENERGY: 2}; },
 	get_consumption: () => { return {ENERGY: 5}; },
+	get_facilities: () => { return []; },
 };
 
 let callbacks = {};
@@ -57,6 +59,10 @@ const deficit_allocation = values.f_economy_get_base_allocation(game, deficit_ba
 test.assert(deficit_allocation.economy.value == 0 - 3);
 test.assert(deficit_allocation.labs.value == 0);
 test.assert(deficit_allocation.psych.value == 0);
+const positive_allocation = values.f_economy_get_base_allocation(game, positive_base);
+test.assert(positive_allocation.psych.value == 2);
+test.assert(positive_allocation.psych.bonus == 4);
+test.assert(values.f_economy_get_base_psych(game, positive_base) == 6);
 
 let hurry_minerals = 10;
 let hurry_production = {production_kind: 'unit', mineral_cost: 20};
@@ -142,7 +148,7 @@ poor_player = {
 	energy_credits: 0,
 	set_energy_credits: (value) => { poor_player.energy_credits = value; },
 };
-const network_node = {id: 'NetworkNode', energy_maintenance: 1};
+const network_node = {id: 'NetworkNode', energy_maintenance: 1, psych_bonus: 0};
 const poor_base = {
 	id: 9,
 	get_owner: () => { return poor_player; },

@@ -321,6 +321,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, energy_bonus, def, "energy_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, energy_maintenance, def, "energy_maintenance", Int, 0 );
 				N_GETPROP_OPT( std::string, required_technology, def, "required_technology", String, "" );
+				N_GETPROP_OPT( int64_t, psych_bonus, def, "psych_bonus", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -333,7 +334,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					energy_bonus < 0 ||
 					energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					energy_maintenance < 0 ||
-					energy_maintenance > base::FacilityDef::MAX_ENERGY_MAINTENANCE
+					energy_maintenance > base::FacilityDef::MAX_ENERGY_MAINTENANCE ||
+					psych_bonus < 0 ||
+					psych_bonus > base::FacilityDef::MAX_RESOURCE_BONUS
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
 				}
@@ -348,7 +351,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					mineral_bonus,
 					energy_bonus,
 					energy_maintenance,
-					required_technology
+					required_technology,
+					psych_bonus
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

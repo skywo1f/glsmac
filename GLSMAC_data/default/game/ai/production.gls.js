@@ -21,7 +21,8 @@ const score_facility = (def, context) => {
 		return null;
 	}
 	return 40000 + def.nutrient_bonus * 1000 + def.mineral_bonus * 900 +
-		def.energy_bonus * 500 - def.energy_maintenance * 250 - def.mineral_cost;
+		def.energy_bonus * 500 + def.psych_bonus * (context.needs_psych ? 1200 : 100) -
+		def.energy_maintenance * 250 - def.mineral_cost;
 };
 
 const choose = (base, unit_defs, facility_defs, context) => {
