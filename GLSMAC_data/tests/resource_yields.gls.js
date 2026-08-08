@@ -13,41 +13,71 @@ resources.configure({get_tm: () => { return tm; }});
 const make_tile = (fungus) => {
 	return {
 		is_land: true,
+		is_water: false,
 		moisture: 2,
 		rockiness: 1,
+		elevation: 0,
 		features: {
 			xenofungus: fungus,
+			monolith: false,
 			jungle: false,
 			river: false,
 		},
 		terraforming: {
+			road: false,
 			forest: false,
 			farm: false,
+			soil_enricher: false,
 			mine: false,
 			solar: false,
+			condenser: false,
+			mirror: false,
+			borehole: false,
 		},
 		bonuses: {
 			nutrient: false,
 			minerals: false,
 			energy: false,
 		},
+		get_surrounding_tiles: () => { return []; },
 		get_base: () => { return null; },
 	};
 };
 
-let has_ecology = false;
+let known_technologies = {};
+let faction_id = 'HIVE';
 const player = {
 	has_technology: (id) => {
-		test.assert(id == 'CentauriEcology');
-		return has_ecology;
+		return #is_defined(known_technologies[id]);
 	},
+	get_faction: () => { return {id: faction_id}; },
 };
 
 let yields = resource_callback({tile: make_tile(true), player: player});
 test.assert(yields == {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0});
-has_ecology = true;
+known_technologies.CentauriEcology = true;
 yields = resource_callback({tile: make_tile(true), player: player});
 test.assert(yields == {NUTRIENTS: 1, MINERALS: 0, ENERGY: 0});
+faction_id = 'GAIANS';
+yields = resource_callback({tile: make_tile(true), player: player});
+test.assert(yields == {NUTRIENTS: 2, MINERALS: 0, ENERGY: 0});
+faction_id = 'HIVE';
+for (technology_id of [
+	'CentauriPsi',
+	'CentauriGenetics',
+	'MatterTransmission',
+	'ThresholdOfTranscendence',
+	'CentauriMeditation',
+	'SecretsOfAlphaCentauri',
+	'TemporalMechanics',
+	'GeneSplicing',
+	'EcologicalEngineering',
+	'EnvironmentalEconomics',
+]) {
+	known_technologies[technology_id] = true;
+}
+yields = resource_callback({tile: make_tile(true), player: player});
+test.assert(yields == {NUTRIENTS: 2, MINERALS: 3, ENERGY: 3});
 
 const forest_tile = make_tile(false);
 forest_tile.terraforming.forest = true;
@@ -56,6 +86,84 @@ test.assert(yields == {NUTRIENTS: 1, MINERALS: 2, ENERGY: 1});
 forest_tile.features.river = true;
 yields = resource_callback({tile: forest_tile, player: player});
 test.assert(yields == {NUTRIENTS: 1, MINERALS: 2, ENERGY: 2});
+
+known_technologies = {};
+const rainy_farm = make_tile(false);
+rainy_farm.moisture = 3;
+rainy_farm.terraforming.farm = true;
+test.assert(resources.get_tile_yields(rainy_farm, player).NUTRIENTS == 2);
+known_technologies.GeneSplicing = true;
+test.assert(resources.get_tile_yields(rainy_farm, player).NUTRIENTS == 3);
+known_technologies = {};
+rainy_farm.bonuses.nutrient = true;
+test.assert(resources.get_tile_yields(rainy_farm, player).NUTRIENTS == 5);
+
+const rocky_mine = make_tile(false);
+rocky_mine.rockiness = 3;
+rocky_mine.terraforming.mine = true;
+rocky_mine.terraforming.road = true;
+test.assert(resources.get_tile_yields(rocky_mine, player).MINERALS == 2);
+known_technologies.EcologicalEngineering = true;
+test.assert(resources.get_tile_yields(rocky_mine, player).MINERALS == 4);
+rocky_mine.bonuses.minerals = true;
+known_technologies = {};
+test.assert(resources.get_tile_yields(rocky_mine, player).MINERALS == 7);
+
+const high_solar = make_tile(false);
+high_solar.elevation = 2000;
+high_solar.terraforming.solar = true;
+test.assert(resources.get_tile_yields(high_solar, player).ENERGY == 2);
+known_technologies.EnvironmentalEconomics = true;
+test.assert(resources.get_tile_yields(high_solar, player).ENERGY == 3);
+
+const mirror = make_tile(false);
+mirror.terraforming.mirror = true;
+const mirrored_solar = make_tile(false);
+mirrored_solar.terraforming.solar = true;
+mirrored_solar.get_surrounding_tiles = () => { return [mirror, mirror]; };
+test.assert(resources.get_tile_yields(mirrored_solar, player).ENERGY == 3);
+
+const monolith = make_tile(false);
+monolith.features.monolith = true;
+test.assert(resources.get_tile_yields(monolith, player) == {
+	NUTRIENTS: 2,
+	MINERALS: 2,
+	ENERGY: 2,
+});
+
+const borehole = make_tile(false);
+borehole.terraforming.borehole = true;
+known_technologies = {EcologicalEngineering: true};
+test.assert(resources.get_tile_yields(borehole, player) == {
+	NUTRIENTS: 0,
+	MINERALS: 6,
+	ENERGY: 2,
+});
+known_technologies.EnvironmentalEconomics = true;
+test.assert(resources.get_tile_yields(borehole, player) == {
+	NUTRIENTS: 0,
+	MINERALS: 6,
+	ENERGY: 6,
+});
+
+const sea = make_tile(false);
+sea.is_land = false;
+sea.is_water = true;
+known_technologies = {};
+test.assert(resources.get_tile_yields(sea, player) == {
+	NUTRIENTS: 1,
+	MINERALS: 0,
+	ENERGY: 1,
+});
+sea.terraforming.farm = true;
+test.assert(resources.get_tile_yields(sea, player).NUTRIENTS == 2);
+known_technologies.GeneSplicing = true;
+test.assert(resources.get_tile_yields(sea, player).NUTRIENTS == 3);
+sea.terraforming.farm = false;
+sea.terraforming.solar = true;
+test.assert(resources.get_tile_yields(sea, player).ENERGY == 2);
+known_technologies.EnvironmentalEconomics = true;
+test.assert(resources.get_tile_yields(sea, player).ENERGY == 3);
 
 const bm_callbacks = {};
 const bm = {

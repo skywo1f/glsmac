@@ -215,7 +215,7 @@
 					if (!exit_scheduled) {
 						exit_scheduled = true;
 						#print('AI_RUNTIME_PASS: AI moved, grew, expanded, terraformed, and fielded mobile units');
-						#async(100, () => { glsmac.exit(); });
+						#async(2000, () => { glsmac.exit(); });
 					}
 					return;
 				}
