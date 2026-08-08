@@ -126,3 +126,18 @@ test.assert(combat_rules.get_best_defender(attacker, stack_tile) == strong_defen
 const tied_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');
 tied_defender.id = 10;
 test.assert(combat_rules.get_best_defender(attacker, stack_tile) == tied_defender);
+
+const conventional_psi_attacker = make_unit(attack_tile, 1, 1, 1, false, 'land');
+conventional_psi_attacker.get_def = () => {
+	return {is_native: false, is_psi_attack: true, offense: 1, defense: 1};
+};
+test.assert(combat_rules.get_combat_powers(conventional_psi_attacker, defender).attack == 3.0);
+
+const conventional_psi_defender = make_unit(base_tile, 2, 1, 1, false, 'land');
+conventional_psi_defender.get_def = () => {
+	return {is_native: false, is_psi_defense: true, offense: 1, defense: 1};
+};
+test.assert(combat_rules.get_combat_powers(attacker, conventional_psi_defender).defence == 2.5);
+
+test.assert(combat_rules.is_artillery({id: 'TestArtillery', is_artillery: true}));
+test.assert(!combat_rules.is_artillery({id: 'SporeLauncher', is_artillery: false}));

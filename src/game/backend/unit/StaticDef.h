@@ -1,5 +1,7 @@
 #pragma once
 
+#include <set>
+
 #include "Def.h"
 
 #include "Types.h"
@@ -12,6 +14,7 @@ class Render;
 
 class StaticDef : public Def {
 public:
+	static constexpr size_t MAX_ABILITIES = 64;
 	static const std::string& GetMovementTypeString( const movement_type_t movement_type );
 
 	static const health_t HEALTH_MAX;
@@ -30,13 +33,30 @@ public:
 		const bool can_terraform,
 		const movement_type_t movement_type,
 		const movement_t movement_per_turn,
-		const Render* render
+		const Render* render,
+		const std::string& chassis_id = "",
+		const std::string& weapon_id = "",
+		const std::string& armor_id = "",
+		const std::string& reactor_id = "",
+		const int64_t reactor_power = 1,
+		const std::set< std::string >& abilities = {}
 	);
 	~StaticDef();
 
 	const movement_type_t m_movement_type;
 	const movement_t m_movement_per_turn;
 	const Render* m_render;
+	const std::string m_chassis_id;
+	const std::string m_weapon_id;
+	const std::string m_armor_id;
+	const std::string m_reactor_id;
+	const int64_t m_reactor_power;
+	const std::set< std::string > m_abilities;
+
+	const bool HasAbility( const std::string& id ) const;
+	const bool IsArtillery() const;
+	const bool IsPsiAttack() const;
+	const bool IsPsiDefense() const;
 
 	const movement_type_t GetMovementType() const override;
 

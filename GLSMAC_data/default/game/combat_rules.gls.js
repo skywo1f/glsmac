@@ -1,5 +1,5 @@
 const is_artillery = (def) => {
-	return def.id == 'SporeLauncher';
+	return #is_defined(def.is_artillery) ? def.is_artillery : def.id == 'SporeLauncher';
 };
 
 const get_morale_multiplier = (unit) => {
@@ -51,7 +51,13 @@ const get_combat_powers = (attacker, defender, game) => {
 	const defender_def = defender.get_def();
 	let attack_strength = #to_float(attacker_def.offense);
 	let defence_strength = #to_float(defender_def.defense);
-	const is_psi_combat = attacker_def.is_native || defender_def.is_native;
+	const is_psi_attack = #is_defined(attacker_def.is_psi_attack)
+		? attacker_def.is_psi_attack
+		: attacker_def.is_native;
+	const is_psi_defense = #is_defined(defender_def.is_psi_defense)
+		? defender_def.is_psi_defense
+		: defender_def.is_native;
+	const is_psi_combat = is_psi_attack || is_psi_defense;
 	if (is_psi_combat) {
 		attack_strength = defender.is_land ? 3.0 : 1.0;
 		defence_strength = defender.is_land ? 2.0 : 1.0;

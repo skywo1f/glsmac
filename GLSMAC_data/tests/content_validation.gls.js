@@ -125,6 +125,18 @@ test.assert(validator.validate(invalid).errors == [
 ]);
 
 invalid = make_catalog();
+invalid.units[0].data.weapon = 'MissingWeapon';
+test.assert(validator.validate(invalid).errors == [
+	'units.ScoutPatrol.weapon: references missing weapon MissingWeapon',
+]);
+
+invalid = make_catalog();
+invalid.units[0].data.abilities = ['HeavyArtillery', 'HeavyArtillery'];
+test.assert(validator.validate(invalid).errors == [
+	'units.ScoutPatrol.abilities[1]: duplicates unit ability HeavyArtillery',
+]);
+
+invalid = make_catalog();
 invalid.unit_manifest.weapons[1].required_technology = 'MissingTechnology';
 test.assert(validator.validate(invalid).errors == [
 	'unit_manifest.weapons.Laser.required_technology: references missing technology MissingTechnology',

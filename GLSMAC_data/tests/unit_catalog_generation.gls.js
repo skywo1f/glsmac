@@ -15,6 +15,12 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
+	test.assert(data.chassis != '');
+	test.assert(data.weapon != '');
+	test.assert(data.armor != '');
+	test.assert(data.reactor == 'FissionPlant');
+	test.assert(data.reactor_power == 1);
+	test.assert(#typeof(data.abilities) == 'Array');
 	if (i < 10) {
 		continue;
 	}

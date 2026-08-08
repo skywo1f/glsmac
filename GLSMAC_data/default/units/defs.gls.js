@@ -27,7 +27,15 @@ const moralesets = [
 	},
 ];
 
-const native_lifeform = (id, name, mineral_cost, movement_type, movement_per_turn, base_y) => {
+const native_lifeform = (
+	id,
+	name,
+	mineral_cost,
+	movement_type,
+	movement_per_turn,
+	base_y,
+	abilities
+) => {
 	return {
 		id: id,
 		data: {
@@ -36,6 +44,12 @@ const native_lifeform = (id, name, mineral_cost, movement_type, movement_per_tur
 			is_native: true,
 			offense: 1,
 			defense: 1,
+			chassis: movement_type == 'water' ? 'Foil' : 'Infantry',
+			weapon: 'PsiAttack',
+			armor: 'PsiDefense',
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: abilities,
 			morale: 'NATIVE',
 			type: 'static',
 			movement_type: movement_type,
@@ -63,7 +77,10 @@ const conventional_unit = (
 	can_found_base,
 	can_terraform,
 	required_technology,
-	movement_per_turn
+	movement_per_turn,
+	chassis,
+	weapon,
+	armor
 ) => {
 	return {
 		id: id,
@@ -76,6 +93,12 @@ const conventional_unit = (
 			can_found_base: can_found_base,
 			can_terraform: can_terraform,
 			required_technology: required_technology,
+			chassis: chassis,
+			weapon: weapon,
+			armor: armor,
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: [],
 			morale: 'STANDARD',
 			type: 'static',
 			movement_type: 'land',
@@ -93,16 +116,16 @@ const conventional_unit = (
 
 const units = [
 	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
-	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1),
-	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1),
-	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1),
-	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2),
-	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 206, 156, false, false, 'AppliedPhysics', 1),
-	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1),
-	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79),
-	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233),
-	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387),
+	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
+	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
+	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),
+	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2, 'Speeder', 'HandWeapons', 'NoArmor'),
+	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 206, 156, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
+	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
+	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, []),
+	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233, []),
+	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, []),
+	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery']),
 ];
 
 for (unit of generated.definitions) {

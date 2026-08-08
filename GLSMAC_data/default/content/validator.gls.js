@@ -77,6 +77,12 @@ const unit_fields = {
 	can_found_base: true,
 	can_terraform: true,
 	required_technology: true,
+	chassis: true,
+	weapon: true,
+	armor: true,
+	reactor: true,
+	reactor_power: true,
+	abilities: true,
 	morale: true,
 	type: true,
 	movement_type: true,
@@ -854,7 +860,7 @@ const validate_unit_render = (render, path, errors) => {
 	validate_int(render, 'morale_based_xshift', path, errors, false, 0, MAX_DEFINITION_VALUE);
 };
 
-const validate_units = (units, technologies, morale_ids, errors) => {
+const validate_units = (units, technologies, morale_ids, unit_manifest, errors) => {
 	let count = 0;
 	if (#typeof(units) != 'Array') {
 		add_error(errors, 'units', 'must be an array');
@@ -889,6 +895,39 @@ const validate_units = (units, technologies, morale_ids, errors) => {
 		validate_int(data, 'defense', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_bool(data, 'can_found_base', path, errors, false);
 		validate_bool(data, 'can_terraform', path, errors, false);
+		for (component of ['chassis', 'weapon', 'armor', 'reactor']) {
+			validate_string(data, component, path, errors, true);
+		}
+		if (#is_defined(data.chassis) && !#is_defined(unit_manifest.chassis.definitions[data.chassis])) {
+			add_error(errors, path + '.chassis', 'references missing chassis ' + data.chassis);
+		}
+		if (#is_defined(data.weapon) && !#is_defined(unit_manifest.weapons.definitions[data.weapon])) {
+			add_error(errors, path + '.weapon', 'references missing weapon ' + data.weapon);
+		}
+		if (#is_defined(data.armor) && !#is_defined(unit_manifest.armors.definitions[data.armor])) {
+			add_error(errors, path + '.armor', 'references missing armor ' + data.armor);
+		}
+		if (#is_defined(data.reactor) && !#is_defined(unit_manifest.reactors.definitions[data.reactor])) {
+			add_error(errors, path + '.reactor', 'references missing reactor ' + data.reactor);
+		}
+		validate_int(data, 'reactor_power', path, errors, true, 1, 4);
+		if (#typeof(data.abilities) != 'Array') {
+			add_error(errors, path + '.abilities', 'must be an array');
+		} else {
+			let seen_abilities = {};
+			for (let ability_index = 0; ability_index < #sizeof(data.abilities); ability_index++) {
+				const ability = data.abilities[ability_index];
+				const ability_path = path + '.abilities[' + #to_string(ability_index) + ']';
+				if (#typeof(ability) != 'String' || ability == '') {
+					add_error(errors, ability_path, 'must be a non-empty string');
+				} else if (#is_defined(seen_abilities[ability])) {
+					add_error(errors, ability_path, 'duplicates unit ability ' + ability);
+				} else if (!#is_defined(unit_manifest.abilities.definitions[ability])) {
+					add_error(errors, ability_path, 'references missing ability ' + ability);
+				}
+				seen_abilities[ability] = true;
+			}
+		}
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -1164,15 +1203,16 @@ const validate = (catalog) => {
 		errors,
 		true
 	);
+	const unit_manifest_result = validate_unit_manifest(
+		catalog.unit_manifest,
+		catalog.technologies.definitions,
+		errors
+	);
 	const unit_count = validate_units(
 		catalog.units,
 		catalog.technologies.definitions,
 		morale_result.ids,
-		errors
-	);
-	const unit_manifest_result = validate_unit_manifest(
-		catalog.unit_manifest,
-		catalog.technologies.definitions,
+		unit_manifest_result,
 		errors
 	);
 	const faction_count = validate_factions(

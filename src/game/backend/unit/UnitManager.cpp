@@ -368,6 +368,29 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( int64_t, defense, unit_def, "defense", Int, 1 );
 				N_GETPROP_OPT_BOOL( can_found_base, unit_def, "can_found_base" );
 				N_GETPROP_OPT_BOOL( can_terraform, unit_def, "can_terraform" );
+				N_GETPROP_OPT( std::string, chassis_id, unit_def, "chassis", String, "" );
+				N_GETPROP_OPT( std::string, weapon_id, unit_def, "weapon", String, "" );
+				N_GETPROP_OPT( std::string, armor_id, unit_def, "armor", String, "" );
+				N_GETPROP_OPT( std::string, reactor_id, unit_def, "reactor", String, "" );
+				N_GETPROP_OPT( int64_t, reactor_power, unit_def, "reactor_power", Int, 1 );
+				N_GETPROP_OPT(
+					gse::value::array_elements_t,
+					ability_values,
+					unit_def,
+					"abilities",
+					Array,
+					gse::value::array_elements_t()
+				);
+				std::set< std::string > abilities = {};
+				if ( ability_values.size() > unit::StaticDef::MAX_ABILITIES ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Too many unit abilities: " + id );
+				}
+				for ( size_t i = 0 ; i < ability_values.size() ; i++ ) {
+					N_GETELEMENT( ability_id, ability_values, i, String );
+					if ( ability_id.empty() || !abilities.insert( ability_id ).second ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Unit abilities must be unique, non-empty strings: " + id );
+					}
+				}
 				if ( mineral_cost < 0 || mineral_cost > unit::Def::MAX_MINERAL_COST ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit mineral cost: " + std::to_string( mineral_cost ) );
 				}
@@ -376,6 +399,8 @@ WRAPIMPL_BEGIN( UnitManager )
 					offense > unit::Def::MAX_COMBAT_STRENGTH ||
 					defense <= 0 ||
 					defense > unit::Def::MAX_COMBAT_STRENGTH ||
+					reactor_power < 1 ||
+					reactor_power > 4 ||
 					( can_found_base && can_terraform )
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit combat or capability values: " + id );
@@ -445,10 +470,16 @@ WRAPIMPL_BEGIN( UnitManager )
 								sprite_w,
 								sprite_h,
 								sprite_cx,
-								sprite_cy,
-								sprite_morale_based_xshift
-							)
-						);
+									sprite_cy,
+									sprite_morale_based_xshift
+								),
+								chassis_id,
+								weapon_id,
+								armor_id,
+								reactor_id,
+								reactor_power,
+								abilities
+							);
 
 						DefineUnit( def );
 
