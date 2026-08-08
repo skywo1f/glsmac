@@ -148,6 +148,7 @@ const queue_production = (game, player, bases, units) => {
 		tm.get_map_height(),
 		#sizeof(game.get_players())
 	);
+	let hurry_candidates = [];
 	for (base of bases) {
 		const garrison_count = combat.get_garrison_count(base, player.id);
 		let supported_units = 0;
@@ -161,24 +162,27 @@ const queue_production = (game, player, bases, units) => {
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
 		const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
+		const mineral_surplus = intake.MINERALS - consumption.MINERALS;
+		const context = {
+			needs_garrison: garrison_count < required_garrison,
+			needs_former: former_count < #sizeof(bases),
+			needs_colony: #sizeof(bases) + colony_count < desired_base_count,
+			needs_military: combat_count < #sizeof(bases) * 2,
+			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
+			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
+			can_expand: base.get_size() > 1,
+			nutrient_surplus: nutrient_surplus,
+			mineral_surplus: mineral_surplus,
+			supported_units: supported_units,
+			free_support: #max(base.get_size(), 1),
+			base_labs: game.get('f_technology_get_base_labs')(base).total,
+			available_energy: available_energy,
+		};
 		const selected = production.choose(
 			base,
 			unit_defs,
 			facility_defs,
-			{
-				needs_garrison: garrison_count < required_garrison,
-				needs_former: former_count < #sizeof(bases),
-				needs_colony: #sizeof(bases) + colony_count < desired_base_count,
-				needs_military: combat_count < #sizeof(bases) * 2,
-				needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
-				needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
-				can_expand: base.get_size() > 1,
-				nutrient_surplus: nutrient_surplus,
-				supported_units: supported_units,
-				free_support: #max(base.get_size(), 1),
-				base_labs: game.get('f_technology_get_base_labs')(base).total,
-				available_energy: available_energy,
-			}
+			context
 		);
 		if (selected != null && selected.kind == 'unit') {
 			if (selected.def.can_terraform) {
@@ -206,6 +210,25 @@ const queue_production = (game, player, bases, units) => {
 				kind: selected.kind,
 				id: selected.id,
 			});
+		}
+		if (selected != null) {
+			context.kind = selected.kind;
+			context.hurry_cost = game.get('f_economy_get_hurry_cost')(base);
+			context.energy_credits = player.energy_credits;
+			context.energy_income = available_energy;
+			context.accumulated_minerals = base.get_accumulated_minerals();
+			context.production_score = selected.score;
+			const hurry_score = production.score_hurry(selected.def, context);
+			if (hurry_score != null) {
+				hurry_candidates :+{base: base, score: hurry_score};
+			}
+		}
+	}
+	const hurry = production.choose_hurry(hurry_candidates);
+	if (hurry != null) {
+		const cost = game.get('f_economy_get_hurry_cost')(hurry.base);
+		if (cost > 0 && player.energy_credits >= cost) {
+			game.event_as(player.id, 'hurry_base_production', {base: hurry.base});
 		}
 	}
 };

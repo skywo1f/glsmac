@@ -225,6 +225,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( AI_HURRY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-hurry-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${AI_HURRY_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME ai_hurry_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${AI_HURRY_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_ai_hurry_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( ai_hurry_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "AI_HURRY_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "AI_HURRY_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 60
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( SEVEN_PLAYER_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/seven-player-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${SEVEN_PLAYER_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME seven_player_runtime_smoke COMMAND

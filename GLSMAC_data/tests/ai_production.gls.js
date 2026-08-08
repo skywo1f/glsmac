@@ -94,3 +94,41 @@ test.assert(
 	production.score_facility(recycling, growth_context) >
 	production.score_facility(recycling, context(false, false, false, false, 10))
 );
+
+const hurry_context = (kind, cost, credits, accumulated, mineral_surplus) => {
+	let result = context(false, false, false, false, 10);
+	result.kind = kind;
+	result.hurry_cost = cost;
+	result.energy_credits = credits;
+	result.energy_income = 4;
+	result.accumulated_minerals = accumulated;
+	result.mineral_surplus = mineral_surplus;
+	result.production_score = 40000;
+	return result;
+};
+
+let emergency_hurry = hurry_context('unit', 40, 40, 0, 2);
+emergency_hurry.needs_garrison = true;
+test.assert(production.score_hurry(scout, emergency_hurry) != null);
+
+let colony_hurry = hurry_context('unit', 53, 100, 10, 2);
+colony_hurry.needs_colony = true;
+const colony_hurry_score = production.score_hurry(colony, colony_hurry);
+test.assert(colony_hurry_score != null);
+test.assert(production.score_hurry(scout, emergency_hurry) > colony_hurry_score);
+colony_hurry.energy_credits = 52;
+test.assert(production.score_hurry(colony, colony_hurry) == null);
+colony_hurry.energy_credits = 60;
+test.assert(production.score_hurry(colony, colony_hurry) == null);
+
+let premature_hurry = hurry_context('facility', 2, 100, 39, 2);
+premature_hurry.needs_growth = true;
+test.assert(production.score_hurry(recycling, premature_hurry) == null);
+
+let early_hurry = hurry_context('facility', 120, 200, 0, 2);
+early_hurry.needs_growth = true;
+test.assert(production.score_hurry(recycling, early_hurry) == null);
+
+let lower_id = {base: {id: 2}, score: 100};
+let higher_id = {base: {id: 3}, score: 100};
+test.assert(production.choose_hurry([higher_id, lower_id]) == lower_id);
