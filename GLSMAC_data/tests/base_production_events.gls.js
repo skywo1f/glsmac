@@ -408,6 +408,10 @@ event.data.index = -1;
 test.assert(#is_defined(remove_base_production.validate(event)));
 event.data.index = 3;
 test.assert(#is_defined(remove_base_production.validate(event)));
+event.data.index = 1.0;
+test.assert(#is_defined(remove_base_production.validate(event)));
+event.data.index = '1';
+test.assert(#is_defined(remove_base_production.validate(event)));
 event.data.index = 1;
 
 event.applied = remove_base_production.apply(event);

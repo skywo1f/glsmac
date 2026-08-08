@@ -18,6 +18,9 @@ return {
 		if (e.game.is_turn_complete(e.caller)) {
 			return 'Player has already completed this turn';
 		}
+		if (#typeof(e.data.index) != 'Int') {
+			return 'Production queue index must be an integer';
+		}
 		if (e.data.index < 0 || e.data.index >= #sizeof(e.data.base.get_production_queue())) {
 			return 'Production queue index is out of bounds';
 		}
