@@ -1,5 +1,6 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const MAX_ACTION_ATTEMPTS_PER_UNIT = 16;
+const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
 const movement_rules = #include('movement_rules');
@@ -268,6 +269,32 @@ const move_combat = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return 0;
+	}
+	const repair_base = combat.get_repair_destination(game.get_tm(), unit, player.id, all_bases);
+	if (repair_base != null) {
+		const destination = repair_base.get_tile();
+		if (tile == destination) {
+			return 0;
+		}
+		const current_distance = game.get_tm().get_distance(tile, destination);
+		let repair_step = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
+			if (!can_enter(unit, candidate)) {
+				return 0 - 100000;
+			}
+			return 10000 - game.get_tm().get_distance(candidate, destination) * 100;
+		});
+		if (
+			repair_step == null ||
+			game.get_tm().get_distance(repair_step, destination) >= current_distance
+		) {
+			repair_step = pathfinding.find_path_step(game.get_tm(), unit, destination, (source, candidate) => {
+				return can_enter(unit, candidate, source);
+			});
+		}
+		if (repair_step != null && can_enter(unit, repair_step)) {
+			game.event_as(player.id, 'move_unit', {unit: unit, tile: repair_step});
+			return 100;
+		}
 	}
 	for (nearby of tile.get_surrounding_tiles()) {
 		if (attack_enemy_on_tile(game, player, unit, nearby)) {
