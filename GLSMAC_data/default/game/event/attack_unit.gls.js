@@ -211,6 +211,21 @@ return {
 				defender: snapshot_unit(defender),
 			},
 		};
+		const attacker_owner = e.game.get_player(attacker.owner);
+		const defender_owner = e.game.get_player(defender.owner);
+		if (
+			attacker_owner.id != defender_owner.id &&
+			#typeof(attacker_owner.get_diplomatic_relation) == 'Callable'
+		) {
+			applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(attacker_owner, defender_owner);
+			e.game.get('f_diplomacy_set_bilateral_relation')(attacker_owner, defender_owner, 'vendetta');
+			e.game.get('f_diplomacy_clear_offers')(attacker_owner, defender_owner);
+			e.game.trigger('diplomacy_updated', {
+				player: attacker_owner,
+				target: defender_owner,
+				relation: 'vendetta',
+			});
+		}
 
 		attacker.movement = #max(0.0, attacker.movement - 1.0);
 		attacker.moved_this_turn = true;
@@ -304,6 +319,16 @@ return {
 		e.game.am.stop_animations(a.animations_id);
 		restore_unit(e, a.backup.attacker);
 		restore_unit(e, a.backup.defender);
+		if (#is_defined(a.diplomacy)) {
+			const attacker_owner = e.game.get_player(a.backup.attacker.owner);
+			const defender_owner = e.game.get_player(a.backup.defender.owner);
+			e.game.get('f_diplomacy_restore_pair')(attacker_owner, defender_owner, a.diplomacy);
+			e.game.trigger('diplomacy_updated', {
+				player: attacker_owner,
+				target: defender_owner,
+				relation: a.diplomacy.player_relation,
+			});
+		}
 	},
 
 };

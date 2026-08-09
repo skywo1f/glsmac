@@ -30,6 +30,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
   PLANET rating, native-life setting, and perihelion;
 - persistent faction-wide fungal-bloom counts, host-authored reversible fungus
   eruptions, and live Eco Damage values on the base screen;
+- persistent bilateral neutral, treaty, pact, and vendetta relations, including
+  saved pending proposals, reversible network events, attack-triggered
+  vendettas, a player diplomacy screen, and strength-aware AI responses;
 - land and sea colonization, terraforming, conventional and psi combat,
   conquest, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -53,8 +56,9 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- diplomacy, treaties, pacts, vendettas, commerce, council elections, and
-  diplomatic victory;
+- deeper diplomacy including commerce, technology and energy exchanges,
+  commlink discovery, reputation, surrender, council elections, and diplomatic
+  victory;
 - probe-team actions, infiltration, subversion, and mind control;
 - remaining social effects: adoption costs, commerce thresholds, full police
   and away-unit behavior, and probe integration;
@@ -78,12 +82,19 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 74 cases: 58 isolated native/script GSE tests
-and 16 asset-backed runtime scenarios. The matrix has completed all 74 cases in
+The Release CTest matrix contains 77 cases: 60 isolated native/script GSE tests
+and 17 asset-backed runtime scenarios. The previous 74-case matrix completed
+all cases in
 one uninterrupted invocation on the tested Windows machine, but long runtime
 timing and process-lifecycle cases remain intermittently unstable. The same 58
 GSE cases also pass in the MSVC AddressSanitizer configuration. Script isolation
 keeps allocator lifetime bounded and reports the exact script that fails.
+
+The three new diplomacy cases have passed focused Release validation: native
+serialization and malformed-state checks, isolated event and AI-policy tests,
+and an asset-backed quickstart covering a persisted proposal, bilateral treaty,
+and bilateral vendetta. The expanded 77-case matrix has not yet been run as one
+invocation.
 
 The last all-green Release matrix passed 74/74 in one uninterrupted
 688.11-second invocation. A later full validation passed 72/74 in 768.06

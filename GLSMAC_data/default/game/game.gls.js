@@ -59,7 +59,8 @@ return (glsmac) => {
 	};
 
 	const modules = [
-		'social_engineering', 'projects', 'bases', 'ecology', 'conquest', 'transcendence', 'economy', 'ai',
+		'social_engineering', 'diplomacy', 'projects', 'bases', 'ecology', 'conquest', 'transcendence',
+		'economy', 'ai',
 	];
 	let m = {};
 	for (module of modules) {

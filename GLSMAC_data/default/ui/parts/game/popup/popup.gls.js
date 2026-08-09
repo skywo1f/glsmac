@@ -4,6 +4,7 @@ return {
 		'turn_confirmation',
 		'please_dont_go',
 		'social_engineering',
+		'diplomacy',
 		'base_screen',
 	],
 

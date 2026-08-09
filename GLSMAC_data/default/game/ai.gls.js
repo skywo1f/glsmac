@@ -2,6 +2,7 @@ const MOVEMENT_ACTION_DELAY = 200;
 const action_state = #include('ai/action_state');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
+const diplomacy = #include('ai/diplomacy');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
 const research = #include('ai/research');
@@ -36,6 +37,34 @@ const owned_units = (game, player) => {
 	return filter_owned_units(game.get_um().get_units(), player);
 };
 
+const is_protected_partner = (game, player, other_player_id) => {
+	if (other_player_id == player.id) {
+		return false;
+	}
+	const relation = player.get_diplomatic_relation(game.get_player(other_player_id));
+	return relation == 'treaty' || relation == 'pact';
+};
+
+const filter_hostile_units = (game, player, units) => {
+	let result = [];
+	for (unit of units) {
+		if (!is_protected_partner(game, player, unit.owner)) {
+			result :+unit;
+		}
+	}
+	return result;
+};
+
+const filter_hostile_bases = (game, player, bases) => {
+	let result = [];
+	for (base of bases) {
+		if (!is_protected_partner(game, player, base.get_owner().id)) {
+			result :+base;
+		}
+	}
+	return result;
+};
+
 const get_combat_power_metrics = (game, player) => {
 	let own = 0.0;
 	let strongest_rival = 0.0;
@@ -56,6 +85,89 @@ const get_combat_power_metrics = (game, player) => {
 		own: own,
 		strongest_rival: strongest_rival,
 	};
+};
+
+const get_player_power = (game, player) => {
+	let power = 0.0;
+	for (unit of game.get_um().get_units()) {
+		if (unit.owner == player.id) {
+			power += combat.get_force_power(unit);
+		}
+	}
+	return power;
+};
+
+const get_player_base_count = (game, player) => {
+	let count = 0;
+	for (base of game.get_bm().get_bases()) {
+		if (base.get_owner().id == player.id) {
+			count++;
+		}
+	}
+	return count;
+};
+
+const update_diplomacy = (game, player) => {
+	const own_power = get_player_power(game, player);
+	const own_bases = get_player_base_count(game, player);
+	for (other of game.get_players()) {
+		if (other.id == player.id) {
+			continue;
+		}
+		const offer = player.get_diplomatic_offer(other);
+		if (offer != '') {
+			game.event_as(player.id, 'respond_diplomatic_proposal', {
+				player: player,
+				proposer: other,
+				accept: diplomacy.should_accept({
+					offer: offer,
+					relation: player.get_diplomatic_relation(other),
+					own_power: own_power,
+					other_power: get_player_power(game, other),
+					own_bases: own_bases,
+					other_bases: get_player_base_count(game, other),
+				}),
+			});
+			return;
+		}
+	}
+
+	if ((game.get_turn() + player.id) % 8 != 0) {
+		return;
+	}
+	let best = null;
+	let best_target = null;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id ||
+			other.get_diplomatic_offer(player) != '' ||
+			player.get_diplomatic_offer(other) != ''
+		) {
+			continue;
+		}
+		const proposal = diplomacy.get_proposal({
+			relation: player.get_diplomatic_relation(other),
+			own_power: own_power,
+			other_power: get_player_power(game, other),
+			own_bases: own_bases,
+			other_bases: get_player_base_count(game, other),
+		});
+		if (
+			proposal != null &&
+			(best == null || proposal.score > best.score ||
+				(proposal.score == best.score && other.id < best_target.id))
+		) {
+			best = proposal;
+			best_target = other;
+		}
+	}
+	if (best != null) {
+		game.event_as(player.id, 'propose_diplomatic_relation', {
+			player: player,
+			target: best_target,
+			relation: best.relation,
+		});
+	}
 };
 
 const get_strategy_metrics = (game, player, bases, units) => {
@@ -266,7 +378,7 @@ const has_other_former = (tile, unit) => {
 	return false;
 };
 
-const attack_enemy_in_tiles = (game, player, unit, tiles) => {
+const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 	let available_tiles = [];
 	for (tile of tiles) {
 		if (!tile.is_locked()) {
@@ -278,7 +390,8 @@ const attack_enemy_in_tiles = (game, player, unit, tiles) => {
 		player.id,
 		available_tiles,
 		game.get_tm(),
-		game.get_um().get_units()
+		units,
+		(owner_id) => { return !is_protected_partner(game, player, owner_id); }
 	);
 	if (target == null) {
 		return false;
@@ -637,14 +750,16 @@ const move_former = (game, player, unit, all_bases) => {
 
 const move_combat = (game, player, unit, all_bases, all_units, reinforcement_assignments) => {
 	const tile = unit.get_tile();
+	const strategic_bases = filter_hostile_bases(game, player, all_bases);
+	const strategic_units = filter_hostile_units(game, player, all_units);
 	if (tile.is_locked()) {
 		return 0;
 	}
-	const air_refuel_delay = move_air_to_refuel(game, player, unit, all_bases);
+	const air_refuel_delay = move_air_to_refuel(game, player, unit, strategic_bases);
 	if (air_refuel_delay >= 0) {
 		return air_refuel_delay;
 	}
-	const repair_base = combat.get_repair_destination(game.get_tm(), unit, player.id, all_bases);
+	const repair_base = combat.get_repair_destination(game.get_tm(), unit, player.id, strategic_bases);
 	if (repair_base != null) {
 		const destination = repair_base.get_tile();
 		if (tile == destination) {
@@ -677,13 +792,13 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			game.get_tm(),
 			current_base,
 			player.id,
-			all_units
+			strategic_units
 		);
 		if (defenders <= required_garrison) {
 			return 0;
 		}
 	}
-	if (attack_enemy_in_tiles(game, player, unit, tile.get_surrounding_tiles())) {
+	if (attack_enemy_in_tiles(game, player, unit, tile.get_surrounding_tiles(), strategic_units)) {
 		return 1000;
 	}
 	if (unit.get_def().id == 'SporeLauncher') {
@@ -695,14 +810,14 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 				}
 			}
 		}
-		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles)) {
+		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles, strategic_units)) {
 			return 1000;
 		}
 	}
 	const unit_key = #to_string(unit.id);
 	let reinforcement_base = null;
 	if (#is_defined(reinforcement_assignments[unit_key])) {
-		for (base of all_bases) {
+		for (base of strategic_bases) {
 			if (
 				base.id == reinforcement_assignments[unit_key] &&
 				base.get_owner().id == player.id &&
@@ -718,7 +833,7 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	}
 	if (reinforcement_base == null) {
 		let reservations = {};
-		for (other of all_units) {
+		for (other of strategic_units) {
 			if (other.owner != player.id) {
 				continue;
 			}
@@ -734,8 +849,8 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			game.get_tm(),
 			unit,
 			player.id,
-			all_bases,
-			all_units,
+			strategic_bases,
+			strategic_units,
 			reservations
 		);
 		if (reinforcement_base != null) {
@@ -769,8 +884,8 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		game.get_tm(),
 		unit,
 		player.id,
-		all_bases,
-		all_units
+		strategic_bases,
+		strategic_units
 	);
 	const enemy_distance = enemy_base == null
 		? 100000
@@ -807,6 +922,7 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 const play_turn = (game, player, done) => {
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
+	update_diplomacy(game, player);
 	update_social_engineering(game, player, bases, units);
 	queue_production(game, player, bases, units);
 

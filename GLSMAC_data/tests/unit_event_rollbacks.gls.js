@@ -987,6 +987,21 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let despawn_requests = 0;
 	let advance_requests = 0;
 	let advance_data = null;
+	let combat_relation = 'treaty';
+	let attacker_player = null;
+	let defender_player = null;
+	const make_combat_player = (id, other_id) => {
+		return {
+			id: id,
+			get_diplomatic_relation: (other) => { return combat_relation; },
+			set_diplomatic_relation: (other, relation) => { combat_relation = relation; },
+			get_diplomatic_offer: (other) => { return ''; },
+			set_diplomatic_offer: (other, offer) => {},
+		};
+	};
+	attacker_player = make_combat_player(1, 2);
+	defender_player = make_combat_player(2, 1);
+	defender.owner = defender_player.id;
 
 	const um = {
 		get_moraleset: (id) => {
@@ -1014,6 +1029,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		},
 		spawn_unit: (data) => {
 			const unit = make_unit(data.id, data.def, data.tile, 9.0, data.morale, data.health, false);
+			unit.owner = data.owner.id;
 			if (data.id == attacker.id) {
 				active_attacker = unit;
 			} else {
@@ -1037,8 +1053,34 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			},
 		},
 		get_player: (id) => {
-			return owner;
+			return id == attacker_player.id ? attacker_player : defender_player;
 		},
+		get: (name) => {
+			if (name == 'f_diplomacy_snapshot_pair') {
+				return (player, other) => {
+					return {
+						player_relation: player.get_diplomatic_relation(other),
+						other_relation: other.get_diplomatic_relation(player),
+						player_offer: '',
+						other_offer: '',
+					};
+				};
+			}
+			if (name == 'f_diplomacy_set_bilateral_relation') {
+				return (player, other, relation) => {
+					player.set_diplomatic_relation(other, relation);
+					other.set_diplomatic_relation(player, relation);
+				};
+			}
+			if (name == 'f_diplomacy_clear_offers') {
+				return (player, other) => {};
+			}
+			return (player, other, snapshot) => {
+				player.set_diplomatic_relation(other, snapshot.player_relation);
+				other.set_diplomatic_relation(player, snapshot.other_relation);
+			};
+		},
+		trigger: (name, data) => {},
 		tm: {
 			get_tile: (x, y) => {
 				if (x == attacker_tile.x && y == attacker_tile.y) {
@@ -1078,6 +1120,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	};
 
 	event.applied = attack_unit.apply(event);
+	test.assert(combat_relation == 'vendetta');
 	test.assert(event.applied.backup.attacker.moved_this_turn == false);
 	test.assert(event.data.attacker.health == 0.0);
 	test.assert(event.data.defender.health == 0.0);
@@ -1089,6 +1132,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	}
 
 	attack_unit.rollback(event);
+	test.assert(combat_relation == 'treaty');
 	test.assert(stopped_animation_id == 73);
 	test.assert(active_attacker.id == 20);
 	test.assert(active_attacker.movement == 0.5);

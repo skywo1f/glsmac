@@ -2,6 +2,7 @@
 
 #include <array>
 #include <cstdint>
+#include <map>
 #include <set>
 #include <string>
 
@@ -91,6 +92,23 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const social_engineering_t& GetSocialEngineering() const;
 	void SetSocialEngineering( const social_engineering_t& social_engineering );
 
+	enum diplomatic_relation_t {
+		DR_NEUTRAL,
+		DR_TREATY,
+		DR_PACT,
+		DR_VENDETTA,
+	};
+	using diplomatic_relations_t = std::map< size_t, diplomatic_relation_t >;
+	static constexpr size_t MAX_DIPLOMATIC_RELATIONS = 64;
+	const diplomatic_relations_t& GetDiplomaticRelations() const;
+	diplomatic_relation_t GetDiplomaticRelation( const size_t player_id ) const;
+	void SetDiplomaticRelation( const size_t player_id, const diplomatic_relation_t relation );
+	const diplomatic_relations_t& GetDiplomaticOffers() const;
+	diplomatic_relation_t GetDiplomaticOffer( const size_t player_id ) const;
+	void SetDiplomaticOffer( const size_t player_id, const diplomatic_relation_t relation );
+	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
+	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
+
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
@@ -119,6 +137,8 @@ private:
 	int64_t m_energy_credits = 0;
 	int64_t m_ecological_damage_events = 0;
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
+	diplomatic_relations_t m_diplomatic_relations = {};
+	diplomatic_relations_t m_diplomatic_offers = {};
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(

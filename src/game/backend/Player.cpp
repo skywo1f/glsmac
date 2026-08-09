@@ -49,6 +49,8 @@ Player::Player( const Player* const other ) {
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_social_engineering = other->m_social_engineering;
+	m_diplomatic_relations = other->m_diplomatic_relations;
+	m_diplomatic_offers = other->m_diplomatic_offers;
 }
 
 Player::~Player() {
@@ -195,6 +197,83 @@ void Player::SetSocialEngineering( const social_engineering_t& social_engineerin
 		THROW( error );
 	}
 	m_social_engineering = social_engineering;
+}
+
+const Player::diplomatic_relations_t& Player::GetDiplomaticRelations() const {
+	return m_diplomatic_relations;
+}
+
+Player::diplomatic_relation_t Player::GetDiplomaticRelation( const size_t player_id ) const {
+	const auto it = m_diplomatic_relations.find( player_id );
+	return it == m_diplomatic_relations.end() ? DR_NEUTRAL : it->second;
+}
+
+void Player::SetDiplomaticRelation( const size_t player_id, const diplomatic_relation_t relation ) {
+	if ( player_id >= MAX_DIPLOMATIC_RELATIONS ) {
+		THROW( "diplomatic relation player ID is out of range" );
+	}
+	if ( relation < DR_NEUTRAL || relation > DR_VENDETTA ) {
+		THROW( "diplomatic relation is invalid" );
+	}
+	if ( relation == DR_NEUTRAL ) {
+		m_diplomatic_relations.erase( player_id );
+	}
+	else {
+		m_diplomatic_relations[ player_id ] = relation;
+	}
+}
+
+const Player::diplomatic_relations_t& Player::GetDiplomaticOffers() const {
+	return m_diplomatic_offers;
+}
+
+Player::diplomatic_relation_t Player::GetDiplomaticOffer( const size_t player_id ) const {
+	const auto it = m_diplomatic_offers.find( player_id );
+	return it == m_diplomatic_offers.end() ? DR_NEUTRAL : it->second;
+}
+
+void Player::SetDiplomaticOffer( const size_t player_id, const diplomatic_relation_t relation ) {
+	if ( player_id >= MAX_DIPLOMATIC_RELATIONS ) {
+		THROW( "diplomatic offer player ID is out of range" );
+	}
+	if ( relation == DR_NEUTRAL ) {
+		m_diplomatic_offers.erase( player_id );
+		return;
+	}
+	if ( relation != DR_TREATY && relation != DR_PACT ) {
+		THROW( "diplomatic offer must be a treaty or pact" );
+	}
+	m_diplomatic_offers[ player_id ] = relation;
+}
+
+const std::string Player::GetDiplomaticRelationName( const diplomatic_relation_t relation ) {
+	switch ( relation ) {
+		case DR_NEUTRAL: return "neutral";
+		case DR_TREATY: return "treaty";
+		case DR_PACT: return "pact";
+		case DR_VENDETTA: return "vendetta";
+	}
+	THROW( "diplomatic relation is invalid" );
+}
+
+bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation ) {
+	if ( name == "neutral" ) {
+		relation = DR_NEUTRAL;
+		return true;
+	}
+	if ( name == "treaty" ) {
+		relation = DR_TREATY;
+		return true;
+	}
+	if ( name == "pact" ) {
+		relation = DR_PACT;
+		return true;
+	}
+	if ( name == "vendetta" ) {
+		relation = DR_VENDETTA;
+		return true;
+	}
+	return false;
 }
 
 WRAPIMPL_BEGIN( Player )
@@ -408,6 +487,76 @@ WRAPIMPL_BEGIN( Player )
 					return VALUE( gse::value::Undefined );
 				} )
 			},
+			{
+				"get_diplomatic_relation",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot have a diplomatic relation with itself" );
+					}
+					return VALUE(
+						gse::value::String,
+						,
+						GetDiplomaticRelationName( GetDiplomaticRelation( other->m_slotnum ) )
+					);
+				} )
+			},
+			{
+				"set_diplomatic_relation",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( relation_name, 1, String );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot have a diplomatic relation with itself" );
+					}
+					diplomatic_relation_t relation;
+					if ( !ParseDiplomaticRelation( relation_name, relation ) ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Unknown diplomatic relation: " + relation_name );
+					}
+					SetDiplomaticRelation( other->m_slotnum, relation );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_diplomatic_offer",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot make a diplomatic offer to itself" );
+					}
+					const auto offer = GetDiplomaticOffer( other->m_slotnum );
+					return VALUE(
+						gse::value::String,
+						,
+						offer == DR_NEUTRAL ? "" : GetDiplomaticRelationName( offer )
+					);
+				} )
+			},
+			{
+				"set_diplomatic_offer",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( offer_name, 1, String );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot make a diplomatic offer to itself" );
+					}
+					diplomatic_relation_t offer = DR_NEUTRAL;
+					if ( !offer_name.empty() && !ParseDiplomaticRelation( offer_name, offer ) ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Unknown diplomatic offer: " + offer_name );
+					}
+					if ( offer != DR_NEUTRAL && offer != DR_TREATY && offer != DR_PACT ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Diplomatic offer must be a treaty or pact" );
+					}
+					SetDiplomaticOffer( other->m_slotnum, offer );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -436,6 +585,16 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteString( id );
 	}
 	buf.WriteInt( m_ecological_damage_events );
+	buf.WriteInt( m_diplomatic_relations.size() );
+	for ( const auto& [ player_id, relation ] : m_diplomatic_relations ) {
+		buf.WriteInt( player_id );
+		buf.WriteInt( relation );
+	}
+	buf.WriteInt( m_diplomatic_offers.size() );
+	for ( const auto& [ player_id, relation ] : m_diplomatic_offers ) {
+		buf.WriteInt( player_id );
+		buf.WriteInt( relation );
+	}
 
 	return buf;
 }
@@ -493,6 +652,52 @@ void Player::Deserialize( types::Buffer buf ) {
 	if ( ecological_damage_events < 0 || ecological_damage_events > MAX_ECOLOGICAL_DAMAGE_EVENTS ) {
 		THROW( "invalid serialized player ecological damage event count" );
 	}
+	diplomatic_relations_t diplomatic_relations = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto relation_count = buf.ReadCollectionSize( "player diplomatic relation" );
+		if ( relation_count > MAX_DIPLOMATIC_RELATIONS ) {
+			THROW( "invalid serialized player diplomatic relation count" );
+		}
+		for ( size_t i = 0 ; i < relation_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic relation player ID" );
+			const auto serialized_relation = buf.ReadInt();
+			if ( player_id >= MAX_DIPLOMATIC_RELATIONS ) {
+				THROW( "invalid serialized diplomatic relation player ID" );
+			}
+			if ( serialized_relation <= DR_NEUTRAL || serialized_relation > DR_VENDETTA ) {
+				THROW( "invalid serialized diplomatic relation" );
+			}
+			if ( !diplomatic_relations.emplace(
+				player_id,
+				static_cast< diplomatic_relation_t >( serialized_relation )
+			).second ) {
+				THROW( "duplicate serialized diplomatic relation player ID" );
+			}
+		}
+	}
+	diplomatic_relations_t diplomatic_offers = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto offer_count = buf.ReadCollectionSize( "player diplomatic offer" );
+		if ( offer_count > MAX_DIPLOMATIC_RELATIONS ) {
+			THROW( "invalid serialized player diplomatic offer count" );
+		}
+		for ( size_t i = 0 ; i < offer_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic offer player ID" );
+			const auto serialized_offer = buf.ReadInt();
+			if ( player_id >= MAX_DIPLOMATIC_RELATIONS ) {
+				THROW( "invalid serialized diplomatic offer player ID" );
+			}
+			if ( serialized_offer != DR_TREATY && serialized_offer != DR_PACT ) {
+				THROW( "invalid serialized diplomatic offer" );
+			}
+			if ( !diplomatic_offers.emplace(
+				player_id,
+				static_cast< diplomatic_relation_t >( serialized_offer )
+			).second ) {
+				THROW( "duplicate serialized diplomatic offer player ID" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -510,6 +715,8 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_energy_credits = energy_credits;
 	m_ecological_damage_events = ecological_damage_events;
 	m_social_engineering = std::move( social_engineering );
+	m_diplomatic_relations = std::move( diplomatic_relations );
+	m_diplomatic_offers = std::move( diplomatic_offers );
 
 }
 

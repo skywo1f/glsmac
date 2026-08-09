@@ -201,7 +201,7 @@ const can_commit_attack = (tm, attacker, defender, player_id, units) => {
 		get_attack_commitment_score(tm, attacker, defender, player_id, units) >= MIN_GROUP_ATTACK_SCORE;
 };
 
-const choose_attack_target = (attacker, player_id, tiles, tm, units) => {
+const choose_attack_target = (attacker, player_id, tiles, tm, units, is_target_allowed) => {
 	let best = null;
 	let best_score = 0.0;
 	const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
@@ -213,7 +213,11 @@ const choose_attack_target = (attacker, player_id, tiles, tm, units) => {
 			continue;
 		}
 		const unit = combat_rules.get_best_defender(attacker, tile);
-		if (unit == null || !can_commit_attack(tm, attacker, unit, player_id, units)) {
+		if (
+			unit == null ||
+			(#is_defined(is_target_allowed) && !is_target_allowed(unit.owner)) ||
+			!can_commit_attack(tm, attacker, unit, player_id, units)
+		) {
 			continue;
 		}
 		const score = get_attack_score(attacker, unit);
