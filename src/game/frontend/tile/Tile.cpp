@@ -16,6 +16,9 @@ std::vector< size_t > Tile::GetUnitsOrder( const std::unordered_map< size_t, uni
 	for ( auto& it : units ) {
 		const auto unit_id = it.first;
 		const auto* unit = it.second;
+		if ( unit->IsEmbarked() ) {
+			continue;
+		}
 		size_t weight = unit->GetSelectionWeight();
 		weights[ -weight ].push_back( unit_id ); // negative because we need reverse order
 	}
@@ -81,6 +84,14 @@ void Tile::RemoveUnit( unit::Unit* unit ) {
 	Render();
 }
 
+void Tile::InvalidateUnitOrder() {
+	m_is_units_reorder_needed = true;
+	m_is_objects_reorder_needed = true;
+	if ( m_base ) {
+		m_base->Update();
+	}
+}
+
 void Tile::SetActiveUnit( unit::Unit* unit ) {
 	if ( m_render.currently_rendered_unit && m_render.currently_rendered_unit != unit ) {
 		m_render.currently_rendered_unit->Hide();
@@ -115,19 +126,19 @@ void Tile::Render( size_t selected_unit_id ) {
 	}
 	m_render.currently_rendered_fake_badges.clear();
 
-	bool should_show_units = !m_units.empty();
+	const auto units_order = GetUnitsOrder( m_units );
+	bool should_show_units = !units_order.empty();
 	if ( m_base ) {
 		m_base->Show();
 		should_show_units = false;
-		for ( const auto& it : m_units ) {
-			if ( it.second->GetId() == selected_unit_id ) {
+		for ( const auto& unit_id : units_order ) {
+			if ( unit_id == selected_unit_id ) {
 				should_show_units = true;
 				break;
 			}
 		}
 	}
 	if ( should_show_units ) {
-		const auto units_order = GetUnitsOrder( m_units );
 		ASSERT( !units_order.empty(), "units order is empty" );
 
 		const auto most_important_unit_id = units_order.front();
@@ -223,20 +234,22 @@ const std::vector< TileObject* >& Tile::GetOrderedObjects() {
 }
 
 unit::Unit* Tile::GetMostImportantUnit() {
-	if ( m_units.empty() ) {
+	const auto& ordered_units = GetOrderedUnits();
+	if ( ordered_units.empty() ) {
 		return nullptr;
 	}
 	else {
-		return GetOrderedUnits().front();
+		return ordered_units.front();
 	}
 }
 
 TileObject* Tile::GetMostImportantObject() {
-	if ( !m_base && m_units.empty() ) {
+	const auto& ordered_objects = GetOrderedObjects();
+	if ( ordered_objects.empty() ) {
 		return nullptr;
 	}
 	else {
-		return GetOrderedObjects().front();
+		return ordered_objects.front();
 	}
 }
 

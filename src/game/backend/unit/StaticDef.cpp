@@ -19,7 +19,7 @@ namespace game {
 namespace backend {
 namespace unit {
 
-static constexpr int64_t COMPONENT_METADATA_VERSION = 2;
+static constexpr int64_t COMPONENT_METADATA_VERSION = 3;
 
 // TODO: per-def values?
 const health_t StaticDef::HEALTH_MAX = 1.0f;
@@ -70,7 +70,8 @@ StaticDef::StaticDef(
 	const int64_t reactor_power,
 	const std::set< std::string >& abilities,
 	const int64_t operational_range,
-	const bool is_missile
+	const bool is_missile,
+	const int64_t cargo_capacity
 )
 	: Def(
 		id,
@@ -95,7 +96,8 @@ StaticDef::StaticDef(
 	, m_reactor_power( reactor_power )
 	, m_abilities( abilities )
 	, m_operational_range( operational_range )
-	, m_is_missile( is_missile ) {
+	, m_is_missile( is_missile )
+	, m_cargo_capacity( cargo_capacity ) {
 	if (
 		m_movement_type < MT_IMMOVABLE ||
 		m_movement_type > MT_AIR ||
@@ -107,6 +109,9 @@ StaticDef::StaticDef(
 		m_abilities.size() > MAX_ABILITIES ||
 		m_operational_range < 0 ||
 		m_operational_range > MAX_OPERATIONAL_RANGE ||
+		m_cargo_capacity < 0 ||
+		m_cargo_capacity > MAX_CARGO_CAPACITY ||
+		( m_cargo_capacity > 0 && ( m_movement_type == MT_IMMOVABLE || m_is_missile ) ) ||
 		( m_movement_type != MT_AIR && ( m_operational_range > 0 || m_is_missile ) ) ||
 		( m_is_missile && m_operational_range == 0 ) ||
 		( ( m_can_found_base || m_can_terraform ) && m_movement_type != MT_LAND )
@@ -159,6 +164,7 @@ const std::string StaticDef::ToString( const std::string& prefix ) const {
 		TS_OBJ_PROP_STR( "movement_type", GetMovementTypeString( m_movement_type ) ) +
 		TS_OBJ_PROP_NUM( "movement_per_turn", m_movement_per_turn ) +
 		TS_OBJ_PROP_NUM( "operational_range", m_operational_range ) +
+		TS_OBJ_PROP_NUM( "cargo_capacity", m_cargo_capacity ) +
 		TS_OBJ_PROP( "render", m_render->ToString( TS_PREFIX_NEXT ) ) +
 		TS_OBJ_END();
 }
@@ -179,6 +185,7 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	}
 	buf.WriteInt( def->m_operational_range );
 	buf.WriteBool( def->m_is_missile );
+	buf.WriteInt( def->m_cargo_capacity );
 }
 
 StaticDef* StaticDef::Deserialize(
@@ -218,9 +225,10 @@ StaticDef* StaticDef::Deserialize(
 	std::set< std::string > abilities = {};
 	int64_t operational_range = 0;
 	bool is_missile = false;
+	int64_t cargo_capacity = 0;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto version = buf.ReadInt();
-		if ( version != 1 && version != COMPONENT_METADATA_VERSION ) {
+		if ( version < 1 || version > COMPONENT_METADATA_VERSION ) {
 			THROW( "unsupported serialized unit component metadata version" );
 		}
 		chassis_id = buf.ReadString();
@@ -253,6 +261,19 @@ StaticDef* StaticDef::Deserialize(
 				THROW( "invalid serialized unit operational range" );
 			}
 		}
+		if ( version >= 3 ) {
+			cargo_capacity = buf.ReadInt();
+			if (
+				cargo_capacity < 0 ||
+				cargo_capacity > MAX_CARGO_CAPACITY ||
+				(
+					cargo_capacity > 0 &&
+					(serialized_movement_type == MT_IMMOVABLE || is_missile)
+				)
+			) {
+				THROW( "invalid serialized unit cargo capacity" );
+			}
+		}
 	}
 	return new StaticDef(
 		id,
@@ -275,7 +296,8 @@ StaticDef* StaticDef::Deserialize(
 		reactor_power,
 		abilities,
 		operational_range,
-		is_missile
+		is_missile,
+		cargo_capacity
 	);
 }
 
@@ -301,6 +323,7 @@ WRAPIMPL_BEGIN( StaticDef )
 			WRAPIMPL_GET_CUSTOM( "abilities", Array, abilities )
 			WRAPIMPL_GET_CUSTOM( "operational_range", Int, m_operational_range )
 			WRAPIMPL_GET_CUSTOM( "is_missile", Bool, m_is_missile )
+			WRAPIMPL_GET_CUSTOM( "cargo_capacity", Int, m_cargo_capacity )
 			WRAPIMPL_GET_CUSTOM( "is_artillery", Bool, IsArtillery() )
 			WRAPIMPL_GET_CUSTOM( "is_psi_attack", Bool, IsPsiAttack() )
 			WRAPIMPL_GET_CUSTOM( "is_psi_defense", Bool, IsPsiDefense() )

@@ -7,6 +7,8 @@
 #include "gse/value/Int.h"
 #include "gse/value/Float.h"
 #include "gse/value/Bool.h"
+#include "gse/value/Array.h"
+#include "gse/value/Null.h"
 #include "gse/value/Ptr.h"
 #include "gse/callable/Native.h"
 #include "game/backend/Game.h"
@@ -74,7 +76,8 @@ Unit::Unit(
 	const map::tile::terraforming_t terraforming,
 	const uint16_t terraforming_turns_remaining,
 	const size_t home_base_id,
-	const uint16_t fuel
+	const uint16_t fuel,
+	const size_t transport_id
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -88,7 +91,8 @@ Unit::Unit(
 	, m_terraforming( terraforming )
 	, m_terraforming_turns_remaining( terraforming_turns_remaining )
 	, m_home_base_id( home_base_id )
-	, m_fuel( fuel ) {
+	, m_fuel( fuel )
+	, m_transport_id( transport_id ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -98,10 +102,22 @@ Unit::Unit(
 	) {
 		THROW( "invalid unit fuel" );
 	}
+	if ( transport_id == id ) {
+		THROW( "unit cannot transport itself" );
+	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
 	}
 	SetTile( GSE_CALL, tile );
+}
+
+Unit::~Unit() {
+	if ( !m_is_registered && m_tile ) {
+		const auto it = m_tile->units.find( m_id );
+		if ( it != m_tile->units.end() && it->second == this ) {
+			m_tile->units.erase( it );
+		}
+	}
 }
 
 const movement_t Unit::MINIMUM_MOVEMENT_TO_KEEP = 0.025f;
@@ -158,6 +174,22 @@ void Unit::SetFuel( GSE_CALLABLE, const uint16_t fuel ) {
 	}
 }
 
+void Unit::SetTransportId( const size_t transport_id ) {
+	m_transport_id = transport_id;
+	std::lock_guard guard( m_wrapobjs_mutex );
+	for ( auto* const wrapobj : m_wrapobjs ) {
+		const auto transport_it = wrapobj->value.find( "transport_id" );
+		ASSERT( transport_it != wrapobj->value.end(), "unit wrapper has no transport_id property" );
+		ASSERT( transport_it->second->type == gse::VT_INT, "unit transport_id property is not an int" );
+		( (gse::value::Int*)transport_it->second )->value = m_transport_id;
+
+		const auto embarked_it = wrapobj->value.find( "is_embarked" );
+		ASSERT( embarked_it != wrapobj->value.end(), "unit wrapper has no is_embarked property" );
+		ASSERT( embarked_it->second->type == gse::VT_BOOL, "unit is_embarked property is not a bool" );
+		( (gse::value::Bool*)embarked_it->second )->value = m_transport_id != 0;
+	}
+}
+
 const types::Buffer Unit::Serialize( const Unit* unit ) {
 	types::Buffer buf;
 	buf.WriteInt( unit->m_id );
@@ -173,6 +205,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_terraforming_turns_remaining );
 	buf.WriteInt( unit->m_home_base_id );
 	buf.WriteInt( unit->m_fuel );
+	buf.WriteInt( unit->m_transport_id );
 	return buf;
 }
 
@@ -224,6 +257,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto fuel = buf.GetRemaining() > 0
 		? buf.ReadInt< uint16_t >( "unit fuel" )
 		: static_cast< uint16_t >( staticdef->m_operational_range );
+	const auto transport_id = buf.GetRemaining() > 0
+		? buf.ReadInt< size_t >( "unit transport id" )
+		: 0;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -246,6 +282,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	if ( fuel > staticdef->m_operational_range ) {
 		THROW( "invalid serialized unit fuel" );
 	}
+	if ( transport_id == id ) {
+		THROW( "serialized unit cannot transport itself" );
+	}
 	return new Unit(
 		GSE_CALL,
 		um,
@@ -260,7 +299,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		terraforming,
 		terraforming_turns_remaining,
 		home_base_id,
-		fuel
+		fuel,
+		transport_id
 	);
 }
 
@@ -293,6 +333,8 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "terraforming_turns_remaining", Int, m_terraforming_turns_remaining )
 	WRAPIMPL_GET_CUSTOM( "home_base_id", Int, m_home_base_id )
 	WRAPIMPL_GET_CUSTOM( "fuel", Int, m_fuel )
+	WRAPIMPL_GET_CUSTOM( "transport_id", Int, m_transport_id )
+	WRAPIMPL_GET_CUSTOM( "is_embarked", Bool, m_transport_id != 0 )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
 	WRAPIMPL_GET_CUSTOM( "is_water", Bool, m_def->GetMovementType() == MT_WATER )
@@ -300,6 +342,48 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_LINK( "get_def", m_def )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
+	{
+		"get_transport",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			if ( m_transport_id == 0 ) {
+				return VALUE( gse::value::Null );
+			}
+			auto* const transport = m_um->GetUnit( m_transport_id );
+			if ( !transport ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, "Unit transport no longer exists" );
+			}
+			return transport->Wrap( GSE_CALL );
+		} )
+	},
+	{
+		"get_cargo",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			gse::value::array_elements_t result = {};
+			for ( auto* const cargo : m_um->GetCargo( this ) ) {
+				result.push_back( cargo->Wrap( GSE_CALL ) );
+			}
+			return VALUE( gse::value::Array, , result );
+		} )
+	},
+	{
+		"embark",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE_UNWRAP( transport, 0, Unit );
+			m_um->EmbarkUnit( GSE_CALL, this, transport );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"disembark",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			m_um->DisembarkUnit( GSE_CALL, this );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"set_fuel",
 		NATIVE_CALL( this ) {

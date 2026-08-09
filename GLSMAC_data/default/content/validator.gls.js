@@ -91,6 +91,7 @@ const unit_fields = {
 	movement_per_turn: true,
 	operational_range: true,
 	is_missile: true,
+	cargo_capacity: true,
 	render: true,
 };
 
@@ -1072,6 +1073,7 @@ const validate_units = (units, technologies, morale_ids, unit_manifest, errors) 
 		validate_int(data, 'movement_per_turn', path, errors, true, 0, 1000);
 		validate_int(data, 'operational_range', path, errors, true, 0, 1000);
 		validate_bool(data, 'is_missile', path, errors, true);
+		validate_int(data, 'cargo_capacity', path, errors, true, 0, 100);
 		if (
 			#is_defined(data.movement_type) && data.movement_type != 'air' &&
 			(
@@ -1098,6 +1100,22 @@ const validate_units = (units, technologies, morale_ids, unit_manifest, errors) 
 			}
 			if (#is_defined(data.is_missile) && data.is_missile != chassis.missile) {
 				add_error(errors, path + '.is_missile', 'does not match chassis missile flag');
+			}
+			if (
+				#is_defined(data.cargo_capacity) && data.weapon == 'TroopTransport' &&
+				data.cargo_capacity != chassis.cargo * data.reactor_power
+			) {
+				add_error(
+					errors,
+					path + '.cargo_capacity',
+					'does not match chassis cargo multiplied by reactor power'
+				);
+			}
+			if (
+				#is_defined(data.cargo_capacity) && data.cargo_capacity > 0 &&
+				data.weapon != 'TroopTransport' && !data.is_native
+			) {
+				add_error(errors, path + '.cargo_capacity', 'requires a transport weapon');
 			}
 		}
 		validate_unit_render(data.render, path + '.render', errors);

@@ -19,6 +19,7 @@ const snapshot_unit = (unit) => {
 		terraforming_turns_remaining: unit.terraforming_turns_remaining,
 		home_base_id: unit.home_base_id,
 		fuel: unit.fuel,
+		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
 	};
 };
 
@@ -38,6 +39,7 @@ const restore_unit = (e, backup) => {
 			terraforming_turns_remaining: backup.terraforming_turns_remaining,
 			home_base_id: backup.home_base_id,
 			fuel: backup.fuel,
+			transport_id: backup.transport_id,
 		});
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
@@ -67,6 +69,9 @@ return {
 		}
 		if (e.data.attacker.health <= 0.0) {
 			return 'Dead unit cannot attack';
+		}
+		if (#is_defined(e.data.attacker.transport_id) && e.data.attacker.transport_id > 0) {
+			return 'Embarked unit must disembark before attacking';
 		}
 		if (e.data.defender.health <= 0.0) {
 			return 'Dead unit cannot be attacked';

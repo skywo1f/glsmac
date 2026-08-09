@@ -80,6 +80,7 @@ const find_component = (entries, id) => {
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
 const no_armor = find_component(manifest.armors, 'NoArmor');
 const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
+const troop_transport = find_component(manifest.weapons, 'TroopTransport');
 const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
 const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
@@ -150,7 +151,13 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 		name = weapon.short_name + ' Artillery ' + chassis.name;
 	} else if (role == 'former') {
 		name = ability_name + (chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
+	} else if (role == 'transport') {
+		name = chassis.name + ' Transport';
 	}
+	const reactor_power = 1;
+	const cargo_capacity = weapon.id == 'TroopTransport'
+		? chassis.cargo * reactor_power
+		: 0;
 	return {
 		id: 'Generated' + chassis.id + weapon.id + armor.id + ability_suffix,
 		data: {
@@ -166,7 +173,7 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			weapon: weapon.id,
 			armor: armor.id,
 			reactor: 'FissionPlant',
-			reactor_power: 1,
+			reactor_power: reactor_power,
 			abilities: ability_ids,
 			morale: 'STANDARD',
 			type: 'static',
@@ -174,6 +181,7 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			movement_per_turn: chassis.speed,
 			operational_range: chassis.range,
 			is_missile: chassis.missile,
+			cargo_capacity: cargo_capacity,
 			render: get_render(chassis, role),
 		},
 	};
@@ -234,6 +242,20 @@ const add_milestone_designs = (technology_id) => {
 		}
 		add_design(technology_id, chassis, weapon, armor, 'assault', []);
 		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+	}
+	if (is_available(troop_transport, known)) {
+		for (chassis of manifest.chassis) {
+			if (
+				chassis.triad != 'sea' || !is_available(chassis, known) ||
+				(
+					chassis.required_technology != technology_id &&
+					troop_transport.required_technology != technology_id
+				)
+			) {
+				continue;
+			}
+			add_design(technology_id, chassis, troop_transport, no_armor, 'transport', []);
+		}
 	}
 	const missile = find_component(manifest.chassis, 'Missile');
 	if (

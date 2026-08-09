@@ -117,6 +117,7 @@ void UnitManager::UndefineUnit( const std::string& id ) {
 }
 
 void UnitManager::SpawnUnit( GSE_CALLABLE, Unit* unit ) {
+	unit->m_is_registered = true;
 	if ( !m_game->IsRunning() ) {
 		m_unprocessed_units.push_back( unit );
 		return;
@@ -150,6 +151,9 @@ void UnitManager::DespawnUnit( GSE_CALLABLE, const size_t unit_id ) {
 	}
 
 	auto* unit = it->second;
+	if ( !GetCargo( unit ).empty() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Transport cargo must be despawned before its carrier" );
+	}
 
 	Log( "Despawning unit #" + std::to_string( unit->m_id ) + " (" + unit->m_def->m_id + ") at " + unit->GetTile()->ToString() );
 
@@ -206,9 +210,99 @@ const std::map< size_t, Unit* >& UnitManager::GetUnits() const {
 	return m_units;
 }
 
+std::vector< Unit* > UnitManager::GetCargo( const Unit* transport ) const {
+	std::vector< Unit* > result = {};
+	std::unordered_set< size_t > seen = {};
+	const auto collect = [ &result, &seen, transport ]( Unit* unit ) {
+		if ( unit->m_transport_id == transport->m_id && seen.insert( unit->m_id ).second ) {
+			result.push_back( unit );
+		}
+	};
+	for ( const auto& it : m_units ) {
+		collect( it.second );
+	}
+	for ( auto* const unit : m_unprocessed_units ) {
+		collect( unit );
+	}
+	std::sort(
+		result.begin(),
+		result.end(),
+		[]( const Unit* left, const Unit* right ) { return left->m_id < right->m_id; }
+	);
+	return result;
+}
+
+const std::string* UnitManager::ValidateEmbark( const Unit* unit, const Unit* transport ) const {
+	if ( !unit || !transport ) {
+		return new std::string( "Cargo and transport must exist" );
+	}
+	if ( unit == transport ) {
+		return new std::string( "Unit cannot embark on itself" );
+	}
+	if ( unit->m_transport_id != 0 ) {
+		return new std::string( "Unit is already embarked" );
+	}
+	if ( transport->m_transport_id != 0 ) {
+		return new std::string( "Cannot embark on another unit's cargo" );
+	}
+	if ( unit->m_owner != transport->m_owner ) {
+		return new std::string( "Unit can only embark on a friendly transport" );
+	}
+	if ( unit->GetTile() != transport->GetTile() ) {
+		return new std::string( "Unit and transport must occupy the same tile" );
+	}
+	if ( unit->m_health <= 0.0f || transport->m_health <= 0.0f ) {
+		return new std::string( "Destroyed units cannot embark or carry cargo" );
+	}
+	if ( unit->m_terraforming != map::tile::TERRAFORMING_NONE ) {
+		return new std::string( "Unit must cancel its terraforming order before embarking" );
+	}
+	ASSERT( unit->m_def->m_type == DT_STATIC, "only static cargo is supported" );
+	ASSERT( transport->m_def->m_type == DT_STATIC, "only static transports are supported" );
+	const auto* const cargo_def = static_cast< const StaticDef* >( unit->m_def );
+	const auto* const transport_def = static_cast< const StaticDef* >( transport->m_def );
+	if ( cargo_def->m_movement_type != MT_LAND ) {
+		return new std::string( "Only land units can embark on troop transports" );
+	}
+	if ( cargo_def->m_cargo_capacity > 0 ) {
+		return new std::string( "Transports cannot be nested" );
+	}
+	if ( transport_def->m_movement_type == MT_LAND || transport_def->m_cargo_capacity <= 0 ) {
+		return new std::string( "Target unit is not a sea or air transport" );
+	}
+	if ( GetCargo( transport ).size() >= static_cast< size_t >( transport_def->m_cargo_capacity ) ) {
+		return new std::string( "Transport has no remaining cargo capacity" );
+	}
+	return nullptr;
+}
+
+void UnitManager::EmbarkUnit( GSE_CALLABLE, Unit* unit, Unit* transport ) {
+	m_game->CheckRW( GSE_CALL );
+	const auto* const error = ValidateEmbark( unit, transport );
+	if ( error ) {
+		const auto message = *error;
+		delete error;
+		GSE_ERROR( gse::EC.GAME_ERROR, message );
+	}
+	unit->SetTransportId( transport->m_id );
+	RefreshUnit( GSE_CALL, unit );
+}
+
+void UnitManager::DisembarkUnit( GSE_CALLABLE, Unit* unit ) {
+	m_game->CheckRW( GSE_CALL );
+	if ( !unit || unit->m_transport_id == 0 ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Unit is not embarked" );
+	}
+	if ( !GetUnit( unit->m_transport_id ) ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Unit transport no longer exists" );
+	}
+	unit->SetTransportId( 0 );
+	RefreshUnit( GSE_CALL, unit );
+}
+
 void UnitManager::ProcessUnprocessed( GSE_CALLABLE ) {
 	ASSERT( m_game->IsRunning(), "game not running" );
-	for ( auto& it : m_unprocessed_units ) {
+	for ( auto* const it : m_unprocessed_units ) {
 		SpawnUnit( GSE_CALL, it );
 	}
 	m_unprocessed_units.clear();
@@ -241,6 +335,7 @@ void UnitManager::PushUpdates() {
 				fr.data.unit_spawn.morale = unit->m_morale;
 				NEW( fr.data.unit_spawn.morale_string, std::string, unit->GetMoraleString() );
 				fr.data.unit_spawn.health = unit->m_health;
+				fr.data.unit_spawn.embarked = unit->m_transport_id != 0;
 				m_game->AddFrontendRequest( fr );
 			}
 			if ( uu.ops & UUO_REFRESH ) {
@@ -250,6 +345,7 @@ void UnitManager::PushUpdates() {
 				fr.data.unit_update.morale = unit->m_morale;
 				NEW( fr.data.unit_update.morale_string, std::string, unit->GetMoraleString() );
 				fr.data.unit_update.health = unit->m_health;
+				fr.data.unit_update.embarked = unit->m_transport_id != 0;
 				const auto* tile = unit->GetTile();
 				fr.data.unit_update.tile_coords = {
 					tile->coord.x,
@@ -375,6 +471,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( int64_t, reactor_power, unit_def, "reactor_power", Int, 1 );
 				N_GETPROP_OPT( int64_t, operational_range, unit_def, "operational_range", Int, 0 );
 				N_GETPROP_OPT_BOOL( is_missile, unit_def, "is_missile" );
+				N_GETPROP_OPT( int64_t, cargo_capacity, unit_def, "cargo_capacity", Int, 0 );
 				N_GETPROP_OPT(
 					gse::value::array_elements_t,
 					ability_values,
@@ -437,7 +534,10 @@ WRAPIMPL_BEGIN( UnitManager )
 						operational_range < 0 ||
 						operational_range > unit::StaticDef::MAX_OPERATIONAL_RANGE ||
 						( movement_type != unit::MT_AIR && ( operational_range > 0 || is_missile ) ) ||
-						( is_missile && operational_range == 0 )
+						( is_missile && operational_range == 0 ) ||
+						cargo_capacity < 0 ||
+						cargo_capacity > unit::StaticDef::MAX_CARGO_CAPACITY ||
+						( cargo_capacity > 0 && ( movement_type == unit::MT_IMMOVABLE || is_missile ) )
 					) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit operational range: " + id );
 					}
@@ -490,7 +590,8 @@ WRAPIMPL_BEGIN( UnitManager )
 								reactor_power,
 								abilities,
 								operational_range,
-								is_missile
+								is_missile,
+								cargo_capacity
 							);
 
 						DefineUnit( def );
@@ -585,11 +686,19 @@ WRAPIMPL_BEGIN( UnitManager )
 		{
 			"get_units",
 			NATIVE_CALL( this ) {
-				N_EXPECT_ARGS( 0 );
+				N_EXPECT_ARGS_MAX( 1 );
+				bool include_embarked = false;
+				if ( !arguments.empty() ) {
+					N_GETVALUE( requested_include_embarked, 0, Bool );
+					include_embarked = requested_include_embarked;
+				}
 				gse::value::array_elements_t result = {};
 				result.reserve( m_units.size() );
 				for ( const auto& it : m_units ) {
-					if ( it.second->m_health > 0.0f ) {
+					if (
+						it.second->m_health > 0.0f &&
+						(include_embarked || it.second->m_transport_id == 0)
+					) {
 						result.push_back( it.second->Wrap( GSE_CALL ) );
 					}
 				}
@@ -615,6 +724,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( int64_t, terraforming_turns_remaining, obj, "terraforming_turns_remaining", Int, 0 );
 				N_GETPROP_OPT( size_t, home_base_id, obj, "home_base_id", Int, 0 );
 				N_GETPROP_OPT( int64_t, fuel, obj, "fuel", Int, 0 - 1 );
+				N_GETPROP_OPT( size_t, transport_id, obj, "transport_id", Int, 0 );
 				if ( home_base_id > 0 && m_game->IsRunning() ) {
 					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
 					if ( !home_base ) {
@@ -648,7 +758,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				if ( fuel > staticdef->m_operational_range ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Unit fuel exceeds its operational range" );
 				}
-				auto* unit = new unit::Unit(
+				auto unit = std::make_unique< unit::Unit >(
 					GSE_CALL,
 					this,
 					unit_id ? unit_id : unit::Unit::GetNextId(),
@@ -662,10 +772,22 @@ WRAPIMPL_BEGIN( UnitManager )
 					terraforming,
 					static_cast< uint16_t >( terraforming_turns_remaining ),
 					home_base_id,
-					static_cast< uint16_t >( fuel )
+					static_cast< uint16_t >( fuel ),
+					0
 				);
-				SpawnUnit( GSE_CALL, unit );
-				return unit->Wrap( GSE_CALL );
+				if ( transport_id > 0 ) {
+					auto* const transport = GetUnit( transport_id );
+					const auto* const error = ValidateEmbark( unit.get(), transport );
+					if ( error ) {
+						const auto message = *error;
+						delete error;
+						GSE_ERROR( gse::EC.INVALID_CALL, message );
+					}
+					unit->SetTransportId( transport_id );
+				}
+				auto* const result = unit.release();
+				SpawnUnit( GSE_CALL, result );
+				return result->Wrap( GSE_CALL );
 			})
 		},
 		{
@@ -791,6 +913,7 @@ void UnitManager::Deserialize( GSE_CALLABLE, types::Buffer& buf ) {
 		auto unit = std::unique_ptr< Unit >( Unit::Deserialize( GSE_CALL, b, this ) );
 		SpawnUnit( GSE_CALL, unit.release() );
 	}
+	ValidateTransports();
 
 	const auto next_unit_id = buf.ReadInt< size_t >( "next unit id" );
 	if ( next_unit_id == 0 || next_unit_id <= max_unit_id ) {
@@ -818,6 +941,54 @@ void UnitManager::ValidateHomeBases() const {
 	}
 	for ( const auto* unit : m_unprocessed_units ) {
 		validate( unit );
+	}
+}
+
+void UnitManager::ValidateTransports() const {
+	std::unordered_map< size_t, Unit* > units = {};
+	for ( const auto& it : m_units ) {
+		units.insert( it );
+	}
+	for ( auto* const unit : m_unprocessed_units ) {
+		if ( !units.insert( { unit->m_id, unit } ).second ) {
+			THROW( "duplicate unit id while validating transports" );
+		}
+	}
+	std::unordered_map< size_t, size_t > cargo_counts = {};
+	for ( const auto& it : units ) {
+		auto* const cargo = it.second;
+		if ( cargo->m_transport_id == 0 ) {
+			continue;
+		}
+		const auto transport_it = units.find( cargo->m_transport_id );
+		if ( transport_it == units.end() ) {
+			THROW( "unit #" + std::to_string( cargo->m_id ) + " has a missing transport" );
+		}
+		auto* const transport = transport_it->second;
+		if (
+			cargo == transport ||
+			cargo->m_owner != transport->m_owner ||
+			cargo->GetTile() != transport->GetTile() ||
+			transport->m_transport_id != 0 ||
+			cargo->m_def->m_type != DT_STATIC ||
+			transport->m_def->m_type != DT_STATIC
+		) {
+			THROW( "unit #" + std::to_string( cargo->m_id ) + " has an invalid transport relationship" );
+		}
+		const auto* const cargo_def = static_cast< const StaticDef* >( cargo->m_def );
+		const auto* const transport_def = static_cast< const StaticDef* >( transport->m_def );
+		if (
+			cargo_def->m_movement_type != MT_LAND ||
+			cargo_def->m_cargo_capacity > 0 ||
+			transport_def->m_movement_type == MT_LAND ||
+			transport_def->m_cargo_capacity <= 0
+		) {
+			THROW( "unit #" + std::to_string( cargo->m_id ) + " has incompatible cargo or transport definitions" );
+		}
+		const auto count = ++cargo_counts[ transport->m_id ];
+		if ( count > static_cast< size_t >( transport_def->m_cargo_capacity ) ) {
+			THROW( "unit #" + std::to_string( transport->m_id ) + " exceeds its cargo capacity" );
+		}
 	}
 }
 
@@ -920,6 +1091,10 @@ const std::string* UnitManager::MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::t
 		}
 	);
 	unit->SetTile( GSE_CALL, dst_tile );
+	for ( auto* const cargo : GetCargo( unit ) ) {
+		cargo->SetTile( GSE_CALL, dst_tile );
+		RefreshUnit( GSE_CALL, cargo );
+	}
 	m_game->AddFrontendRequest( fr );
 
 	return nullptr; // no error

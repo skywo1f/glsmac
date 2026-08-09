@@ -1,6 +1,24 @@
 const movement_rules = #include('../movement_rules');
 const base_capture = #include('../base_capture');
 
+const get_transport_id = (unit) => {
+	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
+};
+
+const get_boarding_transport = (unit, tile) => {
+	for (candidate of tile.get_units()) {
+		const def = candidate.get_def();
+		if (
+			candidate.owner == unit.owner && get_transport_id(candidate) == 0 &&
+			def.cargo_capacity > 0 &&
+			#sizeof(candidate.get_cargo()) < def.cargo_capacity
+		) {
+			return candidate;
+		}
+	}
+	return null;
+};
+
 const get_movement_cost = (unit, src_tile, dst_tile) => {
 	const is_native = unit.get_def().is_native;
 
@@ -61,6 +79,12 @@ return {
 		if (e.data.unit.health <= 0.0) {
 			return 'Dead unit cannot move';
 		}
+		if (
+			get_transport_id(e.data.unit) > 0 &&
+			e.data.unit.get_transport() == null
+		) {
+			return 'Embarked unit has no transport';
+		}
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
@@ -91,8 +115,15 @@ return {
 		if (!src_tile.is_adjactent_to(dst_tile)) {
 			return 'Destination tile is not adjactent to source tile';
 		}
-		if (e.data.unit.is_land && dst_tile.is_water) {
-			return 'Land units can\'t move to water tile';
+		if (get_transport_id(e.data.unit) > 0) {
+			if (!e.data.unit.is_land || !dst_tile.is_land) {
+				return 'Embarked land units can only disembark onto land';
+			}
+		} else if (
+			e.data.unit.is_land && dst_tile.is_water &&
+			get_boarding_transport(e.data.unit, dst_tile) == null
+		) {
+			return 'Land units need a friendly transport with free capacity to enter water';
 		}
 		if (e.data.unit.is_water && dst_tile.is_land) {
 			return 'Water units can\'t move to land tile';
@@ -122,11 +153,19 @@ return {
 
 		let movement_cost = get_movement_cost(e.data.unit, src_tile, dst_tile);
 
+		const transport =
+			get_transport_id(e.data.unit) == 0 &&
+			#is_defined(e.data.unit.is_land) && e.data.unit.is_land &&
+			#is_defined(dst_tile.is_water) && dst_tile.is_water
+				? get_boarding_transport(e.data.unit, dst_tile)
+				: null;
+
 		return {
 			is_movement_successful:
 				(movement >= movement_cost) // unit has enough moves
 				||
-				(e.game.random.get_float(0.0, movement_cost) < movement) // unit doesn't have enough moves but was lucky
+				(e.game.random.get_float(0.0, movement_cost) < movement), // unit doesn't have enough moves but was lucky
+			transport_id: transport == null ? 0 : transport.id,
 		};
 	},
 
@@ -144,6 +183,7 @@ return {
 				tile: src_tile,
 				movement: movement,
 				moved_this_turn: unit.moved_this_turn,
+				transport_id: get_transport_id(unit),
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,
@@ -165,7 +205,15 @@ return {
 
 		if (e.resolved.is_movement_successful) {
 			unit.move_to_tile(dst_tile, () => {});
-			if (dst_base != null && dst_base.get_owner().id != unit.owner) {
+			if (#is_defined(e.resolved.transport_id) && e.resolved.transport_id > 0) {
+				unit.embark(e.game.um.get_unit(e.resolved.transport_id));
+			} else if (result.orig.transport_id > 0) {
+				unit.disembark();
+			}
+			if (
+				get_transport_id(unit) == 0 && dst_base != null &&
+				dst_base.get_owner().id != unit.owner
+			) {
 				result.base_capture = base_capture.capture_base(e.game, dst_base, unit.get_owner());
 				result.rehomed_units = result.base_capture.rehomed_units;
 			}
@@ -188,7 +236,13 @@ return {
 		const unit = e.data.unit;
 		const orig = e.applied.orig;
 		if (e.applied.movement_started) {
+			if (get_transport_id(unit) > 0) {
+				unit.disembark();
+			}
 			unit.move_to_tile(orig.tile, () => {});
+			if (orig.transport_id > 0) {
+				unit.embark(e.game.um.get_unit(orig.transport_id));
+			}
 		}
 		if (e.applied.base_capture != null) {
 			base_capture.restore_base(e.data.tile.get_base(), e.applied.base_capture);

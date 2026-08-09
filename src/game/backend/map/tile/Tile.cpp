@@ -265,6 +265,7 @@ void Tile::SetFeatures( GSE_CALLABLE, const feature_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( features != value ) {
 		features = value;
+		std::lock_guard guard( m_wrapobjs_mutex );
 		for ( auto* const wrapobj : m_wrapobjs ) {
 			const auto& property_it = wrapobj->value.find( "features" );
 			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no features property" );
@@ -291,6 +292,7 @@ void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( terraforming != value ) {
 		terraforming = value;
+		std::lock_guard guard( m_wrapobjs_mutex );
 		for ( auto* const wrapobj : m_wrapobjs ) {
 			const auto& property_it = wrapobj->value.find( "terraforming" );
 			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no terraforming property" );
@@ -483,10 +485,17 @@ WRAPIMPL_BEGIN( Tile )
 		{
 			"get_units",
 			NATIVE_CALL( this ) {
-				N_EXPECT_ARGS( 0 );
+				N_EXPECT_ARGS_MAX( 1 );
+				bool include_embarked = false;
+				if ( !arguments.empty() ) {
+					N_GETVALUE( requested_include_embarked, 0, Bool );
+					include_embarked = requested_include_embarked;
+				}
 				gse::value::array_elements_t result = {};
 				for ( auto& it : units ) {
-					result.push_back( it.second->Wrap( GSE_CALL ) );
+					if ( include_embarked || it.second->m_transport_id == 0 ) {
+						result.push_back( it.second->Wrap( GSE_CALL ) );
+					}
 				}
 				return VALUE( gse::value::Array,, result );
 			} )

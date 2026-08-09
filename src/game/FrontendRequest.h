@@ -173,6 +173,7 @@ public:
 			backend::unit::morale_t morale;
 			const std::string* morale_string;
 			backend::unit::health_t health;
+			bool embarked;
 		} unit_spawn;
 		struct {
 			size_t unit_id;
@@ -183,6 +184,7 @@ public:
 			backend::unit::morale_t morale;
 			const std::string* morale_string;
 			backend::unit::health_t health;
+			bool embarked;
 			struct {
 				size_t x;
 				size_t y;

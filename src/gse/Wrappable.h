@@ -109,7 +109,7 @@ public:
 	virtual void GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects );
 
 protected:
-	// TODO: wrapobjs mutex
+	common::Mutex m_wrapobjs_mutex;
 	std::unordered_set< value::Object* > m_wrapobjs = {};
 
 protected:

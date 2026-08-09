@@ -31,7 +31,8 @@ Unit::Unit(
 	const backend::unit::movement_t movement,
 	const backend::unit::morale_t morale,
 	const std::string& morale_string,
-	const backend::unit::health_t health
+	const backend::unit::health_t health,
+	const bool embarked
 )
 	: TileObject( TOT_UNIT, tile )
 	, m_um( um )
@@ -52,7 +53,8 @@ Unit::Unit(
 	, m_movement( movement )
 	, m_morale( morale )
 	, m_morale_string( morale_string )
-	, m_health( health ) {
+	, m_health( health )
+	, m_is_embarked( embarked ) {
 	m_is_active = ShouldBeActive();
 	m_render.badge.def = m_slot_badges->GetUnitBadgeSprite( m_morale, m_is_active );
 	m_render.badge.healthbar.def = m_badge_defs->GetBadgeHealthbarSprite( m_health );
@@ -86,6 +88,10 @@ const bool Unit::IsOwned() const {
 
 const bool Unit::IsActive() const {
 	return m_is_active;
+}
+
+const bool Unit::IsEmbarked() const {
+	return m_is_embarked;
 }
 
 tile::Tile* Unit::GetTile() const {
@@ -165,7 +171,7 @@ void Unit::SetActiveOnTile() {
 }
 
 void Unit::Show() {
-	if ( !m_render.is_rendered ) {
+	if ( !m_is_embarked && !m_render.is_rendered ) {
 		const auto& c = m_render.coords;
 
 		auto* sprite = m_def->GetSprite( m_morale );
@@ -203,7 +209,9 @@ void Unit::Hide() {
 }
 
 const bool Unit::IsBadgeVisible() const {
-	return m_render.badge.def->instanced_sprite->actor->HasInstance( m_render.badge.instance_id );
+	return
+		m_render.badge.instance_id &&
+		m_render.badge.def->instanced_sprite->actor->HasInstance( m_render.badge.instance_id );
 }
 
 void Unit::ShowBadge() {
@@ -212,14 +220,21 @@ void Unit::ShowBadge() {
 }
 
 void Unit::HideBadge() {
-	m_render.badge.def->instanced_sprite->actor->RemoveInstance( m_render.badge.instance_id );
-	m_render.badge.healthbar.def->instanced_sprite->actor->RemoveInstance( m_render.badge.healthbar.instance_id );
+	if ( m_render.badge.instance_id ) {
+		m_render.badge.def->instanced_sprite->actor->RemoveInstance( m_render.badge.instance_id );
+	}
+	if ( m_render.badge.healthbar.instance_id ) {
+		m_render.badge.healthbar.def->instanced_sprite->actor->RemoveInstance( m_render.badge.healthbar.instance_id );
+	}
 }
 
 void Unit::ShowFakeBadge( const uint8_t offset ) {
+	if ( m_is_embarked ) {
+		return;
+	}
 	if ( !m_render.fake_badge.instance_id || m_fake_badge_offset != offset ) {
 		if ( m_render.fake_badge.instance_id ) {
-			m_slot_badges->HideFakeBadge( !m_render.fake_badge.instance_id );
+			m_slot_badges->HideFakeBadge( m_render.fake_badge.instance_id );
 		}
 		m_render.fake_badge.instance_id = m_slot_badges->ShowFakeBadge( m_render.coords, offset );
 		m_fake_badge_offset = offset;
@@ -344,6 +359,18 @@ void Unit::SetTile( tile::Tile* dst_tile, const bool update_render ) {
 
 	if ( update_render ) {
 		UpdateFromTile();
+	}
+}
+
+void Unit::SetEmbarked( const bool embarked ) {
+	if ( embarked != m_is_embarked ) {
+		if ( embarked ) {
+			Hide();
+			HideFakeBadge();
+		}
+		m_is_embarked = embarked;
+		m_tile->InvalidateUnitOrder();
+		m_need_refresh = true;
 	}
 }
 

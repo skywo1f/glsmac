@@ -149,6 +149,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( TRANSPORT_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/transport-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${TRANSPORT_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME transport_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${TRANSPORT_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_transport_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( transport_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "TRANSPORT_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "TRANSPORT_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( AI_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${AI_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME ai_runtime_smoke COMMAND

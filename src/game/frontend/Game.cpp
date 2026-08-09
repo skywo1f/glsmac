@@ -1154,7 +1154,8 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				d.movement,
 				d.morale,
 				*d.morale_string,
-				d.health
+				d.health,
+				d.embarked
 			);
 			break;
 		}
@@ -1169,26 +1170,18 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			unit->SetMovement( d.movement );
 			unit->SetMorale( d.morale, *d.morale_string );
 			unit->SetHealth( d.health );
+			unit->SetEmbarked( d.embarked );
 			const auto& c = unit->GetTile()->GetCoords();
 			if ( d.tile_coords.x != c.x || d.tile_coords.y != c.y ) {
-				/*MoveUnit(
-					unit,
-					GetTile(
-						{
-							d.tile_coords.x,
-							d.tile_coords.y
-						}
-					), {
-						d.render_coords.x,
-						d.render_coords.y,
-						d.render_coords.z,
-					}
-				);*/
-				THROW( "deprecated, shouldnt be here" );
+				if ( !d.embarked ) {
+					THROW( "non-embarked unit changed tiles without a move request" );
+				}
+				unit->SetTile(
+					m_tm->GetTile( { d.tile_coords.x, d.tile_coords.y } ),
+					false
+				);
 			}
-			else {
-				unit->Refresh();
-			}
+			unit->Refresh();
 			break;
 		}
 		case FrontendRequest::FR_UNIT_MOVE: {
@@ -1692,7 +1685,7 @@ void Game::Initialize(
 									std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 									for ( const auto& it : dst_tile->GetUnits() ) {
 										const auto& unit = it.second;
-										if ( !unit->IsOwned() ) { // TODO: pacts
+										if ( !unit->IsEmbarked() && !unit->IsOwned() ) { // TODO: pacts
 											// TODO: skip units of treaty/truce faction?
 											foreign_units.insert( it );
 										}
@@ -1963,7 +1956,7 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 		}
 		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 		for ( const auto& it : tile->GetUnits() ) {
-			if ( !it.second->IsOwned() ) {
+			if ( !it.second->IsEmbarked() && !it.second->IsOwned() ) {
 				foreign_units.insert( it );
 			}
 		}

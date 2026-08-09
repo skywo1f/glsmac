@@ -16,6 +16,7 @@ class StaticDef : public Def {
 public:
 	static constexpr size_t MAX_ABILITIES = 64;
 	static constexpr int64_t MAX_OPERATIONAL_RANGE = 1000;
+	static constexpr int64_t MAX_CARGO_CAPACITY = 100;
 	static const std::string& GetMovementTypeString( const movement_type_t movement_type );
 
 	static const health_t HEALTH_MAX;
@@ -42,7 +43,8 @@ public:
 		const int64_t reactor_power = 1,
 		const std::set< std::string >& abilities = {},
 		const int64_t operational_range = 0,
-		const bool is_missile = false
+		const bool is_missile = false,
+		const int64_t cargo_capacity = 0
 	);
 	~StaticDef();
 
@@ -57,6 +59,7 @@ public:
 	const std::set< std::string > m_abilities;
 	const int64_t m_operational_range;
 	const bool m_is_missile;
+	const int64_t m_cargo_capacity;
 
 	const bool HasAbility( const std::string& id ) const;
 	const bool IsArtillery() const;

@@ -36,7 +36,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);
-	test.assert(data.offense > 0 || data.can_terraform);
+	test.assert(data.offense > 0 || data.can_terraform || data.cargo_capacity > 0);
 	test.assert(technologies.get_definition(data.required_technology) != null);
 	for (ability of data.abilities) {
 		if (ability == 'CleanReactor') {

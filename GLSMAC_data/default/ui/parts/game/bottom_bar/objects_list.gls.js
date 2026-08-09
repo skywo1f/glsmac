@@ -125,7 +125,7 @@ return {
 			this.list_width = this.list_width + this.object_width;
 		}
 
-		for (unit of tile.get_units()) {
+		for (unit of tile.get_units(true)) {
 			this.add_object(unit, this.list_width);
 			this.list_width = this.list_width + this.object_width;
 		}

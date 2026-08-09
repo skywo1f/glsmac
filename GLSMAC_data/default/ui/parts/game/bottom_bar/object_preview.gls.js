@@ -166,6 +166,18 @@ return {
 						'left'
 					);
 				}
+				if (def.cargo_capacity > 0) {
+					f_line(
+						'Cargo: ' + #to_string(#sizeof(object.get_cargo())) + '/' +
+							#to_string(def.cargo_capacity),
+						14,
+						'left'
+					);
+				}
+				if (object.transport_id > 0) {
+					const transport = object.get_transport();
+					f_line('Aboard: ' + transport.get_def().name, 14, 'left');
+				}
 
 				if (object.terraforming != 'none') {
 					const order = terraforming.get_order(object.terraforming);
@@ -177,13 +189,13 @@ return {
 					);
 				}
 
-				if (is_owned && def.can_found_base) {
+				if (is_owned && object.transport_id == 0 && def.can_found_base) {
 					this.action_unit = object;
 					this.action_mode = 'found_base';
 					this.action_button.text = 'BUILD BASE';
 					this.close_terraform_menu();
 					this.action_button.show();
-				} else if (is_owned && def.can_terraform) {
+				} else if (is_owned && object.transport_id == 0 && def.can_terraform) {
 					this.action_unit = object;
 					if (object.terraforming == 'none') {
 						this.action_mode = 'terraform';

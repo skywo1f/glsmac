@@ -16,6 +16,7 @@ const snapshot_unit = (unit) => {
 		terraforming_turns_remaining: unit.terraforming_turns_remaining,
 		home_base_id: unit.home_base_id,
 		fuel: unit.fuel,
+		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
 	};
 };
 
@@ -31,6 +32,7 @@ const restore_unit = (e, backup) => {
 		terraforming_turns_remaining: backup.terraforming_turns_remaining,
 		home_base_id: backup.home_base_id,
 		fuel: backup.fuel,
+		transport_id: backup.transport_id,
 	});
 	unit.movement = backup.movement;
 	unit.moved_this_turn = backup.moved_this_turn;
@@ -56,6 +58,9 @@ return {
 		}
 		if (unit.health <= 0.0) {
 			return 'Dead unit cannot found a base';
+		}
+		if (#is_defined(unit.transport_id) && unit.transport_id > 0) {
+			return 'Embarked unit cannot found a base';
 		}
 		if (!unit.get_def().can_found_base) {
 			return 'Unit cannot found a base';

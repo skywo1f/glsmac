@@ -56,6 +56,7 @@ const native_lifeform = (
 			movement_per_turn: movement_per_turn,
 			operational_range: 0,
 			is_missile: false,
+			cargo_capacity: 0,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',
@@ -107,6 +108,7 @@ const conventional_unit = (
 			movement_per_turn: movement_per_turn,
 			operational_range: 0,
 			is_missile: false,
+			cargo_capacity: 0,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',

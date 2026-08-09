@@ -20,8 +20,11 @@ Wrappable& Wrappable::operator=( const Wrappable& other ) {
 }
 
 Wrappable::~Wrappable() {
-	for ( const auto& wrapobj : m_wrapobjs ) {
-		wrapobj->Unlink();
+	{
+		std::lock_guard guard( m_wrapobjs_mutex );
+		for ( const auto& wrapobj : m_wrapobjs ) {
+			wrapobj->Unlink();
+		}
 	}
 	{
 		std::lock_guard guard( m_dependent_wrappables_mutex );
@@ -32,11 +35,13 @@ Wrappable::~Wrappable() {
 }
 
 void Wrappable::Link( value::Object* wrapobj ) {
+	std::lock_guard guard( m_wrapobjs_mutex );
 	ASSERT( m_wrapobjs.find( wrapobj ) == m_wrapobjs.end(), "wrapobj already linked" );
 	m_wrapobjs.insert( wrapobj );
 }
 
 void Wrappable::Unlink( value::Object* wrapobj ) {
+	std::lock_guard guard( m_wrapobjs_mutex );
 	ASSERT( m_wrapobjs.find( wrapobj ) != m_wrapobjs.end(), "wrapobj not linked" );
 	m_wrapobjs.erase( wrapobj );
 }

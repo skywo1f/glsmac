@@ -13,6 +13,7 @@
 #include "types/texture/Texture.h"
 #include "BaseManager.h"
 #include "SlotBadges.h"
+#include "game/frontend/unit/Unit.h"
 
 namespace game {
 namespace frontend {
@@ -24,6 +25,15 @@ static const std::vector< uint8_t > s_base_render_population_thresholds = {
 	8,
 	15,
 };
+
+static const bool HasUnembarkedUnit( const tile::Tile* tile ) {
+	for ( const auto& it : tile->GetUnits() ) {
+		if ( !it.second->IsEmbarked() ) {
+			return true;
+		}
+	}
+	return false;
+}
 
 Base::Base(
 	BaseManager* bm,
@@ -52,7 +62,7 @@ Base::Base(
 			0,
 		}
 	)
-	, m_is_guarded( !m_tile->GetUnits().empty() )
+	, m_is_guarded( HasUnembarkedUnit( m_tile ) )
 	, m_is_owned( is_owned ) {
 	UpdateMeshTex( m_render_data.base, GetSprite()->instanced_sprite );
 	m_render.badge.def = m_slot_badges->GetBaseBadgeSprite( m_render.badge.pops_count, m_is_guarded );
@@ -169,7 +179,7 @@ void Base::Hide() {
 }
 
 void Base::Update() {
-	const auto is_guarded = !m_tile->GetUnits().empty();
+	const auto is_guarded = HasUnembarkedUnit( m_tile );
 	if ( is_guarded != m_is_guarded ) {
 		if ( m_render.is_rendered ) {
 			HideBadge();

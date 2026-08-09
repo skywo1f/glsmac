@@ -33,6 +33,9 @@ return {
 		if (#is_defined(e.data.fuel)) {
 			data.fuel = e.data.fuel;
 		}
+		if (#is_defined(e.data.transport_id)) {
+			data.transport_id = e.data.transport_id;
+		}
 		const unit = e.game.um.spawn_unit(data);
 
 		return {
