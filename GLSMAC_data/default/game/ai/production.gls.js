@@ -98,11 +98,22 @@ const score_facility = (def, context) => {
 	const infrastructure_bonus = (
 		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
 	) ? BASIC_INFRASTRUCTURE_SCORE_BONUS : 0;
+	const forest_nutrient_bonus = #is_defined(def.forest_nutrient_bonus)
+		? def.forest_nutrient_bonus
+		: 0;
+	const forest_mineral_bonus = #is_defined(def.forest_mineral_bonus)
+		? def.forest_mineral_bonus
+		: 0;
+	const forest_energy_bonus = #is_defined(def.forest_energy_bonus)
+		? def.forest_energy_bonus
+		: 0;
 	return 30000 + infrastructure_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
 		def.growth_rating_bonus * nutrient_weight * 4 +
-		def.energy_bonus * 500 + def.psych_bonus * psych_weight -
+		def.energy_bonus * 500 + def.psych_bonus * psych_weight +
+		forest_nutrient_bonus * nutrient_weight * 3 +
+		forest_mineral_bonus * 2700 + forest_energy_bonus * 1500 -
 		def.energy_maintenance * 250 - def.mineral_cost +
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
 		def.research_bonus * research_weight +

@@ -205,6 +205,8 @@ let queried_players = [];
 const base_owner = {id: 7};
 const make_base_tile = () => {
 	return {
+		is_land: true,
+		terraforming: {forest: false},
 		get_resources: (value_player) => {
 			queried_players :+value_player;
 			return {NUTRIENTS: 1, MINERALS: 1, ENERGY: 1};
@@ -241,3 +243,17 @@ effective_facilities = base.get_facilities() + [{
 global_mineral_bonus = 2;
 const project_intake = bm_callbacks.get_base_intake({base: base});
 test.assert(project_intake == {NUTRIENTS: 3, MINERALS: 10, ENERGY: 5});
+
+worked_tile.terraforming.forest = true;
+effective_facilities = [{
+	nutrient_bonus: 0,
+	mineral_bonus: 0,
+	energy_bonus: 0,
+	mineral_multiplier: 0.0,
+	forest_nutrient_bonus: 2,
+	forest_mineral_bonus: 1,
+	forest_energy_bonus: 1,
+}];
+global_mineral_bonus = 0;
+const forest_intake = bm_callbacks.get_base_intake({base: base});
+test.assert(forest_intake == {NUTRIENTS: 4, MINERALS: 3, ENERGY: 3});

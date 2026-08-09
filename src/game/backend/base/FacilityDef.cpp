@@ -58,7 +58,10 @@ FacilityDef::FacilityDef(
 	const float global_psi_defense_multiplier,
 	const float global_naval_movement_bonus,
 	const bool global_full_repair,
-	const std::string& required_project
+	const std::string& required_project,
+	const int64_t forest_nutrient_bonus,
+	const int64_t forest_mineral_bonus,
+	const int64_t forest_energy_bonus
 )
 	: m_id( id )
 	, m_name( name )
@@ -108,7 +111,10 @@ FacilityDef::FacilityDef(
 	, m_global_psi_defense_multiplier( global_psi_defense_multiplier )
 	, m_global_naval_movement_bonus( global_naval_movement_bonus )
 	, m_global_full_repair( global_full_repair )
-	, m_required_project( required_project ) {
+	, m_required_project( required_project )
+	, m_forest_nutrient_bonus( forest_nutrient_bonus )
+	, m_forest_mineral_bonus( forest_mineral_bonus )
+	, m_forest_energy_bonus( forest_energy_bonus ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -160,6 +166,12 @@ FacilityDef::FacilityDef(
 		m_growth_rating_bonus > MAX_GROWTH_RATING_BONUS ||
 		m_native_lifecycle_bonus < 0 ||
 		m_native_lifecycle_bonus > MAX_UNIT_MORALE_BONUS ||
+		m_forest_nutrient_bonus < 0 ||
+		m_forest_nutrient_bonus > MAX_RESOURCE_BONUS ||
+		m_forest_mineral_bonus < 0 ||
+		m_forest_mineral_bonus > MAX_RESOURCE_BONUS ||
+		m_forest_energy_bonus < 0 ||
+		m_forest_energy_bonus > MAX_RESOURCE_BONUS ||
 		!m_is_project && (
 			!m_granted_facility.empty() ||
 			m_global_talent_bonus != 0 ||
@@ -269,6 +281,9 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteFloat( def->m_global_naval_movement_bonus );
 	buf.WriteBool( def->m_global_full_repair );
 	buf.WriteString( def->m_required_project );
+	buf.WriteInt( def->m_forest_nutrient_bonus );
+	buf.WriteInt( def->m_forest_mineral_bonus );
+	buf.WriteInt( def->m_forest_energy_bonus );
 	return buf;
 }
 
@@ -322,6 +337,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto global_naval_movement_bonus = buf.GetRemaining() > 0 ? buf.ReadFloat() : 0.0f;
 	const auto global_full_repair = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	const auto required_project = buf.GetRemaining() > 0 ? buf.ReadString() : "";
+	const auto forest_nutrient_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto forest_mineral_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto forest_energy_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -371,7 +389,10 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		global_psi_defense_multiplier,
 		global_naval_movement_bonus,
 		global_full_repair,
-		required_project
+		required_project,
+		forest_nutrient_bonus,
+		forest_mineral_bonus,
+		forest_energy_bonus
 	);
 }
 
@@ -576,6 +597,18 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"global_full_repair",
 			VALUE( gse::value::Bool, , m_global_full_repair )
+		},
+		{
+			"forest_nutrient_bonus",
+			VALUE( gse::value::Int, , m_forest_nutrient_bonus )
+		},
+		{
+			"forest_mineral_bonus",
+			VALUE( gse::value::Int, , m_forest_mineral_bonus )
+		},
+		{
+			"forest_energy_bonus",
+			VALUE( gse::value::Int, , m_forest_energy_bonus )
 		},
 	};
 WRAPIMPL_END_PTR()

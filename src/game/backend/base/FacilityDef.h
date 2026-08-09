@@ -76,7 +76,10 @@ public:
 		const float global_psi_defense_multiplier = 1.0f,
 		const float global_naval_movement_bonus = 0.0f,
 		const bool global_full_repair = false,
-		const std::string& required_project = ""
+		const std::string& required_project = "",
+		const int64_t forest_nutrient_bonus = 0,
+		const int64_t forest_mineral_bonus = 0,
+		const int64_t forest_energy_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -129,6 +132,9 @@ public:
 	const float m_global_naval_movement_bonus;
 	const bool m_global_full_repair;
 	const std::string m_required_project;
+	const int64_t m_forest_nutrient_bonus;
+	const int64_t m_forest_mineral_bonus;
+	const int64_t m_forest_energy_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

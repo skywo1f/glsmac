@@ -62,6 +62,9 @@ const set_manifest_required_project = (catalog, id, required_project) => {
 const result = validator.validate(make_catalog());
 
 test.assert(result.errors == []);
+test.assert(get_facility(make_catalog(), 'TreeFarm').data.forest_nutrient_bonus == 1);
+test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_nutrient_bonus == 1);
+test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_energy_bonus == 1);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,

@@ -603,16 +603,32 @@ return (game) => {
 
 		const facilities = get_effective_facilities(game, e.base);
 		let worked_tile_energy_bonus = 0;
+		let forest_nutrient_bonus = 0;
+		let forest_mineral_bonus = 0;
+		let forest_energy_bonus = 0;
 		for (facility of facilities) {
 			worked_tile_energy_bonus += #is_defined(facility.worked_tile_energy_bonus)
 				? facility.worked_tile_energy_bonus
 				: 0;
+			forest_nutrient_bonus += #is_defined(facility.forest_nutrient_bonus)
+				? facility.forest_nutrient_bonus
+				: 0;
+			forest_mineral_bonus += #is_defined(facility.forest_mineral_bonus)
+				? facility.forest_mineral_bonus
+				: 0;
+			forest_energy_bonus += #is_defined(facility.forest_energy_bonus)
+				? facility.forest_energy_bonus
+				: 0;
 		}
 		const f_add_tile = (tile) => {
 			const r = tile.get_resources(e.base.get_owner());
-			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS;
-			result.MINERALS = result.MINERALS + r.MINERALS;
-			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus;
+			const is_forest = tile.is_land && tile.terraforming.forest;
+			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS +
+				(is_forest ? forest_nutrient_bonus : 0);
+			result.MINERALS = result.MINERALS + r.MINERALS +
+				(is_forest ? forest_mineral_bonus : 0);
+			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus +
+				(is_forest ? forest_energy_bonus : 0);
 		};
 
 		f_add_tile(e.base.get_tile());

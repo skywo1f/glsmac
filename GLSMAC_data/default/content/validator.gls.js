@@ -48,6 +48,9 @@ const facility_fields = {
 	network_node_drone_modifier: true,
 	network_node_research_bonus: true,
 	worked_tile_energy_bonus: true,
+	forest_nutrient_bonus: true,
+	forest_mineral_bonus: true,
+	forest_energy_bonus: true,
 	global_prevent_riots: true,
 	global_terraforming_rate_multiplier: true,
 	new_base_population: true,
@@ -475,6 +478,9 @@ const validate_facilities = (facilities, technologies, errors) => {
 		);
 		validate_int(data, 'network_node_research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'worked_tile_energy_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'forest_nutrient_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'forest_mineral_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'forest_energy_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_bool(data, 'global_prevent_riots', path, errors, false);
 		validate_number(data, 'global_terraforming_rate_multiplier', path, errors, false, 1.0, 10.0);
 		validate_int(data, 'new_base_population', path, errors, false, 0, MAX_DEFINITION_VALUE);
@@ -584,6 +590,9 @@ const validate_facilities = (facilities, technologies, errors) => {
 				data.network_node_research_bonus > 0
 			) ||
 			(#is_defined(data.worked_tile_energy_bonus) && data.worked_tile_energy_bonus > 0) ||
+			(#is_defined(data.forest_nutrient_bonus) && data.forest_nutrient_bonus > 0) ||
+			(#is_defined(data.forest_mineral_bonus) && data.forest_mineral_bonus > 0) ||
+			(#is_defined(data.forest_energy_bonus) && data.forest_energy_bonus > 0) ||
 			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots) ||
 			(
 				#is_defined(data.global_terraforming_rate_multiplier) &&

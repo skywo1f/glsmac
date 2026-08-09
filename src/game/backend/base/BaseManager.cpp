@@ -389,6 +389,9 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( float, global_naval_movement_bonus, def, "global_naval_movement_bonus", Float, 0.0f );
 				N_GETPROP_OPT( bool, global_full_repair, def, "global_full_repair", Bool, false );
 				N_GETPROP_OPT( std::string, required_project, def, "required_project", String, "" );
+				N_GETPROP_OPT( int64_t, forest_nutrient_bonus, def, "forest_nutrient_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, forest_mineral_bonus, def, "forest_mineral_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, forest_energy_bonus, def, "forest_energy_bonus", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -460,6 +463,12 @@ WRAPIMPL_BEGIN( BaseManager )
 					network_node_research_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					worked_tile_energy_bonus < 0 ||
 					worked_tile_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					forest_nutrient_bonus < 0 ||
+					forest_nutrient_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					forest_mineral_bonus < 0 ||
+					forest_mineral_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					forest_energy_bonus < 0 ||
+					forest_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -562,7 +571,10 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_psi_defense_multiplier,
 					global_naval_movement_bonus,
 					global_full_repair,
-					required_project
+					required_project,
+					forest_nutrient_bonus,
+					forest_mineral_bonus,
+					forest_energy_bonus
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

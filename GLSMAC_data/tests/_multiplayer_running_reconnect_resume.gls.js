@@ -211,6 +211,8 @@
 			const punishment_sphere = game.get_bm().get_facility_def('PunishmentSphere');
 			const centauri_preserve = game.get_bm().get_facility_def('CentauriPreserve');
 			const temple_of_planet = game.get_bm().get_facility_def('TempleOfPlanet');
+			const tree_farm = game.get_bm().get_facility_def('TreeFarm');
+			const hybrid_forest = game.get_bm().get_facility_def('HybridForest');
 			const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
@@ -272,9 +274,15 @@
 				!punishment_sphere.suppress_psych ||
 				centauri_preserve.native_lifecycle_bonus != 1 ||
 				temple_of_planet.native_lifecycle_bonus != 1 ||
+				tree_farm.forest_nutrient_bonus != 1 ||
+				tree_farm.forest_mineral_bonus != 0 ||
+				tree_farm.forest_energy_bonus != 0 ||
+				hybrid_forest.forest_nutrient_bonus != 1 ||
+				hybrid_forest.forest_mineral_bonus != 0 ||
+				hybrid_forest.forest_energy_bonus != 1 ||
 				ascent.required_project != 'TheVoiceOfPlanet'
 			) {
-				return 'built Recycling Tanks definition is invalid';
+				return 'restored facility definition is invalid';
 			}
 			const expected_snapshot_minerals =
 				initial_mineral_stamp +
