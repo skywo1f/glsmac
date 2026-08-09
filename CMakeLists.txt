@@ -237,7 +237,6 @@ IF ( BUILD_TESTING )
 			--nosound
 			--windowed
 			--window-size "1024x768"
-			--verbose
 		)
 		SET_TESTS_PROPERTIES( ai_economy_soak PROPERTIES
 			FAIL_REGULAR_EXPRESSION "AI_ECONOMY_SOAK_FAIL;Event rejected"

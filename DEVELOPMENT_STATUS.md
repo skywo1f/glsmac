@@ -60,14 +60,11 @@ development build rather than a finished replacement for the original game.
 ## Test Status
 
 The Release CTest matrix contains 17 cases spanning script/native tests and
-asset-backed runtime scenarios. All current cases pass on the tested Windows
-machine when run in stable groups.
-
-One test-harness instability remains: after many GPU-backed runtime processes
-run sequentially, `seven_player_runtime_smoke` can crash during map startup.
-The same executable and test pass when launched alone. This needs isolation
-or resource-lifecycle diagnosis before the full matrix can be considered
-reliably green in one uninterrupted invocation.
+asset-backed runtime scenarios. All current cases pass in one uninterrupted
+invocation on the tested Windows machine. The long economy soak keeps engine
+verbosity disabled so CTest does not retain enough diagnostic output to
+destabilize later GPU-backed runtime processes; its explicit milestone and
+pass/fail assertions remain enabled.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
