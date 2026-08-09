@@ -214,6 +214,10 @@
 					fail('SUPPORT rating returned an invalid live free-unit allowance');
 					return;
 				}
+				if (game.get('f_social_get_new_base_minerals')(player) != 0) {
+					fail('SUPPORT penalty did not remove free minerals from new bases');
+					return;
+				}
 				if (game.get('f_social_get_mineral_cost')(player, 40) != 32) {
 					fail('INDUSTRY rating returned an invalid live mineral cost');
 					return;

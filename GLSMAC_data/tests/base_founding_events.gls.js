@@ -142,8 +142,10 @@ while (#sizeof(long_base_name) < 64) {
 {
 	let added_facility = '';
 	let despawned_base = null;
+	let starting_minerals = null;
 	const spawned_base = {
 		add_facility: (id) => { added_facility = id; },
+		set_accumulated_minerals: (value) => { starting_minerals = value; },
 	};
 	const event = {
 		caller: 0,
@@ -153,6 +155,13 @@ while (#sizeof(long_base_name) < 64) {
 			headquarters: true,
 		},
 		game: {
+			get: (key) => {
+				test.assert(key == 'f_social_get_new_base_minerals');
+				return (base_owner) => {
+					test.assert(base_owner == owner);
+					return 0;
+				};
+			},
 			bm: {
 				spawn_base: (base_owner, tile, info) => {
 					test.assert(base_owner == owner);
@@ -167,6 +176,7 @@ while (#sizeof(long_base_name) < 64) {
 	event.applied = spawn_base.apply(event);
 	test.assert(event.applied.base == spawned_base);
 	test.assert(added_facility == 'Headquarters');
+	test.assert(starting_minerals == 0);
 	spawn_base.rollback(event);
 	test.assert(despawned_base == spawned_base);
 	event.data.headquarters = 'yes';
@@ -247,6 +257,7 @@ validation_event.data.name = #undefined;
 		created_pops: [],
 		worked_pop: null,
 		worked_tile: null,
+		starting_minerals: null,
 	};
 
 	const base = {
@@ -259,6 +270,9 @@ validation_event.data.name = #undefined;
 		},
 		get_unworked_tiles: () => {
 			return [occupied_work_tile, work_tile];
+		},
+		set_accumulated_minerals: (value) => {
+			state.starting_minerals = value;
 		},
 	};
 
@@ -312,6 +326,12 @@ validation_event.data.name = #undefined;
 			},
 		},
 		get: (key) => {
+			if (key == 'f_social_get_new_base_minerals') {
+				return (value_owner) => {
+					test.assert(value_owner == owner);
+					return 10;
+				};
+			}
 			if (key == 'f_project_get_player_effects') {
 				return (value_owner) => {
 					test.assert(value_owner == owner);
@@ -352,6 +372,7 @@ validation_event.data.name = #undefined;
 	test.assert(state.spawned_info.production == 'ScoutPatrol');
 	test.assert(validation_state.site_base == base);
 	test.assert(state.active_unit == null);
+	test.assert(state.starting_minerals == 10);
 	test.assert(#sizeof(state.created_pops) == 3);
 	test.assert(state.worked_pop == state.created_pops[0]);
 	test.assert(state.worked_tile == work_tile);

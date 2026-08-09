@@ -80,6 +80,11 @@
 
 	glsmac.on('configure_game', (e) => {
 		game = e.game;
+		game.on('configure', (e) => {
+			game.on('start', (e) => {
+				game.set('f_social_get_new_base_minerals', (player) => { return 0; });
+			});
+		});
 
 		game.on('start_ui', (e) => {
 			let ai = null;

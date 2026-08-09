@@ -78,6 +78,7 @@ test.assert(ratings.research == 2);
 test.assert(values.f_social_get_mineral_cost(player, 40) == 40);
 test.assert(values.f_social_get_support_cost(player) == 1);
 test.assert(values.f_social_get_free_support(player, 6) == 2);
+test.assert(values.f_social_get_new_base_minerals(player) == 10);
 test.assert(values.f_social_get_morale_bonus(player, false) == 1);
 test.assert(values.f_social_get_morale_bonus(player, true) == 2);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 0 - 1);
@@ -97,3 +98,16 @@ test.assert(ratings.industry == 3);
 test.assert(values.f_social_get_mineral_cost(player, 40) == 28);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 4);
 test.assert(values.f_social_get_tile_energy_bonus(player) == 1);
+
+choices = {
+	politics: 'Democratic',
+	economics: 'Simple',
+	values: 'Survival',
+	future_society: 'None',
+};
+faction_id = 'PEACEKEEPERS';
+test.assert(values.f_social_get_ratings(player).support == 0 - 2);
+test.assert(values.f_social_get_new_base_minerals(player) == 0);
+
+choices.politics = 'Frontier';
+test.assert(values.f_social_get_new_base_minerals(player) == 10);

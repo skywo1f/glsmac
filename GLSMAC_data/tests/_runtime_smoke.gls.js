@@ -146,6 +146,7 @@
 				const capital_energy = game.get('f_economy_get_base_energy')(base);
 				if (
 					!base.has_facility('Headquarters') ||
+					base.get_accumulated_minerals() != 10 ||
 					capital_energy.distance != 0 ||
 					capital_energy.inefficiency != 0 ||
 					capital_energy.net != capital_energy.gross
@@ -573,6 +574,7 @@
 									base.get_tile() != founding_site ||
 									#sizeof(base.get_pops()) != 1 ||
 									#sizeof(base.get_worked_tiles()) != 1 ||
+									base.get_accumulated_minerals() != 10 ||
 									!#is_defined(production) ||
 									production.id != 'ScoutPatrol'
 								) {

@@ -125,6 +125,7 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
 			--verbose

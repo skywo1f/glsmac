@@ -140,6 +140,12 @@ return {
 		}
 
 		const base = e.game.bm.spawn_base(owner, tile, info);
+		const get_new_base_minerals = #is_defined(e.game.get)
+			? e.game.get('f_social_get_new_base_minerals')
+			: #undefined;
+		base.set_accumulated_minerals(
+			#is_defined(get_new_base_minerals) ? get_new_base_minerals(owner) : 10
+		);
 		e.game.um.despawn_unit(unit);
 
 		const get_project_effects = #is_defined(e.game.get)
