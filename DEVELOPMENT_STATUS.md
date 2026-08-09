@@ -59,12 +59,15 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 17 cases spanning script/native tests and
-asset-backed runtime scenarios. All current cases pass in one uninterrupted
-invocation on the tested Windows machine. The long economy soak keeps engine
-verbosity disabled so CTest does not retain enough diagnostic output to
-destabilize later GPU-backed runtime processes; its explicit milestone and
-pass/fail assertions remain enabled.
+The Release CTest matrix contains 70 cases: 54 isolated native/script GSE tests
+and 16 asset-backed runtime scenarios. All current cases pass in one
+uninterrupted invocation on the tested Windows machine. The same 54 GSE cases
+also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
+allocator lifetime bounded and reports the exact script that fails.
+
+The long economy soak keeps engine verbosity disabled so CTest does not retain
+enough diagnostic output to destabilize later GPU-backed runtime processes;
+its explicit milestone and pass/fail assertions remain enabled.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

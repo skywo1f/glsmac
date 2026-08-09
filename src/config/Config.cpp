@@ -412,8 +412,22 @@ Config::Config( const std::string& path )
 			if ( !HasDebugFlag( DF_GSE_TESTS ) ) {
 				Error( "Gse-tests-related options can only be used after --gse-tests!" );
 			}
+			if ( HasDebugFlag( DF_GSE_TESTS_NATIVE_ONLY ) ) {
+				Error( "Gse-tests script and native-only options are mutually exclusive!" );
+			}
 			m_debug_flags |= DF_GSE_TESTS_SCRIPT;
 			m_gse_tests_script = value;
+		}
+	);
+	m_manager->AddRule(
+		"gse-tests-native-only", "Run only native GSE tests", AH( this ) {
+			if ( !HasDebugFlag( DF_GSE_TESTS ) ) {
+				Error( "Gse-tests-related options can only be used after --gse-tests!" );
+			}
+			if ( HasDebugFlag( DF_GSE_TESTS_SCRIPT ) ) {
+				Error( "Gse-tests script and native-only options are mutually exclusive!" );
+			}
+			m_debug_flags |= DF_GSE_TESTS_NATIVE_ONLY;
 		}
 	);
 #endif

@@ -1034,7 +1034,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 		tests::AddParserTests( task );
 		tests::AddRunnerTests( task );
 	}
-	tests::AddScriptsTests( task );
+	if ( !g_engine->GetConfig()->HasDebugFlag( config::Config::DF_GSE_TESTS_NATIVE_ONLY ) ) {
+		tests::AddScriptsTests( task );
+	}
 
 }
 
