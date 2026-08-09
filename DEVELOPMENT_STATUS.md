@@ -1,0 +1,73 @@
+# GLSMAC Development Status
+
+This file records the currently validated state of the in-progress original
+Sid Meier's Alpha Centauri implementation. It is not a release announcement.
+
+## Current Scope
+
+- Original SMAC gameplay is the active compatibility target.
+- Alien Crossfire gameplay and content are not currently part of this effort.
+- Original game assets are still required at runtime.
+- Original executable, save-game, map, and network compatibility are not
+  promised.
+
+## Validated Foundations
+
+The Windows x64 Release build has asset-backed automated coverage for:
+
+- game setup, turn progression, research, economy, base growth, worker
+  assignment, production queues, and support;
+- land and sea colonization, terraforming, conventional and psi combat,
+  conquest, and transcendence victory;
+- air-unit range and refueling, naval and air combat access, transports and
+  cargo, field repair, facility repair, and unit morale;
+- AI expansion, research, production, terraforming, economy, opponent-aware
+  combat, retreat and repair, reinforcement, air units, and hurry production;
+- seven-player startup, multiplayer turn/event synchronization, and reconnect
+  restoration of a running game.
+
+The base-game content validator currently reports:
+
+- 77 technologies;
+- 31 of 38 base facilities represented: 17 complete and 14 partial;
+- all 33 Secret Projects represented: 18 complete and 15 partial;
+- 245 generated unit designs, 14 predefined units, and 68 unit components.
+
+These counts describe implemented definitions and automated coverage. They do
+not mean that the game is feature-complete or balanced.
+
+## Release Blockers
+
+The following original-SMAC systems remain absent or materially incomplete:
+
+- diplomacy, treaties, pacts, vendettas, commerce, council elections, and
+  diplomatic victory;
+- probe-team actions, infiltration, subversion, and mind control;
+- social engineering and the facility/project effects that depend on it;
+- ecological damage, fungal blooms, and several Planet-related effects;
+- orbital facilities, orbital limits, Planet Busters, and orbital defense;
+- several remaining facility effects, including submersion, Psi Gates,
+  prototype-cost handling, and disease protection;
+- several remaining Secret Project effects and victory-adjacent rules;
+- complete UI workflows, player-facing diagnostics, accessibility review,
+  packaging, upgrade migration, and release documentation;
+- long campaign balance, adversarial multiplayer soak testing, and broad
+  manual playtesting across supported operating systems.
+
+Until those blockers are resolved, GLSMAC should be treated as a playable
+development build rather than a finished replacement for the original game.
+
+## Test Status
+
+The Release CTest matrix contains 17 cases spanning script/native tests and
+asset-backed runtime scenarios. All current cases pass on the tested Windows
+machine when run in stable groups.
+
+One test-harness instability remains: after many GPU-backed runtime processes
+run sequentially, `seven_player_runtime_smoke` can crash during map startup.
+The same executable and test pass when launched alone. This needs isolation
+or resource-lifecycle diagnosis before the full matrix can be considered
+reliably green in one uninterrupted invocation.
+
+Cross-platform release readiness must be confirmed by clean CI builds and the
+same relevant tests on every supported toolchain before shipping.
