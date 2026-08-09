@@ -227,6 +227,13 @@ const get_new_base_minerals = (player) => {
 	return get_ratings(player).support <= 0 - 2 ? 0 : 10;
 };
 
+const get_unit_training_morale_bonus = (player, bonus) => {
+	if (get_ratings(player).morale > 0 - 2) {
+		return bonus;
+	}
+	return #floor(#to_float(bonus) / 2.0);
+};
+
 const get_morale_bonus = (player, defending) => {
 	const morale = get_ratings(player).morale;
 	if (morale <= 0 - 4) { return 0 - 3; }
@@ -269,6 +276,7 @@ return (game) => {
 		game.set('f_social_get_support_cost', get_support_cost);
 		game.set('f_social_get_free_support', get_free_support);
 		game.set('f_social_get_new_base_minerals', get_new_base_minerals);
+		game.set('f_social_get_unit_training_morale_bonus', get_unit_training_morale_bonus);
 		game.set('f_social_get_morale_bonus', get_morale_bonus);
 		game.set('f_social_get_economy_base_bonus', get_economy_base_bonus);
 		game.set('f_social_get_tile_energy_bonus', get_tile_energy_bonus);

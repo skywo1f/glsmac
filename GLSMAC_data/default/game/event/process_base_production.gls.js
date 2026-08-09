@@ -34,6 +34,7 @@ const cancel_project_queues = (game, project_id, completing_base) => {
 
 const get_production_morale = (game, base, production) => {
 	let morale = 1 + unit_abilities.get_morale_bonus(production);
+	let training_morale_bonus = 0;
 	const resolver = game.get('f_base_get_effective_facilities');
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	for (facility of facilities) {
@@ -42,21 +43,27 @@ const get_production_morale = (game, base, production) => {
 				? facility.native_lifecycle_bonus
 				: 0;
 		} else {
-			morale += facility.unit_morale_bonus;
+			training_morale_bonus += facility.unit_morale_bonus;
 			if (#is_defined(production.is_land) && production.is_land) {
-				morale += #is_defined(facility.unit_morale_land_bonus)
+				training_morale_bonus += #is_defined(facility.unit_morale_land_bonus)
 					? facility.unit_morale_land_bonus
 					: 0;
 			} else if (#is_defined(production.is_water) && production.is_water) {
-				morale += #is_defined(facility.unit_morale_water_bonus)
+				training_morale_bonus += #is_defined(facility.unit_morale_water_bonus)
 					? facility.unit_morale_water_bonus
 					: 0;
 			} else if (#is_defined(production.is_air) && production.is_air) {
-				morale += #is_defined(facility.unit_morale_air_bonus)
+				training_morale_bonus += #is_defined(facility.unit_morale_air_bonus)
 					? facility.unit_morale_air_bonus
 					: 0;
 			}
 		}
+	}
+	if (!production.is_native) {
+		const adjust_training_morale = game.get('f_social_get_unit_training_morale_bonus');
+		morale += #is_defined(adjust_training_morale)
+			? adjust_training_morale(base.get_owner(), training_morale_bonus)
+			: training_morale_bonus;
 	}
 	if (production.is_native) {
 		const get_project_effects = game.get('f_project_get_effects');

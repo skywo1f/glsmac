@@ -21,7 +21,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
   technology gating, human selection UI, and strategy-weighted AI selection;
 - social ECONOMY, SUPPORT, TALENT, MORALE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
-  research, including SUPPORT-based starting minerals for new bases;
+  research, including SUPPORT-based starting minerals for new bases and
+  low-MORALE halving of conventional unit training bonuses;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   Children's Creche bonuses, no-headquarters fallback, and starting capitals;
 - original-SMAC ecological damage based on local terraforming, worked squares,
@@ -55,8 +56,8 @@ The following original-SMAC systems remain absent or materially incomplete:
 - diplomacy, treaties, pacts, vendettas, commerce, council elections, and
   diplomatic victory;
 - probe-team actions, infiltration, subversion, and mind control;
-- remaining social effects: adoption costs, commerce thresholds, low-MORALE
-  modifier halving, full police and away-unit behavior, and probe integration;
+- remaining social effects: adoption costs, commerce thresholds, full police
+  and away-unit behavior, and probe integration;
 - headquarters relocation, uniqueness, and capture-transfer behavior, plus
   explicit player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,

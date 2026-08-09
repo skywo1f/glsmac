@@ -79,6 +79,7 @@ test.assert(values.f_social_get_mineral_cost(player, 40) == 40);
 test.assert(values.f_social_get_support_cost(player) == 1);
 test.assert(values.f_social_get_free_support(player, 6) == 2);
 test.assert(values.f_social_get_new_base_minerals(player) == 10);
+test.assert(values.f_social_get_unit_training_morale_bonus(player, 4) == 4);
 test.assert(values.f_social_get_morale_bonus(player, false) == 1);
 test.assert(values.f_social_get_morale_bonus(player, true) == 2);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 0 - 1);
@@ -95,9 +96,12 @@ faction_id = 'MORGANITES';
 ratings = values.f_social_get_ratings(player);
 test.assert(ratings.economy == 5);
 test.assert(ratings.industry == 3);
+test.assert(ratings.morale == 0 - 4);
 test.assert(values.f_social_get_mineral_cost(player, 40) == 28);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 4);
 test.assert(values.f_social_get_tile_energy_bonus(player) == 1);
+test.assert(values.f_social_get_unit_training_morale_bonus(player, 4) == 2);
+test.assert(values.f_social_get_unit_training_morale_bonus(player, 1) == 0);
 
 choices = {
 	politics: 'Democratic',

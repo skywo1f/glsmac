@@ -186,6 +186,7 @@ let production_queue = [];
 let built_facilities = [];
 let accumulated_minerals = 0;
 let pending_production = 7;
+let social_morale = 0;
 let spawned_unit = #undefined;
 let spawn_data = #undefined;
 let despawned_unit = #undefined;
@@ -446,6 +447,14 @@ game = {
 	get: (key) => {
 		if (key == 'f_base_get_effective_facilities' || key == 'f_project_get_effects') {
 			return #undefined;
+		}
+		if (key == 'f_social_get_unit_training_morale_bonus') {
+			return (player, bonus) => {
+				test.assert(player == owner);
+				return social_morale <= 0 - 2
+					? #floor(#to_float(bonus) / 2.0)
+					: bonus;
+			};
 		}
 		if (key == 'f_base_get_pending_production') {
 			return (target_base) => {
@@ -809,6 +818,45 @@ for (triad_unit of [land_patrol, sea_patrol, air_patrol]) {
 }
 built_facilities = [];
 
+social_morale = 0 - 2;
+production_queue = [mind_worms];
+built_facilities = [
+	'BiologyLab',
+	'BioenhancementCenter',
+	'CentauriPreserve',
+	'TempleOfPlanet',
+];
+accumulated_minerals = 25;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == mind_worms.id);
+test.assert(spawn_data.morale == 5);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 25);
+
+for (triad_unit of [land_patrol, sea_patrol, air_patrol]) {
+	production_queue = [triad_unit];
+	built_facilities = [
+		'CommandCenter',
+		'NavalYard',
+		'AerospaceComplex',
+		'BioenhancementCenter',
+	];
+	accumulated_minerals = 13;
+	spawned_unit = #undefined;
+	spawn_data = #undefined;
+	event.applied = process_base_production.apply(event);
+	test.assert(#is_defined(spawned_unit));
+	test.assert(spawn_data.def == triad_unit.id);
+	test.assert(spawn_data.morale == 3);
+	process_base_production.rollback(event);
+	test.assert(accumulated_minerals == 13);
+	test.assert(!#is_defined(spawned_unit));
+}
+built_facilities = [];
+
 production_queue = [trained_land_patrol];
 accumulated_minerals = 13;
 spawned_unit = #undefined;
@@ -820,6 +868,21 @@ test.assert(spawn_data.morale == 2);
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 13);
 test.assert(!#is_defined(spawned_unit));
+
+production_queue = [trained_land_patrol];
+built_facilities = ['CommandCenter'];
+accumulated_minerals = 13;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == trained_land_patrol.id);
+test.assert(spawn_data.morale == 3);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 13);
+test.assert(!#is_defined(spawned_unit));
+built_facilities = [];
+social_morale = 0;
 
 const worker_a = make_pop('WORKER', {id: 'worker-a'});
 const worker_b = make_pop('WORKER', {id: 'worker-b'});

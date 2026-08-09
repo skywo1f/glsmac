@@ -218,6 +218,10 @@
 					fail('SUPPORT penalty did not remove free minerals from new bases');
 					return;
 				}
+				if (game.get('f_social_get_unit_training_morale_bonus')(player, 4) != 2) {
+					fail('MORALE penalty did not halve positive unit training modifiers');
+					return;
+				}
 				if (game.get('f_social_get_mineral_cost')(player, 40) != 32) {
 					fail('INDUSTRY rating returned an invalid live mineral cost');
 					return;
