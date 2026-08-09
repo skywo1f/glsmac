@@ -276,7 +276,6 @@ int main( const int argc, char* const argv[] ) {
 		loader::sound::SDL2 sound_loader;
 		loader::txt::TXTLoaders txt_loaders;
 
-		input::sdl2::SDL2 input;
 		bool vsync = VSYNC;
 		if ( config.HasLaunchFlag( config::Config::LF_BENCHMARK ) ) {
 			vsync = false;
@@ -296,40 +295,57 @@ int main( const int argc, char* const argv[] ) {
 			start_fullscreen = false;
 		}
 
-		graphics::opengl::OpenGL graphics(
-			title,
-			static_cast< unsigned short >( window_size.x ),
-			static_cast< unsigned short >( window_size.y ),
-			vsync,
-			start_fullscreen
-		);
-		audio::sdl2::SDL2 audio;
+		const auto run_game = [
+			&config, &error_handler, &loggers, &resource_manager, &font_loader,
+			&texture_loader, &sound_loader, &txt_loaders, &scheduler, &network, &game
+		]( input::Input* input, graphics::Graphics* graphics, audio::Audio* audio ) {
+			engine::Engine engine(
+				&config,
+				&error_handler,
+				loggers,
+				&resource_manager,
+				&font_loader,
+				&texture_loader,
+				&sound_loader,
+				&txt_loaders,
+				&scheduler,
+				input,
+				graphics,
+				audio,
+				&network,
+				&game
+			);
 
-		// game entry point
-		common::Task* task = nullptr;
+			common::Task* task = nullptr;
+			NEW( task, task::main::Main );
+			scheduler.AddTask( task );
+			return engine.Run();
+		};
 
-		engine::Engine engine(
-			&config,
-			&error_handler,
-			loggers,
-			&resource_manager,
-			&font_loader,
-			&texture_loader,
-			&sound_loader,
-			&txt_loaders,
-			&scheduler,
-			&input,
-			&graphics,
-			&audio,
-			&network,
-			&game
-		);
-
-		NEW( task, task::main::Main );
-
-		scheduler.AddTask( task );
-
-		result = engine.Run();
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
+		if ( config.HasDebugFlag( config::Config::DF_HEADLESS ) ) {
+			input::Null input;
+			graphics::Null graphics(
+				static_cast< unsigned short >( window_size.x ),
+				static_cast< unsigned short >( window_size.y )
+			);
+			audio::Null audio;
+			result = run_game( &input, &graphics, &audio );
+		}
+		else
+#endif
+		{
+			input::sdl2::SDL2 input;
+			graphics::opengl::OpenGL graphics(
+				title,
+				static_cast< unsigned short >( window_size.x ),
+				static_cast< unsigned short >( window_size.y ),
+				vsync,
+				start_fullscreen
+			);
+			audio::sdl2::SDL2 audio;
+			result = run_game( &input, &graphics, &audio );
+		}
 	}
 
 	for ( const auto& logger : loggers ) {

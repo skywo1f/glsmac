@@ -403,6 +403,11 @@ Config::Config( const std::string& path )
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	m_manager->AddRule(
+		"headless", "Run without graphics, input, or audio for automated testing", AH( this ) {
+			m_debug_flags |= DF_HEADLESS;
+		}
+	);
+	m_manager->AddRule(
 		"gse-tests", "Run GSE tests and exit", AH( this ) {
 			m_debug_flags |= DF_GSE_ONLY | DF_GSE_TESTS;
 		}

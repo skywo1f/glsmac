@@ -883,6 +883,12 @@ void Game::DefineSlot(
 }
 
 void Game::ShowAnimation( AnimationDef* def, const size_t animation_id, const types::Vec3& render_coords ) {
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
+	if ( g_engine->GetConfig()->HasDebugFlag( config::Config::DF_HEADLESS ) ) {
+		SendAnimationFinished( animation_id );
+		return;
+	}
+#endif
 	ASSERT( m_animations.find( animation_id ) == m_animations.end(), "animation id already exists" );
 	m_animations.insert(
 		{

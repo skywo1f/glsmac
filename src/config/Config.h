@@ -70,6 +70,7 @@ CLASS( Config, common::Module )
 		DF_VERBOSE_GC = 1 << 7,
 		DF_NO_GC = 1 << 8,
 		DF_GSE_TESTS_NATIVE_ONLY = 1 << 12,
+		DF_HEADLESS = 1 << 13,
 #ifdef DEBUG
 		DF_MAPDUMP = 1 << 9,
 		DF_MEMORYDEBUG = 1 << 10,

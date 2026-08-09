@@ -84,19 +84,22 @@ uninterrupted invocation on the tested Windows machine. The same 58 GSE cases
 also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
 allocator lifetime bounded and reports the exact script that fails.
 
-The last uninterrupted fully green Release matrix passed 74/74 in 579.10
-seconds. The current EFFIC tree reached 73/74 in 778.47 seconds after an
-intermittent `ai_conquest_runtime_smoke` animation-timing failure; the scenario
-then passed five consecutive fresh-process repeats. Its preceding full run also
-reached 73/74 because the reconnect test still expected a starting base to lack
-a Headquarters; after correcting that expectation, the reconnect scenario
-passed in isolation. The current sanitizer matrix passed 58/58 in 763.02
-seconds.
+The current Release matrix passed 74/74 in one uninterrupted 745.67-second
+invocation. The current sanitizer matrix passed 58/58 in two bounded
+invocations: tests 1-29 passed in 752.26 seconds and tests 30-58 passed in 58.47
+seconds. The split keeps every command below the 15-minute development limit;
+six asset-catalog validation cases account for most of the first half's time.
 
-One earlier pre-ecology Release run ended 71/72 after an intermittent
-`ai_air_runtime_smoke` startup crash during map generation. The scenario then
-passed ten consecutive fresh-process repeats, and the subsequent uninterrupted
-72-case matrix passed.
+The AI conquest and AI air runtime scenarios use the test-only `--headless`
+mode. It retains the real asset loaders, UI scripts, frontend/backend game
+modules, scheduler, and networking while replacing graphics, input, and audio
+with null modules and immediately acknowledging animation requests. Other
+runtime scenarios remain rendered: applying headless mode globally slowed the
+long economy soak until it timed out, so the faster path is deliberately
+selective. A fixed 100 ms air-unit lifecycle assertion was also replaced by a
+bounded asynchronous poll after the old check intermittently ran one callback
+before the expected despawn; the corrected scenario passed five consecutive
+fresh-process repeats.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

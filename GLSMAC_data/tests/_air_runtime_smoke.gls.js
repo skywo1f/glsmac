@@ -167,22 +167,28 @@
 			}
 
 			if (turn_id == 3) {
+				let wait_ticks = 0;
 				#async(100, () => {
 					if (um.has_unit(countdown_id)) {
-						fail('Needlejet survived beyond its operational range');
-						return;
+						wait_ticks++;
+						if (wait_ticks >= 20) {
+							fail('Needlejet survived beyond its operational range');
+							return false;
+						}
+						return true;
 					}
 					const copter = um.get_unit(copter_id);
 					if (copter.health < 0.399 || copter.health > 0.401) {
 						fail('Copter did not take repeated field damage');
-						return;
+						return false;
 					}
 					if (!um.has_unit(gravship_id) || um.get_unit(gravship_id).health != 1.0) {
 						fail('Gravship was incorrectly range-limited');
-						return;
+						return false;
 					}
 					runtime_complete = true;
 					finish_if_ready();
+					return false;
 				});
 				return;
 			}
