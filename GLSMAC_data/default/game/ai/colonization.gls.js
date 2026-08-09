@@ -14,8 +14,12 @@ const get_nearest_base_distance = (tm, tile, bases) => {
 	return result;
 };
 
-const is_valid_site = (tm, tile, owner_id, bases) => {
-	if (tile.is_locked() || tile.is_water || tile.get_base() != null) {
+const is_valid_site = (tm, tile, owner_id, bases, is_water) => {
+	const target_is_water = #is_defined(is_water) ? is_water : false;
+	if (
+		tile.is_locked() || tile.is_water != target_is_water ||
+		tile.get_base() != null
+	) {
 		return false;
 	}
 	if (get_nearest_base_distance(tm, tile, bases) < MIN_BASE_DISTANCE) {
@@ -29,8 +33,8 @@ const is_valid_site = (tm, tile, owner_id, bases) => {
 	return true;
 };
 
-const get_site_score = (tm, tile, player, bases) => {
-	if (!is_valid_site(tm, tile, player.id, bases)) {
+const get_site_score = (tm, tile, player, bases, is_water) => {
+	if (!is_valid_site(tm, tile, player.id, bases, is_water)) {
 		return null;
 	}
 	const distance = get_nearest_base_distance(tm, tile, bases);
@@ -42,8 +46,8 @@ const get_site_score = (tm, tile, player, bases) => {
 	return score;
 };
 
-const get_destination_score = (tm, tile, player, bases, travel_distance) => {
-	const site_score = get_site_score(tm, tile, player, bases);
+const get_destination_score = (tm, tile, player, bases, travel_distance, is_water) => {
+	const site_score = get_site_score(tm, tile, player, bases, is_water);
 	return site_score == null ? null : site_score - travel_distance * TRAVEL_DISTANCE_PENALTY;
 };
 

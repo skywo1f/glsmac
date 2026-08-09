@@ -114,7 +114,11 @@ StaticDef::StaticDef(
 		( m_cargo_capacity > 0 && ( m_movement_type == MT_IMMOVABLE || m_is_missile ) ) ||
 		( m_movement_type != MT_AIR && ( m_operational_range > 0 || m_is_missile ) ) ||
 		( m_is_missile && m_operational_range == 0 ) ||
-		( ( m_can_found_base || m_can_terraform ) && m_movement_type != MT_LAND )
+		(
+			m_can_found_base &&
+			m_movement_type != MT_LAND && m_movement_type != MT_WATER
+		) ||
+		( m_can_terraform && m_movement_type != MT_LAND )
 	) {
 		THROW( "invalid static unit definition: " + m_id );
 	}
@@ -209,8 +213,11 @@ StaticDef* StaticDef::Deserialize(
 	if ( !std::isfinite( movement_per_turn ) || movement_per_turn < 0.0f ) {
 		THROW( "invalid serialized unit movement per turn" );
 	}
-	if ( ( can_found_base || can_terraform ) && serialized_movement_type != MT_LAND ) {
-		THROW( "serialized founding and terraforming capabilities require a land unit" );
+	if (
+		( can_found_base && serialized_movement_type != MT_LAND && serialized_movement_type != MT_WATER ) ||
+		( can_terraform && serialized_movement_type != MT_LAND )
+	) {
+		THROW( "invalid serialized movement type for founding or terraforming unit" );
 	}
 	const auto* moraleset = g_engine->GetGame()->GetUM()->GetMoraleSet( moraleset_name );
 	if ( !moraleset ) {

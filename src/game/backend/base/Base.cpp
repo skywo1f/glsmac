@@ -217,8 +217,17 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 	switch ( def->GetMovementType() ) {
 		case unit::MT_LAND:
 			return !m_tile->is_water_tile;
-		case unit::MT_WATER:
-			return m_tile->is_water_tile;
+		case unit::MT_WATER: {
+			if ( m_tile->is_water_tile ) {
+				return true;
+			}
+			for ( const auto* const neighbour : m_tile->neighbours ) {
+				if ( neighbour->is_water_tile ) {
+					return true;
+				}
+			}
+			return false;
+		}
 		case unit::MT_AIR:
 			return true;
 		case unit::MT_IMMOVABLE:

@@ -43,9 +43,12 @@ const poor = make_tile(3, 0, 1, 0, 0);
 const rich = make_tile(3, 1, 2, 2, 2);
 const ideal = make_tile(4, 0, 1, 0, 0);
 const rich_neighbour = make_tile(4, 1, 3, 2, 1);
+const ocean = make_tile(4, 2, 2, 1, 2);
+ocean.is_water = true;
 poor.set_surrounding_tiles([]);
 rich.set_surrounding_tiles([rich_neighbour]);
 ideal.set_surrounding_tiles([]);
+ocean.set_surrounding_tiles([]);
 
 test.assert(!colonization.is_valid_site(tm, too_close, owner.id, [home]));
 test.assert(colonization.is_valid_site(tm, poor, owner.id, [home]));
@@ -55,6 +58,10 @@ test.assert(!colonization.is_valid_site(tm, too_close, owner.id, []));
 too_close.set_units([]);
 too_close.is_water = true;
 test.assert(!colonization.is_valid_site(tm, too_close, owner.id, []));
+test.assert(colonization.is_valid_site(tm, too_close, owner.id, [], true));
+test.assert(!colonization.is_valid_site(tm, poor, owner.id, [home], true));
+test.assert(colonization.is_valid_site(tm, ocean, owner.id, [home], true));
+test.assert(colonization.get_site_score(tm, ocean, owner, [home], true) != null);
 
 test.assert(colonization.get_site_score(tm, rich, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));
 test.assert(colonization.get_site_score(tm, ideal, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));

@@ -116,9 +116,12 @@ return {
 			// TODO: marine
 			return 'Land units can\'t attack water tiles';
 		}
-		if (!attacker_is_artillery && e.data.attacker.is_water && defender_tile.is_land) {
+		if (
+			!attacker_is_artillery && e.data.attacker.is_water &&
+			defender_tile.is_land && defender_tile.get_base() == null
+		) {
 			// TODO: marine
-			return 'Water units can\'t attack land tiles';
+			return 'Water units can only attack land tiles containing a base';
 		}
 
 		if (attacker_def.offense <= 0) {

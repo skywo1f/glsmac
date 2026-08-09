@@ -11,6 +11,25 @@ const MIN_GROUP_ATTACK_SCORE = 0.55;
 const ATTACK_SUPPORT_DISTANCE = 1;
 const combat_rules = #include('../combat_rules');
 
+const is_naval_base_tile = (tile) => {
+	if (tile.get_base() == null) {
+		return false;
+	}
+	for (nearby of tile.get_surrounding_tiles()) {
+		if (nearby.is_water) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const is_triad_blocked = (unit, tile) => {
+	return (
+		(unit.is_land && tile.is_water) ||
+		(unit.is_water && tile.is_land && !is_naval_base_tile(tile))
+	);
+};
+
 const find_nearest_friendly_base = (tm, player_id, tile, bases) => {
 	let nearest = null;
 	let nearest_distance = 100000;
@@ -59,10 +78,7 @@ const can_threaten_tile = (unit, tile) => {
 	) {
 		return false;
 	}
-	return combat_rules.is_artillery(def) || !(
-		(unit.is_land && tile.is_water) ||
-		(unit.is_water && tile.is_land)
-	);
+	return combat_rules.is_artillery(def) || !is_triad_blocked(unit, tile);
 };
 
 const get_required_garrison = (tm, base, player_id, units) => {
@@ -107,8 +123,7 @@ const get_reinforcement_score = (tm, unit, base, player_id, units, reservations)
 	const tile = base.get_tile();
 	if (
 		base.get_owner().id != player_id ||
-		(unit.is_land && tile.is_water) ||
-		(unit.is_water && tile.is_land)
+		is_triad_blocked(unit, tile)
 	) {
 		return null;
 	}
@@ -164,7 +179,7 @@ const get_attack_commitment_score = (tm, attacker, defender, player_id, units) =
 			unit.health >= RETREAT_HEALTH &&
 			unit.movement > 0.0 &&
 			tm.get_distance(unit.get_tile(), target_tile) <= ATTACK_SUPPORT_DISTANCE &&
-			!((unit.is_land && target_tile.is_water) || (unit.is_water && target_tile.is_land))
+			!is_triad_blocked(unit, target_tile)
 		) {
 			support += combat_rules.get_attack_powers(unit, defender).attack;
 		} else if (unit.owner != player_id && unit.health > 0.0 && unit.get_tile() == target_tile) {
@@ -193,7 +208,7 @@ const choose_attack_target = (attacker, player_id, tiles, tm, units) => {
 	for (tile of tiles) {
 		if (
 			!attacker_is_artillery &&
-			((attacker.is_land && tile.is_water) || (attacker.is_water && tile.is_land))
+			is_triad_blocked(attacker, tile)
 		) {
 			continue;
 		}
@@ -229,8 +244,7 @@ const get_assault_score = (tm, attacker, base, player_id, units) => {
 	const base_tile = base.get_tile();
 	if (
 		base.get_owner().id == player_id ||
-		(attacker.is_land && base_tile.is_water) ||
-		(attacker.is_water && base_tile.is_land)
+		is_triad_blocked(attacker, base_tile)
 	) {
 		return null;
 	}

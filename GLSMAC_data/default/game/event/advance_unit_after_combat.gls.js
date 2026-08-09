@@ -26,8 +26,8 @@ return {
 		if (unit.is_land && dst_tile.is_water) {
 			return 'Land unit cannot advance into a water tile';
 		}
-		if (unit.is_water && dst_tile.is_land) {
-			return 'Water unit cannot advance into a land tile';
+		if (unit.is_water && dst_tile.is_land && dst_tile.get_base() == null) {
+			return 'Water unit cannot advance into a land tile without a base';
 		}
 		for (other of dst_tile.get_units()) {
 			if (other.owner != unit.owner && other.health > 0.0) {

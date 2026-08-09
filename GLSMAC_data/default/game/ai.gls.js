@@ -60,6 +60,7 @@ const get_combat_power_metrics = (game, player) => {
 const get_strategy_metrics = (game, player, bases, units) => {
 	let former_count = 0;
 	let colony_count = 0;
+	let sea_colony_count = 0;
 	let combat_count = 0;
 	let mobile_combat_count = 0;
 	for (unit of units) {
@@ -69,6 +70,9 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		if (def.can_found_base) {
 			colony_count++;
+			if (def.is_water) {
+				sea_colony_count++;
+			}
 		}
 		if (def.offense > 0) {
 			combat_count++;
@@ -85,7 +89,11 @@ const get_strategy_metrics = (game, player, bases, units) => {
 	let growth_stalled_bases = 0;
 	let unstable_bases = 0;
 	let base_labs = 0;
+	let sea_base_count = 0;
 	for (base of bases) {
+		if (base.get_tile().is_water) {
+			sea_base_count++;
+		}
 		if (
 			combat.get_garrison_count(base, player.id) <
 			combat.get_required_garrison(tm, base, player.id, all_units)
@@ -117,6 +125,8 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		),
 		former_count: former_count,
 		colony_count: colony_count,
+		sea_colony_count: sea_colony_count,
+		sea_base_count: sea_base_count,
 		combat_count: combat_count,
 		mobile_combat_count: mobile_combat_count,
 		underdefended_bases: underdefended_bases,
@@ -222,7 +232,7 @@ const can_enter = (unit, tile, source) => {
 	if (unit.is_land && tile.is_water) {
 		return false;
 	}
-	if (unit.is_water && tile.is_land) {
+	if (unit.is_water && tile.is_land && tile.get_base() == null) {
 		return false;
 	}
 	for (other of tile.get_units()) {
@@ -280,6 +290,7 @@ const queue_production = (game, player, bases, units) => {
 	const metrics = get_strategy_metrics(game, player, bases, units);
 	let former_count = metrics.former_count;
 	let colony_count = metrics.colony_count;
+	let sea_colony_count = metrics.sea_colony_count;
 	let combat_count = metrics.combat_count;
 	let mobile_combat_count = metrics.mobile_combat_count;
 	const unit_defs = game.get_um().get_unit_defs();
@@ -318,17 +329,32 @@ const queue_production = (game, player, bases, units) => {
 		const project_effects = #is_defined(get_project_effects)
 			? get_project_effects(base)
 			: {support_bonus: 0};
+		const needs_colony =
+			#sizeof(bases) + colony_count < metrics.desired_base_count &&
+			strategy.can_expand_safely(
+				#sizeof(bases),
+				colony_count,
+				combat_count,
+				metrics.underdefended_bases
+			);
+		const base_tile = base.get_tile();
+		let base_is_coastal = base_tile.is_water;
+		if (!base_is_coastal) {
+			for (nearby of base_tile.get_surrounding_tiles()) {
+				if (nearby.is_water) {
+					base_is_coastal = true;
+					break;
+				}
+			}
+		}
 		const context = {
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: former_count < #sizeof(bases),
-			needs_colony:
-				#sizeof(bases) + colony_count < metrics.desired_base_count &&
-				strategy.can_expand_safely(
-					#sizeof(bases),
-					colony_count,
-					combat_count,
-					metrics.underdefended_bases
-				),
+			needs_colony: needs_colony,
+			needs_sea_colony:
+				needs_colony && !base_tile.is_water && base_is_coastal &&
+				metrics.sea_base_count + sea_colony_count == 0 &&
+				#sizeof(bases) >= 2,
 			needs_military:
 				combat_count < #sizeof(bases) * 2 ||
 				priorities.rival_pressure > 0 ||
@@ -361,6 +387,9 @@ const queue_production = (game, player, bases, units) => {
 			}
 			if (selected.def.can_found_base) {
 				colony_count++;
+				if (selected.def.is_water) {
+					sea_colony_count++;
+				}
 			}
 			if (selected.def.offense > 0) {
 				combat_count++;
@@ -455,7 +484,14 @@ const move_colony = (game, player, unit, all_bases) => {
 	const destination = pathfinding.find_best_reachable(tm, unit, (source, candidate) => {
 		return can_enter(unit, candidate, source);
 	}, (candidate, distance) => {
-		return colonization.get_destination_score(tm, candidate, player, all_bases, distance);
+		return colonization.get_destination_score(
+			tm,
+			candidate,
+			player,
+			all_bases,
+			distance,
+			unit.is_water
+		);
 	});
 	if (destination == null) {
 		return false;

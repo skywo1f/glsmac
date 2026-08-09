@@ -6,6 +6,7 @@ const HURRY_RESERVE_TURNS = 3;
 const MIN_NONEMERGENCY_HURRY_MINERALS = 10;
 const BASIC_INFRASTRUCTURE_SCORE_BONUS = 60000;
 const EMERGENCY_GARRISON_SCORE = 1000000;
+const SEA_COLONY_SCORE_BONUS = 10000;
 
 const get_priority = (context, name, fallback) => {
 	return #is_defined(context.priorities) && #is_defined(context.priorities[name])
@@ -44,9 +45,14 @@ const get_remaining_maintenance_budget = (def, available_energy) => {
 
 const score_unit = (def, context) => {
 	if (def.can_found_base) {
+		const sea_colony_bonus =
+			#is_defined(def.is_water) && def.is_water &&
+			#is_defined(context.needs_sea_colony) && context.needs_sea_colony
+				? SEA_COLONY_SCORE_BONUS
+				: 0;
 		return context.needs_colony && context.can_expand
 			? 45000 + get_priority(context, 'expansion', 50) * 500 +
-				#max(context.nutrient_surplus, 0) * 250 -
+				#max(context.nutrient_surplus, 0) * 250 + sea_colony_bonus -
 				def.mineral_cost - get_unit_support_penalty(def, context)
 			: null;
 	}

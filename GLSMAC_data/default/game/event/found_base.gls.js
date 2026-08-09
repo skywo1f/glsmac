@@ -38,7 +38,32 @@ const restore_unit = (e, backup) => {
 	unit.moved_this_turn = backup.moved_this_turn;
 };
 
+const get_initial_production = (game, owner, tile) => {
+	if (!tile.is_water) {
+		return 'ScoutPatrol';
+	}
+	let best = null;
+	for (def of game.um.get_unit_defs()) {
+		if (
+			!def.is_water || def.is_native || def.is_missile ||
+			def.offense <= 0 || def.can_found_base || def.can_terraform ||
+			def.cargo_capacity > 0 ||
+			(
+				def.required_technology != '' &&
+				!owner.has_technology(def.required_technology)
+			)
+		) {
+			continue;
+		}
+		if (best == null || def.mineral_cost < best.mineral_cost) {
+			best = def;
+		}
+	}
+	return best == null ? 'SeaLurk' : best.id;
+};
+
 return {
+	get_initial_production: get_initial_production,
 
 	validate: (e) => {
 		const unit = e.data.unit;
@@ -73,8 +98,14 @@ return {
 		if (tile.is_locked()) {
 			return 'Base site is locked';
 		}
-		if (tile.is_water) {
-			return 'Land bases cannot be founded at sea';
+		if (!unit.is_land && !unit.is_water) {
+			return 'Only land or sea colony pods can found bases';
+		}
+		if (tile.is_water && !unit.is_water) {
+			return 'Only sea colony pods can found ocean bases';
+		}
+		if (!tile.is_water && !unit.is_land) {
+			return 'Sea colony pods can only found ocean bases';
 		}
 		if (tile.get_base() != null) {
 			return 'Tile already contains a base';
@@ -102,7 +133,7 @@ return {
 		const owner = unit.get_owner();
 		const backup = snapshot_unit(unit);
 		let info = {
-			production: 'ScoutPatrol',
+			production: get_initial_production(e.game, owner, tile),
 		};
 		if (#is_defined(e.data.name)) {
 			info.name = e.data.name;

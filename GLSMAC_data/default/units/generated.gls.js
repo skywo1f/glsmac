@@ -79,6 +79,7 @@ const find_component = (entries, id) => {
 
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
 const no_armor = find_component(manifest.armors, 'NoArmor');
+const colony_module = find_component(manifest.weapons, 'ColonyModule');
 const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
 const troop_transport = find_component(manifest.weapons, 'TroopTransport');
 const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
@@ -153,6 +154,8 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 		name = ability_name + (chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
 	} else if (role == 'transport') {
 		name = chassis.name + ' Transport';
+	} else if (role == 'colony') {
+		name = chassis.id == 'Infantry' ? 'Colony Pod' : chassis.name + ' Colony Pod';
 	}
 	const reactor_power = 1;
 	const cargo_capacity = weapon.id == 'TroopTransport'
@@ -166,7 +169,7 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			is_native: false,
 			offense: weapon.offense,
 			defense: armor.defense,
-			can_found_base: false,
+			can_found_base: role == 'colony',
 			can_terraform: role == 'former',
 			required_technology: technology_id,
 			chassis: chassis.id,
@@ -193,6 +196,7 @@ seen['Infantry|HandWeapons|NoArmor|'] = true;
 seen['Speeder|HandWeapons|NoArmor|'] = true;
 seen['Infantry|Laser|NoArmor|'] = true;
 seen['Infantry|HandWeapons|SynthmetalArmor|'] = true;
+seen['Infantry|ColonyModule|NoArmor|'] = true;
 seen['Infantry|TerraformingUnit|NoArmor|'] = true;
 
 const add_design = (technology_id, chassis, weapon, armor, role, abilities) => {
@@ -242,6 +246,9 @@ const add_milestone_designs = (technology_id) => {
 		}
 		add_design(technology_id, chassis, weapon, armor, 'assault', []);
 		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+		if (chassis.triad != 'air') {
+			add_design(technology_id, chassis, colony_module, no_armor, 'colony', []);
+		}
 	}
 	if (is_available(troop_transport, known)) {
 		for (chassis of manifest.chassis) {

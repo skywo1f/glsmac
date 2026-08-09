@@ -13,6 +13,8 @@ let found_copter = false;
 let found_gravship = false;
 let found_missile = false;
 let found_carrier = false;
+let found_sea_colony = false;
+let found_fast_land_colony = false;
 let found_clean_unit = false;
 let found_trained_unit = false;
 let found_super_former = false;
@@ -36,7 +38,10 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);
-	test.assert(data.offense > 0 || data.can_terraform || data.cargo_capacity > 0);
+	test.assert(
+		data.offense > 0 || data.can_found_base ||
+		data.can_terraform || data.cargo_capacity > 0
+	);
 	test.assert(technologies.get_definition(data.required_technology) != null);
 	for (ability of data.abilities) {
 		if (ability == 'CleanReactor') {
@@ -54,6 +59,15 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	if (data.can_terraform) {
 		test.assert(data.movement_type == 'land');
 		test.assert(data.weapon == 'TerraformingUnit');
+	}
+	if (data.can_found_base) {
+		test.assert(data.movement_type == 'land' || data.movement_type == 'water');
+		test.assert(data.weapon == 'ColonyModule');
+		if (data.movement_type == 'water') {
+			found_sea_colony = true;
+		} else if (data.movement_per_turn > 1) {
+			found_fast_land_colony = true;
+		}
 	}
 	if (data.movement_type == 'water') {
 		found_sea_unit = true;
@@ -87,6 +101,8 @@ test.assert(found_copter);
 test.assert(found_gravship);
 test.assert(found_missile);
 test.assert(found_carrier);
+test.assert(found_sea_colony);
+test.assert(found_fast_land_colony);
 test.assert(found_clean_unit);
 test.assert(found_trained_unit);
 test.assert(found_super_former);

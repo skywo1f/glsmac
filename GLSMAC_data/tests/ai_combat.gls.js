@@ -7,6 +7,7 @@ let next_base_id = 1;
 const make_tile = (x, y) => {
 	let base = null;
 	let units = [];
+	let surrounding = [];
 	return {
 		x: x,
 		y: y,
@@ -19,6 +20,8 @@ const make_tile = (x, y) => {
 		set_base: (value) => { base = value; },
 		get_units: () => { return units; },
 		add_unit: (unit) => { units :+unit; },
+		get_surrounding_tiles: () => { return surrounding; },
+		set_surrounding_tiles: (tiles) => { surrounding = tiles; },
 	};
 };
 
@@ -131,6 +134,18 @@ test.assert(!combat.can_threaten_tile(sea_threat, home_tile));
 test.assert(combat.can_threaten_tile(artillery_threat, home_tile));
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [immovable_threat, sea_threat]) == 1);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [artillery_threat]) == 2);
+
+const coastal_base_tile = make_tile(8, 8);
+const coastal_water = make_tile(8, 9);
+coastal_water.is_land = false;
+coastal_water.is_water = true;
+coastal_base_tile.set_surrounding_tiles([coastal_water]);
+const coastal_base = make_base(player_id, coastal_base_tile);
+const coastal_sea_threat = make_combat_unit(other_player_id, coastal_water, 3);
+coastal_sea_threat.is_land = false;
+coastal_sea_threat.is_water = true;
+test.assert(combat.can_threaten_tile(coastal_sea_threat, coastal_base_tile));
+test.assert(combat.get_required_garrison(tm, coastal_base, player_id, [coastal_sea_threat]) == 2);
 
 const attack_origin = make_tile(10, 10);
 const north_target_tile = make_tile(10, 9);

@@ -527,8 +527,11 @@ WRAPIMPL_BEGIN( UnitManager )
 					else {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid movement type: " + movement_type_str + ". Specify one of: land water air immovable");
 					}
-					if ( ( can_found_base || can_terraform ) && movement_type != unit::MT_LAND ) {
-						GSE_ERROR( gse::EC.INVALID_CALL, "Founding and terraforming capabilities require a land unit: " + id );
+					if (
+						( can_found_base && movement_type != unit::MT_LAND && movement_type != unit::MT_WATER ) ||
+						( can_terraform && movement_type != unit::MT_LAND )
+					) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid movement type for founding or terraforming unit: " + id );
 					}
 					if (
 						operational_range < 0 ||

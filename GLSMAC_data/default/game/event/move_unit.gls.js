@@ -125,8 +125,8 @@ return {
 		) {
 			return 'Land units need a friendly transport with free capacity to enter water';
 		}
-		if (e.data.unit.is_water && dst_tile.is_land) {
-			return 'Water units can\'t move to land tile';
+		if (e.data.unit.is_water && dst_tile.is_land && dst_tile.get_base() == null) {
+			return 'Water units can only enter land tiles containing a base';
 		}
 
 		let any_foreign_units_in_tile = false;

@@ -68,6 +68,8 @@ const laser = unit('Laser', 2, 1, 1.0, 20, false, false);
 const defender = unit('Defender', 1, 2, 1.0, 20, false, false);
 const former = unit('Former', 0, 1, 1.0, 20, false, true);
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
+const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
+sea_colony.is_water = true;
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
 const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
 const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
@@ -115,6 +117,11 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 test.assert(production.choose(base, all_units, all_facilities, context(true, true, true, true, 10)).id == 'Defender');
 test.assert(production.choose(base, all_units, all_facilities, context(false, true, true, true, 10)).id == 'Former');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, true, true, 10)).id == 'Colony');
+let sea_expansion_context = context(false, false, true, false, 10);
+sea_expansion_context.needs_sea_colony = true;
+test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'SeaColony');
+sea_expansion_context.needs_sea_colony = false;
+test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
 

@@ -556,9 +556,23 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				GT_ASSERT( rejected_conflicting_unit_capabilities, "conflicting unit capabilities accepted" );
 
-				bool rejected_water_colony_unit = false;
+				bool rejected_air_colony_unit = false;
 				try {
 					auto unit_def = make_unit_def( 10, 0, 1, true, false );
+					unit_def.WriteInt( game::backend::unit::MT_AIR );
+					unit_def.WriteFloat( 1.0f );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_air_colony_unit = true;
+				}
+				GT_ASSERT( rejected_air_colony_unit, "air colony unit capability accepted" );
+
+				bool rejected_water_former_unit = false;
+				try {
+					auto unit_def = make_unit_def( 10, 0, 1, false, true );
 					unit_def.WriteInt( game::backend::unit::MT_WATER );
 					unit_def.WriteFloat( 1.0f );
 					std::unique_ptr< game::backend::unit::Def > parsed(
@@ -566,9 +580,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					);
 				}
 				catch ( const std::runtime_error& ) {
-					rejected_water_colony_unit = true;
+					rejected_water_former_unit = true;
 				}
-				GT_ASSERT( rejected_water_colony_unit, "water colony unit capability accepted" );
+				GT_ASSERT( rejected_water_former_unit, "water former unit capability accepted" );
 
 				bool rejected_invalid_resource_coordinates = false;
 				try {

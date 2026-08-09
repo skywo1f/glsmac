@@ -55,6 +55,8 @@ const unit = {
 	morale: 2,
 	health: 0.75,
 	moved_this_turn: false,
+	is_land: true,
+	is_water: false,
 	get_def: () => {
 		return {can_found_base: validation_state.can_found_base};
 	},
@@ -100,9 +102,18 @@ test.assert(found_base.validate(validation_event) == 'Base site is locked');
 
 validation_state.site_locked = false;
 site.is_water = true;
-test.assert(found_base.validate(validation_event) == 'Land bases cannot be founded at sea');
+test.assert(found_base.validate(validation_event) == 'Only sea colony pods can found ocean bases');
+
+validation_event.data.unit.is_land = false;
+validation_event.data.unit.is_water = true;
+test.assert(!#is_defined(found_base.validate(validation_event)));
 
 site.is_water = false;
+test.assert(found_base.validate(validation_event) == 'Sea colony pods can only found ocean bases');
+
+validation_event.data.unit.is_land = true;
+validation_event.data.unit.is_water = false;
+
 validation_state.site_base = {id: 8};
 test.assert(found_base.validate(validation_event) == 'Tile already contains a base');
 
@@ -131,6 +142,66 @@ test.assert(!#is_defined(found_base.validate(validation_event)));
 validation_event.data.name = long_base_name + 'x';
 test.assert(#is_defined(found_base.validate(validation_event)));
 validation_event.data.name = #undefined;
+
+{
+	const sea_scout = {
+		id: 'GeneratedFoilHandWeaponsNoArmor',
+		mineral_cost: 30,
+		required_technology: 'DoctrineFlexibility',
+		is_water: true,
+		is_native: false,
+		is_missile: false,
+		offense: 1,
+		can_found_base: false,
+		can_terraform: false,
+		cargo_capacity: 0,
+	};
+	const sea_laser = {
+		id: 'GeneratedFoilLaserNoArmor',
+		mineral_cost: 40,
+		required_technology: 'AppliedPhysics',
+		is_water: true,
+		is_native: false,
+		is_missile: false,
+		offense: 2,
+		can_found_base: false,
+		can_terraform: false,
+		cargo_capacity: 0,
+	};
+	const sea_colony = {
+		id: 'GeneratedFoilColonyModuleNoArmor',
+		mineral_cost: 70,
+		required_technology: 'DoctrineFlexibility',
+		is_water: true,
+		is_native: false,
+		is_missile: false,
+		offense: 0,
+		can_found_base: true,
+		can_terraform: false,
+		cargo_capacity: 0,
+	};
+	const production_owner = {
+		has_technology: (id) => {
+			return id == 'DoctrineFlexibility';
+		},
+	};
+	const production_game = {
+		um: {
+			get_unit_defs: () => {
+				return [sea_laser, sea_colony, sea_scout];
+			},
+		},
+	};
+	test.assert(found_base.get_initial_production(production_game, production_owner, site) == 'ScoutPatrol');
+	site.is_water = true;
+	test.assert(
+		found_base.get_initial_production(production_game, production_owner, site) ==
+		sea_scout.id
+	);
+	production_game.um.get_unit_defs = () => { return [sea_laser, sea_colony]; };
+	test.assert(found_base.get_initial_production(production_game, production_owner, site) == 'SeaLurk');
+	site.is_water = false;
+}
 
 {
 	const state = {
