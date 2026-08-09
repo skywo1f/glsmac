@@ -5,8 +5,21 @@ const globals = {};
 const CONTENT_CITIZENS = 3;
 const PSYCH_PER_IMPROVEMENT = 2;
 const DOCTOR_PSYCH = 2;
-const FREE_SUPPORTED_UNITS_PER_POP = 1;
 const DEFAULT_POPULATION_LIMIT = 7;
+
+const get_social_ratings = (game, player) => {
+	const resolver = #is_defined(game.get) ? game.get('f_social_get_ratings') : #undefined;
+	return #is_defined(resolver) ? resolver(player) : {
+		economy: 0, support: 0, talent: 0, growth: 0,
+	};
+};
+
+const get_production_cost = (game, base, production) => {
+	const resolver = #is_defined(game.get) ? game.get('f_social_get_mineral_cost') : #undefined;
+	return #is_defined(resolver)
+		? resolver(base.get_owner(), production.mineral_cost)
+		: production.mineral_cost;
+};
 
 const get_effective_facilities = (game, base) => {
 	const resolver = #is_defined(game.get)
@@ -104,6 +117,12 @@ const get_social_facility_effects = (game, base) => {
 		result.drone_modifier = result.drone_modifier +
 			project_effects.network_node_drone_modifier;
 	}
+	const talent_rating = get_social_ratings(game, base.get_owner()).talent;
+	if (talent_rating < 0) {
+		result.drone_modifier = result.drone_modifier + 1;
+	} else if (talent_rating > 0) {
+		result.talent_bonus = result.talent_bonus + 1;
+	}
 	return result;
 };
 
@@ -167,6 +186,7 @@ const get_nutrients_for_growth = (game, base) => {
 		}
 	}
 	growth_rating_bonus += get_project_effects(game, base).growth_rating_bonus;
+	growth_rating_bonus += get_social_ratings(game, base.get_owner()).growth;
 	const base_cost = globals.map_growth_base * (base.get_size() + 1);
 	const cost_scale = #max(10 - growth_rating_bonus, 1);
 	return #ceil(#to_float(base_cost * cost_scale) / 10.0);
@@ -499,7 +519,11 @@ const process_growth = (game, base, allocated_psych) => {
 	}
 
 	if (!grow) {
-		if (accumulated >= get_nutrients_for_growth(game, base)) {
+		const growth_rating = get_social_ratings(game, base.get_owner()).growth;
+		if (
+			accumulated >= get_nutrients_for_growth(game, base) ||
+			(growth_rating >= 6 && get_pending_growth(base) > 0)
+		) {
 			grow = true; // growth from nutrients
 		}
 	}
@@ -602,6 +626,12 @@ return (game) => {
 		};
 
 		const facilities = get_effective_facilities(game, e.base);
+		const owner = e.base.get_owner();
+		const tile_energy_resolver = game.get('f_social_get_tile_energy_bonus');
+		const economy_base_resolver = game.get('f_social_get_economy_base_bonus');
+		const social_tile_energy_bonus = #is_defined(tile_energy_resolver)
+			? tile_energy_resolver(owner)
+			: 0;
 		let worked_tile_energy_bonus = 0;
 		let forest_nutrient_bonus = 0;
 		let forest_mineral_bonus = 0;
@@ -628,6 +658,7 @@ return (game) => {
 			result.MINERALS = result.MINERALS + r.MINERALS +
 				(is_forest ? forest_mineral_bonus : 0);
 			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus +
+				social_tile_energy_bonus +
 				(is_forest ? forest_energy_bonus : 0);
 		};
 
@@ -639,6 +670,12 @@ return (game) => {
 			result.NUTRIENTS = result.NUTRIENTS + facility.nutrient_bonus;
 			result.MINERALS = result.MINERALS + facility.mineral_bonus;
 			result.ENERGY = result.ENERGY + facility.energy_bonus;
+		}
+		if (#is_defined(economy_base_resolver)) {
+			result.ENERGY = result.ENERGY + economy_base_resolver(
+				owner,
+				#is_defined(e.base.has_facility) && e.base.has_facility('Headquarters')
+			);
 		}
 		result.MINERALS = result.MINERALS + get_project_effects(game, e.base).mineral_bonus;
 		let mineral_multiplier = 0.0;
@@ -661,15 +698,24 @@ return (game) => {
 			ENERGY: 0,
 		};
 
+		const owner = e.base.get_owner();
+		const support_cost_resolver = game.get('f_social_get_support_cost');
+		const free_support_resolver = game.get('f_social_get_free_support');
+		const social_support_cost = #is_defined(support_cost_resolver)
+			? support_cost_resolver(owner)
+			: 1;
 		let unit_support = 0;
 		for (unit of game.get_um().get_units()) {
-			if (unit.owner == e.base.get_owner().id && unit.home_base_id == e.base.id) {
-				unit_support += unit_abilities.get_support_cost(unit);
+			if (unit.owner == owner.id && unit.home_base_id == e.base.id) {
+				unit_support += unit_abilities.get_support_cost(unit) * social_support_cost;
 			}
 		}
 		const project_effects = get_project_effects(game, e.base);
-		const free_support = #max(e.base.get_size(), 1) * FREE_SUPPORTED_UNITS_PER_POP +
-			project_effects.support_bonus;
+		const free_support = (
+			#is_defined(free_support_resolver)
+				? free_support_resolver(owner, e.base.get_size())
+				: #max(e.base.get_size(), 1)
+		) + project_effects.support_bonus;
 		result.MINERALS = #max(unit_support - free_support, 0);
 		for (facility of get_effective_facilities(game, e.base)) {
 			result.ENERGY = result.ENERGY + facility.energy_maintenance;
@@ -730,6 +776,10 @@ return (game) => {
 		game.set('f_base_get_nutrients_for_growth', get_nutrients_for_growth);
 		game.set('f_base_get_population_limit', (base) => { return get_population_limit(game, base); });
 		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
+		game.set(
+			'f_base_get_production_cost',
+			(base, production) => { return get_production_cost(game, base, production); }
+		);
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);
 		game.set('f_base_process_psych', process_psych);

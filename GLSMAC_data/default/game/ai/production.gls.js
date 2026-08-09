@@ -14,6 +14,12 @@ const get_priority = (context, name, fallback) => {
 		: fallback;
 };
 
+const get_mineral_cost = (def, context) => {
+	return #is_defined(context.get_mineral_cost)
+		? context.get_mineral_cost(def)
+		: def.mineral_cost;
+};
+
 const get_unit_support_penalty = (def, context) => {
 	const projected_overage = #max(
 		context.supported_units + unit_abilities.get_support_cost(def) - context.free_support,
@@ -53,13 +59,13 @@ const score_unit = (def, context) => {
 		return context.needs_colony && context.can_expand
 			? 45000 + get_priority(context, 'expansion', 50) * 500 +
 				#max(context.nutrient_surplus, 0) * 250 + sea_colony_bonus -
-				def.mineral_cost - get_unit_support_penalty(def, context)
+				get_mineral_cost(def, context) - get_unit_support_penalty(def, context)
 			: null;
 	}
 	if (def.can_terraform) {
 		return context.needs_former
 			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
-				def.mineral_cost + #round(def.movement_per_turn * 1000.0) +
+				get_mineral_cost(def, context) + #round(def.movement_per_turn * 1000.0) +
 				get_unit_ability_score(def) - get_unit_support_penalty(def, context)
 			: null;
 	}
@@ -68,7 +74,8 @@ const score_unit = (def, context) => {
 	}
 	if (context.needs_garrison) {
 		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
-			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def) - def.mineral_cost -
+			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def) -
+			get_mineral_cost(def, context) -
 			get_unit_support_penalty(def, context);
 	}
 	if (!context.needs_military) {
@@ -76,7 +83,8 @@ const score_unit = (def, context) => {
 	}
 	return 20000 + get_priority(context, 'military', 33) * 300 +
 		def.offense * 1000 + def.defense * 250 +
-		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def) - def.mineral_cost -
+		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def) -
+		get_mineral_cost(def, context) -
 		get_unit_support_penalty(def, context);
 };
 
@@ -119,7 +127,7 @@ const score_facility = (def, context) => {
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight +
 		forest_nutrient_bonus * nutrient_weight * 3 +
 		forest_mineral_bonus * 2700 + forest_energy_bonus * 1500 -
-		def.energy_maintenance * 250 - def.mineral_cost +
+		def.energy_maintenance * 250 - get_mineral_cost(def, context) +
 		#round(def.research_multiplier * #to_float(context.base_labs) * 1000.0) +
 		def.research_bonus * research_weight +
 		#round(#max(def.defense_multiplier - 1.0, 0.0) * #to_float(defense_weight)) +
@@ -214,7 +222,7 @@ const score_hurry = (def, context) => {
 		}
 	}
 
-	const missing = #max(def.mineral_cost - context.accumulated_minerals, 0);
+	const missing = #max(get_mineral_cost(def, context) - context.accumulated_minerals, 0);
 	const mineral_surplus = #max(context.mineral_surplus, 1);
 	const turns_remaining = #ceil(
 		#to_float(missing) / #to_float(mineral_surplus)

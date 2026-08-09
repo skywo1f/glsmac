@@ -52,20 +52,26 @@ const get_base_psych = (game, base) => {
 	return psych.value + psych.bonus;
 };
 
-const get_hurry_cost = (base) => {
+const get_hurry_cost = (game, base) => {
 	const production = base.get_production();
 	if (!#is_defined(production)) {
 		return 0;
 	}
 	const accumulated = base.get_accumulated_minerals();
-	const missing = #max(production.mineral_cost - accumulated, 0);
+	const production_cost_resolver = #is_defined(game.get)
+		? game.get('f_base_get_production_cost')
+		: #undefined;
+	const production_cost = #is_defined(production_cost_resolver)
+		? production_cost_resolver(base, production)
+		: production.mineral_cost;
+	const missing = #max(production_cost - accumulated, 0);
 	if (missing == 0) {
 		return 0;
 	}
 	let cost = missing * 2;
 	if (production.production_kind == 'unit') {
 		cost += #floor(
-			#to_float(missing * missing) / #to_float(production.mineral_cost)
+			#to_float(missing * missing) / #to_float(production_cost)
 		);
 	}
 	if (accumulated < 10) {
@@ -115,7 +121,7 @@ return (game) => {
 		game.set('f_economy_get_base', get_base_economy);
 		game.set('f_economy_get_base_psych', get_base_psych);
 		game.set('f_economy_get_player', get_player_economy);
-		game.set('f_economy_get_hurry_cost', get_hurry_cost);
+		game.set('f_economy_get_hurry_cost', (base) => { return get_hurry_cost(game, base); });
 		game.set('f_economy_get_liquidation_candidate', get_liquidation_candidate);
 		game.on('turn', (e) => {
 			if (!game.is_master()) {

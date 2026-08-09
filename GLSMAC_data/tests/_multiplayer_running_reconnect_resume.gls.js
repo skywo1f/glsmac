@@ -7,7 +7,8 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const initial_energy_stamp = 137;
-	const processed_turn_unit_support = 2;
+	// The Believers' +2 SUPPORT rating covers the two snapshot units for free.
+	const processed_turn_unit_support = 0;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;

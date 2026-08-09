@@ -47,6 +47,7 @@ Player::Player( const Player* const other ) {
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
 	m_energy_credits = other->m_energy_credits;
+	m_social_engineering = other->m_social_engineering;
 }
 
 Player::~Player() {
@@ -170,6 +171,18 @@ void Player::SetEnergyCredits( const int64_t energy_credits ) {
 		THROW( "player energy credits are out of range" );
 	}
 	m_energy_credits = energy_credits;
+}
+
+const Player::social_engineering_t& Player::GetSocialEngineering() const {
+	return m_social_engineering;
+}
+
+void Player::SetSocialEngineering( const social_engineering_t& social_engineering ) {
+	std::string error;
+	if ( !ValidateSocialEngineering( social_engineering, error ) ) {
+		THROW( error );
+	}
+	m_social_engineering = social_engineering;
 }
 
 WRAPIMPL_BEGIN( Player )
@@ -327,6 +340,39 @@ WRAPIMPL_BEGIN( Player )
 					return VALUE( gse::value::Undefined );
 				} )
 			},
+			{
+				"get_social_engineering",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "politics", VALUE( gse::value::String, , m_social_engineering.at( 0 ) ) },
+						{ "economics", VALUE( gse::value::String, , m_social_engineering.at( 1 ) ) },
+						{ "values", VALUE( gse::value::String, , m_social_engineering.at( 2 ) ) },
+						{ "future_society", VALUE( gse::value::String, , m_social_engineering.at( 3 ) ) },
+					} );
+				} )
+			},
+			{
+				"set_social_engineering",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( choices, 0, Object );
+					N_GETPROP( politics, choices, "politics", String );
+					N_GETPROP( economics, choices, "economics", String );
+					N_GETPROP( values, choices, "values", String );
+					N_GETPROP( future_society, choices, "future_society", String );
+					social_engineering_t social_engineering = {{
+						politics, economics, values, future_society
+					}};
+					std::string error;
+					if ( !ValidateSocialEngineering( social_engineering, error ) ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, error );
+					}
+					SetSocialEngineering( social_engineering );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -350,6 +396,10 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteString( m_research_target );
 	buf.WriteInt( m_research_progress );
 	buf.WriteInt( m_energy_credits );
+	buf.WriteInt( m_social_engineering.size() );
+	for ( const auto& id : m_social_engineering ) {
+		buf.WriteString( id );
+	}
 
 	return buf;
 }
@@ -389,6 +439,20 @@ void Player::Deserialize( types::Buffer buf ) {
 	if ( energy_credits < 0 || energy_credits > MAX_ENERGY_CREDITS ) {
 		THROW( "invalid serialized player energy credits" );
 	}
+	social_engineering_t social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto choice_count = buf.ReadCollectionSize( "player social engineering choice" );
+		if ( choice_count != SOCIAL_ENGINEERING_CATEGORY_COUNT ) {
+			THROW( "invalid serialized player social engineering choice count" );
+		}
+		for ( size_t i = 0 ; i < choice_count ; i++ ) {
+			social_engineering.at( i ) = buf.ReadString();
+		}
+		std::string social_error;
+		if ( !ValidateSocialEngineering( social_engineering, social_error ) ) {
+			THROW( "invalid serialized player social engineering state: " + social_error );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -404,6 +468,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_research_target = research_target;
 	m_research_progress = research_progress;
 	m_energy_credits = energy_credits;
+	m_social_engineering = std::move( social_engineering );
 
 }
 
@@ -442,6 +507,23 @@ bool Player::ValidateResearchState(
 	if ( target.empty() && progress != 0 ) {
 		error = "Research progress requires a target";
 		return false;
+	}
+	return true;
+}
+
+bool Player::ValidateSocialEngineering(
+	const social_engineering_t& social_engineering,
+	std::string& error
+) {
+	for ( const auto& id : social_engineering ) {
+		if ( id.empty() ) {
+			error = "Social engineering choice IDs cannot be empty";
+			return false;
+		}
+		if ( id.size() > MAX_SOCIAL_ENGINEERING_ID_LENGTH ) {
+			error = "Social engineering choice ID is too long";
+			return false;
+		}
 	}
 	return true;
 }

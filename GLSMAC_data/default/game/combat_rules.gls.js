@@ -37,6 +37,17 @@ const get_base_defender_morale_bonus = (defender, game) => {
 	return result;
 };
 
+const get_social_morale_bonus = (unit, game, defending) => {
+	if (
+		!#is_defined(game) || !#is_defined(game.get) ||
+		!#is_defined(unit.get_owner) || unit.get_def().is_native
+	) {
+		return 0;
+	}
+	const resolver = game.get('f_social_get_morale_bonus');
+	return #is_defined(resolver) ? resolver(unit.get_owner(), defending) : 0;
+};
+
 const get_base_defense_multiplier = (defender, attacker, game) => {
 	const base = defender.get_tile().get_base();
 	if (
@@ -145,10 +156,14 @@ const get_combat_powers = (attacker, defender, game) => {
 		attack_modifier *= attacker.movement;
 	}
 	return {
-		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health * attack_modifier,
+		attack: attack_strength * get_morale_multiplier(
+			attacker,
+			get_social_morale_bonus(attacker, game, false)
+		) * attacker.health * attack_modifier,
 		defence: defence_strength * get_morale_multiplier(
 			defender,
-			get_base_defender_morale_bonus(defender, game)
+			get_base_defender_morale_bonus(defender, game) +
+				get_social_morale_bonus(defender, game, true)
 		) * defender.health * defence_modifier,
 	};
 };
@@ -157,12 +172,16 @@ const get_artillery_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
 	return {
-		attack: #to_float(attacker_def.offense) * get_morale_multiplier(attacker) * attacker.health,
+		attack: #to_float(attacker_def.offense) * get_morale_multiplier(
+			attacker,
+			get_social_morale_bonus(attacker, game, false)
+		) * attacker.health,
 		defence: #to_float(
 			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
 		) * get_morale_multiplier(
 			defender,
-			get_base_defender_morale_bonus(defender, game)
+			get_base_defender_morale_bonus(defender, game) +
+				get_social_morale_bonus(defender, game, true)
 		) * defender.health,
 	};
 };

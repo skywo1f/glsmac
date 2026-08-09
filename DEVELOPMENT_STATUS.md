@@ -16,7 +16,12 @@ Sid Meier's Alpha Centauri implementation. It is not a release announcement.
 The Windows x64 Release build has asset-backed automated coverage for:
 
 - game setup, turn progression, research, economy, base growth, worker
-  assignment, production queues, and support;
+  assignment, production queues, support, and persistent social engineering;
+- all 16 original social models, original-faction rating modifiers and immunity,
+  technology gating, human selection UI, and strategy-weighted AI selection;
+- social ECONOMY, SUPPORT, TALENT, MORALE, GROWTH, INDUSTRY, and RESEARCH
+  effects across base yields, psych, unit support and combat, production, and
+  research;
 - land and sea colonization, terraforming, conventional and psi combat,
   conquest, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -43,7 +48,9 @@ The following original-SMAC systems remain absent or materially incomplete:
 - diplomacy, treaties, pacts, vendettas, commerce, council elections, and
   diplomatic victory;
 - probe-team actions, infiltration, subversion, and mind control;
-- social engineering and the facility/project effects that depend on it;
+- remaining social effects: adoption costs, efficiency losses, commerce
+  thresholds, low-MORALE modifier halving, SUPPORT new-base mineral penalties,
+  full police and away-unit behavior, and probe/Planet integration;
 - ecological damage, fungal blooms, and several Planet-related effects;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
 - several remaining facility effects, including submersion, Psi Gates,
@@ -59,11 +66,16 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 70 cases: 54 isolated native/script GSE tests
+The Release CTest matrix contains 72 cases: 56 isolated native/script GSE tests
 and 16 asset-backed runtime scenarios. All current cases pass in one
-uninterrupted invocation on the tested Windows machine. The same 54 GSE cases
+uninterrupted invocation on the tested Windows machine. The same 56 GSE cases
 also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
 allocator lifetime bounded and reports the exact script that fails.
+
+One earlier full Release run ended 71/72 after an intermittent
+`ai_air_runtime_smoke` startup crash during map generation. The scenario then
+passed ten consecutive fresh-process repeats, and the final uninterrupted
+72-case matrix passed. The crash was not reproducible after that first failure.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

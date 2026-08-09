@@ -77,11 +77,18 @@ const get_base_labs = (base, game) => {
 	const facility_bonus = #ceil(
 		#to_float(allocated + base_bonus + fixed_facility_bonus) * research_multiplier
 	);
+	const pre_social_total = allocated + base_bonus + fixed_facility_bonus + facility_bonus;
+	const social_resolver = #is_defined(game)
+		? game.get('f_social_get_research_multiplier')
+		: #undefined;
+	const total = #is_defined(social_resolver)
+		? #max(0, #round(#to_float(pre_social_total) * social_resolver(base.get_owner())))
+		: pre_social_total;
 	return {
 		allocation: allocation,
 		value: allocated,
-		bonus: base_bonus + fixed_facility_bonus + facility_bonus,
-		total: allocated + base_bonus + fixed_facility_bonus + facility_bonus,
+		bonus: total - allocated,
+		total: total,
 	};
 };
 

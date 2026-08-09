@@ -81,6 +81,9 @@ test.assert(combat_rules.get_combat_powers(native_attacker, defender).defence ==
 
 const project_psi_game = {
 	get: (key) => {
+		if (key == 'f_social_get_morale_bonus') {
+			return #undefined;
+		}
 		if (key == 'f_base_get_effective_facilities') {
 			return (base) => { return base.get_facilities(); };
 		}
@@ -113,6 +116,9 @@ test.assert(combat_rules.get_combat_powers(air_attacker, defender).defence == 8.
 facilities = [];
 const project_defense_game = {
 	get: (key) => {
+		if (key == 'f_social_get_morale_bonus') {
+			return #undefined;
+		}
 		test.assert(key == 'f_base_get_effective_facilities');
 		return (base) => { return [{defense_multiplier: 2.0}]; };
 	},
@@ -121,6 +127,28 @@ test.assert(
 	combat_rules.get_base_defense_multiplier(defender, attacker, project_defense_game) == 2.0
 );
 test.assert(combat_rules.get_combat_powers(attacker, defender, project_defense_game).defence == 5.0);
+
+const social_attack_tile = make_tile();
+const social_defense_tile = make_tile();
+const social_attacker = make_unit(social_attack_tile, 1, 2, 1, false, 'land');
+const social_defender = make_unit(social_defense_tile, 2, 1, 2, false, 'land');
+const social_game = {
+	get: (key) => {
+		if (key == 'f_social_get_morale_bonus') {
+			return (player, defending) => {
+				return player.id == 1 ? 1 : (defending ? 2 : 1);
+			};
+		}
+		return #undefined;
+	},
+};
+const social_powers = combat_rules.get_combat_powers(
+	social_attacker,
+	social_defender,
+	social_game
+);
+test.assert(social_powers.attack == 2.25);
+test.assert(social_powers.defence == 2.5);
 
 const stack_tile = make_tile();
 const weak_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');

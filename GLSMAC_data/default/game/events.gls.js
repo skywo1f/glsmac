@@ -35,6 +35,7 @@ return (game) => {
 		'process_player_research',
 		'settle_player_economy',
 		'process_player_economy',
+		'set_social_engineering',
 		'declare_victory',
 		'complete_turn',
 		'uncomplete_turn',

@@ -15,6 +15,12 @@ return {
 					p.menu.close('left_menu_game');
 				},
 			},
+			{
+				label: 'SOCIAL',
+				open: () => {
+					p.modules.popup.show('social_engineering');
+				},
+			},
 		]);
 	},
 

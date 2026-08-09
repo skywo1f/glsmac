@@ -1,5 +1,6 @@
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <set>
 #include <string>
@@ -81,6 +82,12 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	int64_t GetEnergyCredits() const;
 	void SetEnergyCredits( const int64_t energy_credits );
 
+	using social_engineering_t = std::array< std::string, 4 >;
+	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
+	static constexpr size_t MAX_SOCIAL_ENGINEERING_ID_LENGTH = 64;
+	const social_engineering_t& GetSocialEngineering() const;
+	void SetSocialEngineering( const social_engineering_t& social_engineering );
+
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
@@ -107,12 +114,17 @@ private:
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;
 	int64_t m_energy_credits = 0;
+	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(
 		const technologies_t& technologies,
 		const std::string& target,
 		const int64_t progress,
+		std::string& error
+	);
+	static bool ValidateSocialEngineering(
+		const social_engineering_t& social_engineering,
 		std::string& error
 	);
 };

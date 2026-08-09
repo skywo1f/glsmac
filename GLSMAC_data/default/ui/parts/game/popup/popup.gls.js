@@ -3,6 +3,7 @@ return {
 	available_popups: [
 		'turn_confirmation',
 		'please_dont_go',
+		'social_engineering',
 		'base_screen',
 	],
 

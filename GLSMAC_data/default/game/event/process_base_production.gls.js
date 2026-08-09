@@ -65,7 +65,7 @@ const get_production_morale = (game, base, production) => {
 		}
 	}
 	const morale_set = game.um.get_moraleset(production.morale_set);
-	return #min(morale, #sizeof(morale_set) - 1);
+	return #max(0, #min(morale, #sizeof(morale_set) - 1));
 };
 
 return {
@@ -89,20 +89,24 @@ return {
 
 		if (#is_defined(production)) {
 			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
+			const production_cost_resolver = e.game.get('f_base_get_production_cost');
+			const production_cost = #is_defined(production_cost_resolver)
+				? production_cost_resolver(base, production)
+				: production.mineral_cost;
 			const population_cost = (
 				production.production_kind == 'unit' &&
 				#is_defined(production.can_found_base) &&
 				production.can_found_base
 			) ? 1 : 0;
 			const has_population = population_cost == 0 || base.get_size() > population_cost;
-			if (updated_minerals >= production.mineral_cost && has_population) {
+			if (updated_minerals >= production_cost && has_population) {
 				const existing_project_base = production.production_kind == 'project'
 					? e.game.get_bm().get_project_base(production.id)
 					: #undefined;
 				if (#is_defined(existing_project_base)) {
 					base.remove_production(0);
 				} else {
-					updated_minerals -= production.mineral_cost;
+					updated_minerals -= production_cost;
 					const queue_size = #sizeof(base.get_production_queue());
 					if (production.production_kind == 'unit') {
 						produced_unit = e.game.um.spawn_unit({

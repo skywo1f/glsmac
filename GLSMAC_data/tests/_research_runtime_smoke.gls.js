@@ -134,6 +134,83 @@
 					target: '',
 					progress: 0,
 				});
+				game.event('set_social_engineering', {
+					player: player,
+					choices: {
+						politics: 'Democratic',
+						economics: 'Planned',
+						values: 'Wealth',
+						future_society: 'None',
+					},
+				});
+				let social_wait_ticks = 0;
+				#async(100, () => {
+					social_wait_ticks++;
+					if (player.get_social_engineering().politics != 'Democratic') {
+						if (social_wait_ticks >= 100) {
+							fail('social engineering event application timed out');
+							return false;
+						}
+						return true;
+					}
+					game.event('complete_turn', {});
+					return false;
+				});
+				return;
+			}
+
+			if (turn_id == 3) {
+				const social_choices = player.get_social_engineering();
+				const social_ratings = game.get('f_social_get_ratings')(player);
+				const social_energy = base.get_intake().ENERGY;
+				const social_growth_cost = game.get(
+					'f_base_get_nutrients_for_growth'
+				)(game, base);
+				player.set_social_engineering({
+					politics: 'Frontier',
+					economics: 'Simple',
+					values: 'Survival',
+					future_society: 'None',
+				});
+				const baseline_energy = base.get_intake().ENERGY;
+				const baseline_growth_cost = game.get(
+					'f_base_get_nutrients_for_growth'
+				)(game, base);
+				player.set_social_engineering(social_choices);
+				if (
+					social_choices.politics != 'Democratic' ||
+					social_choices.economics != 'Planned' ||
+					social_choices.values != 'Wealth' ||
+					social_choices.future_society != 'None'
+				) {
+					fail('live social engineering event did not store its choices');
+					return;
+				}
+				if (
+					social_ratings.economy != 1 || social_ratings.effic != 2 ||
+					social_ratings.support != 0 - 2 || social_ratings.morale != 0 - 3 ||
+					social_ratings.police != 0 - 1 || social_ratings.growth != 4 ||
+					social_ratings.planet != 1 || social_ratings.industry != 2
+				) {
+					fail('live social engineering ratings are invalid');
+					return;
+				}
+				if (social_energy != baseline_energy + 1) {
+					fail('ECONOMY rating did not increase live base energy');
+					return;
+				}
+				if (social_growth_cost >= baseline_growth_cost) {
+					fail('GROWTH rating did not reduce live base growth cost');
+					return;
+				}
+				if (game.get('f_social_get_free_support')(player, base.get_size()) != 1) {
+					fail('SUPPORT rating returned an invalid live free-unit allowance');
+					return;
+				}
+				if (game.get('f_social_get_mineral_cost')(player, 40) != 32) {
+					fail('INDUSTRY rating returned an invalid live mineral cost');
+					return;
+				}
 				const unit_defs = game.get_um().get_unit_defs();
 				let found_late_land_unit = false;
 				let found_sea_unit = false;
@@ -393,7 +470,7 @@
 						return true;
 					}
 					const victory = game.get_victory_state();
-					if (victory != {type: 'transcendence', winner: player.id, turn: 2}) {
+					if (victory != {type: 'transcendence', winner: player.id, turn: 3}) {
 						fail('transcendence victory state is invalid');
 						return false;
 					}
@@ -404,7 +481,7 @@
 				return;
 			}
 
-			fail('runtime test exceeded two turns');
+			fail('runtime test exceeded three turns');
 		});
 	});
 

@@ -453,6 +453,12 @@ game = {
 				return pending_production;
 			};
 		}
+		if (key == 'f_base_get_production_cost') {
+			return (target_base, production) => {
+				test.assert(target_base == base);
+				return production.mineral_cost;
+			};
+		}
 		if (key == 'f_base_select_population_for_reduction') {
 			return (target_base) => {
 				test.assert(target_base == base);

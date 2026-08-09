@@ -30,7 +30,11 @@ return {
 			minerals: base.get_accumulated_minerals(),
 		};
 		owner.set_energy_credits(owner.energy_credits - cost);
-		base.set_accumulated_minerals(production.mineral_cost);
+		const production_cost_resolver = e.game.get('f_base_get_production_cost');
+		base.set_accumulated_minerals(#is_defined(production_cost_resolver)
+			? production_cost_resolver(base, production)
+			: production.mineral_cost
+		);
 		e.game.trigger('economy_updated', {player: owner});
 		return previous;
 	},

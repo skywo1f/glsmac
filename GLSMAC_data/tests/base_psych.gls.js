@@ -62,6 +62,7 @@ const doctor = make_pop('DOCTOR', false);
 let pops = laborers + [doctor];
 let facilities = [];
 const base = {
+	get_owner: () => { return {}; },
 	get_pops: () => { return pops; },
 	get_size: () => { return #sizeof(pops); },
 	get_facilities: () => { return facilities; },

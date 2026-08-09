@@ -5,6 +5,7 @@ const combat = #include('ai/combat');
 const pathfinding = #include('ai/pathfinding');
 const production = #include('ai/production');
 const research = #include('ai/research');
+const social_engineering = #include('ai/social_engineering');
 const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
@@ -301,10 +302,15 @@ const queue_production = (game, player, bases, units) => {
 	let hurry_candidates = [];
 	for (base of bases) {
 		const garrison_count = combat.get_garrison_count(base, player.id);
+		const support_cost_resolver = game.get('f_social_get_support_cost');
+		const free_support_resolver = game.get('f_social_get_free_support');
+		const social_support_cost = #is_defined(support_cost_resolver)
+			? support_cost_resolver(player)
+			: 1;
 		let supported_units = 0;
 		for (unit of units) {
 			if (unit.home_base_id == base.id) {
-				supported_units += unit_abilities.get_support_cost(unit);
+				supported_units += unit_abilities.get_support_cost(unit) * social_support_cost;
 			}
 		}
 		const required_garrison = combat.get_required_garrison(tm, base, player.id, all_units);
@@ -370,7 +376,14 @@ const queue_production = (game, player, bases, units) => {
 			nutrient_surplus: nutrient_surplus,
 			mineral_surplus: mineral_surplus,
 			supported_units: supported_units,
-			free_support: #max(base.get_size(), 1) + project_effects.support_bonus,
+			free_support: (
+				#is_defined(free_support_resolver)
+					? free_support_resolver(player, base.get_size())
+					: #max(base.get_size(), 1)
+			) + project_effects.support_bonus,
+			get_mineral_cost: (def) => {
+				return game.get('f_base_get_production_cost')(base, def);
+			},
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			available_energy: available_energy,
 			priorities: priorities,
@@ -473,6 +486,30 @@ const choose_research_target = (game, player, available) => {
 			priorities: priorities,
 		}
 	);
+};
+
+const update_social_engineering = (game, player, bases, units) => {
+	const metrics = get_strategy_metrics(game, player, bases, units);
+	const priorities = get_strategy_priorities(
+		metrics,
+		metrics.former_count,
+		metrics.colony_count,
+		metrics.combat_count,
+		metrics.mobile_combat_count
+	);
+	const selected = social_engineering.choose(
+		player,
+		game.get('f_social_get_categories')(),
+		game.get('f_social_get_available_choices'),
+		game.get('f_social_get_ratings_for_choices'),
+		priorities
+	);
+	if (!social_engineering.choices_equal(selected, player.get_social_engineering())) {
+		game.event_as(player.id, 'set_social_engineering', {
+			player: player,
+			choices: selected,
+		});
+	}
 };
 
 const move_colony = (game, player, unit, all_bases) => {
@@ -770,6 +807,7 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 const play_turn = (game, player, done) => {
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
+	update_social_engineering(game, player, bases, units);
 	queue_production(game, player, bases, units);
 
 	let steps = 0;

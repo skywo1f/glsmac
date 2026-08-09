@@ -1,0 +1,272 @@
+const RATING_LIMITS = {
+	economy: {min: 0 - 3, max: 5},
+	effic: {min: 0 - 4, max: 4},
+	support: {min: 0 - 4, max: 3},
+	talent: {min: 0 - 1, max: 1},
+	morale: {min: 0 - 4, max: 4},
+	police: {min: 0 - 5, max: 3},
+	growth: {min: 0 - 3, max: 6},
+	planet: {min: 0 - 3, max: 3},
+	probe: {min: 0 - 2, max: 3},
+	industry: {min: 0 - 3, max: 5},
+	research: {min: 0 - 5, max: 5},
+};
+
+const policy = (id, name, required_technology, ratings) => {
+	return {
+		id: id,
+		name: name,
+		required_technology: required_technology,
+		ratings: ratings,
+	};
+};
+
+const categories = [
+	{
+		id: 'politics',
+		name: 'Politics',
+		default_choice: 'Frontier',
+		choices: [
+			policy('Frontier', 'Frontier', '', {}),
+			policy('PoliceState', 'Police State', 'DoctrineLoyalty', {
+				police: 2, support: 2, effic: 0 - 2,
+			}),
+			policy('Democratic', 'Democratic', 'EthicalCalculus', {
+				effic: 2, growth: 2, support: 0 - 2,
+			}),
+			policy('Fundamentalist', 'Fundamentalist', 'SecretsHumanBrain', {
+				morale: 1, probe: 2, research: 0 - 2,
+			}),
+		],
+	},
+	{
+		id: 'economics',
+		name: 'Economics',
+		default_choice: 'Simple',
+		choices: [
+			policy('Simple', 'Simple', '', {}),
+			policy('FreeMarket', 'Free Market', 'IndustrialEconomics', {
+				economy: 2, planet: 0 - 3, police: 0 - 5,
+			}),
+			policy('Planned', 'Planned', 'PlanetaryNetworks', {
+				growth: 2, industry: 1, effic: 0 - 2,
+			}),
+			policy('Green', 'Green', 'CentauriEmpathy', {
+				planet: 2, effic: 2, growth: 0 - 2,
+			}),
+		],
+	},
+	{
+		id: 'values',
+		name: 'Values',
+		default_choice: 'Survival',
+		choices: [
+			policy('Survival', 'Survival', '', {}),
+			policy('Power', 'Power', 'AdvancedMilitaryAlgorithms', {
+				morale: 2, support: 2, industry: 0 - 2,
+			}),
+			policy('Knowledge', 'Knowledge', 'Cyberethics', {
+				research: 2, effic: 1, probe: 0 - 2,
+			}),
+			policy('Wealth', 'Wealth', 'IndustrialAutomation', {
+				industry: 1, economy: 1, morale: 0 - 2,
+			}),
+		],
+	},
+	{
+		id: 'future_society',
+		name: 'Future Society',
+		default_choice: 'None',
+		choices: [
+			policy('None', 'None', '', {}),
+			policy('Cybernetic', 'Cybernetic', 'DigitalSentience', {
+				effic: 2, planet: 2, research: 2, police: 0 - 3,
+			}),
+			policy('Eudaimonic', 'Eudaimonic', 'Eudaimonia', {
+				growth: 2, economy: 2, industry: 2, morale: 0 - 2,
+			}),
+			policy('ThoughtControl', 'Thought Control', 'TheWillToPower', {
+				police: 2, morale: 2, probe: 2, support: 0 - 3,
+			}),
+		],
+	},
+];
+
+// Original-SMAC faction modifiers. Expansion factions deliberately remain neutral.
+const faction_modifiers = {
+	GAIANS: {morale: 0 - 1, police: 0 - 1, effic: 2, planet: 1},
+	HIVE: {growth: 1, industry: 1, economy: 0 - 2},
+	UNIVERSITY: {research: 2, probe: 0 - 2},
+	MORGANITES: {economy: 1, support: 0 - 1},
+	SPARTANS: {morale: 2, police: 1, industry: 0 - 1},
+	BELIEVERS: {research: 0 - 2, probe: 1, support: 2, planet: 0 - 1},
+	PEACEKEEPERS: {effic: 0 - 1},
+};
+
+const faction_immunities = {
+	HIVE: {effic: true},
+};
+
+const choices_by_category = {};
+for (category of categories) {
+	let choices = {};
+	for (choice of category.choices) {
+		choices[choice.id] = choice;
+	}
+	choices_by_category[category.id] = choices;
+}
+
+const make_ratings = () => {
+	return {
+		economy: 0, effic: 0, support: 0, talent: 0, morale: 0,
+		police: 0, growth: 0, planet: 0, probe: 0, industry: 0, research: 0,
+	};
+};
+
+const get_choices = (player) => {
+	return player.get_social_engineering();
+};
+
+const get_faction_id = (player) => {
+	const faction = player.get_faction();
+	return #is_defined(faction) ? faction.id : '';
+};
+
+const add_ratings = (ratings, modifiers) => {
+	for (name in modifiers) {
+		if (#is_defined(RATING_LIMITS[name])) {
+			ratings[name] = ratings[name] + modifiers[name];
+		}
+	}
+};
+
+const get_ratings_for_choices = (player, choices) => {
+	const ratings = make_ratings();
+	for (category of categories) {
+		const choice = choices_by_category[category.id][choices[category.id]];
+		if (#is_defined(choice)) {
+			add_ratings(ratings, choice.ratings);
+		}
+	}
+	const faction_id = get_faction_id(player);
+	if (#is_defined(faction_modifiers[faction_id])) {
+		add_ratings(ratings, faction_modifiers[faction_id]);
+	}
+	if (#is_defined(faction_immunities[faction_id])) {
+		for (name in faction_immunities[faction_id]) {
+			if (faction_immunities[faction_id][name] && ratings[name] < 0) {
+				ratings[name] = 0;
+			}
+		}
+	}
+	for (name in RATING_LIMITS) {
+		ratings[name] = #max(
+			RATING_LIMITS[name].min,
+			#min(RATING_LIMITS[name].max, ratings[name])
+		);
+	}
+	return ratings;
+};
+
+const get_ratings = (player) => {
+	return get_ratings_for_choices(player, get_choices(player));
+};
+
+const validate_choices = (player, choices) => {
+	if (#typeof(choices) != 'Object') {
+		return 'Social engineering choices must be an object';
+	}
+	for (category of categories) {
+		const id = choices[category.id];
+		if (#typeof(id) != 'String') {
+			return category.name + ' must identify a social engineering choice';
+		}
+		const choice = choices_by_category[category.id][id];
+		if (!#is_defined(choice)) {
+			return 'Unknown ' + category.name + ' choice: ' + id;
+		}
+		if (choice.required_technology != '' && !player.has_technology(choice.required_technology)) {
+			return choice.name + ' requires ' + choice.required_technology;
+		}
+	}
+};
+
+const get_available_choices = (player, category_id) => {
+	if (!#is_defined(choices_by_category[category_id])) {
+		return [];
+	}
+	let result = [];
+	for (choice of choices_by_category[category_id]) {
+		if (choice.required_technology == '' || player.has_technology(choice.required_technology)) {
+			result :+choice;
+		}
+	}
+	return result;
+};
+
+const get_mineral_cost = (player, base_cost) => {
+	const industry = get_ratings(player).industry;
+	return #max(1, #ceil(#to_float(base_cost * (10 - industry)) / 10.0));
+};
+
+const get_support_cost = (player) => {
+	return get_ratings(player).support <= 0 - 4 ? 2 : 1;
+};
+
+const get_free_support = (player, base_size) => {
+	const support = get_ratings(player).support;
+	if (support <= 0 - 3) { return 0; }
+	if (support <= 0 - 1) { return 1; }
+	if (support == 0) { return 2; }
+	if (support == 1) { return 3; }
+	if (support == 2) { return 4; }
+	return #max(4, base_size);
+};
+
+const get_morale_bonus = (player, defending) => {
+	const morale = get_ratings(player).morale;
+	if (morale <= 0 - 4) { return 0 - 3; }
+	if (morale == 0 - 3) { return 0 - 2; }
+	if (morale <= 0 - 1) { return 0 - 1; }
+	if (morale == 0) { return 0; }
+	if (morale == 1) { return 1; }
+	if (morale == 2) { return defending ? 2 : 1; }
+	if (morale == 3) { return defending ? 3 : 2; }
+	return 3;
+};
+
+const get_economy_base_bonus = (player, has_headquarters) => {
+	const economy = get_ratings(player).economy;
+	if (economy <= 0 - 3) { return 0 - 2; }
+	if (economy == 0 - 2) { return 0 - 1; }
+	if (economy == 0 - 1) { return has_headquarters ? 0 - 1 : 0; }
+	if (economy == 1) { return 1; }
+	if (economy == 4) { return 2; }
+	if (economy >= 5) { return 4; }
+	return 0;
+};
+
+const get_tile_energy_bonus = (player) => {
+	return get_ratings(player).economy >= 2 ? 1 : 0;
+};
+
+const get_research_multiplier = (player) => {
+	return 1.0 + #to_float(get_ratings(player).research) * 0.1;
+};
+
+return (game) => {
+	game.on('start', (e) => {
+		game.set('f_social_get_categories', () => { return categories; });
+		game.set('f_social_get_ratings', get_ratings);
+		game.set('f_social_get_ratings_for_choices', get_ratings_for_choices);
+		game.set('f_social_validate_choices', validate_choices);
+		game.set('f_social_get_available_choices', get_available_choices);
+		game.set('f_social_get_mineral_cost', get_mineral_cost);
+		game.set('f_social_get_support_cost', get_support_cost);
+		game.set('f_social_get_free_support', get_free_support);
+		game.set('f_social_get_morale_bonus', get_morale_bonus);
+		game.set('f_social_get_economy_base_bonus', get_economy_base_bonus);
+		game.set('f_social_get_tile_energy_bonus', get_tile_energy_bonus);
+		game.set('f_social_get_research_multiplier', get_research_multiplier);
+	});
+};

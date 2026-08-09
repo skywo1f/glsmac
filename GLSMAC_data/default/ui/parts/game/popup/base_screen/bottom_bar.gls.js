@@ -99,11 +99,15 @@ return {
 		}
 
 		if (#is_defined(production)) {
+			const production_cost = this.p.game.get('f_base_get_production_cost')(
+				base,
+				production
+			);
 			this.parts.production.set({
 				name: production.name,
-				rows: #max(#ceil(#to_float(production.mineral_cost) / 10.0), 1),
+				rows: #max(#ceil(#to_float(production_cost) / 10.0), 1),
 				columns: 10,
-				filled: #min(base.get_accumulated_minerals(), production.mineral_cost),
+				filled: #min(base.get_accumulated_minerals(), production_cost),
 				pending: pending,
 			});
 		} else {

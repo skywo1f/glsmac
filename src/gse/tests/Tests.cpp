@@ -251,11 +251,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
 				source.SetResearchState( { "CentauriEcology" }, "", 0 );
 				source.SetEnergyCredits( 73 );
+				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchProgress() == 0, "completed research progress was not serialized" );
 				GT_ASSERT( roundtrip.GetEnergyCredits() == 73, "player energy credits were not serialized" );
+				GT_ASSERT(
+					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
+					"player social engineering choices were not serialized"
+				);
 
 				Player ai_source( "Computer", Player::PR_AI, nullptr, "Citizen" );
 				Player ai_roundtrip( ai_source.Serialize() );
@@ -326,6 +331,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_negative_energy = true;
 				}
 				GT_ASSERT( rejected_negative_energy, "negative player energy credits accepted" );
+
+				bool rejected_social_count = false;
+				try {
+					auto player = make_player( {}, "", 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 3 );
+					player.WriteString( "Frontier" );
+					player.WriteString( "Simple" );
+					player.WriteString( "Survival" );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_social_count = true;
+				}
+				GT_ASSERT( rejected_social_count, "invalid player social engineering choice count accepted" );
 				GT_OK();
 			}
 		);
