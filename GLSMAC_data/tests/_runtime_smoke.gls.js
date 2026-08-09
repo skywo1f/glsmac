@@ -143,6 +143,18 @@
 
 				const smoke_unit = um.get_unit(1);
 				const base = bases[0];
+				const capital_energy = game.get('f_economy_get_base_energy')(base);
+				if (
+					!base.has_facility('Headquarters') ||
+					capital_energy.distance != 0 ||
+					capital_energy.inefficiency != 0 ||
+					capital_energy.net != capital_energy.gross
+				) {
+					#print('RUNTIME_SMOKE_FAIL: starting headquarters or capital energy loss is invalid');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_HEADQUARTERS_PASS');
 				let invalid_home_base_rejected = false;
 				try {
 					um.spawn_unit({
@@ -464,6 +476,17 @@
 					glsmac.exit();
 					return;
 				}
+				const remote_energy = game.get('f_economy_get_base_energy')(lifecycle_base);
+				if (
+					lifecycle_base.has_facility('Headquarters') ||
+					remote_energy.distance <= 0 ||
+					remote_energy.net != remote_energy.gross - remote_energy.inefficiency
+				) {
+					#print('RUNTIME_SMOKE_FAIL: remote-base efficiency calculation is invalid');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_EFFICIENCY_PASS');
 
 				const old_base_id = lifecycle_base.id;
 				const founding_site_coords = find_founding_site_coords();

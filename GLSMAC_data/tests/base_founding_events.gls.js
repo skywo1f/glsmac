@@ -1,4 +1,5 @@
 const found_base = #include('../default/game/event/found_base');
+const spawn_base = #include('../default/game/event/spawn_base');
 
 const owner = {id: 1};
 const work_tile = {
@@ -136,6 +137,40 @@ test.assert(#is_defined(found_base.validate(validation_event)));
 let long_base_name = '';
 while (#sizeof(long_base_name) < 64) {
 	long_base_name += 'x';
+}
+
+{
+	let added_facility = '';
+	let despawned_base = null;
+	const spawned_base = {
+		add_facility: (id) => { added_facility = id; },
+	};
+	const event = {
+		caller: 0,
+		data: {
+			owner: owner,
+			tile: {is_water: false},
+			headquarters: true,
+		},
+		game: {
+			bm: {
+				spawn_base: (base_owner, tile, info) => {
+					test.assert(base_owner == owner);
+					test.assert(info.production == 'ScoutPatrol');
+					return spawned_base;
+				},
+				despawn_base: (base) => { despawned_base = base; },
+			},
+		},
+	};
+	test.assert(!#is_defined(spawn_base.validate(event)));
+	event.applied = spawn_base.apply(event);
+	test.assert(event.applied.base == spawned_base);
+	test.assert(added_facility == 'Headquarters');
+	spawn_base.rollback(event);
+	test.assert(despawned_base == spawned_base);
+	event.data.headquarters = 'yes';
+	test.assert(#is_defined(spawn_base.validate(event)));
 }
 validation_event.data.name = long_base_name;
 test.assert(!#is_defined(found_base.validate(validation_event)));

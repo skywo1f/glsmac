@@ -22,6 +22,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - social ECONOMY, SUPPORT, TALENT, MORALE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research;
+- original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
+  Children's Creche bonuses, no-headquarters fallback, and starting capitals;
 - original-SMAC ecological damage based on local terraforming, worked squares,
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
@@ -53,9 +55,11 @@ The following original-SMAC systems remain absent or materially incomplete:
 - diplomacy, treaties, pacts, vendettas, commerce, council elections, and
   diplomatic victory;
 - probe-team actions, infiltration, subversion, and mind control;
-- remaining social effects: adoption costs, efficiency losses, commerce
-  thresholds, low-MORALE modifier halving, SUPPORT new-base mineral penalties,
-  full police and away-unit behavior, and probe integration;
+- remaining social effects: adoption costs, commerce thresholds, low-MORALE
+  modifier halving, SUPPORT new-base mineral penalties, full police and
+  away-unit behavior, and probe integration;
+- headquarters relocation, uniqueness, and capture-transfer behavior, plus
+  explicit player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
   global warming, sea-level changes, volcanoes, atrocity modifiers, several
   ecology-related Secret Project effects, and the original engine's
@@ -80,12 +84,19 @@ uninterrupted invocation on the tested Windows machine. The same 58 GSE cases
 also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
 allocator lifetime bounded and reports the exact script that fails.
 
-The current Release matrix passed 74/74 in 579.10 seconds, and the sanitizer
-matrix passed 58/58 in 681.40 seconds. One earlier pre-ecology Release run ended
-71/72 after an intermittent
+The last uninterrupted fully green Release matrix passed 74/74 in 579.10
+seconds. The current EFFIC tree reached 73/74 in 778.47 seconds after an
+intermittent `ai_conquest_runtime_smoke` animation-timing failure; the scenario
+then passed five consecutive fresh-process repeats. Its preceding full run also
+reached 73/74 because the reconnect test still expected a starting base to lack
+a Headquarters; after correcting that expectation, the reconnect scenario
+passed in isolation. The current sanitizer matrix passed 58/58 in 763.02
+seconds.
+
+One earlier pre-ecology Release run ended 71/72 after an intermittent
 `ai_air_runtime_smoke` startup crash during map generation. The scenario then
-passed ten consecutive fresh-process repeats, and the final uninterrupted
-72-case matrix passed. The crash has not recurred in the current 74-case run.
+passed ten consecutive fresh-process repeats, and the subsequent uninterrupted
+72-case matrix passed.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

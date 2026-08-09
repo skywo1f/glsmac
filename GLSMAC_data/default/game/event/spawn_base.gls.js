@@ -4,6 +4,12 @@ return {
 		if (e.caller != 0) {
 			return 'Only master is allowed to spawn bases';
 		}
+		if (
+			#is_defined(e.data.headquarters) &&
+			#typeof(e.data.headquarters) != 'Bool'
+		) {
+			return 'Headquarters flag must be a boolean';
+		}
 	},
 
 	apply: (e) => {
@@ -17,6 +23,9 @@ return {
 			info.name = e.data.name;
 		}
 		const base = e.game.bm.spawn_base(owner, e.data.tile, info);
+		if (#is_defined(e.data.headquarters) && e.data.headquarters) {
+			base.add_facility('Headquarters');
+		}
 
 		return {
 			base: base,

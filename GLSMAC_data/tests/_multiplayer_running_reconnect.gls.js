@@ -403,10 +403,14 @@
 				}
 			}
 			const facilities = base.get_facilities();
-			if (!base.has_facility('RecyclingTanks') || #sizeof(facilities) != 1) {
-				return 'built Recycling Tanks state is missing';
+			if (
+				!base.has_facility('Headquarters') ||
+				!base.has_facility('RecyclingTanks') ||
+				#sizeof(facilities) != 2
+			) {
+				return 'starting Headquarters or built Recycling Tanks state is missing';
 			}
-			const recycling_tanks = facilities[0];
+			const recycling_tanks = game.get_bm().get_facility_def('RecyclingTanks');
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');

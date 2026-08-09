@@ -66,6 +66,10 @@
 			}
 
 			if (turn_id == 1) {
+				if (!base.has_facility('Headquarters')) {
+					fail('starting base has no headquarters');
+					return;
+				}
 				let catalog_count = 0;
 				for (technology_id of technologies.order) {
 					const definition = game.get('f_technology_get_definition')(technology_id);
@@ -96,7 +100,9 @@
 					return;
 				}
 				for (gate of production_gates) {
-					const should_be_available = gate[2] == '' || gate[2] == 'CentauriEcology';
+					const should_be_available =
+						(gate[2] == '' || gate[2] == 'CentauriEcology') &&
+						!base.has_facility(gate[1]);
 					if (base.can_set_production(gate[0], gate[1]) != should_be_available) {
 						fail('initial production gate is invalid: ' + gate[1]);
 						return;
@@ -269,7 +275,8 @@
 				}
 				for (gate of production_gates) {
 					const expected_available =
-						gate[1] != 'HabitationDome' && gate[1] != 'TheAscentToTranscendence';
+						gate[1] != 'HabitationDome' && gate[1] != 'TheAscentToTranscendence' &&
+						!base.has_facility(gate[1]);
 					if (base.can_set_production(gate[0], gate[1]) != expected_available) {
 						fail('full-catalog production gate stayed locked: ' + gate[1]);
 						return;
@@ -372,6 +379,10 @@
 				const intake_before = base.get_intake();
 				const consumption_before = base.get_consumption().ENERGY;
 				const labs_before = game.get('f_technology_get_base_labs')(base).total;
+				let existing_facility_energy_bonus = 0;
+				for (existing_facility of base.get_facilities()) {
+					existing_facility_energy_bonus += existing_facility.energy_bonus;
+				}
 				let nutrient_bonus = 0;
 				let mineral_bonus = 0;
 				let energy_bonus = 0;
@@ -422,7 +433,9 @@
 					drone_modifier += definition.drone_modifier;
 					talent_bonus += definition.talent_bonus;
 					suppress_psych += definition.suppress_psych ? 1 : 0;
-					base.add_facility(facility_id);
+					if (!base.has_facility(facility_id)) {
+						base.add_facility(facility_id);
+					}
 				}
 				const intake_after = base.get_intake();
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
@@ -443,7 +456,8 @@
 					intake_after.MINERALS != #ceil(
 						#to_float(intake_before.MINERALS + mineral_bonus) * (1.0 + mineral_multiplier)
 					) ||
-					intake_after.ENERGY != intake_before.ENERGY + energy_bonus ||
+					intake_after.ENERGY != intake_before.ENERGY + energy_bonus -
+						existing_facility_energy_bonus ||
 					base.get_consumption().ENERGY != consumption_before + maintenance ||
 					psych_after.bonus != psych_bonus + #ceil(
 						#to_float(psych_after.value) * psych_multiplier

@@ -5,10 +5,61 @@ const get_effective_facilities = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : base.get_facilities();
 };
 
+const get_efficiency_rating = (game, base) => {
+	const resolver = game.get('f_social_get_ratings');
+	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
+	return ratings.effic + (
+		base.has_facility('ChildrenSCreche') ? 2 : 0
+	);
+};
+
+const get_headquarters_distance = (game, base) => {
+	let distance = 16;
+	let found = false;
+	const owner = base.get_owner();
+	for (candidate of game.get_bm().get_bases()) {
+		if (
+			candidate.get_owner().id == owner.id &&
+			candidate.has_facility('Headquarters')
+		) {
+			const candidate_distance = game.get_tm().get_distance(
+				base.get_tile(),
+				candidate.get_tile()
+			);
+			if (!found || candidate_distance < distance) {
+				found = true;
+				distance = candidate_distance;
+			}
+		}
+	}
+	return distance;
+};
+
+const get_base_energy = (game, base) => {
+	const gross = #max(base.get_intake().ENERGY, 0);
+	const efficiency = get_efficiency_rating(game, base);
+	const distance = get_headquarters_distance(game, base);
+	const denominator = 64 - ((4 - efficiency) * 8);
+	const inefficiency = denominator <= 0
+		? gross
+		: #min(
+			gross,
+			#floor(#to_float(gross * distance) / #to_float(denominator))
+		);
+	return {
+		gross: gross,
+		inefficiency: inefficiency,
+		net: gross - inefficiency,
+		efficiency: efficiency,
+		distance: distance,
+		denominator: denominator,
+	};
+};
+
 const get_base_allocation = (game, base) => {
-	const intake = base.get_intake();
 	const consumption = base.get_consumption();
-	const total_energy = intake.ENERGY - consumption.ENERGY;
+	const energy = get_base_energy(game, base);
+	const total_energy = energy.net - consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs = game.get('f_technology_get_base_labs')(base);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
@@ -117,6 +168,7 @@ const get_liquidation_candidate = (game, player) => {
 
 return (game) => {
 	game.on('start', (e) => {
+		game.set('f_economy_get_base_energy', (base) => { return get_base_energy(game, base); });
 		game.set('f_economy_get_base_allocation', get_base_allocation);
 		game.set('f_economy_get_base', get_base_economy);
 		game.set('f_economy_get_base_psych', get_base_psych);

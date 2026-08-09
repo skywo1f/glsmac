@@ -58,7 +58,13 @@ const get_base_labs = (base, game) => {
 	const base_bonus = 2;
 	const intake = base.get_intake();
 	const consumption = base.get_consumption();
-	const energy_surplus = #max(intake.ENERGY - consumption.ENERGY, 0);
+	const energy_resolver = #is_defined(game)
+		? game.get('f_economy_get_base_energy')
+		: #undefined;
+	const energy = #is_defined(energy_resolver)
+		? energy_resolver(base).net
+		: intake.ENERGY;
+	const energy_surplus = #max(energy - consumption.ENERGY, 0);
 	const allocated = #round(#to_float(energy_surplus) * allocation);
 	let research_multiplier = 0.0;
 	let fixed_facility_bonus = 0;

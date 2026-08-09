@@ -58,9 +58,19 @@ const base = {
 	get_intake: () => { return {ENERGY: 6}; },
 	get_consumption: () => { return {ENERGY: 1}; },
 	get_facilities: () => { return []; },
+	has_facility: (id) => { return false; },
 };
 const labs = technologies.get_base_labs(base);
 test.assert(labs == {allocation: 0.4, value: 2, bonus: 2, total: 4});
+
+const inefficient_labs = technologies.get_base_labs(base, {
+	get: (key) => {
+		return key == 'f_economy_get_base_energy'
+			? (base) => { return {net: 3}; }
+			: #undefined;
+	},
+});
+test.assert(inefficient_labs == {allocation: 0.4, value: 1, bonus: 2, total: 3});
 
 const network_backbone_game = {
 	get: (key) => {

@@ -18,10 +18,14 @@ other_player = {
 };
 let positive_economy_multiplier = 0.0;
 let positive_psych_multiplier = 0.0;
+const positive_tile = {distance: 0};
+const deficit_tile = {distance: 1};
 const positive_base = {
 	get_owner: () => { return player; },
+	get_tile: () => { return positive_tile; },
 	get_intake: () => { return {ENERGY: 10}; },
 	get_consumption: () => { return {ENERGY: 0}; },
+	has_facility: (id) => { return id == 'Headquarters'; },
 	get_facilities: () => { return [{
 		psych_bonus: 4,
 		psych_multiplier: positive_psych_multiplier,
@@ -30,12 +34,15 @@ const positive_base = {
 };
 const deficit_base = {
 	get_owner: () => { return player; },
+	get_tile: () => { return deficit_tile; },
 	get_intake: () => { return {ENERGY: 2}; },
 	get_consumption: () => { return {ENERGY: 5}; },
 	get_facilities: () => { return []; },
+	has_facility: (id) => { return false; },
 };
 
 let callbacks = {};
+let efficiency_rating = 0;
 let values = {
 	f_technology_get_base_labs: (base) => {
 		return {
@@ -45,13 +52,16 @@ let values = {
 			total: base == positive_base ? 6 : 2,
 		};
 	},
+	f_social_get_ratings: (owner) => { return {effic: efficiency_rating}; },
 };
 let events = [];
+let economy_bases = [positive_base, deficit_base];
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (key, value) => { values[key] = value; },
 	get: (key) => { return values[key]; },
-	get_bm: () => { return {get_bases: () => { return [positive_base, deficit_base]; }}; },
+	get_bm: () => { return {get_bases: () => { return economy_bases; }}; },
+	get_tm: () => { return {get_distance: (from, to) => { return from.distance; }}; },
 	get_players: () => { return [player, other_player]; },
 	is_master: () => { return true; },
 	event: (name, data) => { events :+{name: name, data: data}; },
@@ -79,6 +89,44 @@ test.assert(bank_allocation.economy.value == 4);
 test.assert(bank_allocation.economy.bonus == 2);
 test.assert(values.f_economy_get_base(game, positive_base) == 6);
 positive_economy_multiplier = 0.0;
+
+let has_creche = false;
+const remote_tile = {distance: 8};
+const remote_base = {
+	get_owner: () => { return player; },
+	get_tile: () => { return remote_tile; },
+	get_intake: () => { return {ENERGY: 32}; },
+	has_facility: (id) => {
+		return id == 'ChildrenSCreche' && has_creche;
+	},
+};
+economy_bases = [positive_base, remote_base];
+let energy = values.f_economy_get_base_energy(remote_base);
+test.assert(energy == {
+	gross: 32, inefficiency: 8, net: 24,
+	efficiency: 0, distance: 8, denominator: 32,
+});
+efficiency_rating = 0 - 4;
+energy = values.f_economy_get_base_energy(remote_base);
+test.assert(energy.inefficiency == 32);
+test.assert(energy.net == 0);
+test.assert(energy.denominator == 0);
+has_creche = true;
+energy = values.f_economy_get_base_energy(remote_base);
+test.assert(energy.efficiency == 0 - 2);
+test.assert(energy.inefficiency == 16);
+test.assert(energy.net == 16);
+has_creche = false;
+efficiency_rating = 4;
+energy = values.f_economy_get_base_energy(remote_base);
+test.assert(energy.inefficiency == 4);
+test.assert(energy.net == 28);
+efficiency_rating = 0;
+economy_bases = [remote_base];
+energy = values.f_economy_get_base_energy(remote_base);
+test.assert(energy.distance == 16);
+test.assert(energy.inefficiency == 16);
+economy_bases = [positive_base, deficit_base];
 
 let hurry_minerals = 10;
 let hurry_production = {production_kind: 'unit', mineral_cost: 20};
