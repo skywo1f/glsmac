@@ -1,7 +1,23 @@
 const terraforming = #include('terraforming');
 const air = #include('air');
 
-const get_repair = (unit, def, project_effects) => {
+const facility_repairs_unit = (facility, def) => {
+	return (
+		#is_defined(def.is_land) && def.is_land &&
+		#is_defined(facility.full_repair_land) && facility.full_repair_land
+	) || (
+		#is_defined(def.is_water) && def.is_water &&
+		#is_defined(facility.full_repair_water) && facility.full_repair_water
+	) || (
+		#is_defined(def.is_air) && def.is_air &&
+		#is_defined(facility.full_repair_air) && facility.full_repair_air
+	) || (
+		#is_defined(def.is_native) && def.is_native &&
+		#is_defined(facility.full_repair_native) && facility.full_repair_native
+	);
+};
+
+const get_repair = (unit, def, project_effects, base_facilities) => {
 	if (unit.moved_this_turn || unit.terraforming != 'none' || unit.health >= def.health_max) {
 		return 0.0;
 	}
@@ -11,6 +27,13 @@ const get_repair = (unit, def, project_effects) => {
 	let repair = def.health_per_turn;
 	const base = unit.get_tile().get_base();
 	if (base != null && base.get_owner().id == unit.owner) {
+		if (#is_defined(base_facilities)) {
+			for (facility of base_facilities) {
+				if (facility_repairs_unit(facility, def)) {
+					return def.health_max - unit.health;
+				}
+			}
+		}
 		repair *= 2.0;
 	}
 	return #min(repair, def.health_max - unit.health);
@@ -26,6 +49,7 @@ const get_movement = (unit, def, project_effects) => {
 
 const result = {
 	get_repair: get_repair,
+	facility_repairs_unit: facility_repairs_unit,
 	get_movement: get_movement,
 	get_air_turn_state: air.get_turn_state,
 
@@ -55,9 +79,19 @@ const result = {
 			const project_effects = #is_defined(get_project_effects)
 				? get_project_effects(e.unit.get_owner())
 				: {naval_movement_bonus: 0.0, full_repair: false};
+			let base_facilities = [];
+			const base = e.unit.get_tile().get_base();
+			if (base != null && base.get_owner().id == e.unit.owner) {
+				const get_effective_facilities = #is_defined(game.get)
+					? game.get('f_base_get_effective_facilities')
+					: #undefined;
+				if (#is_defined(get_effective_facilities)) {
+					base_facilities = get_effective_facilities(base);
+				}
+			}
 			const repair = air_state.damage > 0.0
 				? 0.0
-				: get_repair(e.unit, def, project_effects);
+				: get_repair(e.unit, def, project_effects, base_facilities);
 			if (repair > 0.0) {
 				e.unit.health = e.unit.health + repair;
 			}

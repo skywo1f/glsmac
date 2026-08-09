@@ -65,11 +65,15 @@ test.assert(result.errors == []);
 test.assert(get_facility(make_catalog(), 'TreeFarm').data.forest_nutrient_bonus == 1);
 test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_nutrient_bonus == 1);
 test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_energy_bonus == 1);
+test.assert(get_facility(make_catalog(), 'BiologyLab').data.full_repair_native);
+test.assert(get_facility(make_catalog(), 'CommandCenter').data.full_repair_land);
+test.assert(get_facility(make_catalog(), 'NavalYard').data.full_repair_water);
+test.assert(get_facility(make_catalog(), 'AerospaceComplex').data.full_repair_air);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
-	complete_facilities: 14,
-	partial_facilities: 17,
+	complete_facilities: 17,
+	partial_facilities: 14,
 	implemented_projects: 33,
 	complete_projects: 18,
 	partial_projects: 15,
@@ -102,7 +106,7 @@ invalid = make_catalog();
 invalid.facility_coverage.status.RecyclingTanks = 'unknown';
 test.assert(validator.validate(invalid).errors == [
 	'facility_coverage.RecyclingTanks: must be complete or partial',
-	'facility_coverage.complete: reports 14 but contains 13',
+	'facility_coverage.complete: reports 17 but contains 16',
 ]);
 
 invalid = make_catalog();

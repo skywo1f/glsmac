@@ -392,6 +392,10 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, forest_nutrient_bonus, def, "forest_nutrient_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, forest_mineral_bonus, def, "forest_mineral_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, forest_energy_bonus, def, "forest_energy_bonus", Int, 0 );
+				N_GETPROP_OPT( bool, full_repair_land, def, "full_repair_land", Bool, false );
+				N_GETPROP_OPT( bool, full_repair_water, def, "full_repair_water", Bool, false );
+				N_GETPROP_OPT( bool, full_repair_air, def, "full_repair_air", Bool, false );
+				N_GETPROP_OPT( bool, full_repair_native, def, "full_repair_native", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -574,7 +578,11 @@ WRAPIMPL_BEGIN( BaseManager )
 					required_project,
 					forest_nutrient_bonus,
 					forest_mineral_bonus,
-					forest_energy_bonus
+					forest_energy_bonus,
+					full_repair_land,
+					full_repair_water,
+					full_repair_air,
+					full_repair_native
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

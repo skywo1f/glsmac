@@ -61,7 +61,11 @@ FacilityDef::FacilityDef(
 	const std::string& required_project,
 	const int64_t forest_nutrient_bonus,
 	const int64_t forest_mineral_bonus,
-	const int64_t forest_energy_bonus
+	const int64_t forest_energy_bonus,
+	const bool full_repair_land,
+	const bool full_repair_water,
+	const bool full_repair_air,
+	const bool full_repair_native
 )
 	: m_id( id )
 	, m_name( name )
@@ -114,7 +118,11 @@ FacilityDef::FacilityDef(
 	, m_required_project( required_project )
 	, m_forest_nutrient_bonus( forest_nutrient_bonus )
 	, m_forest_mineral_bonus( forest_mineral_bonus )
-	, m_forest_energy_bonus( forest_energy_bonus ) {
+	, m_forest_energy_bonus( forest_energy_bonus )
+	, m_full_repair_land( full_repair_land )
+	, m_full_repair_water( full_repair_water )
+	, m_full_repair_air( full_repair_air )
+	, m_full_repair_native( full_repair_native ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -284,6 +292,10 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_forest_nutrient_bonus );
 	buf.WriteInt( def->m_forest_mineral_bonus );
 	buf.WriteInt( def->m_forest_energy_bonus );
+	buf.WriteBool( def->m_full_repair_land );
+	buf.WriteBool( def->m_full_repair_water );
+	buf.WriteBool( def->m_full_repair_air );
+	buf.WriteBool( def->m_full_repair_native );
 	return buf;
 }
 
@@ -340,6 +352,10 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto forest_nutrient_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto forest_mineral_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto forest_energy_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto full_repair_land = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto full_repair_water = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto full_repair_air = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto full_repair_native = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -392,7 +408,11 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		required_project,
 		forest_nutrient_bonus,
 		forest_mineral_bonus,
-		forest_energy_bonus
+		forest_energy_bonus,
+		full_repair_land,
+		full_repair_water,
+		full_repair_air,
+		full_repair_native
 	);
 }
 
@@ -609,6 +629,22 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"forest_energy_bonus",
 			VALUE( gse::value::Int, , m_forest_energy_bonus )
+		},
+		{
+			"full_repair_land",
+			VALUE( gse::value::Bool, , m_full_repair_land )
+		},
+		{
+			"full_repair_water",
+			VALUE( gse::value::Bool, , m_full_repair_water )
+		},
+		{
+			"full_repair_air",
+			VALUE( gse::value::Bool, , m_full_repair_air )
+		},
+		{
+			"full_repair_native",
+			VALUE( gse::value::Bool, , m_full_repair_native )
 		},
 	};
 WRAPIMPL_END_PTR()

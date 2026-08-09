@@ -79,7 +79,11 @@ public:
 		const std::string& required_project = "",
 		const int64_t forest_nutrient_bonus = 0,
 		const int64_t forest_mineral_bonus = 0,
-		const int64_t forest_energy_bonus = 0
+		const int64_t forest_energy_bonus = 0,
+		const bool full_repair_land = false,
+		const bool full_repair_water = false,
+		const bool full_repair_air = false,
+		const bool full_repair_native = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -135,6 +139,10 @@ public:
 	const int64_t m_forest_nutrient_bonus;
 	const int64_t m_forest_mineral_bonus;
 	const int64_t m_forest_energy_bonus;
+	const bool m_full_repair_land;
+	const bool m_full_repair_water;
+	const bool m_full_repair_air;
+	const bool m_full_repair_native;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

@@ -398,6 +398,15 @@
 				#print('RUNTIME_SMOKE_TERRAFORM_ORDER_PASS');
 				#print('RUNTIME_SMOKE_FUNGUS_REMOVAL_PASS');
 				#print('RUNTIME_SMOKE_FACILITY_PRODUCTION_PASS');
+				const command_center = game.get_bm().get_facility_def('CommandCenter');
+				if (!command_center.full_repair_land) {
+					#print('RUNTIME_SMOKE_FAIL: Command Center repair definition is invalid');
+					glsmac.exit();
+					return;
+				}
+				base.add_facility(command_center.id);
+				const repair_unit = game.get_um().get_unit(1);
+				repair_unit.health = 0.3;
 				base.set_accumulated_minerals(queue[0].mineral_cost);
 				game.event('complete_turn', {});
 			}
@@ -415,7 +424,9 @@
 				if (
 					#sizeof(bases) == 0 ||
 					!bases[0].has_facility('RecyclingTanks') ||
+					!bases[0].has_facility('CommandCenter') ||
 					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count ||
+					game.get_um().get_unit(1).health != 1.0 ||
 					former.health != 0.5 ||
 					!produced_unit_has_home_base
 				) {

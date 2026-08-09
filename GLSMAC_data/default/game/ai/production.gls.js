@@ -107,6 +107,11 @@ const score_facility = (def, context) => {
 	const forest_energy_bonus = #is_defined(def.forest_energy_bonus)
 		? def.forest_energy_bonus
 		: 0;
+	const full_repair_capabilities =
+		(#is_defined(def.full_repair_land) && def.full_repair_land ? 1 : 0) +
+		(#is_defined(def.full_repair_water) && def.full_repair_water ? 1 : 0) +
+		(#is_defined(def.full_repair_air) && def.full_repair_air ? 1 : 0) +
+		(#is_defined(def.full_repair_native) && def.full_repair_native ? 1 : 0);
 	return 30000 + infrastructure_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
@@ -137,7 +142,7 @@ const score_facility = (def, context) => {
 			def.unit_morale_bonus + def.unit_morale_land_bonus +
 			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
 			def.native_lifecycle_bonus
-		) * morale_weight;
+		) * morale_weight + full_repair_capabilities * morale_weight * 2;
 };
 
 const score_project = (def, context) => {

@@ -52,6 +52,51 @@ repair = turns.get_repair(
 );
 test.assert(repair == 0.5);
 
+const land_def = {
+	health_max: 1.0,
+	health_per_turn: 0.1,
+	is_land: true,
+	is_water: false,
+	is_air: false,
+	is_native: false,
+};
+const native_water_def = {
+	health_max: 1.0,
+	health_per_turn: 0.1,
+	is_land: false,
+	is_water: true,
+	is_air: false,
+	is_native: true,
+};
+const repair_facilities = [{full_repair_land: true}];
+repair = turns.get_repair(
+	make_unit(friendly_tile, 0.5, false, 'none'),
+	land_def,
+	{full_repair: false},
+	repair_facilities
+);
+test.assert(repair == 0.5);
+repair = turns.get_repair(
+	make_unit(hostile_tile, 0.5, false, 'none'),
+	land_def,
+	{full_repair: false},
+	repair_facilities
+);
+test.assert(repair > 0.099 && repair < 0.101);
+repair = turns.get_repair(
+	make_unit(friendly_tile, 0.5, false, 'none'),
+	native_water_def,
+	{full_repair: false},
+	[{full_repair_native: true}]
+);
+test.assert(repair == 0.5);
+test.assert(turns.facility_repairs_unit({full_repair_water: true}, native_water_def));
+test.assert(turns.facility_repairs_unit(
+	{full_repair_air: true},
+	{is_land: false, is_water: false, is_air: true, is_native: false}
+));
+test.assert(!turns.facility_repairs_unit({full_repair_air: true}, land_def));
+
 const naval_def = {
 	health_max: 1.0,
 	health_per_turn: 0.1,

@@ -252,14 +252,18 @@
 				command_center.required_technology != 'DoctrineMobility' ||
 				command_center.unit_morale_bonus != 0 ||
 				command_center.unit_morale_land_bonus != 2 ||
+				!command_center.full_repair_land ||
 				childrens_creche.growth_rating_bonus != 2 ||
 				naval_yard.unit_morale_water_bonus != 2 ||
 				naval_yard.water_defense_multiplier != 2.0 ||
+				!naval_yard.full_repair_water ||
 				aerospace_complex.unit_morale_air_bonus != 2 ||
 				aerospace_complex.air_defense_multiplier != 2.0 ||
+				!aerospace_complex.full_repair_air ||
 				biology_lab.required_technology != 'CentauriEmpathy' ||
 				biology_lab.research_bonus != 2 ||
 				biology_lab.native_lifecycle_bonus != 1 ||
+				!biology_lab.full_repair_native ||
 				hologram_theatre.psych_multiplier != 0.5 ||
 				research_hospital.research_multiplier != 0.5 ||
 				research_hospital.psych_multiplier != 0.25 ||
