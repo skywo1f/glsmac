@@ -14,6 +14,7 @@
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
+	const air_snapshot_unit_id = 6;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
@@ -95,6 +96,15 @@
 			for (base of game.get_bm().get_bases()) {
 				if (base.name == name) {
 					return base;
+				}
+			}
+			return null;
+		};
+
+		const find_unit_def_by_chassis = (chassis) => {
+			for (def of game.get_um().get_unit_defs()) {
+				if (def.chassis == chassis && def.offense > 0) {
+					return def;
 				}
 			}
 			return null;
@@ -488,6 +498,18 @@
 			if (base == null) {
 				return 'base is missing';
 			}
+			if (!game.get_um().has_unit(air_snapshot_unit_id)) {
+				return 'partially fueled Needlejet is missing';
+			}
+			const air_unit = game.get_um().get_unit(air_snapshot_unit_id);
+			const air_def = air_unit.get_def();
+			if (
+				air_unit.owner != player_id || air_unit.fuel != 1 ||
+				air_def.chassis != 'Needlejet' || air_def.operational_range != 2 ||
+				air_def.is_missile || !air_def.is_air
+			) {
+				return 'Needlejet fuel or definition metadata is invalid';
+			}
 			const production_state_error = get_production_state_error(base);
 			if (#is_defined(production_state_error)) {
 				return production_state_error;
@@ -635,6 +657,20 @@
 						health: 1.0,
 						morale: 2,
 						home_base_id: client_base.id,
+					});
+					const air_def = find_unit_def_by_chassis('Needlejet');
+					if (air_def == null || air_def.operational_range != 2 || air_def.is_missile) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: Needlejet definition is missing');
+						glsmac.exit();
+						return;
+					}
+					game.event('spawn_unit', {
+						owner: client_base.get_owner(),
+						tile: client_base.get_tile(),
+						type: air_def.id,
+						health: 1.0,
+						morale: 2,
+						fuel: 1,
 					});
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});

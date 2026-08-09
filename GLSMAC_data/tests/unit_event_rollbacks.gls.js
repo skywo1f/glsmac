@@ -2,6 +2,7 @@ const despawn_unit = #include('../default/game/event/despawn_unit');
 const attack_unit = #include('../default/game/event/attack_unit');
 const advance_unit_after_combat = #include('../default/game/event/advance_unit_after_combat');
 const move_unit = #include('../default/game/event/move_unit');
+const spawn_unit = #include('../default/game/event/spawn_unit');
 
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
@@ -25,6 +26,47 @@ const artillery_def = {
 	defense: 1,
 	morale_set: 'NATIVE',
 };
+
+{
+	const home_tile = {x: 8, y: 6};
+	const spawned = {id: 99};
+	let spawn_data = null;
+	let despawned = null;
+	const event = {
+		game: {
+			bm: {
+				get_bases: () => {
+					return [{
+						id: 12,
+						get_owner: () => { return owner; },
+						get_tile: () => { return home_tile; },
+					}];
+				},
+			},
+			um: {
+				spawn_unit: (data) => {
+					spawn_data = data;
+					return spawned;
+				},
+				despawn_unit: (unit) => { despawned = unit; },
+			},
+		},
+		data: {
+			type: 'TestNeedlejet',
+			owner: owner,
+			tile: home_tile,
+			morale: 2,
+			health: 1.0,
+			home_base_at_tile: true,
+			fuel: 1,
+		},
+	};
+	event.applied = spawn_unit.apply(event);
+	test.assert(spawn_data.home_base_id == 12);
+	test.assert(spawn_data.fuel == 1);
+	spawn_unit.rollback(event);
+	test.assert(despawned == spawned);
+}
 
 test.assert(
 	attack_unit.validate({
@@ -486,6 +528,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		movement: movement,
 		morale: morale,
 		health: health,
+		fuel: 0,
 		moved_this_turn: moved_this_turn,
 		terraforming: 'none',
 		terraforming_turns_remaining: 0,
@@ -498,6 +541,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		set_terraforming_order: (type, turns) => {
 			unit.terraforming = type;
 			unit.terraforming_turns_remaining = turns;
+		},
+		set_fuel: (fuel) => {
+			unit.fuel = fuel;
 		},
 	};
 	return unit;
@@ -1132,4 +1178,27 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	attack_unit.rollback(event);
 	test.assert(active_attacker.morale == 3);
 	test.assert(active_defender.morale == 5);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	active_attacker.def = 'TestMissile';
+	active_attacker.fuel = 1;
+	active_attacker.get_def = () => {
+		return {morale_set: 'NATIVE', is_missile: true};
+	};
+	event.resolved = {
+		sequence: [],
+		attacker_dead: false,
+		defender_dead: false,
+	};
+	const despawns_before_missile = despawn_requests;
+	event.applied = attack_unit.apply(event);
+	test.assert(despawn_requests == despawns_before_missile + 1);
+	test.assert(active_attacker == null);
+	test.assert(active_defender != null);
+	test.assert(#sizeof(animations) == 1);
+	attack_unit.rollback(event);
+	test.assert(active_attacker.def == 'TestMissile');
+	test.assert(active_attacker.fuel == 1);
+	test.assert(active_attacker.health == 0.8);
 }

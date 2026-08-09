@@ -73,7 +73,8 @@ Unit::Unit(
 	const bool moved_this_turn,
 	const map::tile::terraforming_t terraforming,
 	const uint16_t terraforming_turns_remaining,
-	const size_t home_base_id
+	const size_t home_base_id,
+	const uint16_t fuel
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -86,9 +87,16 @@ Unit::Unit(
 	, m_moved_this_turn( moved_this_turn )
 	, m_terraforming( terraforming )
 	, m_terraforming_turns_remaining( terraforming_turns_remaining )
-	, m_home_base_id( home_base_id ) {
+	, m_home_base_id( home_base_id )
+	, m_fuel( fuel ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
+	}
+	if (
+		def->m_type != DT_STATIC ||
+		fuel > static_cast< const StaticDef* >( def )->m_operational_range
+	) {
+		THROW( "invalid unit fuel" );
 	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
@@ -137,6 +145,19 @@ void Unit::SetTerraformingOrder(
 	}
 }
 
+void Unit::SetFuel( GSE_CALLABLE, const uint16_t fuel ) {
+	m_um->m_game->CheckRW( GSE_CALL );
+	ASSERT( m_def->m_type == DT_STATIC, "only static unit definitions support fuel" );
+	const auto* const def = static_cast< const StaticDef* >( m_def );
+	if ( fuel > def->m_operational_range ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Unit fuel exceeds its operational range" );
+	}
+	if ( m_fuel != fuel ) {
+		m_fuel = fuel;
+		m_um->RefreshUnit( GSE_CALL, this );
+	}
+}
+
 const types::Buffer Unit::Serialize( const Unit* unit ) {
 	types::Buffer buf;
 	buf.WriteInt( unit->m_id );
@@ -151,6 +172,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_terraforming );
 	buf.WriteInt( unit->m_terraforming_turns_remaining );
 	buf.WriteInt( unit->m_home_base_id );
+	buf.WriteInt( unit->m_fuel );
 	return buf;
 }
 
@@ -197,6 +219,11 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto home_base_id = buf.GetRemaining() > 0
 		? buf.ReadInt< size_t >( "unit home base id" )
 		: 0;
+	ASSERT( def->m_type == DT_STATIC, "only static unit definitions support fuel" );
+	const auto* const staticdef = static_cast< const StaticDef* >( def );
+	const auto fuel = buf.GetRemaining() > 0
+		? buf.ReadInt< uint16_t >( "unit fuel" )
+		: static_cast< uint16_t >( staticdef->m_operational_range );
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -216,6 +243,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid serialized unit terraforming order" );
 	}
+	if ( fuel > staticdef->m_operational_range ) {
+		THROW( "invalid serialized unit fuel" );
+	}
 	return new Unit(
 		GSE_CALL,
 		um,
@@ -229,7 +259,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		moved_this_turn,
 		terraforming,
 		terraforming_turns_remaining,
-		home_base_id
+		home_base_id,
+		fuel
 	);
 }
 
@@ -261,6 +292,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "terraforming", String, map::tile::Tile::GetTerraformingString( m_terraforming ) )
 	WRAPIMPL_GET_CUSTOM( "terraforming_turns_remaining", Int, m_terraforming_turns_remaining )
 	WRAPIMPL_GET_CUSTOM( "home_base_id", Int, m_home_base_id )
+	WRAPIMPL_GET_CUSTOM( "fuel", Int, m_fuel )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
 	WRAPIMPL_GET_CUSTOM( "is_water", Bool, m_def->GetMovementType() == MT_WATER )
@@ -268,6 +300,18 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_LINK( "get_def", m_def )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
+	{
+		"set_fuel",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( fuel, 0, Int );
+			if ( fuel < 0 || fuel > StaticDef::MAX_OPERATIONAL_RANGE ) {
+				GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit fuel" );
+			}
+			SetFuel( GSE_CALL, static_cast< uint16_t >( fuel ) );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"set_home_base_id",
 		NATIVE_CALL( this ) {

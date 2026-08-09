@@ -54,6 +54,8 @@ const native_lifeform = (
 			type: 'static',
 			movement_type: movement_type,
 			movement_per_turn: movement_per_turn,
+			operational_range: 0,
+			is_missile: false,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',
@@ -103,6 +105,8 @@ const conventional_unit = (
 			type: 'static',
 			movement_type: 'land',
 			movement_per_turn: movement_per_turn,
+			operational_range: 0,
+			is_missile: false,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',

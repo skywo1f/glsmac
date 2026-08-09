@@ -373,6 +373,8 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( std::string, armor_id, unit_def, "armor", String, "" );
 				N_GETPROP_OPT( std::string, reactor_id, unit_def, "reactor", String, "" );
 				N_GETPROP_OPT( int64_t, reactor_power, unit_def, "reactor_power", Int, 1 );
+				N_GETPROP_OPT( int64_t, operational_range, unit_def, "operational_range", Int, 0 );
+				N_GETPROP_OPT_BOOL( is_missile, unit_def, "is_missile" );
 				N_GETPROP_OPT(
 					gse::value::array_elements_t,
 					ability_values,
@@ -431,6 +433,14 @@ WRAPIMPL_BEGIN( UnitManager )
 					if ( ( can_found_base || can_terraform ) && movement_type != unit::MT_LAND ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Founding and terraforming capabilities require a land unit: " + id );
 					}
+					if (
+						operational_range < 0 ||
+						operational_range > unit::StaticDef::MAX_OPERATIONAL_RANGE ||
+						( movement_type != unit::MT_AIR && ( operational_range > 0 || is_missile ) ) ||
+						( is_missile && operational_range == 0 )
+					) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit operational range: " + id );
+					}
 					N_GETPROP( movement_per_turn, unit_def, "movement_per_turn", Int );
 					if ( movement_per_turn < 0 ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit movement per turn: " + id );
@@ -478,7 +488,9 @@ WRAPIMPL_BEGIN( UnitManager )
 								armor_id,
 								reactor_id,
 								reactor_power,
-								abilities
+								abilities,
+								operational_range,
+								is_missile
 							);
 
 						DefineUnit( def );
@@ -602,6 +614,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( std::string, terraforming_name, obj, "terraforming", String, "none" );
 				N_GETPROP_OPT( int64_t, terraforming_turns_remaining, obj, "terraforming_turns_remaining", Int, 0 );
 				N_GETPROP_OPT( size_t, home_base_id, obj, "home_base_id", Int, 0 );
+				N_GETPROP_OPT( int64_t, fuel, obj, "fuel", Int, 0 - 1 );
 				if ( home_base_id > 0 && m_game->IsRunning() ) {
 					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
 					if ( !home_base ) {
@@ -626,6 +639,15 @@ WRAPIMPL_BEGIN( UnitManager )
 				}
 				ASSERT( def->m_type == unit::DT_STATIC, "only static defs are supported for now" );
 				const auto* staticdef = (unit::StaticDef*)def;
+				if ( fuel < -1 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unit fuel cannot be negative" );
+				}
+				if ( fuel < 0 ) {
+					fuel = staticdef->m_operational_range;
+				}
+				if ( fuel > staticdef->m_operational_range ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unit fuel exceeds its operational range" );
+				}
 				auto* unit = new unit::Unit(
 					GSE_CALL,
 					this,
@@ -639,7 +661,8 @@ WRAPIMPL_BEGIN( UnitManager )
 					false,
 					terraforming,
 					static_cast< uint16_t >( terraforming_turns_remaining ),
-					home_base_id
+					home_base_id,
+					static_cast< uint16_t >( fuel )
 				);
 				SpawnUnit( GSE_CALL, unit );
 				return unit->Wrap( GSE_CALL );

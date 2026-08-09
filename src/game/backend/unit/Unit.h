@@ -44,7 +44,8 @@ public:
 		const bool moved_this_turn,
 		const map::tile::terraforming_t terraforming,
 		const uint16_t terraforming_turns_remaining,
-		const size_t home_base_id
+		const size_t home_base_id,
+		const uint16_t fuel
 	);
 	virtual ~Unit() = default;
 
@@ -59,6 +60,7 @@ public:
 	map::tile::terraforming_t m_terraforming;
 	uint16_t m_terraforming_turns_remaining;
 	size_t m_home_base_id;
+	uint16_t m_fuel;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
 	size_t m_animation_id = 0;
@@ -75,6 +77,7 @@ public:
 		const map::tile::terraforming_t terraforming,
 		const uint16_t turns_remaining
 	);
+	void SetFuel( GSE_CALLABLE, const uint16_t fuel );
 
 	static const types::Buffer Serialize( const Unit* unit );
 	static Unit* Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um );

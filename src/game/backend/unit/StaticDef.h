@@ -15,6 +15,7 @@ class Render;
 class StaticDef : public Def {
 public:
 	static constexpr size_t MAX_ABILITIES = 64;
+	static constexpr int64_t MAX_OPERATIONAL_RANGE = 1000;
 	static const std::string& GetMovementTypeString( const movement_type_t movement_type );
 
 	static const health_t HEALTH_MAX;
@@ -39,7 +40,9 @@ public:
 		const std::string& armor_id = "",
 		const std::string& reactor_id = "",
 		const int64_t reactor_power = 1,
-		const std::set< std::string >& abilities = {}
+		const std::set< std::string >& abilities = {},
+		const int64_t operational_range = 0,
+		const bool is_missile = false
 	);
 	~StaticDef();
 
@@ -52,6 +55,8 @@ public:
 	const std::string m_reactor_id;
 	const int64_t m_reactor_power;
 	const std::set< std::string > m_abilities;
+	const int64_t m_operational_range;
+	const bool m_is_missile;
 
 	const bool HasAbility( const std::string& id ) const;
 	const bool IsArtillery() const;

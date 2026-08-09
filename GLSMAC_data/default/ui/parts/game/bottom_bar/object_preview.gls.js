@@ -159,6 +159,13 @@ return {
 				if (!object.is_immovable) {
 					f_line('Moves: ' + this.format_movement(object.movement), 14, 'left');
 				}
+				if (def.operational_range > 0) {
+					f_line(
+						'Fuel: ' + #to_string(object.fuel) + '/' + #to_string(def.operational_range),
+						14,
+						'left'
+					);
+				}
 
 				if (object.terraforming != 'none') {
 					const order = terraforming.get_order(object.terraforming);

@@ -19,7 +19,7 @@ namespace game {
 namespace backend {
 namespace unit {
 
-static constexpr int64_t COMPONENT_METADATA_VERSION = 1;
+static constexpr int64_t COMPONENT_METADATA_VERSION = 2;
 
 // TODO: per-def values?
 const health_t StaticDef::HEALTH_MAX = 1.0f;
@@ -68,7 +68,9 @@ StaticDef::StaticDef(
 	const std::string& armor_id,
 	const std::string& reactor_id,
 	const int64_t reactor_power,
-	const std::set< std::string >& abilities
+	const std::set< std::string >& abilities,
+	const int64_t operational_range,
+	const bool is_missile
 )
 	: Def(
 		id,
@@ -91,7 +93,9 @@ StaticDef::StaticDef(
 	, m_armor_id( armor_id )
 	, m_reactor_id( reactor_id )
 	, m_reactor_power( reactor_power )
-	, m_abilities( abilities ) {
+	, m_abilities( abilities )
+	, m_operational_range( operational_range )
+	, m_is_missile( is_missile ) {
 	if (
 		m_movement_type < MT_IMMOVABLE ||
 		m_movement_type > MT_AIR ||
@@ -101,6 +105,10 @@ StaticDef::StaticDef(
 		m_reactor_power < 1 ||
 		m_reactor_power > 4 ||
 		m_abilities.size() > MAX_ABILITIES ||
+		m_operational_range < 0 ||
+		m_operational_range > MAX_OPERATIONAL_RANGE ||
+		( m_movement_type != MT_AIR && ( m_operational_range > 0 || m_is_missile ) ) ||
+		( m_is_missile && m_operational_range == 0 ) ||
 		( ( m_can_found_base || m_can_terraform ) && m_movement_type != MT_LAND )
 	) {
 		THROW( "invalid static unit definition: " + m_id );
@@ -150,6 +158,7 @@ const std::string StaticDef::ToString( const std::string& prefix ) const {
 		TS_OBJ_PROP_NUM( "reactor_power", m_reactor_power ) +
 		TS_OBJ_PROP_STR( "movement_type", GetMovementTypeString( m_movement_type ) ) +
 		TS_OBJ_PROP_NUM( "movement_per_turn", m_movement_per_turn ) +
+		TS_OBJ_PROP_NUM( "operational_range", m_operational_range ) +
 		TS_OBJ_PROP( "render", m_render->ToString( TS_PREFIX_NEXT ) ) +
 		TS_OBJ_END();
 }
@@ -168,6 +177,8 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	for ( const auto& ability : def->m_abilities ) {
 		buf.WriteString( ability );
 	}
+	buf.WriteInt( def->m_operational_range );
+	buf.WriteBool( def->m_is_missile );
 }
 
 StaticDef* StaticDef::Deserialize(
@@ -205,9 +216,11 @@ StaticDef* StaticDef::Deserialize(
 	std::string reactor_id = "";
 	int64_t reactor_power = 1;
 	std::set< std::string > abilities = {};
+	int64_t operational_range = 0;
+	bool is_missile = false;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto version = buf.ReadInt();
-		if ( version != COMPONENT_METADATA_VERSION ) {
+		if ( version != 1 && version != COMPONENT_METADATA_VERSION ) {
 			THROW( "unsupported serialized unit component metadata version" );
 		}
 		chassis_id = buf.ReadString();
@@ -226,6 +239,18 @@ StaticDef* StaticDef::Deserialize(
 			const auto ability = buf.ReadString();
 			if ( ability.empty() || !abilities.insert( ability ).second ) {
 				THROW( "invalid or duplicate serialized unit ability" );
+			}
+		}
+		if ( version >= 2 ) {
+			operational_range = buf.ReadInt();
+			is_missile = buf.ReadBool();
+			if (
+				operational_range < 0 ||
+				operational_range > MAX_OPERATIONAL_RANGE ||
+				( serialized_movement_type != MT_AIR && ( operational_range > 0 || is_missile ) ) ||
+				( is_missile && operational_range == 0 )
+			) {
+				THROW( "invalid serialized unit operational range" );
 			}
 		}
 	}
@@ -248,7 +273,9 @@ StaticDef* StaticDef::Deserialize(
 		armor_id,
 		reactor_id,
 		reactor_power,
-		abilities
+		abilities,
+		operational_range,
+		is_missile
 	);
 }
 
@@ -272,6 +299,8 @@ WRAPIMPL_BEGIN( StaticDef )
 			WRAPIMPL_GET_CUSTOM( "reactor", String, m_reactor_id )
 			WRAPIMPL_GET_CUSTOM( "reactor_power", Int, m_reactor_power )
 			WRAPIMPL_GET_CUSTOM( "abilities", Array, abilities )
+			WRAPIMPL_GET_CUSTOM( "operational_range", Int, m_operational_range )
+			WRAPIMPL_GET_CUSTOM( "is_missile", Bool, m_is_missile )
 			WRAPIMPL_GET_CUSTOM( "is_artillery", Bool, IsArtillery() )
 			WRAPIMPL_GET_CUSTOM( "is_psi_attack", Bool, IsPsiAttack() )
 			WRAPIMPL_GET_CUSTOM( "is_psi_defense", Bool, IsPsiDefense() )

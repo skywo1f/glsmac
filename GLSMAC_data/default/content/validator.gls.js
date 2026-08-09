@@ -89,6 +89,8 @@ const unit_fields = {
 	type: true,
 	movement_type: true,
 	movement_per_turn: true,
+	operational_range: true,
+	is_missile: true,
 	render: true,
 };
 
@@ -1068,6 +1070,36 @@ const validate_units = (units, technologies, morale_ids, unit_manifest, errors) 
 			add_error(errors, path + '.movement_type', 'is not supported');
 		}
 		validate_int(data, 'movement_per_turn', path, errors, true, 0, 1000);
+		validate_int(data, 'operational_range', path, errors, true, 0, 1000);
+		validate_bool(data, 'is_missile', path, errors, true);
+		if (
+			#is_defined(data.movement_type) && data.movement_type != 'air' &&
+			(
+				(#is_defined(data.operational_range) && data.operational_range > 0) ||
+				(#is_defined(data.is_missile) && data.is_missile)
+			)
+		) {
+			add_error(errors, path + '.operational_range', 'is only supported for air units');
+		}
+		if (
+			#is_defined(data.is_missile) && data.is_missile &&
+			#is_defined(data.operational_range) && data.operational_range == 0
+		) {
+			add_error(errors, path + '.operational_range', 'must be positive for missiles');
+		}
+		if (#is_defined(data.chassis) && #is_defined(unit_manifest.chassis.definitions[data.chassis])) {
+			const chassis = unit_manifest.chassis.definitions[data.chassis];
+			if (#is_defined(data.operational_range) && data.operational_range != chassis.range) {
+				add_error(
+					errors,
+					path + '.operational_range',
+					'does not match chassis range ' + #to_string(chassis.range)
+				);
+			}
+			if (#is_defined(data.is_missile) && data.is_missile != chassis.missile) {
+				add_error(errors, path + '.is_missile', 'does not match chassis missile flag');
+			}
+		}
 		validate_unit_render(data.render, path + '.render', errors);
 	}
 	return count;

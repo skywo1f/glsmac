@@ -30,6 +30,15 @@ const get_facility = (catalog, id) => {
 	return null;
 };
 
+const get_unit_by_chassis = (catalog, chassis) => {
+	for (entry of catalog.units) {
+		if (entry.data.chassis == chassis) {
+			return entry;
+		}
+	}
+	return null;
+};
+
 const set_manifest_required_project = (catalog, id, required_project) => {
 	for (let i = 0; i < #sizeof(catalog.facility_manifest); i++) {
 		const entry = catalog.facility_manifest[i];
@@ -158,6 +167,20 @@ invalid = make_catalog();
 invalid.units[0].data.movement_per_turn = 1.5;
 test.assert(validator.validate(invalid).errors == [
 	'units.ScoutPatrol.movement_per_turn: must be an integer from 0 through 1000',
+]);
+
+invalid = make_catalog();
+let invalid_air_unit = get_unit_by_chassis(invalid, 'Needlejet');
+invalid_air_unit.data.operational_range = 1;
+test.assert(validator.validate(invalid).errors == [
+	'units.' + invalid_air_unit.id + '.operational_range: does not match chassis range 2',
+]);
+
+invalid = make_catalog();
+invalid_air_unit = get_unit_by_chassis(invalid, 'Needlejet');
+invalid_air_unit.data.is_missile = true;
+test.assert(validator.validate(invalid).errors == [
+	'units.' + invalid_air_unit.id + '.is_missile: does not match chassis missile flag',
 ]);
 
 invalid = make_catalog();

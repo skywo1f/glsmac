@@ -30,6 +30,9 @@ return {
 				}
 			}
 		}
+		if (#is_defined(e.data.fuel)) {
+			data.fuel = e.data.fuel;
+		}
 		const unit = e.game.um.spawn_unit(data);
 
 		return {

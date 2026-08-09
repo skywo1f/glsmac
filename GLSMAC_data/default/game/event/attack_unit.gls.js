@@ -18,6 +18,7 @@ const snapshot_unit = (unit) => {
 		terraforming: unit.terraforming,
 		terraforming_turns_remaining: unit.terraforming_turns_remaining,
 		home_base_id: unit.home_base_id,
+		fuel: unit.fuel,
 	};
 };
 
@@ -36,9 +37,11 @@ const restore_unit = (e, backup) => {
 			terraforming: backup.terraforming,
 			terraforming_turns_remaining: backup.terraforming_turns_remaining,
 			home_base_id: backup.home_base_id,
+			fuel: backup.fuel,
 		});
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
+	unit.set_fuel(backup.fuel);
 	unit.movement = backup.movement;
 	unit.morale = backup.morale;
 	unit.health = backup.health;
@@ -189,6 +192,10 @@ return {
 			: e.data.defender;
 		let attacker_tile = attacker.get_tile();
 		let defender_tile = defender.get_tile();
+		const attacker_def = attacker.get_def();
+		const attacker_is_missile =
+			#is_defined(attacker_def.is_missile) && attacker_def.is_missile;
+		const attacker_destroyed = e.resolved.attacker_dead || attacker_is_missile;
 
 		let applied = {
 			backup: {
@@ -215,7 +222,7 @@ return {
 				};
 			}
 		}
-		if (e.resolved.attacker_dead) {
+		if (attacker_destroyed) {
 			animations :+{
 				id: 'DEATH_PSI',
 				tile: attacker_tile,
@@ -230,7 +237,7 @@ return {
 			if (#is_defined(e.resolved.advance_after_combat)) {
 				advance_after_combat = e.resolved.advance_after_combat;
 			}
-			if (!e.resolved.attacker_dead && advance_after_combat) {
+			if (!attacker_destroyed && advance_after_combat) {
 				death_animation.oncomplete = () => {
 					if (e.game.is_master()) {
 						if (#is_defined(defender_tile.get_units)) {
@@ -260,20 +267,20 @@ return {
 				attacker.health = #max(0.0, attacker.health - step[1]);
 			}
 		}
-		if (e.resolved.attacker_dead) {
+		if (attacker_destroyed) {
 			attacker.health = 0.0;
 		}
 		if (e.resolved.defender_dead) {
 			defender.health = 0.0;
 		}
-		if (!e.resolved.attacker_dead && e.resolved.defender_dead) {
+		if (!attacker_destroyed && e.resolved.defender_dead) {
 			promote_unit(e.game.um, attacker);
 		}
 		if (!e.resolved.defender_dead && e.resolved.attacker_dead) {
 			promote_unit(e.game.um, defender);
 		}
 		if (e.game.is_master()) {
-			if (e.resolved.attacker_dead) {
+			if (attacker_destroyed) {
 				e.game.event('despawn_unit', {unit: attacker});
 			}
 			if (e.resolved.defender_dead) {

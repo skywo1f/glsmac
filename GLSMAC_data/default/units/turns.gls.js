@@ -1,4 +1,5 @@
 const terraforming = #include('terraforming');
+const air = #include('air');
 
 const get_repair = (unit, def, project_effects) => {
 	if (unit.moved_this_turn || unit.terraforming != 'none' || unit.health >= def.health_max) {
@@ -26,6 +27,7 @@ const get_movement = (unit, def, project_effects) => {
 const result = {
 	get_repair: get_repair,
 	get_movement: get_movement,
+	get_air_turn_state: air.get_turn_state,
 
 	configure: (game) => {
 
@@ -33,13 +35,29 @@ const result = {
 
 		um.on('unit_turn', (e) => {
 			const def = e.unit.get_def();
+			const air_state = air.get_turn_state(e.unit, def);
+			if (e.unit.fuel != air_state.fuel) {
+				e.unit.set_fuel(air_state.fuel);
+			}
+			if (air_state.damage > 0.0) {
+				e.unit.health = #max(0.0, e.unit.health - air_state.damage);
+			}
+			if (air_state.crash || (air_state.damage > 0.0 && e.unit.health <= 0.0)) {
+				e.unit.movement = 0.0;
+				if (game.is_master()) {
+					game.event('despawn_unit', {unit: e.unit});
+				}
+				return;
+			}
 			const get_project_effects = #is_defined(game.get)
 				? game.get('f_project_get_player_effects')
 				: #undefined;
 			const project_effects = #is_defined(get_project_effects)
 				? get_project_effects(e.unit.get_owner())
 				: {naval_movement_bonus: 0.0, full_repair: false};
-			const repair = get_repair(e.unit, def, project_effects);
+			const repair = air_state.damage > 0.0
+				? 0.0
+				: get_repair(e.unit, def, project_effects);
 			if (repair > 0.0) {
 				e.unit.health = e.unit.health + repair;
 			}

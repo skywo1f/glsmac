@@ -125,6 +125,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( AIR_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/air-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${AIR_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME air_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${AIR_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_air_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( air_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "AIR_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "AIR_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( AI_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${AI_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME ai_runtime_smoke COMMAND
@@ -245,6 +269,31 @@ IF ( BUILD_TESTING )
 		SET_TESTS_PROPERTIES( ai_repair_runtime_smoke PROPERTIES
 			FAIL_REGULAR_EXPRESSION "AI_REPAIR_RUNTIME_FAIL"
 			PASS_REGULAR_EXPRESSION "AI_REPAIR_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 60
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
+		SET( AI_AIR_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-air-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${AI_AIR_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME ai_air_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${AI_AIR_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_ai_air_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( ai_air_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "AI_AIR_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "AI_AIR_RUNTIME_PASS"
 			RUN_SERIAL TRUE
 			TIMEOUT 60
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

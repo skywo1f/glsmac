@@ -9,6 +9,7 @@ const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
 const unit_abilities = #include('unit_abilities');
+const air = #include('../units/air');
 
 const owned_bases = (game, player) => {
 	let result = [];
@@ -160,6 +161,58 @@ const choose_tile = (tiles, score) => {
 		}
 	}
 	return best;
+};
+
+const get_air_refuel_base = (tm, unit, player_id, bases) => {
+	let best = null;
+	let best_distance = 0;
+	for (base of bases) {
+		if (base.get_owner().id != player_id) {
+			continue;
+		}
+		const distance = tm.get_distance(unit.get_tile(), base.get_tile());
+		if (
+			best == null || distance < best_distance ||
+			(distance == best_distance && base.id < best.id)
+		) {
+			best = base;
+			best_distance = distance;
+		}
+	}
+	return best;
+};
+
+const move_air_to_refuel = (game, player, unit, bases) => {
+	const def = unit.get_def();
+	if (def.operational_range <= 0 || unit.fuel >= def.operational_range) {
+		return 0 - 1;
+	}
+	if (air.is_refueling(unit)) {
+		return 0;
+	}
+	const tm = game.get_tm();
+	const base = get_air_refuel_base(tm, unit, player.id, bases);
+	if (base == null || base.get_tile() == unit.get_tile()) {
+		return 0;
+	}
+	const destination = base.get_tile();
+	const current_distance = tm.get_distance(unit.get_tile(), destination);
+	let step = choose_tile(unit.get_tile().get_surrounding_tiles(), (candidate) => {
+		if (!can_enter(unit, candidate)) {
+			return 0 - 100000;
+		}
+		return 10000 - tm.get_distance(candidate, destination) * 100;
+	});
+	if (step == null || tm.get_distance(step, destination) >= current_distance) {
+		step = pathfinding.find_path_step(tm, unit, destination, (source, candidate) => {
+			return can_enter(unit, candidate, source);
+		});
+	}
+	if (step != null && can_enter(unit, step)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: step});
+		return 100;
+	}
+	return 0;
 };
 
 const can_enter = (unit, tile, source) => {
@@ -513,6 +566,10 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return 0;
+	}
+	const air_refuel_delay = move_air_to_refuel(game, player, unit, all_bases);
+	if (air_refuel_delay >= 0) {
+		return air_refuel_delay;
 	}
 	const repair_base = combat.get_repair_destination(game.get_tm(), unit, player.id, all_bases);
 	if (repair_base != null) {

@@ -11,6 +11,7 @@
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
+	const air_snapshot_unit_id = 6;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
@@ -120,6 +121,18 @@
 			}
 			if (game.get_um().has_unit(expansion_snapshot_unit_id)) {
 				return 'consumed Colony Pod was restored from the snapshot';
+			}
+			if (!game.get_um().has_unit(air_snapshot_unit_id)) {
+				return 'partially fueled Needlejet was not restored from the snapshot';
+			}
+			const air_unit = game.get_um().get_unit(air_snapshot_unit_id);
+			const air_def = air_unit.get_def();
+			if (
+				air_unit.owner != game.get_player().id || air_unit.fuel != 1 ||
+				air_def.chassis != 'Needlejet' || air_def.operational_range != 2 ||
+				air_def.is_missile || !air_def.is_air
+			) {
+				return 'Needlejet fuel or definition metadata was not restored';
 			}
 			const restored_unit = game.get_um().get_unit(1);
 			if (restored_unit.get_def().id != restored_unit.def) {

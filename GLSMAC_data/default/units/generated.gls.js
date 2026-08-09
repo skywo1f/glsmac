@@ -80,7 +80,9 @@ const find_component = (entries, id) => {
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
 const no_armor = find_component(manifest.armors, 'NoArmor');
 const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
+const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
+const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
 
 const get_role_abilities = (known, role) => {
 	let result = [];
@@ -170,6 +172,8 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			type: 'static',
 			movement_type: chassis.triad == 'sea' ? 'water' : chassis.triad,
 			movement_per_turn: chassis.speed,
+			operational_range: chassis.range,
+			is_missile: chassis.missile,
 			render: get_render(chassis, role),
 		},
 	};
@@ -220,6 +224,44 @@ const add_milestone_designs = (technology_id) => {
 		if (triad != 'air' && is_available(heavy_artillery, known)) {
 			add_design(technology_id, chassis, weapon, armor, 'artillery', [heavy_artillery]);
 		}
+	}
+	for (chassis of manifest.chassis) {
+		if (
+			chassis.missile || !is_available(chassis, known) ||
+			chassis.required_technology != technology_id
+		) {
+			continue;
+		}
+		add_design(technology_id, chassis, weapon, armor, 'assault', []);
+		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+	}
+	const missile = find_component(manifest.chassis, 'Missile');
+	if (
+		technology_id == missile.required_technology &&
+		is_available(missile, known) && is_available(conventional_payload, known)
+	) {
+		add_design(
+			technology_id,
+			missile,
+			conventional_payload,
+			no_armor,
+			'assault',
+			[]
+		);
+	}
+	const carrier_chassis = chassis_by_triad['sea'];
+	if (
+		technology_id == carrier_deck.required_technology &&
+		#is_defined(carrier_chassis) && is_available(carrier_deck, known)
+	) {
+		add_design(
+			technology_id,
+			carrier_chassis,
+			hand_weapons,
+			armor,
+			'garrison',
+			[carrier_deck]
+		);
 	}
 	const infantry = find_component(manifest.chassis, 'Infantry');
 	for (ability_id of ['HighMorale', 'CleanReactor']) {
