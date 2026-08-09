@@ -69,6 +69,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
 	static constexpr size_t MAX_TECHNOLOGIES = 1024;
 	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
+	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
 
 	const technologies_t& GetTechnologies() const;
 	bool HasTechnology( const std::string& id ) const;
@@ -81,6 +82,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	);
 	int64_t GetEnergyCredits() const;
 	void SetEnergyCredits( const int64_t energy_credits );
+	int64_t GetEcologicalDamageEvents() const;
+	void SetEcologicalDamageEvents( const int64_t ecological_damage_events );
 
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
@@ -114,6 +117,7 @@ private:
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;
 	int64_t m_energy_credits = 0;
+	int64_t m_ecological_damage_events = 0;
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 
 	void ReleaseOwnedFaction();

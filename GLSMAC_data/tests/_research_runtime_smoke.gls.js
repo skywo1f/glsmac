@@ -176,6 +176,7 @@
 				const baseline_growth_cost = game.get(
 					'f_base_get_nutrients_for_growth'
 				)(game, base);
+				const ecological_damage = game.get('f_ecology_get_base_damage')(base);
 				player.set_social_engineering(social_choices);
 				if (
 					social_choices.politics != 'Democratic' ||
@@ -211,6 +212,23 @@
 					fail('INDUSTRY rating returned an invalid live mineral cost');
 					return;
 				}
+				if (
+					ecological_damage.percent < 0 ||
+					ecological_damage.clean_allowance != 16 ||
+					ecological_damage.facility_divisor != 1 ||
+					player.get_ecological_damage_events() != 0
+				) {
+					fail('live ecological damage state is invalid');
+					return;
+				}
+				player.set_ecological_damage_events(3);
+				if (
+					game.get('f_ecology_get_base_damage')(base).clean_allowance != 19
+				) {
+					fail('fungal bloom clean-mineral allowance did not update');
+					return;
+				}
+				player.set_ecological_damage_events(0);
 				const unit_defs = game.get_um().get_unit_defs();
 				let found_late_land_unit = false;
 				let found_sea_unit = false;

@@ -47,6 +47,7 @@ Player::Player( const Player* const other ) {
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
 	m_energy_credits = other->m_energy_credits;
+	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_social_engineering = other->m_social_engineering;
 }
 
@@ -171,6 +172,17 @@ void Player::SetEnergyCredits( const int64_t energy_credits ) {
 		THROW( "player energy credits are out of range" );
 	}
 	m_energy_credits = energy_credits;
+}
+
+int64_t Player::GetEcologicalDamageEvents() const {
+	return m_ecological_damage_events;
+}
+
+void Player::SetEcologicalDamageEvents( const int64_t ecological_damage_events ) {
+	if ( ecological_damage_events < 0 || ecological_damage_events > MAX_ECOLOGICAL_DAMAGE_EVENTS ) {
+		THROW( "player ecological damage event count is out of range" );
+	}
+	m_ecological_damage_events = ecological_damage_events;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -341,6 +353,29 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_ecological_damage_events",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , m_ecological_damage_events );
+				} )
+			},
+			{
+				"set_ecological_damage_events",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( ecological_damage_events, 0, Int );
+					if (
+						ecological_damage_events < 0 ||
+						ecological_damage_events > MAX_ECOLOGICAL_DAMAGE_EVENTS
+					) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Player ecological damage event count is out of range" );
+					}
+					SetEcologicalDamageEvents( ecological_damage_events );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -400,6 +435,7 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_social_engineering ) {
 		buf.WriteString( id );
 	}
+	buf.WriteInt( m_ecological_damage_events );
 
 	return buf;
 }
@@ -453,6 +489,10 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized player social engineering state: " + social_error );
 		}
 	}
+	const auto ecological_damage_events = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	if ( ecological_damage_events < 0 || ecological_damage_events > MAX_ECOLOGICAL_DAMAGE_EVENTS ) {
+		THROW( "invalid serialized player ecological damage event count" );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -468,6 +508,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_research_target = research_target;
 	m_research_progress = research_progress;
 	m_energy_credits = energy_credits;
+	m_ecological_damage_events = ecological_damage_events;
 	m_social_engineering = std::move( social_engineering );
 
 }

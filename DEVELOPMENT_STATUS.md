@@ -22,6 +22,11 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - social ECONOMY, SUPPORT, TALENT, MORALE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research;
+- original-SMAC ecological damage based on local terraforming, worked squares,
+  mineral production, ecology facilities, difficulty, discovered technology,
+  PLANET rating, native-life setting, and perihelion;
+- persistent faction-wide fungal-bloom counts, host-authored reversible fungus
+  eruptions, and live Eco Damage values on the base screen;
 - land and sea colonization, terraforming, conventional and psi combat,
   conquest, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -50,8 +55,11 @@ The following original-SMAC systems remain absent or materially incomplete:
 - probe-team actions, infiltration, subversion, and mind control;
 - remaining social effects: adoption costs, efficiency losses, commerce
   thresholds, low-MORALE modifier halving, SUPPORT new-base mineral penalties,
-  full police and away-unit behavior, and probe/Planet integration;
-- ecological damage, fungal blooms, and several Planet-related effects;
+  full police and away-unit behavior, and probe integration;
+- native-life outbreaks from fungal blooms, an independent wild Planet faction,
+  global warming, sea-level changes, volcanoes, atrocity modifiers, several
+  ecology-related Secret Project effects, and the original engine's
+  undocumented post-bloom clean-mineral facility bonus;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
 - several remaining facility effects, including submersion, Psi Gates,
   prototype-cost handling, and disease protection;
@@ -66,16 +74,18 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 72 cases: 56 isolated native/script GSE tests
+The Release CTest matrix contains 74 cases: 58 isolated native/script GSE tests
 and 16 asset-backed runtime scenarios. All current cases pass in one
-uninterrupted invocation on the tested Windows machine. The same 56 GSE cases
+uninterrupted invocation on the tested Windows machine. The same 58 GSE cases
 also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
 allocator lifetime bounded and reports the exact script that fails.
 
-One earlier full Release run ended 71/72 after an intermittent
+The current Release matrix passed 74/74 in 579.10 seconds, and the sanitizer
+matrix passed 58/58 in 681.40 seconds. One earlier pre-ecology Release run ended
+71/72 after an intermittent
 `ai_air_runtime_smoke` startup crash during map generation. The scenario then
 passed ten consecutive fresh-process repeats, and the final uninterrupted
-72-case matrix passed. The crash was not reproducible after that first failure.
+72-case matrix passed. The crash has not recurred in the current 74-case run.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

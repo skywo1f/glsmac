@@ -36,6 +36,7 @@ return (game) => {
 		'settle_player_economy',
 		'process_player_economy',
 		'set_social_engineering',
+		'fungal_bloom',
 		'declare_victory',
 		'complete_turn',
 		'uncomplete_turn',
