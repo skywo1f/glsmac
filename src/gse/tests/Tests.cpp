@@ -255,6 +255,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
+				source.SetInfiltrated( 4, true );
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
@@ -279,6 +280,13 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetDiplomaticOffer( 3 ) == Player::DR_PACT,
 					"pending diplomatic offer was not serialized"
+				);
+				GT_ASSERT( roundtrip.HasInfiltrated( 4 ), "player infiltration was not serialized" );
+				GT_ASSERT( !roundtrip.HasInfiltrated( 5 ), "missing player infiltration was present" );
+				roundtrip.SetInfiltrated( 4, false );
+				GT_ASSERT(
+					roundtrip.GetInfiltratedPlayers().empty(),
+					"cleared player infiltration was retained"
 				);
 				roundtrip.SetDiplomaticRelation( 2, Player::DR_NEUTRAL );
 				GT_ASSERT(
@@ -429,6 +437,35 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_relation = true;
 				}
 				GT_ASSERT( rejected_invalid_relation, "invalid diplomatic relation accepted" );
+
+				bool rejected_duplicate_infiltration = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 2 );
+					player.WriteInt( 1 );
+					player.WriteInt( 1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_infiltration = true;
+				}
+				GT_ASSERT( rejected_duplicate_infiltration, "duplicate player infiltration accepted" );
+
+				bool rejected_invalid_infiltration = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 1 );
+					player.WriteInt( Player::MAX_INFILTRATED_PLAYERS );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_infiltration = true;
+				}
+				GT_ASSERT( rejected_invalid_infiltration, "invalid player infiltration accepted" );
 				GT_OK();
 			}
 		);

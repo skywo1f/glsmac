@@ -5,6 +5,7 @@ return {
 		'please_dont_go',
 		'social_engineering',
 		'diplomacy',
+		'probe_operations',
 		'base_screen',
 	],
 

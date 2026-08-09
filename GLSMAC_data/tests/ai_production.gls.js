@@ -10,6 +10,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		mineral_cost: cost,
 		can_found_base: can_found_base,
 		can_terraform: can_terraform,
+		weapon: '',
 		abilities: [],
 	};
 };
@@ -68,6 +69,8 @@ const laser = unit('Laser', 2, 1, 1.0, 20, false, false);
 const defender = unit('Defender', 1, 2, 1.0, 20, false, false);
 const former = unit('Former', 0, 1, 1.0, 20, false, true);
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
+const probe_team = unit('ProbeTeam', 0, 1, 2.0, 40, false, false);
+probe_team.weapon = 'ProbeTeam';
 const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
 sea_colony.is_water = true;
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
@@ -98,6 +101,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 		needs_garrison: garrison,
 		needs_former: needs_former,
 		needs_colony: needs_colony,
+		needs_probe: false,
 		needs_military: true,
 		needs_psych: needs_psych,
 		needs_growth: false,
@@ -124,6 +128,16 @@ sea_expansion_context.needs_sea_colony = false;
 test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
+
+let probe_context = context(false, false, false, false, 10);
+probe_context.needs_military = false;
+probe_context.needs_probe = true;
+test.assert(production.score_unit(probe_team, probe_context) != null);
+probe_context.needs_probe = false;
+test.assert(production.score_unit(probe_team, probe_context) == null);
+probe_context.needs_probe = true;
+probe_context.needs_garrison = true;
+test.assert(production.score_unit(probe_team, probe_context) == null);
 
 test.assert(production.score_project(command_nexus, context(false, true, false, false, 10)) == null);
 test.assert(production.score_project(command_nexus, context(false, false, true, false, 10)) == null);

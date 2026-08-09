@@ -109,6 +109,12 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
 	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
 
+	using infiltrated_players_t = std::set< size_t >;
+	static constexpr size_t MAX_INFILTRATED_PLAYERS = 64;
+	const infiltrated_players_t& GetInfiltratedPlayers() const;
+	bool HasInfiltrated( const size_t player_id ) const;
+	void SetInfiltrated( const size_t player_id, const bool infiltrated );
+
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
@@ -139,6 +145,7 @@ private:
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
+	infiltrated_players_t m_infiltrated_players = {};
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(

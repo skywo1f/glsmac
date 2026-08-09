@@ -69,6 +69,13 @@ const score_unit = (def, context) => {
 				get_unit_ability_score(def) - get_unit_support_penalty(def, context)
 			: null;
 	}
+	if (#is_defined(def.weapon) && def.weapon == 'ProbeTeam') {
+		return #is_defined(context.needs_probe) && context.needs_probe && !context.needs_garrison
+			? 30000 + get_priority(context, 'development', 50) * 400 +
+				#round(def.movement_per_turn * 1000.0) - get_mineral_cost(def, context) -
+				get_unit_support_penalty(def, context)
+			: null;
+	}
 	if (def.offense <= 0) {
 		return null;
 	}

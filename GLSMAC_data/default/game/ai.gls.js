@@ -4,6 +4,7 @@ const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
 const pathfinding = #include('ai/pathfinding');
+const probes = #include('ai/probes');
 const production = #include('ai/production');
 const research = #include('ai/research');
 const social_engineering = #include('ai/social_engineering');
@@ -176,6 +177,7 @@ const get_strategy_metrics = (game, player, bases, units) => {
 	let sea_colony_count = 0;
 	let combat_count = 0;
 	let mobile_combat_count = 0;
+	let probe_count = 0;
 	for (unit of units) {
 		const def = unit.get_def();
 		if (def.can_terraform) {
@@ -192,6 +194,9 @@ const get_strategy_metrics = (game, player, bases, units) => {
 			if (def.movement_per_turn > 1.0) {
 				mobile_combat_count++;
 			}
+		}
+		if (#is_defined(def.weapon) && def.weapon == 'ProbeTeam') {
+			probe_count++;
 		}
 	}
 
@@ -242,6 +247,7 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		sea_base_count: sea_base_count,
 		combat_count: combat_count,
 		mobile_combat_count: mobile_combat_count,
+		probe_count: probe_count,
 		underdefended_bases: underdefended_bases,
 		growth_stalled_bases: growth_stalled_bases,
 		unstable_bases: unstable_bases,
@@ -407,6 +413,7 @@ const queue_production = (game, player, bases, units) => {
 	let sea_colony_count = metrics.sea_colony_count;
 	let combat_count = metrics.combat_count;
 	let mobile_combat_count = metrics.mobile_combat_count;
+	let probe_count = metrics.probe_count;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
 	let available_energy = #max(metrics.energy_income, 0);
@@ -478,6 +485,9 @@ const queue_production = (game, player, bases, units) => {
 				combat_count < #sizeof(bases) * 2 ||
 				priorities.rival_pressure > 0 ||
 				priorities.mobility > 0,
+			needs_probe:
+				#sizeof(game.get_players()) > 1 &&
+				probe_count < #max(1, #floor(#to_float(#sizeof(bases)) / 4.0)),
 			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
@@ -522,6 +532,9 @@ const queue_production = (game, player, bases, units) => {
 				if (selected.def.movement_per_turn > 1.0) {
 					mobile_combat_count++;
 				}
+			}
+			if (#is_defined(selected.def.weapon) && selected.def.weapon == 'ProbeTeam') {
+				probe_count++;
 			}
 		} else if (
 			selected != null &&
@@ -748,6 +761,37 @@ const move_former = (game, player, unit, all_bases) => {
 	return false;
 };
 
+const move_probe = (game, player, unit, all_bases) => {
+	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return false;
+	}
+	const action = probes.choose_adjacent_action(game, player, unit);
+	if (action != null) {
+		game.event_as(player.id, 'probe_operation', {
+			unit: unit,
+			operation: action.operation,
+			target: action.target,
+		});
+		return true;
+	}
+	const destination = probes.choose_target_base(game, player, unit, all_bases);
+	if (destination == null) {
+		return false;
+	}
+	const step = pathfinding.find_path_step(
+		game.get_tm(),
+		unit,
+		destination.base.get_tile(),
+		(source, candidate) => { return can_enter(unit, candidate, source); }
+	);
+	if (step != null && can_enter(unit, step)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: step});
+		return true;
+	}
+	return false;
+};
+
 const move_combat = (game, player, unit, all_bases, all_units, reinforcement_assignments) => {
 	const tile = unit.get_tile();
 	const strategic_bases = filter_hostile_bases(game, player, all_bases);
@@ -955,6 +999,20 @@ const play_turn = (game, player, done) => {
 				const def = unit.get_def();
 				if (def.can_found_base) {
 					action_started = move_colony(game, player, unit, all_bases);
+				}
+				if (action_started) {
+					action_state.record_action_attempt(unit, action_attempts);
+					break;
+				}
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+			for (unit of current_units) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
+					continue;
+				}
+				if (unit.get_def().weapon == 'ProbeTeam') {
+					action_started = move_probe(game, player, unit, all_bases);
 				}
 				if (action_started) {
 					action_state.record_action_attempt(unit, action_attempts);

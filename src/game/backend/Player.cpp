@@ -51,6 +51,7 @@ Player::Player( const Player* const other ) {
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
+	m_infiltrated_players = other->m_infiltrated_players;
 }
 
 Player::~Player() {
@@ -274,6 +275,26 @@ bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relati
 		return true;
 	}
 	return false;
+}
+
+const Player::infiltrated_players_t& Player::GetInfiltratedPlayers() const {
+	return m_infiltrated_players;
+}
+
+bool Player::HasInfiltrated( const size_t player_id ) const {
+	return m_infiltrated_players.find( player_id ) != m_infiltrated_players.end();
+}
+
+void Player::SetInfiltrated( const size_t player_id, const bool infiltrated ) {
+	if ( player_id >= MAX_INFILTRATED_PLAYERS ) {
+		THROW( "infiltrated player ID is out of range" );
+	}
+	if ( infiltrated ) {
+		m_infiltrated_players.insert( player_id );
+	}
+	else {
+		m_infiltrated_players.erase( player_id );
+	}
 }
 
 WRAPIMPL_BEGIN( Player )
@@ -557,6 +578,31 @@ WRAPIMPL_BEGIN( Player )
 					return VALUE( gse::value::Undefined );
 				} )
 			},
+			{
+				"has_infiltrated",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot infiltrate itself" );
+					}
+					return VALUE( gse::value::Bool, , HasInfiltrated( other->m_slotnum ) );
+				} )
+			},
+			{
+				"set_infiltrated",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( infiltrated, 1, Bool );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot infiltrate itself" );
+					}
+					SetInfiltrated( other->m_slotnum, infiltrated );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -594,6 +640,10 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& [ player_id, relation ] : m_diplomatic_offers ) {
 		buf.WriteInt( player_id );
 		buf.WriteInt( relation );
+	}
+	buf.WriteInt( m_infiltrated_players.size() );
+	for ( const auto player_id : m_infiltrated_players ) {
+		buf.WriteInt( player_id );
 	}
 
 	return buf;
@@ -698,6 +748,22 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	infiltrated_players_t infiltrated_players = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto infiltration_count = buf.ReadCollectionSize( "player infiltration" );
+		if ( infiltration_count > MAX_INFILTRATED_PLAYERS ) {
+			THROW( "invalid serialized player infiltration count" );
+		}
+		for ( size_t i = 0 ; i < infiltration_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "infiltrated player ID" );
+			if ( player_id >= MAX_INFILTRATED_PLAYERS ) {
+				THROW( "invalid serialized infiltrated player ID" );
+			}
+			if ( !infiltrated_players.insert( player_id ).second ) {
+				THROW( "duplicate serialized infiltrated player ID" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -717,6 +783,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_social_engineering = std::move( social_engineering );
 	m_diplomatic_relations = std::move( diplomatic_relations );
 	m_diplomatic_offers = std::move( diplomatic_offers );
+	m_infiltrated_players = std::move( infiltrated_players );
 
 }
 

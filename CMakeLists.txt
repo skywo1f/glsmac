@@ -163,6 +163,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( PROBE_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/probe-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${PROBE_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME probe_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${PROBE_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_probe_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( probe_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "PROBE_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "PROBE_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( RESEARCH_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/research-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${RESEARCH_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME research_runtime_smoke COMMAND

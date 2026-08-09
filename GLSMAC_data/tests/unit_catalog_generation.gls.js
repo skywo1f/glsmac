@@ -2,7 +2,7 @@ const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 
 test.assert(units.generated_count > 92);
-test.assert(#sizeof(units.definitions) == units.generated_count + 10);
+test.assert(#sizeof(units.definitions) == units.generated_count + 11);
 
 let ids = {};
 let found_late_land_assault = false;
@@ -19,6 +19,7 @@ let found_clean_unit = false;
 let found_trained_unit = false;
 let found_super_former = false;
 let found_fungicidal_former = false;
+let found_probe_team = false;
 for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const entry = units.definitions[i];
 	test.assert(!#is_defined(ids[entry.id]));
@@ -34,7 +35,13 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	test.assert(#typeof(data.abilities) == 'Array');
 	test.assert(data.operational_range >= 0);
 	test.assert(#typeof(data.is_missile) == 'Bool');
-	if (i < 10) {
+	if (entry.id == 'ProbeTeam') {
+		test.assert(data.weapon == 'ProbeTeam');
+		test.assert(data.required_technology == 'PlanetaryNetworks');
+		test.assert(data.movement_per_turn == 2);
+		found_probe_team = true;
+	}
+	if (i < 11) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);
@@ -107,3 +114,4 @@ test.assert(found_clean_unit);
 test.assert(found_trained_unit);
 test.assert(found_super_former);
 test.assert(found_fungicidal_former);
+test.assert(found_probe_team);

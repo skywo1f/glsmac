@@ -1,0 +1,481 @@
+const base_capture = #include('../base_capture');
+
+const get_target_player = (game, operation, target) => {
+	return operation == 'subvert_unit'
+		? game.get_player(target.owner)
+		: target.get_owner();
+};
+
+const get_sabotage_facilities = (base) => {
+	let result = [];
+	for (facility of base.get_facilities()) {
+		if (!facility.is_project && facility.id != 'Headquarters') {
+			result :+facility.id;
+		}
+	}
+	return result;
+};
+
+const snapshot_unit = (unit) => {
+	const tile = unit.get_tile();
+	return {
+		id: unit.id,
+		def: unit.def,
+		owner: unit.owner,
+		tile_x: tile.x,
+		tile_y: tile.y,
+		movement: unit.movement,
+		morale: unit.morale,
+		health: unit.health,
+		moved_this_turn: unit.moved_this_turn,
+		terraforming: unit.terraforming,
+		terraforming_turns_remaining: unit.terraforming_turns_remaining,
+		home_base_id: unit.home_base_id,
+		fuel: unit.fuel,
+		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
+	};
+};
+
+const spawn_snapshot = (game, snapshot, owner_id, transferred) => {
+	const unit = game.um.spawn_unit({
+		id: snapshot.id,
+		def: snapshot.def,
+		owner: game.get_player(owner_id),
+		tile: game.tm.get_tile(snapshot.tile_x, snapshot.tile_y),
+		morale: snapshot.morale,
+		health: snapshot.health,
+		terraforming: transferred ? 'none' : snapshot.terraforming,
+		terraforming_turns_remaining: transferred ? 0 : snapshot.terraforming_turns_remaining,
+		home_base_id: transferred ? 0 : snapshot.home_base_id,
+		fuel: snapshot.fuel,
+		transport_id: snapshot.transport_id,
+	});
+	unit.movement = transferred ? 0.0 : snapshot.movement;
+	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
+	return unit;
+};
+
+const despawn_snapshots = (game, snapshots) => {
+	for (let i = #sizeof(snapshots) - 1; i >= 0; i--) {
+		if (game.um.has_unit(snapshots[i].id)) {
+			game.um.despawn_unit(game.um.get_unit(snapshots[i].id));
+		}
+	}
+};
+
+const spawn_snapshots = (game, snapshots, owner_id, transferred) => {
+	for (snapshot of snapshots) {
+		if (snapshot.transport_id == 0) {
+			spawn_snapshot(game, snapshot, owner_id, transferred);
+		}
+	}
+	for (snapshot of snapshots) {
+		if (snapshot.transport_id != 0) {
+			spawn_snapshot(game, snapshot, owner_id, transferred);
+		}
+	}
+};
+
+const restore_unit = (game, snapshot) => {
+	if (game.um.has_unit(snapshot.id)) {
+		game.um.despawn_unit(game.um.get_unit(snapshot.id));
+	}
+	return spawn_snapshot(game, snapshot, snapshot.owner, false);
+};
+
+const snapshot_pop_types = (base) => {
+	let result = [];
+	for (pop of base.get_pops()) {
+		result :+{pop: pop, type: pop.get_type()};
+	}
+	return result;
+};
+
+const restore_pop_types = (snapshots) => {
+	for (snapshot of snapshots) {
+		snapshot.pop.set_type(snapshot.type);
+	}
+};
+
+const refresh_base_psych = (game, base) => {
+	const get_psych = game.get('f_economy_get_base_psych');
+	const process_psych = game.get('f_base_process_psych');
+	if (#is_defined(get_psych) && #is_defined(process_psych)) {
+		process_psych(game, base, get_psych(game, base));
+	}
+};
+
+const snapshot_base_units = (game, base, owner_id) => {
+	let result = [];
+	const base_tile = base.get_tile();
+	for (unit of game.um.get_units()) {
+		const unit_tile = unit.get_tile();
+		if (
+			unit.owner == owner_id &&
+			(unit_tile == base_tile || unit_tile.is_adjactent_to(base_tile))
+		) {
+			result :+snapshot_unit(unit);
+		}
+	}
+	return result;
+};
+
+const promote_probe = (game, probe) => {
+	const morale_set = game.um.get_moraleset(probe.get_def().morale_set);
+	probe.morale = #min(probe.morale + 1, #sizeof(morale_set) - 1);
+};
+
+const get_result_message = (game, operation, target, resolved) => {
+	let message = '';
+	if (!resolved.success) {
+		message = 'Probe operation failed.';
+	} else if (operation == 'infiltrate') {
+		message = 'Datalinks infiltrated.';
+	} else if (operation == 'steal_technology') {
+		const resolver = game.get('f_technology_get_definition');
+		const definition = #is_defined(resolver) ? resolver(resolved.technology_id) : null;
+		message = 'Acquired ' + (
+			definition == null ? resolved.technology_id : definition.name
+		) + '.';
+	} else if (operation == 'sabotage') {
+		message = resolved.sabotage_facility_id == ''
+			? 'Destroyed accumulated minerals at ' + target.name + '.'
+			: 'Sabotaged ' + resolved.sabotage_facility_id + ' at ' + target.name + '.';
+	} else if (operation == 'drain_energy') {
+		message = 'Drained ' + #to_string(resolved.drain_amount) + ' energy credits.';
+	} else if (operation == 'subvert_unit') {
+		const definition = target.get_def();
+		message = 'Subverted ' + (
+			#is_defined(definition.name) ? definition.name : definition.id
+		) + ' for ' + #to_string(resolved.cost) + ' energy credits.';
+	} else if (operation == 'mind_control_base') {
+		message = 'Mind controlled ' + target.name + ' for ' +
+			#to_string(resolved.cost) + ' energy credits.';
+	}
+	if (resolved.detected) {
+		message += ' The operation was detected.';
+	}
+	if (!resolved.survives) {
+		message += ' Probe Team lost.';
+	}
+	return message;
+};
+
+const validate_base_operation = (e, actor, target_player) => {
+	const operation = e.data.operation;
+	const base = e.data.target;
+	if (
+		#typeof(base) != 'Object' || #typeof(base.get_owner) != 'Callable' ||
+		#typeof(base.get_size) != 'Callable' || #typeof(base.get_facilities) != 'Callable'
+	) {
+		return 'Probe operation target must be a base';
+	}
+	if (operation == 'infiltrate' && actor.has_infiltrated(target_player)) {
+		return 'Target faction datalinks are already infiltrated';
+	}
+	if (
+		operation == 'steal_technology' &&
+		#sizeof(e.game.get('f_probe_get_unknown_technologies')(actor, target_player)) == 0
+	) {
+		return 'Target faction has no technology available to steal';
+	}
+	if (
+		operation == 'sabotage' && base.get_accumulated_minerals() <= 0 &&
+		#sizeof(get_sabotage_facilities(base)) == 0
+	) {
+		return 'Target base has nothing available to sabotage';
+	}
+	if (
+		operation == 'drain_energy' &&
+		(target_player.energy_credits <= 0 || actor.energy_credits >= 1000000000)
+	) {
+		return 'No energy credits can be drained from the target';
+	}
+	if (operation == 'mind_control_base') {
+		const cost = e.game.get('f_probe_get_mind_control_cost')(actor, base);
+		if (cost == null) {
+			return base.has_facility('Headquarters')
+				? 'A headquarters base cannot be mind controlled'
+				: 'Target faction is immune to mind control';
+		}
+		if (actor.energy_credits < cost) {
+			return 'Not enough energy credits to mind control this base';
+		}
+	}
+};
+
+return {
+	validate: (e) => {
+		const probe = e.data.unit;
+		if (#typeof(probe) != 'Object' || #typeof(probe.get_def) != 'Callable') {
+			return 'Probe operation requires a unit';
+		}
+		if (probe.owner != e.caller) {
+			return 'Probe Team can only be ordered by its owner';
+		}
+		if (e.game.is_turn_complete(e.caller)) {
+			return 'Player has already completed this turn';
+		}
+		if (!e.game.get('f_probe_is_unit')(probe)) {
+			return 'Only a Probe Team can perform probe operations';
+		}
+		if (probe.health <= 0.0 || probe.movement <= 0.0) {
+			return 'Probe Team is unable to act';
+		}
+		if (#is_defined(probe.transport_id) && probe.transport_id > 0) {
+			return 'Embarked Probe Team must disembark before acting';
+		}
+		if (probe.terraforming != 'none') {
+			return 'Probe Team cannot act while terraforming';
+		}
+
+		const operations = e.game.get('f_probe_get_operations')();
+		const operation = e.data.operation;
+		if (#typeof(operation) != 'String' || !#is_defined(operations[operation])) {
+			return 'Unknown probe operation';
+		}
+		const target = e.data.target;
+		if (#typeof(target) != 'Object' || #typeof(target.get_tile) != 'Callable') {
+			return 'Probe operation requires a target';
+		}
+		if (!probe.get_tile().is_adjactent_to(target.get_tile())) {
+			return 'Probe operation target must be adjacent';
+		}
+		const actor = e.game.get_player(e.caller);
+		if (
+			operations[operation].target == 'base' &&
+			#typeof(target.get_owner) != 'Callable'
+		) {
+			return 'Probe operation target must be a base';
+		}
+		const target_player = get_target_player(e.game, operation, target);
+		if (target_player.id == actor.id) {
+			return 'Probe Team cannot target its own faction';
+		}
+		if (e.game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')) {
+			return 'The Hunter-Seeker Algorithm blocks this probe operation';
+		}
+
+		if (operations[operation].target == 'base') {
+			return validate_base_operation(e, actor, target_player);
+		}
+		if (
+			#typeof(target.get_def) != 'Callable' || target.health <= 0.0 ||
+			(#is_defined(target.transport_id) && target.transport_id > 0)
+		) {
+			return 'Probe subversion target must be an active, unembarked unit';
+		}
+		if (#is_defined(target.get_cargo) && #sizeof(target.get_cargo()) > 0) {
+			return 'A transport carrying units cannot be subverted';
+		}
+		const cost = e.game.get('f_probe_get_subversion_cost')(actor, target);
+		if (cost == null) {
+			return 'Target faction is immune to unit subversion';
+		}
+		if (actor.energy_credits < cost) {
+			return 'Not enough energy credits to subvert this unit';
+		}
+	},
+
+	resolve: (e) => {
+		const operation = e.data.operation;
+		const actor = e.game.get_player(e.caller);
+		const target_player = get_target_player(e.game, operation, e.data.target);
+		const chance = e.game.get('f_probe_get_success_chance')(
+			e.data.unit,
+			target_player,
+			operation
+		);
+		const paid = operation == 'subvert_unit' || operation == 'mind_control_base';
+		const success = paid || e.game.random.get_int(1, 100) <= chance;
+		const detected = paid || !success || e.game.random.get_int(1, 100) <= 35;
+		const survives = paid || e.game.random.get_int(1, 100) <= (success ? 85 : 35);
+		let result = {
+			success: success,
+			detected: detected,
+			survives: survives,
+			chance: chance,
+			cost: 0,
+			technology_id: '',
+			sabotage_facility_id: '',
+			drain_amount: 0,
+		};
+		if (operation == 'subvert_unit') {
+			result.cost = e.game.get('f_probe_get_subversion_cost')(actor, e.data.target);
+		} else if (operation == 'mind_control_base') {
+			result.cost = e.game.get('f_probe_get_mind_control_cost')(actor, e.data.target);
+		} else if (success && operation == 'steal_technology') {
+			const unknown = e.game.get('f_probe_get_unknown_technologies')(actor, target_player);
+			result.technology_id = unknown[e.game.random.get_int(0, #sizeof(unknown) - 1)];
+		} else if (success && operation == 'sabotage') {
+			const facilities = get_sabotage_facilities(e.data.target);
+			if (
+				#sizeof(facilities) > 0 &&
+				(e.data.target.get_accumulated_minerals() <= 0 || e.game.random.get_int(0, 1) == 1)
+			) {
+				result.sabotage_facility_id = facilities[
+					e.game.random.get_int(0, #sizeof(facilities) - 1)
+				];
+			}
+		} else if (success && operation == 'drain_energy') {
+			const room = 1000000000 - actor.energy_credits;
+			result.drain_amount = #min(
+				room,
+				#min(
+					target_player.energy_credits,
+					#max(1, #floor(#to_float(target_player.energy_credits) / 4.0))
+				)
+			);
+		}
+		return result;
+	},
+
+	apply: (e) => {
+		const operation = e.data.operation;
+		const probe = e.data.unit;
+		const actor = e.game.get_player(e.caller);
+		const target_player = get_target_player(e.game, operation, e.data.target);
+		const result_message = get_result_message(
+			e.game,
+			operation,
+			e.data.target,
+			e.resolved
+		);
+		let applied = {
+			probe: snapshot_unit(probe),
+			target_player_id: target_player.id,
+			actor_energy: actor.energy_credits,
+			target_energy: target_player.energy_credits,
+			infiltrated: actor.has_infiltrated(target_player),
+		};
+
+		if (e.resolved.cost > 0) {
+			actor.set_energy_credits(actor.energy_credits - e.resolved.cost);
+		}
+		probe.movement = 0.0;
+		probe.moved_this_turn = true;
+
+		if (e.resolved.success && operation == 'infiltrate') {
+			actor.set_infiltrated(target_player, true);
+		} else if (e.resolved.success && operation == 'steal_technology') {
+			applied.research = actor.get_research_state();
+			let technologies = [];
+			for (id of applied.research.technologies) {
+				technologies :+id;
+			}
+			technologies :+e.resolved.technology_id;
+			let target = applied.research.target;
+			let progress = applied.research.progress;
+			if (target == e.resolved.technology_id) {
+				target = e.game.get('f_technology_get_next_target')(technologies, actor);
+				if (target == '') {
+					progress = 0;
+				}
+			}
+			actor.set_research_state({technologies: technologies, target: target, progress: progress});
+			e.game.trigger('research_updated', {player: actor});
+		} else if (e.resolved.success && operation == 'sabotage') {
+			const base = e.data.target;
+			applied.base_minerals = base.get_accumulated_minerals();
+			applied.pop_types = snapshot_pop_types(base);
+			if (e.resolved.sabotage_facility_id == '') {
+				base.set_accumulated_minerals(0);
+			} else {
+				base.remove_facility(e.resolved.sabotage_facility_id);
+				refresh_base_psych(e.game, base);
+			}
+			e.game.trigger('update_base', {base: base});
+		} else if (e.resolved.success && operation == 'drain_energy') {
+			actor.set_energy_credits(actor.energy_credits + e.resolved.drain_amount);
+			target_player.set_energy_credits(target_player.energy_credits - e.resolved.drain_amount);
+		} else if (e.resolved.success && operation == 'subvert_unit') {
+			applied.transferred_units = [snapshot_unit(e.data.target)];
+			despawn_snapshots(e.game, applied.transferred_units);
+			spawn_snapshots(e.game, applied.transferred_units, actor.id, true);
+		} else if (e.resolved.success && operation == 'mind_control_base') {
+			const base = e.data.target;
+			applied.pop_types = snapshot_pop_types(base);
+			applied.transferred_units = snapshot_base_units(e.game, base, target_player.id);
+			despawn_snapshots(e.game, applied.transferred_units);
+			applied.base_capture = base_capture.capture_base(e.game, base, actor);
+			spawn_snapshots(e.game, applied.transferred_units, actor.id, true);
+			refresh_base_psych(e.game, base);
+			e.game.trigger('update_base', {base: base});
+		}
+
+		if (e.resolved.success && e.resolved.survives && e.game.um.has_unit(probe.id)) {
+			promote_probe(e.game, probe);
+		}
+		if (!e.resolved.survives && e.game.um.has_unit(probe.id)) {
+			e.game.um.despawn_unit(probe);
+		}
+
+		if (e.resolved.detected) {
+			applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(actor, target_player);
+			e.game.get('f_diplomacy_set_bilateral_relation')(actor, target_player, 'vendetta');
+			e.game.get('f_diplomacy_clear_offers')(actor, target_player);
+			e.game.trigger('diplomacy_updated', {
+				player: actor,
+				target: target_player,
+				relation: 'vendetta',
+			});
+		}
+		e.game.trigger('economy_updated', {player: actor});
+		e.game.trigger('economy_updated', {player: target_player});
+		e.game.trigger('probe_operation', {
+			player: actor,
+			target: target_player,
+			operation: operation,
+			success: e.resolved.success,
+			detected: e.resolved.detected,
+		});
+		e.game.message(result_message);
+		return applied;
+	},
+
+	rollback: (e) => {
+		const operation = e.data.operation;
+		const actor = e.game.get_player(e.caller);
+		const target_player = e.game.get_player(e.applied.target_player_id);
+		if (#is_defined(e.applied.transferred_units)) {
+			despawn_snapshots(e.game, e.applied.transferred_units);
+			spawn_snapshots(e.game, e.applied.transferred_units, target_player.id, false);
+		}
+		if (#is_defined(e.applied.base_capture)) {
+			base_capture.restore_base(e.data.target, e.applied.base_capture);
+		}
+		if (#is_defined(e.applied.base_minerals)) {
+			e.data.target.set_accumulated_minerals(e.applied.base_minerals);
+		}
+		if (
+			operation == 'sabotage' && e.resolved.sabotage_facility_id != '' &&
+			!e.data.target.has_facility(e.resolved.sabotage_facility_id)
+		) {
+			e.data.target.add_facility(e.resolved.sabotage_facility_id);
+		}
+		if (#is_defined(e.applied.pop_types)) {
+			restore_pop_types(e.applied.pop_types);
+		}
+		if (#is_defined(e.applied.research)) {
+			actor.set_research_state(e.applied.research);
+			e.game.trigger('research_updated', {player: actor});
+		}
+		actor.set_infiltrated(target_player, e.applied.infiltrated);
+		actor.set_energy_credits(e.applied.actor_energy);
+		target_player.set_energy_credits(e.applied.target_energy);
+		restore_unit(e.game, e.applied.probe);
+		if (#is_defined(e.applied.diplomacy)) {
+			e.game.get('f_diplomacy_restore_pair')(actor, target_player, e.applied.diplomacy);
+			e.game.trigger('diplomacy_updated', {
+				player: actor,
+				target: target_player,
+				relation: e.applied.diplomacy.player_relation,
+			});
+		}
+		e.game.trigger('economy_updated', {player: actor});
+		e.game.trigger('economy_updated', {player: target_player});
+		if (operation == 'sabotage' || operation == 'mind_control_base') {
+			e.game.trigger('update_base', {base: e.data.target});
+		}
+	},
+};

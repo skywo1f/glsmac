@@ -189,7 +189,16 @@ return {
 					);
 				}
 
-				if (is_owned && object.transport_id == 0 && def.can_found_base) {
+				if (
+					is_owned && object.transport_id == 0 && def.weapon == 'ProbeTeam' &&
+					object.movement > 0.0
+				) {
+					this.action_unit = object;
+					this.action_mode = 'probe';
+					this.action_button.text = 'PROBE ACTION';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (is_owned && object.transport_id == 0 && def.can_found_base) {
 					this.action_unit = object;
 					this.action_mode = 'found_base';
 					this.action_button.text = 'BUILD BASE';
@@ -307,6 +316,9 @@ return {
 					this.terraform_menu_open = true;
 					this.action_button.active = true;
 				}
+			} else if (this.action_mode == 'probe') {
+				p.modules.popup.set('probe_operations', {unit: this.action_unit});
+				p.modules.popup.show('probe_operations');
 			}
 			return true;
 		});
