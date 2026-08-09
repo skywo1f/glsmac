@@ -1,5 +1,8 @@
 const terraforming = #include('terraforming');
 const air = #include('air');
+const unit_abilities = #include('../game/unit_abilities');
+
+const FIELD_REPAIR_MAX_HEALTH = 0.8;
 
 const facility_repairs_unit = (facility, def) => {
 	return (
@@ -24,9 +27,10 @@ const get_repair = (unit, def, project_effects, base_facilities) => {
 	if (#is_defined(project_effects) && project_effects.full_repair) {
 		return def.health_max - unit.health;
 	}
-	let repair = def.health_per_turn;
-	const base = unit.get_tile().get_base();
-	if (base != null && base.get_owner().id == unit.owner) {
+	const tile = unit.get_tile();
+	const base = tile.get_base();
+	const is_friendly_base = base != null && base.get_owner().id == unit.owner;
+	if (is_friendly_base) {
 		if (#is_defined(base_facilities)) {
 			for (facility of base_facilities) {
 				if (facility_repairs_unit(facility, def)) {
@@ -34,9 +38,42 @@ const get_repair = (unit, def, project_effects, base_facilities) => {
 				}
 			}
 		}
+	}
+	const maximum_repaired_health = is_friendly_base
+		? def.health_max
+		: #min(def.health_max, FIELD_REPAIR_MAX_HEALTH);
+	if (unit.health >= maximum_repaired_health) {
+		return 0.0;
+	}
+	let repair = def.health_per_turn;
+	if (is_friendly_base) {
 		repair *= 2.0;
 	}
-	return #min(repair, def.health_max - unit.health);
+	if (#is_defined(tile.terraforming)) {
+		if (
+			#is_defined(def.is_air) && def.is_air &&
+			#is_defined(tile.terraforming.airbase) && tile.terraforming.airbase
+		) {
+			repair += def.health_per_turn;
+		}
+		if (
+			#is_defined(def.is_land) && def.is_land &&
+			#is_defined(tile.terraforming.bunker) && tile.terraforming.bunker
+		) {
+			repair += def.health_per_turn;
+		}
+	}
+	if (
+		#is_defined(def.is_land) && def.is_land &&
+		#is_defined(unit.is_embarked) && unit.is_embarked &&
+		#is_defined(unit.get_transport)
+	) {
+		const transport = unit.get_transport();
+		if (transport != null && unit_abilities.has(transport, 'RepairBay')) {
+			repair *= 2.0;
+		}
+	}
+	return #min(repair, maximum_repaired_health - unit.health);
 };
 
 const get_movement = (unit, def, project_effects) => {
@@ -50,6 +87,7 @@ const get_movement = (unit, def, project_effects) => {
 const result = {
 	get_repair: get_repair,
 	facility_repairs_unit: facility_repairs_unit,
+	FIELD_REPAIR_MAX_HEALTH: FIELD_REPAIR_MAX_HEALTH,
 	get_movement: get_movement,
 	get_air_turn_state: air.get_turn_state,
 

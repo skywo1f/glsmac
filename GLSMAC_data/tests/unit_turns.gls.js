@@ -42,6 +42,15 @@ test.assert(repair == 0.0);
 repair = turns.get_repair(make_unit(friendly_tile, 0.95, false, 'none'), def);
 test.assert(repair > 0.049 && repair < 0.051);
 
+repair = turns.get_repair(make_unit(field_tile, 0.75, false, 'none'), def);
+test.assert(repair > 0.049 && repair < 0.051);
+
+repair = turns.get_repair(make_unit(field_tile, 0.8, false, 'none'), def);
+test.assert(repair == 0.0);
+
+repair = turns.get_repair(make_unit(field_tile, 0.9, false, 'none'), def);
+test.assert(repair == 0.0);
+
 repair = turns.get_repair(make_unit(friendly_tile, 1.0, false, 'none'), def);
 test.assert(repair == 0.0);
 
@@ -51,6 +60,13 @@ repair = turns.get_repair(
 	{full_repair: true}
 );
 test.assert(repair == 0.5);
+
+repair = turns.get_repair(
+	make_unit(field_tile, 0.9, false, 'none'),
+	def,
+	{full_repair: true}
+);
+test.assert(repair > 0.099 && repair < 0.101);
 
 const land_def = {
 	health_max: 1.0,
@@ -96,6 +112,50 @@ test.assert(turns.facility_repairs_unit(
 	{is_land: false, is_water: false, is_air: true, is_native: false}
 ));
 test.assert(!turns.facility_repairs_unit({full_repair_air: true}, land_def));
+
+const bunker_tile = {
+	terraforming: {bunker: true, airbase: false},
+	get_base: () => { return null; },
+};
+repair = turns.get_repair(
+	make_unit(bunker_tile, 0.5, false, 'none'),
+	land_def,
+	{full_repair: false}
+);
+test.assert(repair > 0.199 && repair < 0.201);
+
+const airbase_tile = {
+	terraforming: {bunker: false, airbase: true},
+	get_base: () => { return null; },
+};
+const air_def = {
+	health_max: 1.0,
+	health_per_turn: 0.1,
+	is_land: false,
+	is_water: false,
+	is_air: true,
+	is_native: false,
+};
+repair = turns.get_repair(
+	make_unit(airbase_tile, 0.5, false, 'none'),
+	air_def,
+	{full_repair: false}
+);
+test.assert(repair > 0.199 && repair < 0.201);
+
+const repair_bay_unit = {
+	owner: owner.id,
+	health: 0.5,
+	moved_this_turn: false,
+	terraforming: 'none',
+	is_embarked: true,
+	get_tile: () => { return field_tile; },
+	get_transport: () => {
+		return {get_def: () => { return {abilities: ['RepairBay']}; }};
+	},
+};
+repair = turns.get_repair(repair_bay_unit, land_def, {full_repair: false});
+test.assert(repair > 0.199 && repair < 0.201);
 
 const naval_def = {
 	health_max: 1.0,

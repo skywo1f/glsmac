@@ -14,6 +14,7 @@
 	let turn_three_advance_requested = false;
 	let former_id = 0;
 	let fungus_former_id = 0;
+	let field_repair_unit_id = 0;
 	let terraform_site = null;
 	let fungus_site = null;
 	let terraform_site_resources = null;
@@ -283,6 +284,14 @@
 				former.set_terraforming_order('forest', 1);
 				former.set_terraforming_order('none', 0);
 				former_id = former.id;
+				const field_repair_unit = um.spawn_unit({
+					def: 'ScoutPatrol',
+					owner: game.get_player(),
+					tile: terraform_site,
+					morale: 2,
+					health: 0.75,
+				});
+				field_repair_unit_id = field_repair_unit.id;
 
 				const tm = game.get_tm();
 				for (let y = 0; y < tm.get_map_height(); y++) {
@@ -369,9 +378,12 @@
 				}
 				const former = game.get_um().get_unit(former_id);
 				const fungus_former = game.get_um().get_unit(fungus_former_id);
+				const field_repair_unit = game.get_um().get_unit(field_repair_unit_id);
 				if (
 					game.get_um().get_unit(1).health < 0.699 ||
 					game.get_um().get_unit(1).health > 0.701 ||
+					field_repair_unit.health < 0.799 ||
+					field_repair_unit.health > 0.801 ||
 					former.health != 0.5 ||
 					former.terraforming != 'farm' ||
 					former.terraforming_turns_remaining != 3 ||
@@ -427,6 +439,8 @@
 					!bases[0].has_facility('CommandCenter') ||
 					#sizeof(bases[0].get_tile().get_units()) <= starting_base_unit_count ||
 					game.get_um().get_unit(1).health != 1.0 ||
+					game.get_um().get_unit(field_repair_unit_id).health < 0.799 ||
+					game.get_um().get_unit(field_repair_unit_id).health > 0.801 ||
 					former.health != 0.5 ||
 					!produced_unit_has_home_base
 				) {
