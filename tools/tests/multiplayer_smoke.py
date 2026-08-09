@@ -238,6 +238,7 @@ def run(args):
         "--port", str(args.port),
         "--skipintro",
         "--nosound",
+        "--headless",
         "--windowed",
         "--window-size", "1024x768",
         "--verbose",

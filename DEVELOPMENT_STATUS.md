@@ -79,27 +79,31 @@ development build rather than a finished replacement for the original game.
 ## Test Status
 
 The Release CTest matrix contains 74 cases: 58 isolated native/script GSE tests
-and 16 asset-backed runtime scenarios. All current cases pass in one
-uninterrupted invocation on the tested Windows machine. The same 58 GSE cases
-also pass in the MSVC AddressSanitizer configuration. Script isolation keeps
-allocator lifetime bounded and reports the exact script that fails.
+and 16 asset-backed runtime scenarios. The matrix has completed all 74 cases in
+one uninterrupted invocation on the tested Windows machine, but long runtime
+timing and process-lifecycle cases remain intermittently unstable. The same 58
+GSE cases also pass in the MSVC AddressSanitizer configuration. Script isolation
+keeps allocator lifetime bounded and reports the exact script that fails.
 
-The current Release matrix passed 74/74 in one uninterrupted 688.11-second
-invocation. The current sanitizer matrix passed 58/58 in two bounded
+The last all-green Release matrix passed 74/74 in one uninterrupted
+688.11-second invocation. A later full validation passed 72/74 in 768.06
+seconds: the economy soak reached turn 60 before its 300-second ceiling, and
+the running-reconnect client's process exited normally before its colony marker.
+The current sanitizer matrix passed 58/58 in two bounded
 invocations: tests 1-29 passed in 752.26 seconds and tests 30-58 passed in 58.47
 seconds. The split keeps every command below the 15-minute development limit;
 six asset-catalog validation cases account for most of the first half's time.
 
-The general gameplay, AI conquest, and AI air runtime scenarios use the
-test-only `--headless` mode. It retains the real asset loaders, UI scripts,
-frontend/backend game modules, scheduler, and networking while replacing
-graphics, input, and audio with null modules and immediately acknowledging
-animation requests. Other runtime scenarios remain rendered: applying headless
-mode globally slowed the long economy soak until it timed out, so the faster
-path is deliberately selective. A fixed 100 ms air-unit lifecycle assertion
-was also replaced by a bounded asynchronous poll after the old check
-intermittently ran one callback before the expected despawn; the corrected
-scenario passed five consecutive fresh-process repeats.
+The general gameplay, AI conquest, AI air, AI hurry, and multiplayer runtime
+scenarios use the test-only `--headless` mode. It retains the real asset loaders,
+UI scripts, frontend/backend game modules, scheduler, and networking while
+replacing graphics, input, and audio with null modules and immediately
+acknowledging animation requests. Other runtime scenarios remain rendered:
+applying headless mode globally slowed the long economy soak until it timed out,
+so the faster path is deliberately selective. The AI hurry test now exits
+immediately after its pass condition instead of allowing another AI turn to
+start during delayed shutdown. AI hurry and multiplayer each passed five
+consecutive fresh-process repeats after these changes.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;
