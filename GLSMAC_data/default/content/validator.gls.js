@@ -55,6 +55,7 @@ const facility_fields = {
 	full_repair_water: true,
 	full_repair_air: true,
 	full_repair_native: true,
+	defender_morale_bonus: true,
 	global_prevent_riots: true,
 	global_terraforming_rate_multiplier: true,
 	new_base_population: true,
@@ -489,6 +490,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_bool(data, 'full_repair_water', path, errors, false);
 		validate_bool(data, 'full_repair_air', path, errors, false);
 		validate_bool(data, 'full_repair_native', path, errors, false);
+		validate_int(data, 'defender_morale_bonus', path, errors, false, 0, 10);
 		validate_bool(data, 'global_prevent_riots', path, errors, false);
 		validate_number(data, 'global_terraforming_rate_multiplier', path, errors, false, 1.0, 10.0);
 		validate_int(data, 'new_base_population', path, errors, false, 0, MAX_DEFINITION_VALUE);
@@ -605,6 +607,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.full_repair_water) && data.full_repair_water) ||
 			(#is_defined(data.full_repair_air) && data.full_repair_air) ||
 			(#is_defined(data.full_repair_native) && data.full_repair_native) ||
+			(#is_defined(data.defender_morale_bonus) && data.defender_morale_bonus > 0) ||
 			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots) ||
 			(
 				#is_defined(data.global_terraforming_rate_multiplier) &&

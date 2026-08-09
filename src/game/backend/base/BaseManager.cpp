@@ -396,6 +396,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( bool, full_repair_water, def, "full_repair_water", Bool, false );
 				N_GETPROP_OPT( bool, full_repair_air, def, "full_repair_air", Bool, false );
 				N_GETPROP_OPT( bool, full_repair_native, def, "full_repair_native", Bool, false );
+				N_GETPROP_OPT( int64_t, defender_morale_bonus, def, "defender_morale_bonus", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -473,6 +474,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					forest_mineral_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					forest_energy_bonus < 0 ||
 					forest_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					defender_morale_bonus < 0 ||
+					defender_morale_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -582,7 +585,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					full_repair_land,
 					full_repair_water,
 					full_repair_air,
-					full_repair_native
+					full_repair_native,
+					defender_morale_bonus
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

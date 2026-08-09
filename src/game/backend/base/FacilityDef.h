@@ -83,7 +83,8 @@ public:
 		const bool full_repair_land = false,
 		const bool full_repair_water = false,
 		const bool full_repair_air = false,
-		const bool full_repair_native = false
+		const bool full_repair_native = false,
+		const int64_t defender_morale_bonus = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -143,6 +144,7 @@ public:
 	const bool m_full_repair_water;
 	const bool m_full_repair_air;
 	const bool m_full_repair_native;
+	const int64_t m_defender_morale_bonus;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

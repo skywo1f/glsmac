@@ -65,7 +65,8 @@ FacilityDef::FacilityDef(
 	const bool full_repair_land,
 	const bool full_repair_water,
 	const bool full_repair_air,
-	const bool full_repair_native
+	const bool full_repair_native,
+	const int64_t defender_morale_bonus
 )
 	: m_id( id )
 	, m_name( name )
@@ -122,7 +123,8 @@ FacilityDef::FacilityDef(
 	, m_full_repair_land( full_repair_land )
 	, m_full_repair_water( full_repair_water )
 	, m_full_repair_air( full_repair_air )
-	, m_full_repair_native( full_repair_native ) {
+	, m_full_repair_native( full_repair_native )
+	, m_defender_morale_bonus( defender_morale_bonus ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -180,6 +182,8 @@ FacilityDef::FacilityDef(
 		m_forest_mineral_bonus > MAX_RESOURCE_BONUS ||
 		m_forest_energy_bonus < 0 ||
 		m_forest_energy_bonus > MAX_RESOURCE_BONUS ||
+		m_defender_morale_bonus < 0 ||
+		m_defender_morale_bonus > MAX_UNIT_MORALE_BONUS ||
 		!m_is_project && (
 			!m_granted_facility.empty() ||
 			m_global_talent_bonus != 0 ||
@@ -296,6 +300,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteBool( def->m_full_repair_water );
 	buf.WriteBool( def->m_full_repair_air );
 	buf.WriteBool( def->m_full_repair_native );
+	buf.WriteInt( def->m_defender_morale_bonus );
 	return buf;
 }
 
@@ -356,6 +361,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto full_repair_water = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	const auto full_repair_air = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	const auto full_repair_native = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto defender_morale_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -412,7 +418,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		full_repair_land,
 		full_repair_water,
 		full_repair_air,
-		full_repair_native
+		full_repair_native,
+		defender_morale_bonus
 	);
 }
 
@@ -645,6 +652,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"full_repair_native",
 			VALUE( gse::value::Bool, , m_full_repair_native )
+		},
+		{
+			"defender_morale_bonus",
+			VALUE( gse::value::Int, , m_defender_morale_bonus )
 		},
 	};
 WRAPIMPL_END_PTR()

@@ -1,7 +1,7 @@
 const manifest = #include('content/base_facilities');
 
 const effects = {
-	Headquarters: {energy_bonus: 1},
+	Headquarters: {energy_bonus: 1, defender_morale_bonus: 1},
 	ChildrenSCreche: {growth_rating_bonus: 2},
 	RecyclingTanks: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
 	PerimeterDefense: {defense_multiplier: 2.0},

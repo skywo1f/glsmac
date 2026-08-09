@@ -65,6 +65,7 @@ test.assert(result.errors == []);
 test.assert(get_facility(make_catalog(), 'TreeFarm').data.forest_nutrient_bonus == 1);
 test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_nutrient_bonus == 1);
 test.assert(get_facility(make_catalog(), 'HybridForest').data.forest_energy_bonus == 1);
+test.assert(get_facility(make_catalog(), 'Headquarters').data.defender_morale_bonus == 1);
 test.assert(get_facility(make_catalog(), 'BiologyLab').data.full_repair_native);
 test.assert(get_facility(make_catalog(), 'CommandCenter').data.full_repair_land);
 test.assert(get_facility(make_catalog(), 'NavalYard').data.full_repair_water);

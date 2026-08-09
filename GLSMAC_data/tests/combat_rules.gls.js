@@ -57,6 +57,14 @@ const defender = make_unit(base_tile, 2, 1, 2, false, 'land');
 test.assert(combat_rules.get_base_defense_multiplier(defender) == 1.0);
 test.assert(combat_rules.get_combat_powers(attacker, defender).defence == 2.5);
 
+const headquarters_tile = make_tile();
+make_base(headquarters_tile, 2, [{defense_multiplier: 1.0, defender_morale_bonus: 1}]);
+const headquarters_defender = make_unit(headquarters_tile, 2, 1, 2, false, 'land');
+test.assert(combat_rules.get_base_defender_morale_bonus(headquarters_defender) == 1);
+test.assert(combat_rules.get_combat_powers(attacker, headquarters_defender).defence == 2.8125);
+const headquarters_occupier = make_unit(headquarters_tile, 3, 1, 2, false, 'land');
+test.assert(combat_rules.get_base_defender_morale_bonus(headquarters_occupier) == 0);
+
 facilities :+{defense_multiplier: 2.0};
 test.assert(combat_rules.get_base_defense_multiplier(defender) == 2.0);
 test.assert(combat_rules.get_combat_powers(attacker, defender).defence == 5.0);
@@ -73,6 +81,9 @@ test.assert(combat_rules.get_combat_powers(native_attacker, defender).defence ==
 
 const project_psi_game = {
 	get: (key) => {
+		if (key == 'f_base_get_effective_facilities') {
+			return (base) => { return base.get_facilities(); };
+		}
 		test.assert(key == 'f_project_get_player_effects');
 		return (player) => {
 			return player.id == native_attacker.owner
@@ -141,6 +152,13 @@ test.assert(combat_rules.get_combat_powers(attacker, conventional_psi_defender).
 
 test.assert(combat_rules.is_artillery({id: 'TestArtillery', is_artillery: true}));
 test.assert(!combat_rules.is_artillery({id: 'SporeLauncher', is_artillery: false}));
+const artillery_attacker = make_unit(attack_tile, 1, 2, 1, false, 'land');
+artillery_attacker.get_def = () => {
+	return {id: 'TestArtillery', is_artillery: true, offense: 2, defense: 1};
+};
+test.assert(
+	combat_rules.get_artillery_powers(artillery_attacker, headquarters_defender).defence == 2.25
+);
 
 const ability_attacker = make_unit(attack_tile, 1, 2, 1, false, 'land');
 ability_attacker.get_def = () => {

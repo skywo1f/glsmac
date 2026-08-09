@@ -6,8 +6,35 @@ const is_artillery = (def) => {
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };
 
-const get_morale_multiplier = (unit) => {
-	return 0.75 + #to_float(unit.morale) * 0.125;
+const get_morale_multiplier = (unit, bonus) => {
+	const value_bonus = #is_defined(bonus) ? bonus : 0;
+	return 0.75 + #to_float(unit.morale + value_bonus) * 0.125;
+};
+
+const get_base_defender_morale_bonus = (defender, game) => {
+	if (!#is_defined(defender.get_tile)) {
+		return 0;
+	}
+	const base = defender.get_tile().get_base();
+	if (
+		base == null ||
+		!#is_defined(base.get_owner) ||
+		!#is_defined(base.get_facilities) ||
+		base.get_owner().id != defender.owner
+	) {
+		return 0;
+	}
+	const resolver = #is_defined(game) && #is_defined(game.get)
+		? game.get('f_base_get_effective_facilities')
+		: #undefined;
+	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	let result = 0;
+	for (facility of facilities) {
+		result += #is_defined(facility.defender_morale_bonus)
+			? facility.defender_morale_bonus
+			: 0;
+	}
+	return result;
 };
 
 const get_base_defense_multiplier = (defender, attacker, game) => {
@@ -24,7 +51,10 @@ const get_base_defense_multiplier = (defender, attacker, game) => {
 	const resolver = #is_defined(game) ? game.get('f_base_get_effective_facilities') : #undefined;
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	for (facility of facilities) {
-		multiplier += #max(facility.defense_multiplier - 1.0, 0.0);
+		const facility_defense = #is_defined(facility.defense_multiplier)
+			? facility.defense_multiplier
+			: 1.0;
+		multiplier += #max(facility_defense - 1.0, 0.0);
 		if (#is_defined(attacker) && attacker.is_water) {
 			const scoped_multiplier = #is_defined(facility.water_defense_multiplier)
 				? facility.water_defense_multiplier
@@ -116,24 +146,30 @@ const get_combat_powers = (attacker, defender, game) => {
 	}
 	return {
 		attack: attack_strength * get_morale_multiplier(attacker) * attacker.health * attack_modifier,
-		defence: defence_strength * get_morale_multiplier(defender) * defender.health * defence_modifier,
+		defence: defence_strength * get_morale_multiplier(
+			defender,
+			get_base_defender_morale_bonus(defender, game)
+		) * defender.health * defence_modifier,
 	};
 };
 
-const get_artillery_powers = (attacker, defender) => {
+const get_artillery_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
 	return {
 		attack: #to_float(attacker_def.offense) * get_morale_multiplier(attacker) * attacker.health,
 		defence: #to_float(
 			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
-		) * get_morale_multiplier(defender) * defender.health,
+		) * get_morale_multiplier(
+			defender,
+			get_base_defender_morale_bonus(defender, game)
+		) * defender.health,
 	};
 };
 
 const get_attack_powers = (attacker, defender, game) => {
 	return is_artillery(attacker.get_def())
-		? get_artillery_powers(attacker, defender)
+		? get_artillery_powers(attacker, defender, game)
 		: get_combat_powers(attacker, defender, game);
 };
 
@@ -167,6 +203,7 @@ return {
 	is_artillery: is_artillery,
 	has_ability: has_ability,
 	get_morale_multiplier: get_morale_multiplier,
+	get_base_defender_morale_bonus: get_base_defender_morale_bonus,
 	get_base_defense_multiplier: get_base_defense_multiplier,
 	get_combat_powers: get_combat_powers,
 	get_artillery_powers: get_artillery_powers,
