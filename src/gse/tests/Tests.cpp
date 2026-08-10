@@ -257,8 +257,19 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
 				source.SetInfiltrated( 4, true );
+				const Player::diplomatic_trade_t trade = {
+					25,
+					"CentauriEcology",
+					0,
+					"IndustrialBase",
+				};
+				source.SetDiplomaticTrade( 5, trade );
 				Player cloned( &source );
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
+					"pending diplomatic trade was not cloned"
+				);
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
@@ -287,6 +298,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT( roundtrip.HasInfiltrated( 4 ), "player infiltration was not serialized" );
 				GT_ASSERT( !roundtrip.HasInfiltrated( 5 ), "missing player infiltration was present" );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 5 ) && *roundtrip.GetDiplomaticTrade( 5 ) == trade,
+					"pending diplomatic trade was not serialized"
+				);
+				roundtrip.ClearDiplomaticTrade( 5 );
+				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
 				roundtrip.SetInfiltrated( 4, false );
 				GT_ASSERT(
 					roundtrip.GetInfiltratedPlayers().empty(),
@@ -419,6 +436,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetMajorAtrocities() == 0,
 					"legacy player major atrocity count did not default to zero"
 				);
+				GT_ASSERT(
+					legacy.GetDiplomaticTrades().empty(),
+					"legacy player diplomatic trades did not default to empty"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -489,6 +510,29 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_major_atrocities = true;
 				}
 				GT_ASSERT( rejected_invalid_major_atrocities, "invalid player major atrocity count accepted" );
+
+				bool rejected_empty_trade = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticTrade( 1, {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_empty_trade = true;
+				}
+				GT_ASSERT( rejected_empty_trade, "empty diplomatic trade accepted" );
+
+				bool rejected_bidirectional_energy_trade = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticTrade( 1, { 10, "", 10, "" } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_bidirectional_energy_trade = true;
+				}
+				GT_ASSERT(
+					rejected_bidirectional_energy_trade,
+					"bidirectional diplomatic energy trade accepted"
+				);
 				GT_OK();
 			}
 		);

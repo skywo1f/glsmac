@@ -112,6 +112,28 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
 	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
 
+	struct diplomatic_trade_t {
+		int64_t offer_energy = 0;
+		std::string offer_technology = "";
+		int64_t request_energy = 0;
+		std::string request_technology = "";
+
+		bool operator==( const diplomatic_trade_t& other ) const {
+			return
+				offer_energy == other.offer_energy &&
+				offer_technology == other.offer_technology &&
+				request_energy == other.request_energy &&
+				request_technology == other.request_technology;
+		}
+	};
+	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
+	static constexpr size_t MAX_DIPLOMATIC_TRADES = 64;
+	static constexpr size_t MAX_DIPLOMATIC_TRADE_TECHNOLOGY_ID_LENGTH = 128;
+	const diplomatic_trades_t& GetDiplomaticTrades() const;
+	const diplomatic_trade_t* GetDiplomaticTrade( const size_t player_id ) const;
+	void SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_t& trade );
+	void ClearDiplomaticTrade( const size_t player_id );
+
 	using infiltrated_players_t = std::set< size_t >;
 	static constexpr size_t MAX_INFILTRATED_PLAYERS = 64;
 	const infiltrated_players_t& GetInfiltratedPlayers() const;
@@ -150,6 +172,7 @@ private:
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
 	infiltrated_players_t m_infiltrated_players = {};
+	diplomatic_trades_t m_diplomatic_trades = {};
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(

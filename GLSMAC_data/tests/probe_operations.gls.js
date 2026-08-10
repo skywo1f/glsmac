@@ -6,6 +6,7 @@ const make_player = (id, energy, technologies, target) => {
 	let infiltrated = {};
 	let relations = {};
 	let offers = {};
+	let trades = {};
 	let major_atrocities = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
@@ -45,7 +46,17 @@ const make_player = (id, energy, technologies, target) => {
 			return #is_defined(offers[key]) ? offers[key] : '';
 		};
 	player.set_diplomatic_offer = (other, value) => {
-			offers['p' + #to_string(other.id)] = value;
+		offers['p' + #to_string(other.id)] = value;
+		};
+	player.get_diplomatic_trade = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(trades[key]) ? trades[key] : null;
+		};
+	player.set_diplomatic_trade = (other, value) => {
+		trades['p' + #to_string(other.id)] = value;
+		};
+	player.clear_diplomatic_trade = (other) => {
+		trades['p' + #to_string(other.id)] = #undefined;
 		};
 	return player;
 };

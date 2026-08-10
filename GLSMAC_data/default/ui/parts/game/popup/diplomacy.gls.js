@@ -5,6 +5,35 @@ const relation_name = (relation) => {
 	return 'Neutral';
 };
 
+const technology_name = (game, id) => {
+	if (id == '') {
+		return '';
+	}
+	const definition = game.get('f_technology_get_definition')(id);
+	return definition == null ? id : definition.name;
+};
+
+const trade_side_text = (game, energy, technology) => {
+	let parts = [];
+	if (energy > 0) {
+		parts :+(#to_string(energy) + ' EC');
+	}
+	if (technology != '') {
+		parts :+technology_name(game, technology);
+	}
+	if (#sizeof(parts) == 0) {
+		return 'nothing';
+	}
+	return #sizeof(parts) == 1 ? parts[0] : parts[0] + ' + ' + parts[1];
+};
+
+const trade_text = (game, terms) => {
+	return (
+		'Offers ' + trade_side_text(game, terms.offer_energy, terms.offer_technology) +
+		'; requests ' + trade_side_text(game, terms.request_energy, terms.request_technology)
+	);
+};
+
 return {
 
 	init: (p) => {
@@ -14,17 +43,33 @@ return {
 		this.opponent_select = null;
 		this.relation_text = null;
 		this.offer_text = null;
+		this.trade_text = null;
+		this.trade_error = null;
 		this.offer_treaty = null;
 		this.offer_pact = null;
 		this.declare_vendetta = null;
 		this.accept_offer = null;
 		this.reject_offer = null;
+		this.offer_technology_label = null;
+		this.offer_technology = null;
+		this.offer_energy_label = null;
+		this.offer_energy = null;
+		this.request_technology_label = null;
+		this.request_technology = null;
+		this.request_energy_label = null;
+		this.request_energy = null;
+		this.propose_trade_button = null;
+		this.accept_trade = null;
+		this.reject_trade = null;
 
 		for (event_name of [
 			'diplomacy_updated',
 			'diplomatic_proposal',
 			'diplomatic_proposal_updated',
 			'diplomatic_proposal_resolved',
+			'diplomatic_trade_proposed',
+			'diplomatic_trade_updated',
+			'diplomatic_trade_resolved',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -32,7 +77,8 @@ return {
 					this.refresh();
 				}
 				if (
-					observed_event_name == 'diplomatic_proposal' &&
+					(observed_event_name == 'diplomatic_proposal' ||
+						observed_event_name == 'diplomatic_trade_proposed') &&
 					e.target.id == p.game.get_player().id
 				) {
 					p.modules.popup.show('diplomacy');
@@ -40,21 +86,11 @@ return {
 			});
 		}
 
-		return p.create('DIPLOMACY', 480, 226, (body, cb) => {
-			body.text({
-				class: 'game-popup-text',
-				text: 'Faction:',
-				left: 10,
-				top: 10,
-			});
+		return p.create('DIPLOMACY', 600, 454, (body, cb) => {
+			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});
 			this.opponent_select = body.select({
-				class: 'popup-list-select',
-				align: 'top right',
-				right: 10,
-				top: 8,
-				width: 300,
-				items: [['', 'No other factions']],
-				value: '',
+				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
+				width: 420, items: [['', 'No other factions']], value: '',
 			});
 			this.opponent_select.on('select', (e) => {
 				this.select_target(e.value);
@@ -62,77 +98,109 @@ return {
 			});
 
 			this.relation_text = body.text({
-				class: 'game-popup-text',
-				text: '',
-				left: 10,
-				right: 10,
-				top: 43,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 43,
 			});
 			this.offer_text = body.text({
-				class: 'game-popup-text',
-				text: '',
-				left: 10,
-				right: 10,
-				top: 65,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 65,
 			});
 
 			this.offer_treaty = body.button({
-				class: 'game-popup-button',
-				text: 'Propose Treaty',
-				top: 94,
+				class: 'game-popup-button', text: 'Propose Treaty', top: 94,
 			});
 			this.offer_treaty.on('click', (e) => {
-				this.propose('treaty');
+				this.propose_relation('treaty');
 				return true;
 			});
 			this.offer_pact = body.button({
-				class: 'game-popup-button',
-				text: 'Propose Pact',
-				top: 118,
+				class: 'game-popup-button', text: 'Propose Pact', top: 118,
 			});
 			this.offer_pact.on('click', (e) => {
-				this.propose('pact');
+				this.propose_relation('pact');
 				return true;
 			});
 			this.declare_vendetta = body.button({
-				class: 'game-popup-button',
-				text: 'Declare Vendetta',
-				top: 142,
+				class: 'game-popup-button', text: 'Declare Vendetta', top: 142,
 			});
 			this.declare_vendetta.on('click', (e) => {
 				if (this.player != null && this.target != null) {
-					p.game.event('declare_vendetta', {
-						player: this.player,
-						target: this.target,
-					});
+					p.game.event('declare_vendetta', {player: this.player, target: this.target});
 				}
 				return true;
 			});
 
 			this.accept_offer = body.button({
-				class: 'game-popup-button',
-				text: 'Accept Proposal',
-				top: 94,
+				class: 'game-popup-button', text: 'Accept Proposal', top: 94,
 			});
 			this.accept_offer.on('click', (e) => {
-				this.respond(true);
+				this.respond_relation(true);
 				return true;
 			});
 			this.reject_offer = body.button({
-				class: 'game-popup-button',
-				text: 'Reject Proposal',
-				top: 118,
+				class: 'game-popup-button', text: 'Reject Proposal', top: 118,
 			});
 			this.reject_offer.on('click', (e) => {
-				this.respond(false);
+				this.respond_relation(false);
+				return true;
+			});
+
+			this.trade_text = body.text({
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 170,
+			});
+			this.offer_technology_label = body.text({
+				class: 'game-popup-text', text: 'Offer technology:', left: 10, top: 198,
+			});
+			this.offer_technology = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 194,
+				width: 360, items: [['', 'No technology']], value: '',
+			});
+			this.offer_energy_label = body.text({
+				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 226,
+			});
+			this.offer_energy = body.input({
+				class: 'popup-input', align: 'top right', right: 10, top: 222,
+				width: 160, value: '0',
+			});
+			this.request_technology_label = body.text({
+				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 254,
+			});
+			this.request_technology = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 250,
+				width: 360, items: [['', 'No technology']], value: '',
+			});
+			this.request_energy_label = body.text({
+				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 282,
+			});
+			this.request_energy = body.input({
+				class: 'popup-input', align: 'top right', right: 10, top: 278,
+				width: 160, value: '0',
+			});
+			this.trade_error = body.text({
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 310,
+			});
+			this.propose_trade_button = body.button({
+				class: 'game-popup-button', text: 'Propose Trade', top: 334,
+			});
+			this.propose_trade_button.on('click', (e) => {
+				this.propose_trade();
+				return true;
+			});
+			this.accept_trade = body.button({
+				class: 'game-popup-button', text: 'Accept Trade', top: 334,
+			});
+			this.accept_trade.on('click', (e) => {
+				this.respond_trade(true);
+				return true;
+			});
+			this.reject_trade = body.button({
+				class: 'game-popup-button', text: 'Reject Trade', top: 358,
+			});
+			this.reject_trade.on('click', (e) => {
+				this.respond_trade(false);
 				return true;
 			});
 
 			body.button({
-				class: 'game-popup-button',
-				text: 'Close',
-				top: 194,
-				is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 422, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -142,70 +210,154 @@ return {
 
 	select_target: (value) => {
 		this.target = value == '' ? null : this.p.game.get_player(#to_int(value));
+		this.offer_energy.value = '0';
+		this.request_energy.value = '0';
+		this.trade_error.text = '';
 		this.refresh();
 	},
 
-	propose: (relation) => {
+	propose_relation: (relation) => {
 		if (this.player != null && this.target != null) {
 			this.p.game.event('propose_diplomatic_relation', {
-				player: this.player,
-				target: this.target,
-				relation: relation,
+				player: this.player, target: this.target, relation: relation,
 			});
 		}
 	},
 
-	respond: (accept) => {
+	respond_relation: (accept) => {
 		if (this.player != null && this.target != null) {
 			this.p.game.event('respond_diplomatic_proposal', {
-				player: this.player,
-				proposer: this.target,
-				accept: accept,
+				player: this.player, proposer: this.target, accept: accept,
 			});
 		}
+	},
+
+	parse_energy: (value) => {
+		let amount = 0;
+		let valid = true;
+		try {
+			amount = #to_int(#trim(value));
+		} catch {
+			: (e) => { valid = false; }
+		}
+		return valid && amount >= 0 ? amount : null;
+	},
+
+	propose_trade: () => {
+		if (this.player == null || this.target == null) {
+			return;
+		}
+		const offer_energy = this.parse_energy(this.offer_energy.value);
+		const request_energy = this.parse_energy(this.request_energy.value);
+		if (offer_energy == null || request_energy == null) {
+			this.trade_error.text = 'Energy amounts must be non-negative whole numbers.';
+			return;
+		}
+		this.trade_error.text = '';
+		this.p.game.event('propose_diplomatic_trade', {
+			player: this.player,
+			target: this.target,
+			terms: {
+				offer_energy: offer_energy,
+				offer_technology: this.offer_technology.value,
+				request_energy: request_energy,
+				request_technology: this.request_technology.value,
+			},
+		});
+	},
+
+	respond_trade: (accept) => {
+		if (this.player != null && this.target != null) {
+			this.p.game.event('respond_diplomatic_trade', {
+				player: this.player, proposer: this.target, accept: accept,
+			});
+		}
+	},
+
+	get_technology_items: (source, recipient) => {
+		let items = [['', 'No technology']];
+		for (id of source.get_research_state().technologies) {
+			if (!recipient.has_technology(id)) {
+				items :+[id, technology_name(this.p.game, id)];
+			}
+		}
+		return items;
 	},
 
 	refresh: () => {
+		const relation_buttons = [
+			this.offer_treaty, this.offer_pact, this.declare_vendetta,
+			this.accept_offer, this.reject_offer,
+		];
+		const trade_editor = [
+			this.offer_technology_label, this.offer_technology,
+			this.offer_energy_label, this.offer_energy,
+			this.request_technology_label, this.request_technology,
+			this.request_energy_label, this.request_energy,
+			this.propose_trade_button,
+		];
+		for (button of relation_buttons) {
+			button.hide();
+		}
+		for (control of trade_editor) {
+			control.hide();
+		}
+		this.accept_trade.hide();
+		this.reject_trade.hide();
+
 		if (this.player == null || this.target == null) {
 			this.relation_text.text = '';
 			this.offer_text.text = '';
-			for (button of [
-				this.offer_treaty, this.offer_pact, this.declare_vendetta,
-				this.accept_offer, this.reject_offer,
-			]) {
-				button.hide();
-			}
+			this.trade_text.text = '';
+			this.trade_error.text = '';
 			return;
 		}
+
 		const relation = this.player.get_diplomatic_relation(this.target);
 		const incoming = this.player.get_diplomatic_offer(this.target);
 		const outgoing = this.target.get_diplomatic_offer(this.player);
+		const incoming_trade = this.player.get_diplomatic_trade(this.target);
+		const outgoing_trade = this.target.get_diplomatic_trade(this.player);
 		this.relation_text.text = 'Current relation: ' + relation_name(relation);
 		this.offer_text.text = incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '');
+		this.trade_text.text = incoming_trade != null
+			? 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)
+			: (outgoing_trade != null
+				? 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade)
+				: '');
 
-		this.offer_treaty.hide();
-		this.offer_pact.hide();
-		this.declare_vendetta.hide();
-		this.accept_offer.hide();
-		this.reject_offer.hide();
 		if (incoming != '') {
 			this.accept_offer.show();
 			this.reject_offer.show();
+		} else if (outgoing == '') {
+			if (relation != 'treaty' && relation != 'pact') {
+				this.offer_treaty.show();
+			}
+			if (relation == 'treaty') {
+				this.offer_pact.show();
+			}
+			if (relation != 'vendetta') {
+				this.declare_vendetta.show();
+			}
+		}
+
+		if (incoming_trade != null) {
+			this.accept_trade.show();
+			this.reject_trade.show();
 			return;
 		}
-		if (outgoing != '') {
+		if (outgoing_trade != null || relation == 'vendetta') {
 			return;
 		}
-		if (relation != 'treaty' && relation != 'pact') {
-			this.offer_treaty.show();
-		}
-		if (relation == 'treaty') {
-			this.offer_pact.show();
-		}
-		if (relation != 'vendetta') {
-			this.declare_vendetta.show();
+
+		this.offer_technology.items = this.get_technology_items(this.player, this.target);
+		this.request_technology.items = this.get_technology_items(this.target, this.player);
+		this.offer_technology.value = '';
+		this.request_technology.value = '';
+		for (control of trade_editor) {
+			control.show();
 		}
 	},
 

@@ -29,7 +29,7 @@ return {
 				e.data.proposer,
 				relation
 			);
-			e.game.get('f_diplomacy_clear_offers')(e.data.player, e.data.proposer);
+			e.game.get('f_diplomacy_clear_relation_offers')(e.data.player, e.data.proposer);
 		}
 		e.game.trigger('diplomatic_proposal_resolved', {
 			player: e.data.player,

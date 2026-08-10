@@ -39,6 +39,8 @@ return (game) => {
 		'declare_vendetta',
 		'propose_diplomatic_relation',
 		'respond_diplomatic_proposal',
+		'propose_diplomatic_trade',
+		'respond_diplomatic_trade',
 		'probe_operation',
 		'fungal_bloom',
 		'declare_victory',

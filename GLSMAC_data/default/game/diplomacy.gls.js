@@ -4,7 +4,10 @@ const is_player = (player) => {
 		#typeof(player.get_diplomatic_relation) == 'Callable' &&
 		#typeof(player.set_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_diplomatic_offer) == 'Callable' &&
-		#typeof(player.set_diplomatic_offer) == 'Callable'
+		#typeof(player.set_diplomatic_offer) == 'Callable' &&
+		#typeof(player.get_diplomatic_trade) == 'Callable' &&
+		#typeof(player.set_diplomatic_trade) == 'Callable' &&
+		#typeof(player.clear_diplomatic_trade) == 'Callable'
 	);
 };
 
@@ -23,7 +26,17 @@ const snapshot_pair = (player, other) => {
 		other_relation: other.get_diplomatic_relation(player),
 		player_offer: player.get_diplomatic_offer(other),
 		other_offer: other.get_diplomatic_offer(player),
+		player_trade: player.get_diplomatic_trade(other),
+		other_trade: other.get_diplomatic_trade(player),
 	};
+};
+
+const restore_trade = (recipient, proposer, trade) => {
+	if (trade == null) {
+		recipient.clear_diplomatic_trade(proposer);
+	} else {
+		recipient.set_diplomatic_trade(proposer, trade);
+	}
 };
 
 const restore_pair = (player, other, snapshot) => {
@@ -31,6 +44,8 @@ const restore_pair = (player, other, snapshot) => {
 	other.set_diplomatic_relation(player, snapshot.other_relation);
 	player.set_diplomatic_offer(other, snapshot.player_offer);
 	other.set_diplomatic_offer(player, snapshot.other_offer);
+	restore_trade(player, other, snapshot.player_trade);
+	restore_trade(other, player, snapshot.other_trade);
 };
 
 const set_bilateral_relation = (player, other, relation) => {
@@ -38,9 +53,110 @@ const set_bilateral_relation = (player, other, relation) => {
 	other.set_diplomatic_relation(player, relation);
 };
 
-const clear_offers = (player, other) => {
+const clear_relation_offers = (player, other) => {
 	player.set_diplomatic_offer(other, '');
 	other.set_diplomatic_offer(player, '');
+};
+
+const clear_offers = (player, other) => {
+	clear_relation_offers(player, other);
+	player.clear_diplomatic_trade(other);
+	other.clear_diplomatic_trade(player);
+};
+
+const validate_trade = (game, proposer, recipient, terms) => {
+	if (#typeof(terms) != 'Object') {
+		return 'Diplomatic trade terms must be an object';
+	}
+	if (
+		#typeof(terms.offer_energy) != 'Int' ||
+		#typeof(terms.offer_technology) != 'String' ||
+		#typeof(terms.request_energy) != 'Int' ||
+		#typeof(terms.request_technology) != 'String'
+	) {
+		return 'Diplomatic trade terms have invalid fields';
+	}
+	if (
+		terms.offer_energy < 0 || terms.offer_energy > 1000000000 ||
+		terms.request_energy < 0 || terms.request_energy > 1000000000
+	) {
+		return 'Diplomatic trade energy is out of range';
+	}
+	if (terms.offer_energy > 0 && terms.request_energy > 0) {
+		return 'Diplomatic trade cannot send energy in both directions';
+	}
+	if (
+		terms.offer_energy == 0 && terms.offer_technology == '' &&
+		terms.request_energy == 0 && terms.request_technology == ''
+	) {
+		return 'Diplomatic trade cannot be empty';
+	}
+	if (
+		terms.offer_technology != '' &&
+		terms.offer_technology == terms.request_technology
+	) {
+		return 'Diplomatic trade cannot exchange a technology for itself';
+	}
+	if (proposer.get_diplomatic_relation(recipient) == 'vendetta') {
+		return 'Regular trade is unavailable during a vendetta';
+	}
+	if (proposer.energy_credits < terms.offer_energy) {
+		return 'Proposer cannot afford the offered energy';
+	}
+	if (recipient.energy_credits < terms.request_energy) {
+		return 'Recipient cannot afford the requested energy';
+	}
+	if (recipient.energy_credits + terms.offer_energy > 1000000000) {
+		return 'Recipient cannot hold the offered energy';
+	}
+	if (proposer.energy_credits + terms.request_energy > 1000000000) {
+		return 'Proposer cannot hold the requested energy';
+	}
+	for (technology of [
+		[terms.offer_technology, proposer, recipient, 'offered'],
+		[terms.request_technology, recipient, proposer, 'requested'],
+	]) {
+		const id = technology[0];
+		if (id == '') {
+			continue;
+		}
+		const definition = game.get('f_technology_get_definition')(id);
+		if (definition == null) {
+			return 'Diplomatic trade contains an unknown technology';
+		}
+		if (!technology[1].has_technology(id)) {
+			return 'The ' + technology[3] + ' technology is not known by its sender';
+		}
+		if (technology[2].has_technology(id)) {
+			return 'The ' + technology[3] + ' technology is already known by its recipient';
+		}
+	}
+};
+
+const grant_technology = (game, player, id) => {
+	if (id == '') {
+		return false;
+	}
+	const previous = player.get_research_state();
+	let technologies = [];
+	for (known_id of previous.technologies) {
+		technologies :+known_id;
+	}
+	technologies :+id;
+	let target = previous.target;
+	let progress = previous.progress;
+	if (target == id) {
+		target = game.get('f_technology_get_next_target')(technologies, player);
+		if (target == '') {
+			progress = 0;
+		}
+	}
+	player.set_research_state({
+		technologies: technologies,
+		target: target,
+		progress: progress,
+	});
+	return true;
 };
 
 return (game) => {
@@ -49,6 +165,13 @@ return (game) => {
 		game.set('f_diplomacy_snapshot_pair', snapshot_pair);
 		game.set('f_diplomacy_restore_pair', restore_pair);
 		game.set('f_diplomacy_set_bilateral_relation', set_bilateral_relation);
+		game.set('f_diplomacy_clear_relation_offers', clear_relation_offers);
 		game.set('f_diplomacy_clear_offers', clear_offers);
+		game.set('f_diplomacy_validate_trade', (proposer, recipient, terms) => {
+			return validate_trade(game, proposer, recipient, terms);
+		});
+		game.set('f_diplomacy_grant_technology', (player, id) => {
+			return grant_technology(game, player, id);
+		});
 	});
 };

@@ -44,7 +44,8 @@
 			}
 			if (
 				player.get_diplomatic_relation(other) != 'neutral' ||
-				player.get_diplomatic_offer(other) != ''
+				player.get_diplomatic_offer(other) != '' ||
+				player.get_diplomatic_trade(other) != null
 			) {
 				fail('initial diplomatic state is invalid');
 				return;
@@ -73,19 +74,72 @@
 						},
 						'accepted treaty did not become bilateral',
 						() => {
-							game.event('declare_vendetta', {player: player, target: other});
-							wait_for(
-								() => {
-									return (
-										player.get_diplomatic_relation(other) == 'vendetta' &&
-										other.get_diplomatic_relation(player) == 'vendetta'
-									);
+							let offered_technology = '';
+							for (id of player.get_research_state().technologies) {
+								if (!other.has_technology(id)) {
+									offered_technology = id;
+									break;
+								}
+							}
+							let requested_technology = '';
+							for (id of other.get_research_state().technologies) {
+								if (!player.has_technology(id)) {
+									requested_technology = id;
+									break;
+								}
+							}
+							if (offered_technology == '' || requested_technology == '') {
+								fail('players did not start with tradeable technologies');
+								return;
+							}
+							game.event('propose_diplomatic_trade', {
+								player: player,
+								target: other,
+								terms: {
+									offer_energy: 0,
+									offer_technology: offered_technology,
+									request_energy: 0,
+									request_technology: requested_technology,
 								},
-								'vendetta did not become bilateral',
+							});
+							wait_for(
+								() => { return other.get_diplomatic_trade(player) != null; },
+								'trade proposal was not stored',
 								() => {
-									finished = true;
-									#print('DIPLOMACY_RUNTIME_PASS: persistent proposals, treaty, and vendetta');
-									glsmac.exit();
+									game.event_as(other.id, 'respond_diplomatic_trade', {
+										player: other,
+										proposer: player,
+										accept: true,
+									});
+									wait_for(
+										() => {
+											return (
+												other.get_diplomatic_trade(player) == null &&
+												player.has_technology(requested_technology) &&
+												other.has_technology(offered_technology)
+											);
+										},
+										'accepted trade did not transfer its technologies',
+										() => {
+											game.event('declare_vendetta', {player: player, target: other});
+											wait_for(
+												() => {
+													return (
+														player.get_diplomatic_relation(other) == 'vendetta' &&
+														other.get_diplomatic_relation(player) == 'vendetta'
+													);
+												},
+												'vendetta did not become bilateral',
+												() => {
+													finished = true;
+													#print(
+														'DIPLOMACY_RUNTIME_PASS: treaty, reciprocal trade, and vendetta'
+													);
+													glsmac.exit();
+												}
+											);
+										}
+									);
 								}
 							);
 						}

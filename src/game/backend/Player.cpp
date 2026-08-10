@@ -10,6 +10,7 @@
 #include "gse/value/String.h"
 #include "gse/value/Bool.h"
 #include "gse/value/Int.h"
+#include "gse/value/Null.h"
 #include "gse/value/Array.h"
 #include "gse/value/Object.h"
 
@@ -53,6 +54,7 @@ Player::Player( const Player* const other ) {
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
 	m_infiltrated_players = other->m_infiltrated_players;
+	m_diplomatic_trades = other->m_diplomatic_trades;
 }
 
 Player::~Player() {
@@ -287,6 +289,56 @@ bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relati
 		return true;
 	}
 	return false;
+}
+
+const Player::diplomatic_trades_t& Player::GetDiplomaticTrades() const {
+	return m_diplomatic_trades;
+}
+
+const Player::diplomatic_trade_t* Player::GetDiplomaticTrade( const size_t player_id ) const {
+	const auto it = m_diplomatic_trades.find( player_id );
+	return it == m_diplomatic_trades.end() ? nullptr : &it->second;
+}
+
+void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_t& trade ) {
+	if ( player_id >= MAX_DIPLOMATIC_TRADES ) {
+		THROW( "diplomatic trade player ID is out of range" );
+	}
+	if (
+		trade.offer_energy < 0 || trade.offer_energy > MAX_ENERGY_CREDITS ||
+		trade.request_energy < 0 || trade.request_energy > MAX_ENERGY_CREDITS
+	) {
+		THROW( "diplomatic trade energy is out of range" );
+	}
+	if ( trade.offer_energy > 0 && trade.request_energy > 0 ) {
+		THROW( "diplomatic trade cannot send energy in both directions" );
+	}
+	if (
+		trade.offer_technology.size() > MAX_DIPLOMATIC_TRADE_TECHNOLOGY_ID_LENGTH ||
+		trade.request_technology.size() > MAX_DIPLOMATIC_TRADE_TECHNOLOGY_ID_LENGTH
+	) {
+		THROW( "diplomatic trade technology ID is too long" );
+	}
+	if (
+		!trade.offer_technology.empty() &&
+		trade.offer_technology == trade.request_technology
+	) {
+		THROW( "diplomatic trade cannot exchange a technology for itself" );
+	}
+	if (
+		trade.offer_energy == 0 && trade.offer_technology.empty() &&
+		trade.request_energy == 0 && trade.request_technology.empty()
+	) {
+		THROW( "diplomatic trade cannot be empty" );
+	}
+	m_diplomatic_trades[ player_id ] = trade;
+}
+
+void Player::ClearDiplomaticTrade( const size_t player_id ) {
+	if ( player_id >= MAX_DIPLOMATIC_TRADES ) {
+		THROW( "diplomatic trade player ID is out of range" );
+	}
+	m_diplomatic_trades.erase( player_id );
 }
 
 const Player::infiltrated_players_t& Player::GetInfiltratedPlayers() const {
@@ -611,6 +663,67 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_diplomatic_trade",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot trade with itself" );
+					}
+					const auto* const trade = GetDiplomaticTrade( other->m_slotnum );
+					if ( !trade ) {
+						return VALUE( gse::value::Null );
+					}
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "offer_energy", VALUE( gse::value::Int, , trade->offer_energy ) },
+						{ "offer_technology", VALUE( gse::value::String, , trade->offer_technology ) },
+						{ "request_energy", VALUE( gse::value::Int, , trade->request_energy ) },
+						{ "request_technology", VALUE( gse::value::String, , trade->request_technology ) },
+					} );
+				} )
+			},
+			{
+				"set_diplomatic_trade",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( terms, 1, Object );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot trade with itself" );
+					}
+					N_GETPROP( offer_energy, terms, "offer_energy", Int );
+					N_GETPROP( offer_technology, terms, "offer_technology", String );
+					N_GETPROP( request_energy, terms, "request_energy", Int );
+					N_GETPROP( request_technology, terms, "request_technology", String );
+					try {
+						SetDiplomaticTrade( other->m_slotnum, {
+							offer_energy,
+							offer_technology,
+							request_energy,
+							request_technology,
+						} );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"clear_diplomatic_trade",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot trade with itself" );
+					}
+					ClearDiplomaticTrade( other->m_slotnum );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"has_infiltrated",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -678,6 +791,14 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( player_id );
 	}
 	buf.WriteInt( m_major_atrocities );
+	buf.WriteInt( m_diplomatic_trades.size() );
+	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
+		buf.WriteInt( player_id );
+		buf.WriteInt( trade.offer_energy );
+		buf.WriteString( trade.offer_technology );
+		buf.WriteInt( trade.request_energy );
+		buf.WriteString( trade.request_technology );
+	}
 
 	return buf;
 }
@@ -801,6 +922,27 @@ void Player::Deserialize( types::Buffer buf ) {
 	if ( major_atrocities < 0 || major_atrocities > MAX_MAJOR_ATROCITIES ) {
 		THROW( "invalid serialized player major atrocity count" );
 	}
+	diplomatic_trades_t diplomatic_trades = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto trade_count = buf.ReadCollectionSize( "player diplomatic trade" );
+		if ( trade_count > MAX_DIPLOMATIC_TRADES ) {
+			THROW( "invalid serialized player diplomatic trade count" );
+		}
+		for ( size_t i = 0 ; i < trade_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic trade player ID" );
+			const diplomatic_trade_t trade = {
+				buf.ReadInt(),
+				buf.ReadString(),
+				buf.ReadInt(),
+				buf.ReadString(),
+			};
+			Player validator( "trade validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticTrade( player_id, trade );
+			if ( !diplomatic_trades.emplace( player_id, trade ).second ) {
+				THROW( "duplicate serialized diplomatic trade player ID" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -822,6 +964,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_offers = std::move( diplomatic_offers );
 	m_infiltrated_players = std::move( infiltrated_players );
 	m_major_atrocities = major_atrocities;
+	m_diplomatic_trades = std::move( diplomatic_trades );
 
 }
 

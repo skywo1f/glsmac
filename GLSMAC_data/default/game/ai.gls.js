@@ -108,6 +108,19 @@ const get_player_base_count = (game, player) => {
 	return count;
 };
 
+const get_tradeable_technologies = (game, source, recipient) => {
+	let result = [];
+	for (id of source.get_research_state().technologies) {
+		if (!recipient.has_technology(id)) {
+			const definition = game.get('f_technology_get_definition')(id);
+			if (definition != null) {
+				result :+definition;
+			}
+		}
+	}
+	return result;
+};
+
 const update_diplomacy = (game, player) => {
 	const own_power = get_player_power(game, player);
 	const own_bases = get_player_base_count(game, player);
@@ -128,6 +141,33 @@ const update_diplomacy = (game, player) => {
 					own_bases: own_bases,
 					other_bases: get_player_base_count(game, other),
 				}),
+			});
+			return;
+		}
+	}
+	for (other of game.get_players()) {
+		if (other.id == player.id) {
+			continue;
+		}
+		const trade = player.get_diplomatic_trade(other);
+		if (trade != null) {
+			const offer_definition = trade.offer_technology == ''
+				? null
+				: game.get('f_technology_get_definition')(trade.offer_technology);
+			const request_definition = trade.request_technology == ''
+				? null
+				: game.get('f_technology_get_definition')(trade.request_technology);
+			game.event_as(player.id, 'respond_diplomatic_trade', {
+				player: player,
+				proposer: other,
+				accept: diplomacy.get_trade_acceptance_score({
+					relation: player.get_diplomatic_relation(other),
+					own_power: own_power,
+					other_power: get_player_power(game, other),
+					terms: trade,
+					offer_technology_cost: offer_definition == null ? 0 : offer_definition.cost,
+					request_technology_cost: request_definition == null ? 0 : request_definition.cost,
+				}) >= 0.0,
 			});
 			return;
 		}
@@ -167,6 +207,46 @@ const update_diplomacy = (game, player) => {
 			player: player,
 			target: best_target,
 			relation: best.relation,
+		});
+		return;
+	}
+
+	let best_trade = null;
+	let best_trade_target = null;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id ||
+			player.get_diplomatic_relation(other) == 'vendetta' ||
+			other.get_diplomatic_offer(player) != '' ||
+			player.get_diplomatic_offer(other) != '' ||
+			other.get_diplomatic_trade(player) != null ||
+			player.get_diplomatic_trade(other) != null
+		) {
+			continue;
+		}
+		const proposal = diplomacy.get_trade_proposal({
+			relation: player.get_diplomatic_relation(other),
+			own_power: own_power,
+			other_power: get_player_power(game, other),
+			own_energy: player.energy_credits,
+			other_energy: other.energy_credits,
+			own_technologies: get_tradeable_technologies(game, player, other),
+			other_technologies: get_tradeable_technologies(game, other, player),
+		});
+		if (
+			proposal != null &&
+			(best_trade == null || proposal.score > best_trade.score ||
+				(proposal.score == best_trade.score && other.id < best_trade_target.id))
+		) {
+			best_trade = proposal;
+			best_trade_target = other;
+		}
+	}
+	if (best_trade != null) {
+		game.event_as(player.id, 'propose_diplomatic_trade', {
+			player: player,
+			target: best_trade_target,
+			terms: best_trade.terms,
 		});
 	}
 };

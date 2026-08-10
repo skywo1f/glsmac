@@ -35,7 +35,10 @@ The Windows x64 Release build has asset-backed automated coverage for:
   live Eco Damage values on the base screen;
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
-  vendettas, a player diplomacy screen, and strength-aware AI responses;
+  vendettas, and a player diplomacy screen;
+- persistent structured energy and technology trade offers, atomic reversible
+  settlement, human negotiation controls, and relation-, strength-, and
+  value-aware AI proposals and responses;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
   energy drain, drone riots, researcher assassination, genetic plague, unit
@@ -65,9 +68,9 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including commerce, technology and energy exchanges,
-  commlink discovery, reputation, surrender, council elections, and diplomatic
-  victory;
+- deeper diplomacy including commerce income, loans and repayment, map and
+  commlink exchanges, reputation, surrender, council elections, diplomatic
+  victory, and richer bundled or counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and global
@@ -107,10 +110,11 @@ previous 58-case GSE set also passes in the MSVC AddressSanitizer configuration.
 Script isolation keeps allocator lifetime bounded and reports the exact script
 that fails.
 
-The diplomacy cases have passed focused Release validation: native
-serialization and malformed-state checks, isolated event and AI-policy tests,
-and an asset-backed quickstart covering a persisted proposal, bilateral treaty,
-and bilateral vendetta. Probe coverage includes persistent infiltration and
+The diplomacy cases have passed focused Release validation: native trade
+clone/serialization/backward-compatibility checks, isolated atomic energy and
+technology transfer/rollback tests, AI-policy and UI-parser tests, an
+asset-backed treaty/reciprocal-technology-trade/vendetta quickstart, and a
+running-game reconnect. Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed
 quickstart covering the live production gate and unit subversion. The expanded
