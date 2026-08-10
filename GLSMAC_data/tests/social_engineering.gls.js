@@ -102,6 +102,44 @@ for (difficulty in adoption_costs) {
 }
 player.difficulty_level = 'Transcend';
 
+faction_id = 'NEUTRAL';
+choices = {
+	politics: 'Frontier',
+	economics: 'Simple',
+	values: 'Power',
+	future_society: 'ThoughtControl',
+};
+values.f_project_get_player_effects = (target_player) => {
+	test.assert(target_player == player);
+	return {
+		ignore_power_penalties: true,
+		ignore_thought_control_penalties: true,
+		ignore_cybernetic_penalties: false,
+	};
+};
+ratings = values.f_social_get_ratings(player);
+test.assert(ratings.industry == 0);
+test.assert(ratings.support == 2);
+test.assert(ratings.morale == 4);
+test.assert(ratings.police == 2);
+test.assert(values.f_social_get_free_support(player, 6) == 4);
+
+choices.values = 'Survival';
+choices.future_society = 'Cybernetic';
+values.f_project_get_player_effects = (target_player) => {
+	return {
+		ignore_power_penalties: false,
+		ignore_thought_control_penalties: false,
+		ignore_cybernetic_penalties: true,
+	};
+};
+ratings = values.f_social_get_ratings(player);
+test.assert(ratings.effic == 2);
+test.assert(ratings.planet == 2);
+test.assert(ratings.research == 2);
+test.assert(ratings.police == 0);
+values.f_project_get_player_effects = #undefined;
+
 technologies = {
 	EthicalCalculus: true,
 	PlanetaryNetworks: true,

@@ -146,20 +146,50 @@ const get_faction_id = (player) => {
 	return #is_defined(faction) ? faction.id : '';
 };
 
-const add_ratings = (ratings, modifiers) => {
+const add_ratings = (ratings, modifiers, ignore_negative) => {
 	for (name in modifiers) {
-		if (#is_defined(RATING_LIMITS[name])) {
+		if (
+			#is_defined(RATING_LIMITS[name]) &&
+			(!#is_defined(ignore_negative) || !ignore_negative || modifiers[name] >= 0)
+		) {
 			ratings[name] = ratings[name] + modifiers[name];
 		}
 	}
 };
 
-const get_ratings_for_choices = (player, choices) => {
+const ignores_choice_penalties = (choice, project_effects) => {
+	if (!#is_defined(project_effects)) {
+		return false;
+	}
+	return (
+		(
+			choice.id == 'Power' &&
+			#is_defined(project_effects.ignore_power_penalties) &&
+			project_effects.ignore_power_penalties
+		) ||
+		(
+			choice.id == 'ThoughtControl' &&
+			#is_defined(project_effects.ignore_thought_control_penalties) &&
+			project_effects.ignore_thought_control_penalties
+		) ||
+		(
+			choice.id == 'Cybernetic' &&
+			#is_defined(project_effects.ignore_cybernetic_penalties) &&
+			project_effects.ignore_cybernetic_penalties
+		)
+	);
+};
+
+const get_ratings_for_choices = (player, choices, project_effects) => {
 	const ratings = make_ratings();
 	for (category of categories) {
 		const choice = choices_by_category[category.id][choices[category.id]];
 		if (#is_defined(choice)) {
-			add_ratings(ratings, choice.ratings);
+			add_ratings(
+				ratings,
+				choice.ratings,
+				ignores_choice_penalties(choice, project_effects)
+			);
 		}
 	}
 	const faction_id = get_faction_id(player);
@@ -182,8 +212,14 @@ const get_ratings_for_choices = (player, choices) => {
 	return ratings;
 };
 
-const get_ratings = (player) => {
-	return get_ratings_for_choices(player, get_choices(player));
+const get_ratings = (player, project_effects) => {
+	return get_ratings_for_choices(player, get_choices(player), project_effects);
+};
+
+const resolve_ratings = (player, ratings_resolver) => {
+	return #is_defined(ratings_resolver)
+		? ratings_resolver(player)
+		: get_ratings(player, {});
 };
 
 const validate_choices = (player, choices) => {
@@ -233,20 +269,23 @@ const get_adoption_cost = (player, choices) => {
 	return UPHEAVAL_COSTS[change_count] * multiplier;
 };
 
-const get_mineral_cost = (player, base_cost) => {
-	const industry = get_ratings(player).industry;
+const get_mineral_cost = (player, base_cost, ratings_resolver) => {
+	const industry = resolve_ratings(player, ratings_resolver).industry;
 	return #max(1, #ceil(#to_float(base_cost * (10 - industry)) / 10.0));
 };
 
-const get_support_cost = (player) => {
-	return get_ratings(player).support <= 0 - 4 ? 2 : 1;
+const get_support_cost = (player, ratings_resolver) => {
+	return resolve_ratings(player, ratings_resolver).support <= 0 - 4 ? 2 : 1;
 };
 
-const get_police_rules = (player, rating_bonus) => {
+const get_police_rules = (player, rating_bonus, ratings_resolver) => {
 	const bonus = #is_defined(rating_bonus) ? rating_bonus : 0;
 	const rating = #max(
 		RATING_LIMITS.police.min,
-		#min(RATING_LIMITS.police.max, get_ratings(player).police + bonus)
+		#min(
+			RATING_LIMITS.police.max,
+			resolve_ratings(player, ratings_resolver).police + bonus
+		)
 	);
 	let unit_limit = 0;
 	if (rating >= 2) {
@@ -263,8 +302,8 @@ const get_police_rules = (player, rating_bonus) => {
 	};
 };
 
-const get_free_support = (player, base_size) => {
-	const support = get_ratings(player).support;
+const get_free_support = (player, base_size, ratings_resolver) => {
+	const support = resolve_ratings(player, ratings_resolver).support;
 	if (support <= 0 - 3) { return 0; }
 	if (support <= 0 - 1) { return 1; }
 	if (support == 0) { return 2; }
@@ -273,19 +312,19 @@ const get_free_support = (player, base_size) => {
 	return #max(4, base_size);
 };
 
-const get_new_base_minerals = (player) => {
-	return get_ratings(player).support <= 0 - 2 ? 0 : 10;
+const get_new_base_minerals = (player, ratings_resolver) => {
+	return resolve_ratings(player, ratings_resolver).support <= 0 - 2 ? 0 : 10;
 };
 
-const get_unit_training_morale_bonus = (player, bonus) => {
-	if (get_ratings(player).morale > 0 - 2) {
+const get_unit_training_morale_bonus = (player, bonus, ratings_resolver) => {
+	if (resolve_ratings(player, ratings_resolver).morale > 0 - 2) {
 		return bonus;
 	}
 	return #floor(#to_float(bonus) / 2.0);
 };
 
-const get_morale_bonus = (player, defending) => {
-	const morale = get_ratings(player).morale;
+const get_morale_bonus = (player, defending, ratings_resolver) => {
+	const morale = resolve_ratings(player, ratings_resolver).morale;
 	if (morale <= 0 - 4) { return 0 - 3; }
 	if (morale == 0 - 3) { return 0 - 2; }
 	if (morale <= 0 - 1) { return 0 - 1; }
@@ -296,8 +335,8 @@ const get_morale_bonus = (player, defending) => {
 	return 3;
 };
 
-const get_economy_base_bonus = (player, has_headquarters) => {
-	const economy = get_ratings(player).economy;
+const get_economy_base_bonus = (player, has_headquarters, ratings_resolver) => {
+	const economy = resolve_ratings(player, ratings_resolver).economy;
 	if (economy <= 0 - 3) { return 0 - 2; }
 	if (economy == 0 - 2) { return 0 - 1; }
 	if (economy == 0 - 1) { return has_headquarters ? 0 - 1 : 0; }
@@ -307,16 +346,16 @@ const get_economy_base_bonus = (player, has_headquarters) => {
 	return 0;
 };
 
-const get_tile_energy_bonus = (player) => {
-	return get_ratings(player).economy >= 2 ? 1 : 0;
+const get_tile_energy_bonus = (player, ratings_resolver) => {
+	return resolve_ratings(player, ratings_resolver).economy >= 2 ? 1 : 0;
 };
 
-const get_commerce_bonus = (player) => {
+const get_commerce_bonus = (player, ratings_resolver) => {
 	const faction_id = get_faction_id(player);
 	let bonus = #is_defined(faction_commerce_bonuses[faction_id])
 		? faction_commerce_bonuses[faction_id]
 		: 0;
-	const economy = get_ratings(player).economy;
+	const economy = resolve_ratings(player, ratings_resolver).economy;
 	if (economy >= 5) {
 		bonus += 3;
 	} else if (economy == 4) {
@@ -327,28 +366,62 @@ const get_commerce_bonus = (player) => {
 	return bonus;
 };
 
-const get_research_multiplier = (player) => {
-	return 1.0 + #to_float(get_ratings(player).research) * 0.1;
+const get_research_multiplier = (player, ratings_resolver) => {
+	return 1.0 + #to_float(resolve_ratings(player, ratings_resolver).research) * 0.1;
 };
 
 return (game) => {
 	game.on('start', (e) => {
+		const get_project_effects = (player) => {
+			const resolver = #is_defined(game.get)
+				? game.get('f_project_get_player_effects')
+				: #undefined;
+			return #is_defined(resolver) ? resolver(player) : {};
+		};
+		const get_game_ratings_for_choices = (player, choices) => {
+			return get_ratings_for_choices(player, choices, get_project_effects(player));
+		};
+		const get_game_ratings = (player) => {
+			return get_ratings(player, get_project_effects(player));
+		};
 		game.set('f_social_get_categories', () => { return categories; });
-		game.set('f_social_get_ratings', get_ratings);
-		game.set('f_social_get_ratings_for_choices', get_ratings_for_choices);
+		game.set('f_social_get_ratings', get_game_ratings);
+		game.set('f_social_get_ratings_for_choices', get_game_ratings_for_choices);
 		game.set('f_social_validate_choices', validate_choices);
 		game.set('f_social_get_available_choices', get_available_choices);
 		game.set('f_social_get_adoption_cost', get_adoption_cost);
-		game.set('f_social_get_mineral_cost', get_mineral_cost);
-		game.set('f_social_get_support_cost', get_support_cost);
-		game.set('f_social_get_police_rules', get_police_rules);
-		game.set('f_social_get_free_support', get_free_support);
-		game.set('f_social_get_new_base_minerals', get_new_base_minerals);
-		game.set('f_social_get_unit_training_morale_bonus', get_unit_training_morale_bonus);
-		game.set('f_social_get_morale_bonus', get_morale_bonus);
-		game.set('f_social_get_economy_base_bonus', get_economy_base_bonus);
-		game.set('f_social_get_tile_energy_bonus', get_tile_energy_bonus);
-		game.set('f_social_get_commerce_bonus', get_commerce_bonus);
-		game.set('f_social_get_research_multiplier', get_research_multiplier);
+		game.set('f_social_get_mineral_cost', (player, base_cost) => {
+			return get_mineral_cost(player, base_cost, get_game_ratings);
+		});
+		game.set('f_social_get_support_cost', (player) => {
+			return get_support_cost(player, get_game_ratings);
+		});
+		game.set('f_social_get_police_rules', (player, rating_bonus) => {
+			return get_police_rules(player, rating_bonus, get_game_ratings);
+		});
+		game.set('f_social_get_free_support', (player, base_size) => {
+			return get_free_support(player, base_size, get_game_ratings);
+		});
+		game.set('f_social_get_new_base_minerals', (player) => {
+			return get_new_base_minerals(player, get_game_ratings);
+		});
+		game.set('f_social_get_unit_training_morale_bonus', (player, bonus) => {
+			return get_unit_training_morale_bonus(player, bonus, get_game_ratings);
+		});
+		game.set('f_social_get_morale_bonus', (player, defending) => {
+			return get_morale_bonus(player, defending, get_game_ratings);
+		});
+		game.set('f_social_get_economy_base_bonus', (player, has_headquarters) => {
+			return get_economy_base_bonus(player, has_headquarters, get_game_ratings);
+		});
+		game.set('f_social_get_tile_energy_bonus', (player) => {
+			return get_tile_energy_bonus(player, get_game_ratings);
+		});
+		game.set('f_social_get_commerce_bonus', (player) => {
+			return get_commerce_bonus(player, get_game_ratings);
+		});
+		game.set('f_social_get_research_multiplier', (player) => {
+			return get_research_multiplier(player, get_game_ratings);
+		});
 	});
 };

@@ -5,6 +5,11 @@ const get_effective_facilities = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : base.get_facilities();
 };
 
+const get_project_effects = (game, base) => {
+	const resolver = game.get('f_project_get_effects');
+	return #is_defined(resolver) ? resolver(base) : {};
+};
+
 const get_efficiency_rating = (game, base) => {
 	const resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
@@ -75,6 +80,10 @@ const get_base_allocation = (game, base) => {
 			economy_multiplier += facility.economy_multiplier;
 		}
 	}
+	const project_effects = get_project_effects(game, base);
+	economy_multiplier += #is_defined(project_effects.economy_multiplier)
+		? project_effects.economy_multiplier
+		: 0.0;
 	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
 	const economy_value = total_energy - labs.value - psych;
 	const economy_bonus = #ceil(#to_float(#max(economy_value, 0)) * economy_multiplier);

@@ -183,6 +183,9 @@ const get_social_facility_effects = (game, base) => {
 	}
 	const project_effects = get_project_effects(game, base);
 	result.talent_bonus = result.talent_bonus + project_effects.talent_bonus;
+	result.drone_modifier = result.drone_modifier + (
+		#is_defined(project_effects.drone_modifier) ? project_effects.drone_modifier : 0
+	);
 	if (#is_defined(base.get_size) && base.get_size() <= 3) {
 		result.drone_modifier = result.drone_modifier +
 			project_effects.small_base_drone_modifier;

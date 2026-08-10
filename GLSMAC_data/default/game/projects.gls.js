@@ -19,6 +19,11 @@ const empty_effects = () => {
 		full_repair: false,
 		police_rating_bonus: 0,
 		extra_police_units: 0,
+		drone_modifier: 0,
+		economy_multiplier: 0.0,
+		ignore_power_penalties: false,
+		ignore_thought_control_penalties: false,
+		ignore_cybernetic_penalties: false,
 	};
 };
 
@@ -98,12 +103,32 @@ const get_player_effects = (game, player) => {
 				? project.global_extra_police_units
 				: 0
 		);
+		if (project.id == 'TheCloningVats') {
+			result.ignore_power_penalties = true;
+			result.ignore_thought_control_penalties = true;
+		} else if (project.id == 'TheNetworkBackbone') {
+			result.ignore_cybernetic_penalties = true;
+		} else if (project.id == 'TheLongevityVaccine') {
+			const economics = player.get_social_engineering().economics;
+			if (economics == 'Planned') {
+				result.drone_modifier = result.drone_modifier - 2;
+			} else if (economics == 'Simple' || economics == 'Green') {
+				result.drone_modifier = result.drone_modifier - 1;
+			}
+		}
 	}
 	return result;
 };
 
 const get_effects = (game, base) => {
-	return get_player_effects(game, base.get_owner());
+	const result = get_player_effects(game, base.get_owner());
+	if (
+		base.has_facility('TheLongevityVaccine') &&
+		base.get_owner().get_social_engineering().economics == 'FreeMarket'
+	) {
+		result.economy_multiplier = result.economy_multiplier + 0.5;
+	}
+	return result;
 };
 
 const get_effective_facilities = (game, base) => {

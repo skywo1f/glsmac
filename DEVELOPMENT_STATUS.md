@@ -21,6 +21,10 @@ The Windows x64 Release build has asset-backed automated coverage for:
   technology gating, the complete difficulty-scaled upheaval cost table, atomic
   energy accounting, cost-aware human selection UI, and strategy-weighted AI
   selection that stages paid category changes to avoid multi-model surcharges;
+- social-policy Secret Project effects, including Cloning Vats immunity to the
+  Power and Thought Control penalties, Network Backbone immunity to the
+  Cybernetic penalty, and all Planned, Simple/Green, and Free Market branches
+  of the Longevity Vaccine;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -75,7 +79,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 17 complete and 14 partial;
-- all 33 Secret Projects represented: 18 complete and 15 partial;
+- all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -121,7 +125,7 @@ and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 67-case Release GSE matrix passed in one bounded invocation in
-118.05 seconds. Before the loan, sanction, and integrity milestones, all 18
+117.83 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -172,6 +176,13 @@ changes, insufficient-funds rejection, exact reversible energy accounting,
 economy notifications, UI cost and reserve display, and cost-aware AI staging.
 The installed-asset research runtime passed in 8.44 seconds and charged a live
 three-model Transcend adoption exactly 320 energy credits.
+Project-policy coverage validates both Cloning Vats penalty immunities,
+Network Backbone Cybernetic immunity, global Longevity Vaccine drone relief for
+Planned and Simple/Green economics, and its local +50% Free Market economy
+bonus. The five direct project/social/psych/economy/catalog tests, six dependent
+AI/production/support/commerce/research tests, and the 9.32-second installed-
+asset project runtime are green. Network Backbone remains partial because its
+remaining commerce and Network Node lab accounting is not yet exact.
 Integrity coverage verifies the original eight status labels, treaty and pact
 penalties, aggressor-only changes, saturation, reversible declaration and
 detected-probe paths, AI agreement and loan trust, UI status loading, native

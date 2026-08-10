@@ -27,15 +27,21 @@ const project = {
 	global_extra_police_units: 2,
 };
 
-const owner = {id: 1};
+let economics = 'Simple';
+const owner = {
+	id: 1,
+	get_social_engineering: () => { return {economics: economics}; },
+};
 const rival = {id: 2};
 const project_base = {
 	get_owner: () => { return owner; },
 	get_facilities: () => { return [project]; },
+	has_facility: (id) => { return id == project.id; },
 };
 const target_base = {
 	get_owner: () => { return owner; },
 	get_facilities: () => { return [network_node]; },
+	has_facility: (id) => { return id == 'NetworkNode'; },
 };
 const rival_base = {
 	get_owner: () => { return rival; },
@@ -80,7 +86,36 @@ test.assert(values.f_project_get_effects(target_base) == {
 	full_repair: true,
 	police_rating_bonus: 1,
 	extra_police_units: 2,
+	drone_modifier: 0,
+	economy_multiplier: 0.0,
+	ignore_power_penalties: false,
+	ignore_thought_control_penalties: false,
+	ignore_cybernetic_penalties: false,
 });
 test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);
+
+project.id = 'TheCloningVats';
+let effects = values.f_project_get_player_effects(owner);
+test.assert(effects.ignore_power_penalties);
+test.assert(effects.ignore_thought_control_penalties);
+test.assert(!effects.ignore_cybernetic_penalties);
+
+project.id = 'TheNetworkBackbone';
+effects = values.f_project_get_player_effects(owner);
+test.assert(!effects.ignore_power_penalties);
+test.assert(!effects.ignore_thought_control_penalties);
+test.assert(effects.ignore_cybernetic_penalties);
+
+project.id = 'TheLongevityVaccine';
+economics = 'Simple';
+test.assert(values.f_project_get_player_effects(owner).drone_modifier == -1);
+economics = 'Green';
+test.assert(values.f_project_get_player_effects(owner).drone_modifier == -1);
+economics = 'Planned';
+test.assert(values.f_project_get_player_effects(owner).drone_modifier == -2);
+economics = 'FreeMarket';
+test.assert(values.f_project_get_player_effects(owner).drone_modifier == 0);
+test.assert(values.f_project_get_effects(project_base).economy_multiplier == 0.5);
+test.assert(values.f_project_get_effects(target_base).economy_multiplier == 0.0);

@@ -54,6 +54,7 @@ const deficit_base = {
 
 let callbacks = {};
 let efficiency_rating = 0;
+let project_economy_multiplier = 0.0;
 let values = {
 	f_technology_get_base_labs: (base) => {
 		return {
@@ -67,6 +68,9 @@ let values = {
 	f_social_get_commerce_bonus: (owner) => { return 0; },
 	f_technology_get_definition: (id) => { return null; },
 	f_technology_get_total_commerce_bonus: () => { return 6; },
+	f_project_get_effects: (base) => {
+		return {economy_multiplier: project_economy_multiplier};
+	},
 };
 let events = [];
 let economy_bases = [positive_base, deficit_base];
@@ -103,6 +107,12 @@ test.assert(bank_allocation.economy.value == 4);
 test.assert(bank_allocation.economy.bonus == 2);
 test.assert(values.f_economy_get_base(game, positive_base) == 6);
 positive_economy_multiplier = 0.0;
+project_economy_multiplier = 0.5;
+const vaccine_allocation = values.f_economy_get_base_allocation(game, positive_base);
+test.assert(vaccine_allocation.economy.value == 4);
+test.assert(vaccine_allocation.economy.bonus == 2);
+test.assert(values.f_economy_get_base(game, positive_base) == 6);
+project_economy_multiplier = 0.0;
 
 let has_creche = false;
 const remote_tile = {distance: 8};

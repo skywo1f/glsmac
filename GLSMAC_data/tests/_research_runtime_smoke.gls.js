@@ -373,6 +373,7 @@
 					'TheMaritimeControlCenter',
 					'TheSupercollider',
 					'TheAsceticVirtues',
+					'TheLongevityVaccine',
 					'ThePholusMutagen',
 					'TheCyborgFactory',
 					'TheTheoryOfEverything',
@@ -397,7 +398,7 @@
 					effective_ids[definition.id] = true;
 				}
 				if (
-					#sizeof(game.get('f_project_get_owned')(base)) != 26 ||
+					#sizeof(game.get('f_project_get_owned')(base)) != 27 ||
 					project_effects.talent_bonus != 2 ||
 					project_effects.growth_rating_bonus != 10 ||
 					project_effects.population_limit_bonus != 2 ||
@@ -415,6 +416,11 @@
 					project_effects.naval_movement_bonus != 2.0 ||
 					project_effects.police_rating_bonus != 1 ||
 					project_effects.extra_police_units != 1 ||
+					project_effects.drone_modifier != -2 ||
+					project_effects.economy_multiplier != 0.0 ||
+					!project_effects.ignore_power_penalties ||
+					!project_effects.ignore_thought_control_penalties ||
+					!project_effects.ignore_cybernetic_penalties ||
 					!project_effects.full_repair ||
 					!project_effects.prevent_riots ||
 					!#is_defined(effective_ids.CommandCenter) ||

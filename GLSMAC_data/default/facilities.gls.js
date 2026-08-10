@@ -87,6 +87,7 @@ const project_effects = {
 		global_population_limit_bonus: 2,
 		global_police_rating_bonus: 1,
 	},
+	TheLongevityVaccine: {},
 	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
@@ -112,9 +113,7 @@ const partial_project_effects = {
 	ThePholusMutagen: true,
 	TheNetworkBackbone: true,
 	TheNanoFactory: true,
-	TheCloningVats: true,
 	TheSpaceElevator: true,
-	TheTelepathicMatrix: true,
 };
 
 const facilities = [];
