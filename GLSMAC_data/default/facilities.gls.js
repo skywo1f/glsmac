@@ -110,7 +110,6 @@ const project_effects = {
 
 const partial_project_effects = {
 	TheEmpathGuild: true,
-	TheXenoempathyDome: true,
 	TheUniversalTranslator: true,
 	TheNetworkBackbone: true,
 	TheNanoFactory: true,

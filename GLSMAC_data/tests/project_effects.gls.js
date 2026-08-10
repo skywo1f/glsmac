@@ -88,6 +88,8 @@ test.assert(values.f_project_get_effects(target_base) == {
 	extra_police_units: 2,
 	ecology_divisor_bonus: 0,
 	native_fungus_combat: false,
+	fungus_movement_as_road: false,
+	fungus_terraforming_rate_multiplier: 1.0,
 	drone_modifier: 0,
 	economy_multiplier: 0.0,
 	ignore_power_penalties: false,
@@ -102,6 +104,11 @@ project.id = 'ThePholusMutagen';
 let effects = values.f_project_get_player_effects(owner);
 test.assert(effects.ecology_divisor_bonus == 1);
 test.assert(effects.native_fungus_combat);
+
+project.id = 'TheXenoempathyDome';
+effects = values.f_project_get_player_effects(owner);
+test.assert(effects.fungus_movement_as_road);
+test.assert(effects.fungus_terraforming_rate_multiplier == 2.0);
 
 project.id = 'TheCloningVats';
 effects = values.f_project_get_player_effects(owner);

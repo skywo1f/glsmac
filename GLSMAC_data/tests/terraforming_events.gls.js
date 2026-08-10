@@ -97,6 +97,7 @@ unit = {
 
 let turn_complete = false;
 let terraforming_rate_multiplier = 1.0;
+let fungus_terraforming_rate_multiplier = 1.0;
 const event = {
 	caller: 1,
 	data: {
@@ -111,7 +112,11 @@ const event = {
 			test.assert(key == 'f_project_get_player_effects');
 			return (owner) => {
 				test.assert(owner.id == 1);
-				return {terraforming_rate_multiplier: terraforming_rate_multiplier};
+				return {
+					terraforming_rate_multiplier: terraforming_rate_multiplier,
+					fungus_terraforming_rate_multiplier:
+						fungus_terraforming_rate_multiplier,
+				};
 			};
 		},
 	},
@@ -223,6 +228,12 @@ event.applied = terraform_tile.apply(event);
 test.assert(unit.terraforming_turns_remaining == 3);
 terraform_tile.rollback(event);
 former_abilities = [];
+
+fungus_terraforming_rate_multiplier = 2.0;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 3);
+terraform_tile.rollback(event);
+fungus_terraforming_rate_multiplier = 1.0;
 event.data.type = 'farm';
 tile.features.xenofungus = false;
 

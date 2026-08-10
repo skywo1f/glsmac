@@ -19,7 +19,23 @@ const get_boarding_transport = (unit, tile) => {
 	return null;
 };
 
-const get_movement_cost = (unit, src_tile, dst_tile) => {
+const has_fungus_road = (unit, game) => {
+	if (unit.get_def().is_native) {
+		return true;
+	}
+	if (!#is_defined(game) || !#is_defined(game.get)) {
+		return false;
+	}
+	const get_effects = game.get('f_project_get_player_effects');
+	if (!#is_defined(get_effects)) {
+		return false;
+	}
+	const effects = get_effects(unit.get_owner());
+	return #is_defined(effects.fungus_movement_as_road) &&
+		effects.fungus_movement_as_road;
+};
+
+const get_movement_cost = (unit, src_tile, dst_tile, fungus_road) => {
 	const is_native = unit.get_def().is_native;
 
 	if (
@@ -33,7 +49,7 @@ const get_movement_cost = (unit, src_tile, dst_tile) => {
 	}
 
 	if (dst_tile.features.xenofungus) {
-		if (is_native) {
+		if (is_native || fungus_road) {
 			if (dst_tile.is_water) {
 				return 1.0;
 			} else {
@@ -45,7 +61,7 @@ const get_movement_cost = (unit, src_tile, dst_tile) => {
 	return 1.0;
 };
 
-const get_movement_aftercost = (unit, src_tile, dst_tile) => {
+const get_movement_aftercost = (unit, src_tile, dst_tile, fungus_road) => {
 	const is_native = unit.get_def().is_native;
 	if (
 		dst_tile.is_land &&
@@ -56,7 +72,7 @@ const get_movement_aftercost = (unit, src_tile, dst_tile) => {
 	) {
 		return 0.0;
 	}
-	if (is_native && dst_tile.features.xenofungus) {
+	if ((is_native || fungus_road) && dst_tile.features.xenofungus) {
 		return 0.0;
 	}
 	const has_forest = #is_defined(dst_tile.terraforming.forest) && dst_tile.terraforming.forest;
@@ -151,7 +167,13 @@ return {
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
 
-		let movement_cost = get_movement_cost(e.data.unit, src_tile, dst_tile);
+		const fungus_road = has_fungus_road(e.data.unit, e.game);
+		let movement_cost = get_movement_cost(
+			e.data.unit,
+			src_tile,
+			dst_tile,
+			fungus_road
+		);
 
 		const transport =
 			get_transport_id(e.data.unit) == 0 &&
@@ -191,7 +213,9 @@ return {
 			rehomed_units: [],
 		};
 
-		let movement_cost = get_movement_cost(unit, src_tile, dst_tile) + get_movement_aftercost(unit, src_tile, dst_tile);
+		const fungus_road = has_fungus_road(unit, e.game);
+		let movement_cost = get_movement_cost(unit, src_tile, dst_tile, fungus_road) +
+			get_movement_aftercost(unit, src_tile, dst_tile, fungus_road);
 
 		const finish_movement = () => {
 			// reduce remaining movement points (even if failed)

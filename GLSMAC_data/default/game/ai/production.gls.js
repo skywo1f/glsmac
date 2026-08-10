@@ -188,9 +188,11 @@ const score_project = (def, context) => {
 	const is_planetary_datalinks = def.id == 'ThePlanetaryDatalinks';
 	const is_empath_guild = def.id == 'TheEmpathGuild';
 	const is_pholus_mutagen = def.id == 'ThePholusMutagen';
+	const is_xenoempathy_dome = def.id == 'TheXenoempathyDome';
 	const is_universal_translator = def.id == 'TheUniversalTranslator';
 	const has_effect = is_planetary_datalinks || is_empath_guild ||
 		is_pholus_mutagen ||
+		is_xenoempathy_dome ||
 		is_universal_translator ||
 		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
 		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
@@ -252,6 +254,7 @@ const score_project = (def, context) => {
 				) * 20000
 				: 0
 		) + (is_pholus_mutagen ? 80000 : 0) +
+		(is_xenoempathy_dome ? 90000 : 0) +
 		(is_universal_translator ? 100000 : 0);
 };
 

@@ -41,6 +41,9 @@ scenarios, for:
 - the Pholus Mutagen adds one faction-wide ecological mitigator, gives
   conventional units the native +50% fungus attack benefit, and grants bred
   native life +1 lifecycle;
+- the Xenoempathy Dome treats land fungus as roads for every owned unit,
+  doubles fungus planting and removal rates with proper Former-ability
+  stacking, and grants bred native life +1 lifecycle;
 - the Universal Translator grants up to two free available technologies on
   completion, preserving existing research progress with deterministic
   rollback and explicit AI production value;
@@ -113,7 +116,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 27 complete and 6 partial;
+- all 33 Secret Projects represented: 28 complete and 5 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -147,11 +150,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- the six partial Secret Projects are the Empath Guild, Xenoempathy Dome,
-  Universal Translator, Network Backbone, Nano Factory, and Space Elevator;
-  the Empath Guild still lacks its +50% council-election vote bonus, and the
-  others' remaining effects and victory-adjacent rules require individual
-  parity audits;
+- the five partial Secret Projects are the Empath Guild, Universal Translator,
+  Network Backbone, Nano Factory, and Space Elevator; the Empath Guild still
+  lacks its +50% council-election vote bonus, and the others' remaining effects
+  and victory-adjacent rules require individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -166,8 +168,8 @@ The Release CTest matrix contains 89 cases: 70 isolated native/script GSE tests
 and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The preceding 69-case Release GSE matrix passed in one bounded invocation in
-128.88 seconds. Before the loan, sanction, and integrity milestones, all 18
+The current 70-case Release GSE matrix passed in one bounded invocation in
+128.38 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -190,6 +192,11 @@ infiltration context in 146.70 seconds.
 Pholus Mutagen coverage validates the faction-wide ecology divisor, native
 fungus combat behavior for conventional units, bred-native lifecycle bonus,
 AI valuation, and complete catalog status.
+
+Xenoempathy Dome coverage validates one-third-point land-fungus movement,
+movement rollback, doubled fungus planting and removal, independent Former
+ability stacking, bred-native lifecycle bonus, AI valuation, and complete
+catalog status.
 
 The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,

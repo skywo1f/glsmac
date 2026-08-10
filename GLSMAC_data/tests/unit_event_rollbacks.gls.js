@@ -760,10 +760,19 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		rockiness: 0,
 	};
 	let random_max = 0.0;
+	let conventional_tile = src_tile;
 	const conventional = {
+		owner: owner.id,
+		is_land: true,
 		movement: 1.0,
+		moved_this_turn: false,
 		get_def: () => { return {is_native: false}; },
-		get_tile: () => { return src_tile; },
+		get_tile: () => { return conventional_tile; },
+		get_owner: () => { return owner; },
+		move_to_tile: (tile, oncomplete) => {
+			conventional_tile = tile;
+			oncomplete();
+		},
 	};
 	const resolved = move_unit.resolve({
 		game: {
@@ -779,10 +788,43 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(random_max == 3.0);
 	test.assert(resolved.is_movement_successful == false);
 
+	const xeno_game = {
+		get: (key) => {
+			test.assert(key == 'f_project_get_player_effects');
+			return (player) => {
+				test.assert(player == owner);
+				return {fungus_movement_as_road: true};
+			};
+		},
+		random: {get_float: () => { throw Error('fungus road movement should not roll'); }},
+	};
+	conventional.movement = 0.34;
+	test.assert(move_unit.resolve({
+		game: xeno_game,
+		data: {unit: conventional, tile: fungus_tile},
+	}).is_movement_successful == true);
+	conventional.movement = 1.0;
+	let xeno_event = {
+		game: xeno_game,
+		data: {unit: conventional, tile: fungus_tile},
+		resolved: {is_movement_successful: true, transport_id: 0},
+	};
+	xeno_event.applied = move_unit.apply(xeno_event);
+	test.assert(conventional_tile == fungus_tile);
+	test.assert(
+		xeno_event.data.unit.movement > 0.666 &&
+		xeno_event.data.unit.movement < 0.667
+	);
+	move_unit.rollback(xeno_event);
+	test.assert(conventional_tile == src_tile);
+	test.assert(xeno_event.data.unit.movement == 1.0);
+	test.assert(!xeno_event.data.unit.moved_this_turn);
+
 	const native = {
 		movement: 1.0,
 		get_def: () => { return {is_native: true}; },
 		get_tile: () => { return src_tile; },
+		get_owner: () => { return owner; },
 	};
 	test.assert(move_unit.resolve({
 		game: {random: {get_float: () => { throw Error('native fungus movement should not roll'); }}},
@@ -791,7 +833,11 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 
 	src_tile.terraforming.road = true;
 	fungus_tile.terraforming.road = true;
-	conventional.movement = 0.3;
+	const road_conventional = {
+		movement: 0.3,
+		get_def: () => { return {is_native: false}; },
+		get_tile: () => { return src_tile; },
+	};
 	random_max = 0.0;
 	test.assert(move_unit.resolve({
 		game: {
@@ -802,7 +848,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 				},
 			},
 		},
-		data: {unit: conventional, tile: fungus_tile},
+		data: {unit: road_conventional, tile: fungus_tile},
 	}).is_movement_successful == false);
 	test.assert(random_max > 0.333 && random_max < 0.334);
 }

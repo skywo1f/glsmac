@@ -70,7 +70,13 @@ return {
 		const effects = #is_defined(get_effects)
 			? get_effects(unit.get_owner())
 			: {terraforming_rate_multiplier: 1.0};
+		const fungus_rate_multiplier = (
+			e.data.type == 'remove_fungus' || e.data.type == 'plant_fungus'
+		) && #is_defined(effects.fungus_terraforming_rate_multiplier)
+			? effects.fungus_terraforming_rate_multiplier
+			: 1.0;
 		const rate_multiplier = effects.terraforming_rate_multiplier *
+			fungus_rate_multiplier *
 			unit_abilities.get_terraforming_rate_multiplier(unit, e.data.type);
 		const turns = #max(
 			#ceil(#to_float(order.turns) / rate_multiplier),
