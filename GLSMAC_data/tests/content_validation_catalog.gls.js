@@ -34,7 +34,13 @@ test.assert(content.get_facility(catalog, 'TheSelfAwareColony').data.global_extr
 test.assert(catalog.project_coverage.status.TheLongevityVaccine == 'complete');
 test.assert(catalog.project_coverage.status.TheCloningVats == 'complete');
 test.assert(catalog.project_coverage.status.TheTelepathicMatrix == 'complete');
-test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'partial');
+for (id of [
+	'TheEmpathGuild', 'TheXenoempathyDome', 'ThePlanetaryDatalinks',
+	'TheHunterSeekerAlgorithm', 'ThePholusMutagen', 'TheUniversalTranslator',
+	'TheNetworkBackbone', 'TheNanoFactory', 'TheSpaceElevator', 'TheVoiceOfPlanet',
+]) {
+	test.assert(catalog.project_coverage.status[id] == 'partial');
+}
 for (id of [
 	'NetworkNode', 'ResearchHospital', 'Nanohospital', 'PressureDome',
 	'AerospaceComplex',

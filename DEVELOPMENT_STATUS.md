@@ -128,7 +128,11 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- several remaining Secret Project effects and victory-adjacent rules;
+- the ten partial Secret Projects are the Empath Guild, Xenoempathy Dome,
+  Planetary Datalinks, Hunter-Seeker Algorithm, Pholus Mutagen, Universal
+  Translator, Network Backbone, Nano Factory, Space Elevator, and Voice of
+  Planet; their remaining effects and victory-adjacent rules require individual
+  parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
