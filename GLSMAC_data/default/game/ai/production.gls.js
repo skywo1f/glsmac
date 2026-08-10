@@ -186,7 +186,8 @@ const score_project = (def, context) => {
 		return null;
 	}
 	const is_planetary_datalinks = def.id == 'ThePlanetaryDatalinks';
-	const has_effect = is_planetary_datalinks ||
+	const is_universal_translator = def.id == 'TheUniversalTranslator';
+	const has_effect = is_planetary_datalinks || is_universal_translator ||
 		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
 		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
 		def.defense_multiplier > 1.0 || def.economy_multiplier > 0.0 ||
@@ -238,7 +239,7 @@ const score_project = (def, context) => {
 						: 0
 				) * 25000
 				: 0
-		);
+		) + (is_universal_translator ? 100000 : 0);
 };
 
 const score_hurry = (def, context) => {

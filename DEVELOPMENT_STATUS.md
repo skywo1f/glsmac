@@ -13,7 +13,8 @@ Sid Meier's Alpha Centauri implementation. It is not a release announcement.
 
 ## Validated Foundations
 
-The Windows x64 Release build has asset-backed automated coverage for:
+The Windows x64 Release build has automated coverage, including asset-backed
+scenarios, for:
 
 - game setup, turn progression, research, economy, base growth, worker
   assignment, production queues, support, and persistent social engineering;
@@ -33,6 +34,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
   other factions after research, trade, probe theft, project completion, or
   project capture, with deterministic multiplayer events and rival-aware AI
   valuation;
+- the Universal Translator grants up to two free available technologies on
+  completion, preserving existing research progress with deterministic
+  rollback and explicit AI production value;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -150,12 +154,12 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 87 cases: 68 isolated native/script GSE tests
+The Release CTest matrix contains 88 cases: 69 isolated native/script GSE tests
 and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 68-case Release GSE matrix passed in one bounded invocation in
-127.67 seconds. Before the loan, sanction, and integrity milestones, all 18
+The current 69-case Release GSE matrix passed in one bounded invocation in
+128.88 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven

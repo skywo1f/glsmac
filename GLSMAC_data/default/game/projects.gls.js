@@ -197,6 +197,66 @@ const get_effective_facilities = (game, base) => {
 
 return (game) => {
 	let planetary_datalinks_pending = false;
+	const apply_completion_effects = (base, project_id) => {
+		if (project_id != 'TheUniversalTranslator') {
+			return #undefined;
+		}
+		const player = base.get_owner();
+		const previous = player.get_research_state();
+		let technologies = [];
+		for (id of previous.technologies) {
+			technologies :+id;
+		}
+		let target = previous.target;
+		let progress = previous.progress;
+		let completed_names = [];
+		for (let i = 0; i < 2; i++) {
+			if (target == '') {
+				target = game.get('f_technology_get_next_target')(technologies, player);
+			}
+			if (target == '') {
+				break;
+			}
+			const definition = game.get('f_technology_get_definition')(target);
+			if (definition == null) {
+				throw Error('Unknown Universal Translator technology: ' + target);
+			}
+			technologies :+target;
+			completed_names :+definition.name;
+			target = game.get('f_technology_get_next_target')(technologies, player);
+		}
+		if (#sizeof(completed_names) == 0) {
+			return #undefined;
+		}
+		if (target == '') {
+			progress = 0;
+		}
+		player.set_research_state({
+			technologies: technologies,
+			target: target,
+			progress: progress,
+		});
+		game.trigger('research_updated', {player: player});
+		for (name of completed_names) {
+			game.message(
+				player.name + ' has acquired ' + name +
+				' through The Universal Translator.'
+			);
+		}
+		const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
+		if (#is_defined(queue_datalinks)) {
+			queue_datalinks();
+		}
+		return {
+			player: player,
+			state: previous,
+			completed_count: #sizeof(completed_names),
+		};
+	};
+	const rollback_completion_effects = (applied) => {
+		applied.player.set_research_state(applied.state);
+		game.trigger('research_updated', {player: applied.player});
+	};
 	const apply_planetary_datalinks = () => {
 		planetary_datalinks_pending = false;
 		let snapshots = [];
@@ -287,6 +347,8 @@ return (game) => {
 	game.set('f_project_queue_planetary_datalinks', queue_planetary_datalinks);
 	game.set('f_project_apply_planetary_datalinks', apply_planetary_datalinks);
 	game.set('f_project_rollback_planetary_datalinks', rollback_planetary_datalinks);
+	game.set('f_project_apply_completion_effects', apply_completion_effects);
+	game.set('f_project_rollback_completion_effects', rollback_completion_effects);
 	if (#is_defined(game.on)) {
 		game.on('turn', queue_planetary_datalinks);
 	}

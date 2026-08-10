@@ -109,6 +109,7 @@ return {
 		let completed_facility = #undefined;
 		let previous_headquarters = [];
 		let cancelled_project_queues = [];
+		let project_completion_effects = #undefined;
 		let consumed_pops = [];
 		let pop_type_snapshots = [];
 
@@ -176,6 +177,15 @@ return {
 								production.id,
 								base
 							);
+							const apply_completion_effects = e.game.get(
+								'f_project_apply_completion_effects'
+							);
+							if (#is_defined(apply_completion_effects)) {
+								project_completion_effects = apply_completion_effects(
+									base,
+									production.id
+								);
+							}
 						}
 					} else {
 						throw Error('Unknown production kind: ' + production.production_kind);
@@ -208,12 +218,21 @@ return {
 			completed_facility: completed_facility,
 			previous_headquarters: previous_headquarters,
 			cancelled_project_queues: cancelled_project_queues,
+			project_completion_effects: project_completion_effects,
 			consumed_pops: consumed_pops,
 			pop_type_snapshots: pop_type_snapshots,
 		};
 	},
 
 	rollback: (e) => {
+		if (#is_defined(e.applied.project_completion_effects)) {
+			const rollback_completion_effects = e.game.get(
+				'f_project_rollback_completion_effects'
+			);
+			if (#is_defined(rollback_completion_effects)) {
+				rollback_completion_effects(e.applied.project_completion_effects);
+			}
+		}
 		if (#is_defined(e.applied.produced_unit)) {
 			e.game.um.despawn_unit(e.applied.produced_unit);
 		}

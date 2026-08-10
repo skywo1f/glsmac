@@ -86,6 +86,7 @@ const project_effects = {
 	TheLongevityVaccine: {},
 	TheHunterSeekerAlgorithm: {},
 	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
+	TheUniversalTranslator: {},
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
 	TheDreamTwister: {global_psi_attack_multiplier: 1.5},
@@ -109,6 +110,7 @@ const project_effects = {
 const partial_project_effects = {
 	TheXenoempathyDome: true,
 	ThePholusMutagen: true,
+	TheUniversalTranslator: true,
 	TheNetworkBackbone: true,
 	TheNanoFactory: true,
 	TheSpaceElevator: true,

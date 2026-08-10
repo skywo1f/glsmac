@@ -125,6 +125,13 @@ const planetary_datalinks = {
 	mineral_cost: 300,
 	unit_morale_bonus: 0,
 };
+const universal_translator = {
+	id: 'TheUniversalTranslator',
+	name: 'The Universal Translator',
+	production_kind: 'project',
+	mineral_cost: 300,
+	unit_morale_bonus: 0,
+};
 const command_center = {
 	id: 'CommandCenter',
 	name: 'Command Center',
@@ -194,6 +201,7 @@ const definitions = [
 	recreation_commons,
 	human_genome_project,
 	planetary_datalinks,
+	universal_translator,
 	command_center,
 	naval_yard,
 	aerospace_complex,
@@ -217,6 +225,8 @@ let completed_project_base = #undefined;
 let competing_production_queue = [];
 let competing_has_headquarters = false;
 let datalinks_queues = 0;
+let project_completion_applications = [];
+let project_completion_rollbacks = [];
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
@@ -553,6 +563,20 @@ game = {
 		if (key == 'f_project_queue_planetary_datalinks') {
 			return () => { datalinks_queues++; };
 		}
+		if (key == 'f_project_apply_completion_effects') {
+			return (target_base, project_id) => {
+				test.assert(target_base == base);
+				project_completion_applications :+project_id;
+				return project_id == 'TheUniversalTranslator'
+					? {project_id: project_id}
+					: #undefined;
+			};
+		}
+		if (key == 'f_project_rollback_completion_effects') {
+			return (applied) => {
+				project_completion_rollbacks :+applied.project_id;
+			};
+		}
 		throw Error('Unexpected game callback: ' + key);
 	},
 	um: {
@@ -798,6 +822,23 @@ test.assert(has_facility('ThePlanetaryDatalinks'));
 test.assert(datalinks_queues == 1);
 process_base_production.rollback(event);
 test.assert(!has_facility('ThePlanetaryDatalinks'));
+
+production_queue = [universal_translator];
+competing_production_queue = [];
+built_facilities = [];
+completed_project_base = #undefined;
+accumulated_minerals = 295;
+project_completion_applications = [];
+project_completion_rollbacks = [];
+event.applied = process_base_production.apply(event);
+test.assert(has_facility('TheUniversalTranslator'));
+test.assert(project_completion_applications == ['TheUniversalTranslator']);
+test.assert(event.applied.project_completion_effects == {
+	project_id: 'TheUniversalTranslator',
+});
+process_base_production.rollback(event);
+test.assert(!has_facility('TheUniversalTranslator'));
+test.assert(project_completion_rollbacks == ['TheUniversalTranslator']);
 
 production_queue = [];
 accumulated_minerals = 9;
