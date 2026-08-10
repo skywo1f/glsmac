@@ -63,7 +63,6 @@ const partial_effects = {
 	ResearchHospital: true,
 	Nanohospital: true,
 	GenejackFactory: true,
-	PunishmentSphere: true,
 	PressureDome: true,
 	AerospaceComplex: true,
 	CentauriPreserve: true,

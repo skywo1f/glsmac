@@ -34,6 +34,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - Bioenhancement Centers grant +2 training morale only to conventional military
   units and +1 lifecycle to bred native life, excluding civilian units from the
   general training bonus;
+- Punishment Spheres eliminate drones and talents, halve base labs, and double
+  enemy mind-control cost;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
   and starting capitals;
@@ -84,7 +86,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 19 complete and 12 partial;
+- 31 of 38 base facilities represented: 20 complete and 11 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.

@@ -11,6 +11,9 @@ test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.efficiency_rat
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.defender_morale_minimum == 1);
 test.assert(catalog.facility_coverage.status.ChildrenSCreche == 'complete');
 test.assert(catalog.facility_coverage.status.BioenhancementCenter == 'complete');
+test.assert(content.get_facility(catalog, 'PunishmentSphere').data.research_multiplier == -0.5);
+test.assert(content.get_facility(catalog, 'PunishmentSphere').data.suppress_psych);
+test.assert(catalog.facility_coverage.status.PunishmentSphere == 'complete');
 test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native);
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
@@ -24,8 +27,8 @@ test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'partial');
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
-	complete_facilities: 19,
-	partial_facilities: 12,
+	complete_facilities: 20,
+	partial_facilities: 11,
 	implemented_projects: 33,
 	complete_projects: 23,
 	partial_projects: 10,
