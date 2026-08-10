@@ -276,7 +276,7 @@
 				recycling_tanks.growth_rating_bonus != 0 ||
 				recycling_tanks.native_lifecycle_bonus != 0 ||
 				recycling_tanks.defender_morale_bonus != 0 ||
-				headquarters.defender_morale_bonus != 1 ||
+				headquarters.defender_morale_bonus != 0 ||
 				ascetic_virtues.global_police_rating_bonus != 1 ||
 				self_aware_colony.global_extra_police_units != 1 ||
 				recreation_commons.psych_bonus != 0 ||

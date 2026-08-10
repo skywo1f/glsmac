@@ -1,7 +1,7 @@
 const manifest = #include('content/base_facilities');
 
 const effects = {
-	Headquarters: {energy_bonus: 1, defender_morale_bonus: 1},
+	Headquarters: {energy_bonus: 1},
 	ChildrenSCreche: {
 		growth_rating_bonus: 2,
 		efficiency_rating_bonus: 2,
@@ -56,7 +56,6 @@ const effects = {
 };
 
 const partial_effects = {
-	Headquarters: true,
 	NetworkNode: true,
 	TreeFarm: true,
 	HybridForest: true,

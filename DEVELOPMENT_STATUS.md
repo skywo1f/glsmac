@@ -41,8 +41,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
   and starting capitals;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
-- Headquarters relocation by production, faction-wide runtime uniqueness,
-  destruction on enemy capture, and reversible restoration;
+- Headquarters grant +1 base-square energy, eliminate local inefficiency, and
+  prevent enemy mind control, with relocation by production, faction-wide
+  runtime uniqueness, destruction on enemy capture, and reversible restoration;
 - original-SMAC ecological damage based on local terraforming, worked squares,
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
@@ -86,7 +87,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 20 complete and 11 partial;
+- 31 of 38 base facilities represented: 21 complete and 10 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.

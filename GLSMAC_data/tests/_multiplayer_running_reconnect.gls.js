@@ -470,6 +470,7 @@
 				return 'starting Headquarters or built Recycling Tanks state is missing';
 			}
 			const recycling_tanks = game.get_bm().get_facility_def('RecyclingTanks');
+			const headquarters = game.get_bm().get_facility_def('Headquarters');
 			const recreation_commons = game.get_bm().get_facility_def('RecreationCommons');
 			const perimeter_defense = game.get_bm().get_facility_def('PerimeterDefense');
 			const energy_bank = game.get_bm().get_facility_def('EnergyBank');
@@ -515,6 +516,8 @@
 				recycling_tanks.air_defense_multiplier != 1.0 ||
 				recycling_tanks.growth_rating_bonus != 0 ||
 				recycling_tanks.native_lifecycle_bonus != 0 ||
+				headquarters.energy_bonus != 1 ||
+				headquarters.defender_morale_bonus != 0 ||
 				recreation_commons.psych_bonus != 0 ||
 				recreation_commons.drone_modifier != -2 ||
 				recreation_commons.required_technology != 'SocialPsych' ||
