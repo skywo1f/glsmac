@@ -48,7 +48,9 @@ scenarios, for:
   stacking, and grants bred native life +1 lifecycle;
 - the Universal Translator grants up to two free available technologies on
   completion, preserving existing research progress with deterministic
-  rollback and explicit AI production value;
+  rollback and explicit AI production value; Alien Artifacts can also be
+  studied for free technologies once per Network Node or without limit at the
+  Translator base, with player controls, AI routing, and serialized usage;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -117,8 +119,8 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 29 complete and 4 partial;
+- 31 of 38 base facilities represented: 27 complete and 4 partial;
+- all 33 Secret Projects represented: 30 complete and 3 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -146,16 +148,17 @@ The following original-SMAC systems remain absent or materially incomplete:
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
-- several remaining facility effects, including alien-artifact study,
-  submersion, Psi Gates, prototype-cost handling, and disease protection;
+- several remaining facility effects, including submersion, Psi Gates,
+  prototype-cost handling, disease protection, and Alien Artifact production
+  contributions to Secret Projects and prototypes;
 - the seven absent base-facility definitions are Skunkworks, Psi Gate, Sky
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
-  Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
-  Dome, and Aerospace Complex are represented but remain partial;
-- the four partial Secret Projects are the Empath Guild, Universal Translator,
-  Nano Factory, and Space Elevator; the Empath Guild still lacks its +50%
-  council-election vote bonus, and the others' remaining effects and
-  victory-adjacent rules require individual parity audits;
+  Defense Pod, and Stockpile Energy; both hospitals, Pressure Dome, and
+  Aerospace Complex are represented but remain partial;
+- the three partial Secret Projects are the Empath Guild, Nano Factory, and
+  Space Elevator; the Empath Guild still lacks its +50% council-election vote
+  bonus, and the others' remaining effects and victory-adjacent rules require
+  individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -166,12 +169,13 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 89 cases: 70 isolated native/script GSE tests
+The Release CTest matrix contains 90 cases: 71 isolated native/script GSE tests
 and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 70-case Release GSE matrix passed in one bounded invocation in
-159.24 seconds. Before the loan, sanction, and integrity milestones, all 18
+The current 70-case Release script matrix passed in one bounded invocation in
+131.11 seconds, and the native GSE test passed separately in 1.18 seconds.
+Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven

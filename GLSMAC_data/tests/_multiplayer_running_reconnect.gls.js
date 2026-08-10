@@ -566,6 +566,9 @@
 			if (base == null) {
 				return 'base is missing';
 			}
+			if (base.get('network_node_artifact_linked') != true) {
+				return 'Network Node artifact state is missing';
+			}
 			if (!game.get_um().has_unit(air_snapshot_unit_id)) {
 				return 'partially fueled Needlejet is missing';
 			}
@@ -672,6 +675,7 @@
 					conquered_base.set_owner(client_base.get_owner());
 					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
+					client_base.set('network_node_artifact_linked', true);
 					const production_ids = get_snapshot_production_ids(client_base);
 					client_base.add_facility('RecyclingTanks');
 					client_base.set_production_queue([

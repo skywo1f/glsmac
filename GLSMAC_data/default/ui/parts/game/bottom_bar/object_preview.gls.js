@@ -1,4 +1,5 @@
 const terraforming = #include('../../../../units/terraforming');
+const artifact_rules = #include('../../../../game/artifact_rules');
 
 return {
 
@@ -198,6 +199,20 @@ return {
 					this.action_button.text = 'PROBE ACTION';
 					this.close_terraform_menu();
 					this.action_button.show();
+				} else if (
+					is_owned && object.transport_id == 0 &&
+					def.weapon == 'AlienArtifact' &&
+					!#is_defined(artifact_rules.get_study_error(
+						this.p.game,
+						object,
+						this.p.game.get_player().id
+					))
+				) {
+					this.action_unit = object;
+					this.action_mode = 'study_artifact';
+					this.action_button.text = 'STUDY ARTIFACT';
+					this.close_terraform_menu();
+					this.action_button.show();
 				} else if (is_owned && object.transport_id == 0 && def.can_found_base) {
 					this.action_unit = object;
 					this.action_mode = 'found_base';
@@ -319,6 +334,8 @@ return {
 			} else if (this.action_mode == 'probe') {
 				p.modules.popup.set('probe_operations', {unit: this.action_unit});
 				p.modules.popup.show('probe_operations');
+			} else if (this.action_mode == 'study_artifact') {
+				p.game.event('study_alien_artifact', {unit: this.action_unit});
 			}
 			return true;
 		});

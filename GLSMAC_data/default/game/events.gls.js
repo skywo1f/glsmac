@@ -47,6 +47,7 @@ return (game) => {
 		'process_diplomatic_loan_payment',
 		'process_diplomatic_sanctions',
 		'probe_operation',
+		'study_alien_artifact',
 		'fungal_bloom',
 		'declare_victory',
 		'complete_turn',

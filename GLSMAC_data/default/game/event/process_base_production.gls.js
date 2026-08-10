@@ -112,6 +112,7 @@ return {
 		let project_completion_effects = #undefined;
 		let consumed_pops = [];
 		let pop_type_snapshots = [];
+		let network_node_link_state = #undefined;
 
 		if (#is_defined(production)) {
 			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
@@ -168,6 +169,14 @@ return {
 						base.remove_production(0);
 						base.add_facility(production.id);
 						completed_facility = production.id;
+						if (production.id == 'NetworkNode') {
+							const linked_key = 'network_node_artifact_linked';
+							network_node_link_state = {
+								defined: base.has(linked_key),
+								value: base.get(linked_key),
+							};
+							base.unset(linked_key);
+						}
 						if (production.id == 'Headquarters') {
 							previous_headquarters = relocate_headquarters(e.game, base);
 						}
@@ -221,6 +230,7 @@ return {
 			project_completion_effects: project_completion_effects,
 			consumed_pops: consumed_pops,
 			pop_type_snapshots: pop_type_snapshots,
+			network_node_link_state: network_node_link_state,
 		};
 	},
 
@@ -238,6 +248,14 @@ return {
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);
+		}
+		if (#is_defined(e.applied.network_node_link_state)) {
+			const linked_key = 'network_node_artifact_linked';
+			if (e.applied.network_node_link_state.defined) {
+				e.data.base.set(linked_key, e.applied.network_node_link_state.value);
+			} else {
+				e.data.base.unset(linked_key);
+			}
 		}
 		if (#is_defined(e.applied.previous_headquarters)) {
 			for (previous_headquarters of e.applied.previous_headquarters) {

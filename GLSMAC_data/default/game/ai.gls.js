@@ -12,6 +12,8 @@ const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const movement_rules = #include('movement_rules');
 const unit_abilities = #include('unit_abilities');
+const artifact_rules = #include('artifact_rules');
+const technology_acquisition = #include('technology_acquisition');
 const air = #include('../units/air');
 
 const owned_bases = (game, player) => {
@@ -888,6 +890,46 @@ const move_colony = (game, player, unit, all_bases) => {
 	return false;
 };
 
+const move_artifact = (game, player, unit) => {
+	const tile = unit.get_tile();
+	if (tile.is_locked() || !technology_acquisition.can_grant(game, player)) {
+		return false;
+	}
+	if (!#is_defined(artifact_rules.get_study_error(game, unit, player.id))) {
+		game.event_as(player.id, 'study_alien_artifact', {unit: unit});
+		return true;
+	}
+	const destination = pathfinding.find_best_reachable(
+		game.get_tm(),
+		unit,
+		(source, candidate) => { return can_enter(unit, candidate, source); },
+		(candidate, distance) => {
+			const base = candidate.get_base();
+			if (
+				base == null || base.get_owner().id != player.id ||
+				artifact_rules.get_study_method(base) == ''
+			) {
+				return null;
+			}
+			return 100000 - distance * 100 + (
+				base.has_facility('TheUniversalTranslator') ? 50000 : 0
+			);
+		}
+	);
+	if (destination == null) {
+		return false;
+	}
+	if (destination.target == tile) {
+		game.event_as(player.id, 'study_alien_artifact', {unit: unit});
+		return true;
+	}
+	if (destination.step != null && can_enter(unit, destination.step, tile)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: destination.step});
+		return true;
+	}
+	return false;
+};
+
 const move_former = (game, player, unit, all_bases) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
@@ -1210,6 +1252,20 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		if (!waiting_for_action && !waiting_for_animation) {
+			for (unit of current_units) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
+					continue;
+				}
+				if (unit.get_def().weapon == 'AlienArtifact') {
+					action_started = move_artifact(game, player, unit);
+				}
+				if (action_started) {
+					action_state.record_action_attempt(unit, action_attempts);
+					break;
+				}
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
 					continue;

@@ -189,6 +189,9 @@
 			if (base == null) {
 				return 'base is missing';
 			}
+			if (base.get('network_node_artifact_linked') != true) {
+				return 'Network Node artifact state was not restored';
+			}
 			if (game.get_um().get_unit(former_snapshot_unit_id).home_base_id != base.id) {
 				return 'Former home base was not restored from the snapshot';
 			}

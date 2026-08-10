@@ -56,7 +56,6 @@ const effects = {
 };
 
 const partial_effects = {
-	NetworkNode: true,
 	ResearchHospital: true,
 	Nanohospital: true,
 	PressureDome: true,
@@ -110,7 +109,6 @@ const project_effects = {
 
 const partial_project_effects = {
 	TheEmpathGuild: true,
-	TheUniversalTranslator: true,
 	TheNanoFactory: true,
 	TheSpaceElevator: true,
 };

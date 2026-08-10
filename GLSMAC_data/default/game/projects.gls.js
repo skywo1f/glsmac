@@ -1,4 +1,5 @@
 const project_acquisition = #include('./project_acquisition');
+const technology_acquisition = #include('./technology_acquisition');
 
 const empty_effects = () => {
 	return {
@@ -228,56 +229,21 @@ return (game) => {
 			return #undefined;
 		}
 		const player = base.get_owner();
-		const previous = player.get_research_state();
-		let technologies = [];
-		for (id of previous.technologies) {
-			technologies :+id;
-		}
-		let target = previous.target;
-		let progress = previous.progress;
-		let completed_names = [];
-		for (let i = 0; i < 2; i++) {
-			if (target == '') {
-				target = game.get('f_technology_get_next_target')(technologies, player);
-			}
-			if (target == '') {
-				break;
-			}
-			const definition = game.get('f_technology_get_definition')(target);
-			if (definition == null) {
-				throw Error('Unknown Universal Translator technology: ' + target);
-			}
-			technologies :+target;
-			completed_names :+definition.name;
-			target = game.get('f_technology_get_next_target')(technologies, player);
-		}
-		if (#sizeof(completed_names) == 0) {
+		const acquired = technology_acquisition.apply(game, player, 2);
+		if (!#is_defined(acquired)) {
 			return #undefined;
 		}
-		if (target == '') {
-			progress = 0;
-		}
-		player.set_research_state({
-			technologies: technologies,
-			target: target,
-			progress: progress,
-		});
-		game.trigger('research_updated', {player: player});
-		for (name of completed_names) {
+		for (name of acquired.completed_names) {
 			game.message(
 				player.name + ' has acquired ' + name +
-				' through The Universal Translator.'
+					' through The Universal Translator.'
 			);
-		}
-		const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
-		if (#is_defined(queue_datalinks)) {
-			queue_datalinks();
 		}
 		return {
 			kind: 'universal_translator',
-			player: player,
-			state: previous,
-			completed_count: #sizeof(completed_names),
+			player: acquired.player,
+			state: acquired.state,
+			completed_count: acquired.completed_count,
 		};
 	};
 	const rollback_completion_effects = (applied) => {
@@ -285,8 +251,7 @@ return (game) => {
 			project_acquisition.rollback_empath_guild(applied.applied);
 			return;
 		}
-		applied.player.set_research_state(applied.state);
-		game.trigger('research_updated', {player: applied.player});
+		technology_acquisition.rollback(game, applied);
 	};
 	const apply_planetary_datalinks = () => {
 		planetary_datalinks_pending = false;

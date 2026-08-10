@@ -43,15 +43,15 @@ test.assert(catalog.project_coverage.status.ThePholusMutagen == 'complete');
 test.assert(content.get_facility(catalog, 'TheXenoempathyDome').data.global_native_lifecycle_bonus == 1);
 test.assert(catalog.project_coverage.status.TheXenoempathyDome == 'complete');
 test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'complete');
+test.assert(catalog.facility_coverage.status.NetworkNode == 'complete');
+test.assert(catalog.project_coverage.status.TheUniversalTranslator == 'complete');
 for (id of [
-	'TheEmpathGuild', 'TheUniversalTranslator',
-	'TheNanoFactory', 'TheSpaceElevator',
+	'TheEmpathGuild', 'TheNanoFactory', 'TheSpaceElevator',
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
 for (id of [
-	'NetworkNode', 'ResearchHospital', 'Nanohospital', 'PressureDome',
-	'AerospaceComplex',
+	'ResearchHospital', 'Nanohospital', 'PressureDome', 'AerospaceComplex',
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
@@ -64,11 +64,11 @@ for (id of [
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
-	complete_facilities: 26,
-	partial_facilities: 5,
+	complete_facilities: 27,
+	partial_facilities: 4,
 	implemented_projects: 33,
-	complete_projects: 29,
-	partial_projects: 4,
+	complete_projects: 30,
+	partial_projects: 3,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

@@ -457,6 +457,15 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	for ( const auto& id : facility_ids ) {
 		buf.WriteString( id );
 	}
+	auto* const network_node_artifact_linked =
+		const_cast< Base* >( base )->CustomGet( "network_node_artifact_linked" );
+	if ( network_node_artifact_linked && network_node_artifact_linked->type != gse::VT_BOOL ) {
+		THROW( "base Network Node artifact state must be a boolean" );
+	}
+	buf.WriteBool(
+		network_node_artifact_linked &&
+		( (gse::value::Bool*)network_node_artifact_linked )->value
+	);
 	return buf;
 }
 
@@ -578,6 +587,9 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			THROW( "invalid or duplicate serialized base facility: " + facility_id );
 		}
 	}
+	const bool network_node_artifact_linked = buf.GetRemaining() > 0
+		? buf.ReadBool()
+		: false;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
@@ -598,6 +610,12 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		base->CustomSet(
 			"accumulated_nutrients",
 			VALUE( gse::value::Int, , accumulated_nutrients )
+		);
+	}
+	if ( network_node_artifact_linked ) {
+		base->CustomSet(
+			"network_node_artifact_linked",
+			VALUE( gse::value::Bool, , true )
 		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );
