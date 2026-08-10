@@ -40,6 +40,8 @@ const facility = (id, required_technology, nutrients, minerals, energy, psych, r
 		air_defense_multiplier: 1.0,
 		growth_rating_bonus: 0,
 		native_lifecycle_bonus: 0,
+		efficiency_rating_bonus: 0,
+		defender_morale_minimum: 0,
 	};
 };
 const context = (needs_military, needs_psych) => {

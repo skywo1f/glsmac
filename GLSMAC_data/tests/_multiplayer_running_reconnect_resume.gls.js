@@ -291,6 +291,8 @@
 				command_center.unit_morale_land_bonus != 2 ||
 				!command_center.full_repair_land ||
 				childrens_creche.growth_rating_bonus != 2 ||
+				childrens_creche.efficiency_rating_bonus != 2 ||
+				childrens_creche.defender_morale_minimum != 1 ||
 				naval_yard.unit_morale_water_bonus != 2 ||
 				naval_yard.water_defense_multiplier != 2.0 ||
 				!naval_yard.full_repair_water ||

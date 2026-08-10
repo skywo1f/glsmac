@@ -68,7 +68,9 @@ FacilityDef::FacilityDef(
 	const bool full_repair_native,
 	const int64_t defender_morale_bonus,
 	const int64_t global_police_rating_bonus,
-	const int64_t global_extra_police_units
+	const int64_t global_extra_police_units,
+	const int64_t efficiency_rating_bonus,
+	const int64_t defender_morale_minimum
 )
 	: m_id( id )
 	, m_name( name )
@@ -128,7 +130,9 @@ FacilityDef::FacilityDef(
 	, m_full_repair_native( full_repair_native )
 	, m_defender_morale_bonus( defender_morale_bonus )
 	, m_global_police_rating_bonus( global_police_rating_bonus )
-	, m_global_extra_police_units( global_extra_police_units ) {
+	, m_global_extra_police_units( global_extra_police_units )
+	, m_efficiency_rating_bonus( efficiency_rating_bonus )
+	, m_defender_morale_minimum( defender_morale_minimum ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -192,6 +196,10 @@ FacilityDef::FacilityDef(
 		m_global_police_rating_bonus > MAX_UNIT_MORALE_BONUS ||
 		m_global_extra_police_units < 0 ||
 		m_global_extra_police_units > MAX_UNIT_MORALE_BONUS ||
+		m_efficiency_rating_bonus < 0 ||
+		m_efficiency_rating_bonus > MAX_GROWTH_RATING_BONUS ||
+		m_defender_morale_minimum < 0 ||
+		m_defender_morale_minimum > MAX_UNIT_MORALE_BONUS ||
 		!m_is_project && (
 			!m_granted_facility.empty() ||
 			m_global_talent_bonus != 0 ||
@@ -313,6 +321,8 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_defender_morale_bonus );
 	buf.WriteInt( def->m_global_police_rating_bonus );
 	buf.WriteInt( def->m_global_extra_police_units );
+	buf.WriteInt( def->m_efficiency_rating_bonus );
+	buf.WriteInt( def->m_defender_morale_minimum );
 	return buf;
 }
 
@@ -376,6 +386,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto defender_morale_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto global_police_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto global_extra_police_units = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto efficiency_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto defender_morale_minimum = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -435,7 +447,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		full_repair_native,
 		defender_morale_bonus,
 		global_police_rating_bonus,
-		global_extra_police_units
+		global_extra_police_units,
+		efficiency_rating_bonus,
+		defender_morale_minimum
 	);
 }
 
@@ -680,6 +694,14 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"global_extra_police_units",
 			VALUE( gse::value::Int, , m_global_extra_police_units )
+		},
+		{
+			"efficiency_rating_bonus",
+			VALUE( gse::value::Int, , m_efficiency_rating_bonus )
+		},
+		{
+			"defender_morale_minimum",
+			VALUE( gse::value::Int, , m_defender_morale_minimum )
 		},
 	};
 WRAPIMPL_END_PTR()

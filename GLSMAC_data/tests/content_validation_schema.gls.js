@@ -16,7 +16,7 @@ invalid = content.make_catalog();
 invalid.facility_coverage.status.RecyclingTanks = 'unknown';
 test.assert(content.validator.validate(invalid).errors == [
 	'facility_coverage.RecyclingTanks: must be complete or partial',
-	'facility_coverage.complete: reports 17 but contains 16',
+	'facility_coverage.complete: reports 18 but contains 17',
 ]);
 
 invalid = content.make_catalog();

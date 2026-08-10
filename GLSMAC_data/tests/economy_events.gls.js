@@ -115,6 +115,7 @@ test.assert(values.f_economy_get_base(game, positive_base) == 6);
 project_economy_multiplier = 0.0;
 
 let has_creche = false;
+const creche = {efficiency_rating_bonus: 2};
 const remote_tile = {distance: 8};
 const remote_base = {
 	id: 3,
@@ -124,6 +125,7 @@ const remote_base = {
 	has_facility: (id) => {
 		return id == 'ChildrenSCreche' && has_creche;
 	},
+	get_facilities: () => { return has_creche ? [creche] : []; },
 };
 economy_bases = [positive_base, remote_base];
 let energy = values.f_economy_get_base_energy(remote_base);
@@ -141,6 +143,7 @@ energy = values.f_economy_get_base_energy(remote_base);
 test.assert(energy.efficiency == 0 - 2);
 test.assert(energy.inefficiency == 16);
 test.assert(energy.net == 16);
+test.assert(energy.denominator == 16);
 has_creche = false;
 efficiency_rating = 4;
 energy = values.f_economy_get_base_energy(remote_base);

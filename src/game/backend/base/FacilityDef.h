@@ -86,7 +86,9 @@ public:
 		const bool full_repair_native = false,
 		const int64_t defender_morale_bonus = 0,
 		const int64_t global_police_rating_bonus = 0,
-		const int64_t global_extra_police_units = 0
+		const int64_t global_extra_police_units = 0,
+		const int64_t efficiency_rating_bonus = 0,
+		const int64_t defender_morale_minimum = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -149,6 +151,8 @@ public:
 	const int64_t m_defender_morale_bonus;
 	const int64_t m_global_police_rating_bonus;
 	const int64_t m_global_extra_police_units;
+	const int64_t m_efficiency_rating_bonus;
+	const int64_t m_defender_morale_minimum;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

@@ -13,9 +13,13 @@ const get_project_effects = (game, base) => {
 const get_efficiency_rating = (game, base) => {
 	const resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
-	return ratings.effic + (
-		base.has_facility('ChildrenSCreche') ? 2 : 0
-	);
+	let facility_bonus = 0;
+	for (facility of get_effective_facilities(game, base)) {
+		facility_bonus += #is_defined(facility.efficiency_rating_bonus)
+			? facility.efficiency_rating_bonus
+			: 0;
+	}
+	return ratings.effic + facility_bonus;
 };
 
 const get_headquarters_distance = (game, base) => {

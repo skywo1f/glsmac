@@ -150,6 +150,38 @@ const social_powers = combat_rules.get_combat_powers(
 test.assert(social_powers.attack == 2.25);
 test.assert(social_powers.defence == 2.5);
 
+const creche_tile = make_tile();
+make_base(creche_tile, 2, [{defender_morale_minimum: 1}]);
+const creche_defender = make_unit(creche_tile, 2, 1, 2, false, 'land');
+let creche_social_bonus = 0 - 2;
+const creche_game = {
+	get: (key) => {
+		if (key == 'f_social_get_morale_bonus') {
+			return (player, defending) => { return creche_social_bonus; };
+		}
+		if (key == 'f_base_get_effective_facilities') {
+			return (base) => { return base.get_facilities(); };
+		}
+		return #undefined;
+	},
+};
+test.assert(combat_rules.get_base_defender_morale_minimum(creche_defender, creche_game) == 1);
+test.assert(combat_rules.get_combat_powers(attacker, creche_defender, creche_game).defence == 2.8125);
+creche_social_bonus = 2;
+test.assert(combat_rules.get_combat_powers(attacker, creche_defender, creche_game).defence == 3.125);
+creche_social_bonus = 0 - 2;
+const creche_occupier = make_unit(creche_tile, 3, 1, 2, false, 'land');
+test.assert(combat_rules.get_base_defender_morale_minimum(creche_occupier, creche_game) == 0);
+test.assert(combat_rules.get_social_morale_bonus(creche_occupier, creche_game, true) == 0 - 2);
+const creche_occupier_defence = combat_rules.get_combat_powers(
+	attacker,
+	creche_occupier,
+	creche_game
+).defence;
+test.assert(creche_occupier_defence == 1.875);
+const creche_native = make_unit(creche_tile, 2, 1, 2, true, 'land');
+test.assert(combat_rules.get_combat_powers(attacker, creche_native, creche_game).defence == 2.5);
+
 const stack_tile = make_tile();
 const weak_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');
 weak_defender.id = 20;

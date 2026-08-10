@@ -62,6 +62,8 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		global_full_repair: false,
 		global_police_rating_bonus: 0,
 		global_extra_police_units: 0,
+		efficiency_rating_bonus: 0,
+		defender_morale_minimum: 0,
 	};
 };
 
@@ -90,6 +92,8 @@ const biology_lab = facility('BiologyLab', 0, 0, 0, 0, 0.0, 1, 60, 1.0, 0.0, 0, 
 biology_lab.native_lifecycle_bonus = 1;
 const childrens_creche = facility('ChildrenSCreche', 0, 0, 0, 0, 0.0, 1, 50);
 childrens_creche.growth_rating_bonus = 2;
+childrens_creche.efficiency_rating_bonus = 2;
+childrens_creche.defender_morale_minimum = 1;
 const command_nexus = facility('TheCommandNexus', 0, 0, 0, 0, 0.0, 0, 200);
 command_nexus.production_kind = 'project';
 command_nexus.granted_facility = 'CommandCenter';
@@ -244,6 +248,10 @@ low_economy_context.priorities = {development: 0};
 test.assert(
 	production.score_facility(energy_bank, economy_context) >
 	production.score_facility(energy_bank, low_economy_context)
+);
+test.assert(
+	production.score_facility(childrens_creche, economy_context) >
+	production.score_facility(childrens_creche, low_economy_context)
 );
 test.assert(
 	production.score_facility(biology_lab, economy_context) >

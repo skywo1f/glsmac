@@ -136,11 +136,18 @@ const score_facility = (def, context) => {
 		(#is_defined(def.full_repair_water) && def.full_repair_water ? 1 : 0) +
 		(#is_defined(def.full_repair_air) && def.full_repair_air ? 1 : 0) +
 		(#is_defined(def.full_repair_native) && def.full_repair_native ? 1 : 0);
+	const efficiency_rating_bonus = #is_defined(def.efficiency_rating_bonus)
+		? def.efficiency_rating_bonus
+		: 0;
+	const defender_morale_minimum = #is_defined(def.defender_morale_minimum)
+		? def.defender_morale_minimum
+		: 0;
 	return 30000 + infrastructure_bonus + headquarters_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
 		def.growth_rating_bonus * nutrient_weight * 4 +
 		def.energy_bonus * 500 + def.psych_bonus * psych_weight +
+		efficiency_rating_bonus * economy_weight * 2 +
 		forest_nutrient_bonus * nutrient_weight * 3 +
 		forest_mineral_bonus * 2700 + forest_energy_bonus * 1500 -
 		def.energy_maintenance * 250 - get_mineral_cost(def, context) +
@@ -166,7 +173,8 @@ const score_facility = (def, context) => {
 			def.unit_morale_bonus + def.unit_morale_land_bonus +
 			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
 			def.native_lifecycle_bonus
-		) * morale_weight + full_repair_capabilities * morale_weight * 2;
+		) * morale_weight + defender_morale_minimum * morale_weight +
+		full_repair_capabilities * morale_weight * 2;
 };
 
 const score_project = (def, context) => {
@@ -298,12 +306,18 @@ const score_hurry = (def, context) => {
 		if (def.economy_multiplier > 0.0) {
 			urgency += get_priority(context, 'development', 50) * 200;
 		}
+		if (#is_defined(def.efficiency_rating_bonus) && def.efficiency_rating_bonus > 0) {
+			urgency += get_priority(context, 'development', 50) * 200;
+		}
 		if (
 			def.unit_morale_bonus > 0 || def.unit_morale_land_bonus > 0 ||
 			def.unit_morale_water_bonus > 0 || def.unit_morale_air_bonus > 0 ||
 			def.native_lifecycle_bonus > 0
 		) {
 			urgency += get_priority(context, 'military', 0) * 200;
+		}
+		if (#is_defined(def.defender_morale_minimum) && def.defender_morale_minimum > 0) {
+			urgency += get_priority(context, 'defense', 0) * 200;
 		}
 	}
 	if (urgency <= 0) {

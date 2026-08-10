@@ -399,6 +399,8 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, defender_morale_bonus, def, "defender_morale_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, global_police_rating_bonus, def, "global_police_rating_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, global_extra_police_units, def, "global_extra_police_units", Int, 0 );
+				N_GETPROP_OPT( int64_t, efficiency_rating_bonus, def, "efficiency_rating_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, defender_morale_minimum, def, "defender_morale_minimum", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -482,6 +484,10 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_police_rating_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
 					global_extra_police_units < 0 ||
 					global_extra_police_units > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					efficiency_rating_bonus < 0 ||
+					efficiency_rating_bonus > base::FacilityDef::MAX_GROWTH_RATING_BONUS ||
+					defender_morale_minimum < 0 ||
+					defender_morale_minimum > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -596,7 +602,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					full_repair_native,
 					defender_morale_bonus,
 					global_police_rating_bonus,
-					global_extra_police_units
+					global_extra_police_units,
+					efficiency_rating_bonus,
+					defender_morale_minimum
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

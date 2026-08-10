@@ -32,7 +32,10 @@ The Windows x64 Release build has asset-backed automated coverage for:
   original garrison limits, +3 doubled control, Non-Lethal Methods, Ascetic
   Virtues, Self-Aware Colony, AI worker stability, and base-screen diagnostics;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
-  Children's Creche bonuses, no-headquarters fallback, and starting capitals;
+  the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
+  and starting capitals;
+- the Children's Creche exact +2 local GROWTH and conventional-defender
+  social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters relocation by production, faction-wide runtime uniqueness,
   destruction on enemy capture, and reversible restoration;
 - original-SMAC ecological damage based on local terraforming, worked squares,
@@ -78,7 +81,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 17 complete and 14 partial;
+- 31 of 38 base facilities represented: 18 complete and 13 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -125,7 +128,7 @@ and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 67-case Release GSE matrix passed in one bounded invocation in
-117.83 seconds. Before the loan, sanction, and integrity milestones, all 18
+117.96 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -141,8 +144,9 @@ and rollback tests; stale-wrapper multi-lender accounting; and AI-policy and
 UI-parser tests. The current asset-backed diplomacy quickstart passed in 8.01
 seconds with a treaty, commerce, reciprocal technology trade, loan acceptance,
 peaceful repayment, treaty-betrayal integrity loss, vendetta, and wartime debt
-growth. The current running multiplayer reconnect passed in 25.76 seconds and
-restored exact active-loan, sanction-duration, and diplomatic-integrity state.
+growth. The current running multiplayer reconnect passed in 25.15 seconds and
+restored exact active-loan, sanction-duration, diplomatic-integrity, and
+Children's Creche local-rating definition state.
 Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed
@@ -183,6 +187,11 @@ bonus. The five direct project/social/psych/economy/catalog tests, six dependent
 AI/production/support/commerce/research tests, and the 9.32-second installed-
 asset project runtime are green. Network Backbone remains partial because its
 remaining commerce and Network Node lab accounting is not yet exact.
+Children's Creche coverage validates its exact local GROWTH and EFFIC ratings,
+the conventional-defender MORALE floor for weak social models, no stacking over
+stronger social morale, native and enemy-occupier exclusions, doubled enemy
+mind-control cost, AI valuation, legacy definition defaults, and live network
+snapshot restoration.
 Integrity coverage verifies the original eight status labels, treaty and pact
 penalties, aggressor-only changes, saturation, reversible declaration and
 detected-probe paths, AI agreement and loan trust, UI status loading, native

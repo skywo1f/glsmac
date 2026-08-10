@@ -67,6 +67,8 @@ const facility_fields = {
 	global_full_repair: true,
 	global_police_rating_bonus: true,
 	global_extra_police_units: true,
+	efficiency_rating_bonus: true,
+	defender_morale_minimum: true,
 };
 
 const facility_manifest_fields = {
@@ -513,6 +515,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_bool(data, 'global_full_repair', path, errors, false);
 		validate_int(data, 'global_police_rating_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'global_extra_police_units', path, errors, false, 0, 10);
+		validate_int(data, 'efficiency_rating_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'defender_morale_minimum', path, errors, false, 0, 10);
 		validate_string(data, 'name', path, errors, true);
 		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -614,6 +618,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.full_repair_air) && data.full_repair_air) ||
 			(#is_defined(data.full_repair_native) && data.full_repair_native) ||
 			(#is_defined(data.defender_morale_bonus) && data.defender_morale_bonus > 0) ||
+			(#is_defined(data.efficiency_rating_bonus) && data.efficiency_rating_bonus > 0) ||
+			(#is_defined(data.defender_morale_minimum) && data.defender_morale_minimum > 0) ||
 			(#is_defined(data.global_prevent_riots) && data.global_prevent_riots) ||
 			(
 				#is_defined(data.global_terraforming_rate_multiplier) &&

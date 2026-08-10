@@ -77,6 +77,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		score += #round(
 			def.economy_multiplier * #to_float(5000 + development_priority * 300)
 		);
+		score += (#is_defined(def.efficiency_rating_bonus)
+			? def.efficiency_rating_bonus
+			: 0) * (5000 + development_priority * 300);
 		score += #round(
 			def.mineral_multiplier * #to_float(5000 + development_priority * 300)
 		);
@@ -100,6 +103,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		) * (
 			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
 		);
+		score += (#is_defined(def.defender_morale_minimum)
+			? def.defender_morale_minimum
+			: 0) * (5000 + defense_priority * 250);
 	}
 	return score;
 };

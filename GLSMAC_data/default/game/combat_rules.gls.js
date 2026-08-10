@@ -37,15 +37,53 @@ const get_base_defender_morale_bonus = (defender, game) => {
 	return result;
 };
 
-const get_social_morale_bonus = (unit, game, defending) => {
+const get_base_defender_morale_minimum = (defender, game) => {
+	if (!#is_defined(defender.get_tile)) {
+		return 0;
+	}
+	const base = defender.get_tile().get_base();
 	if (
-		!#is_defined(game) || !#is_defined(game.get) ||
-		!#is_defined(unit.get_owner) || unit.get_def().is_native
+		base == null ||
+		!#is_defined(base.get_owner) ||
+		!#is_defined(base.get_facilities) ||
+		base.get_owner().id != defender.owner
 	) {
 		return 0;
 	}
-	const resolver = game.get('f_social_get_morale_bonus');
-	return #is_defined(resolver) ? resolver(unit.get_owner(), defending) : 0;
+	const resolver = #is_defined(game) && #is_defined(game.get)
+		? game.get('f_base_get_effective_facilities')
+		: #undefined;
+	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	let result = 0;
+	for (facility of facilities) {
+		result = #max(
+			result,
+			#is_defined(facility.defender_morale_minimum)
+				? facility.defender_morale_minimum
+				: 0
+		);
+	}
+	return result;
+};
+
+const get_social_morale_bonus = (unit, game, defending) => {
+	const def = unit.get_def();
+	if (
+		!#is_defined(unit.get_owner) ||
+		(#is_defined(def.is_native) && def.is_native)
+	) {
+		return 0;
+	}
+	const resolver = #is_defined(game) && #is_defined(game.get)
+		? game.get('f_social_get_morale_bonus')
+		: #undefined;
+	const social_bonus = #is_defined(resolver)
+		? resolver(unit.get_owner(), defending)
+		: 0;
+	const facility_minimum = defending
+		? get_base_defender_morale_minimum(unit, game)
+		: 0;
+	return facility_minimum > 0 ? #max(social_bonus, facility_minimum) : social_bonus;
 };
 
 const get_base_defense_multiplier = (defender, attacker, game) => {
@@ -223,6 +261,8 @@ return {
 	has_ability: has_ability,
 	get_morale_multiplier: get_morale_multiplier,
 	get_base_defender_morale_bonus: get_base_defender_morale_bonus,
+	get_base_defender_morale_minimum: get_base_defender_morale_minimum,
+	get_social_morale_bonus: get_social_morale_bonus,
 	get_base_defense_multiplier: get_base_defense_multiplier,
 	get_combat_powers: get_combat_powers,
 	get_artillery_powers: get_artillery_powers,
