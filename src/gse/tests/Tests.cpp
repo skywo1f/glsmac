@@ -253,6 +253,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetEnergyCredits( 73 );
 				source.SetEcologicalDamageEvents( 4 );
 				source.SetMajorAtrocities( 2 );
+				source.SetSanctionTurns( 10 );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -270,6 +271,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetDiplomaticLoan( 7, loan );
 				Player cloned( &source );
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
+				GT_ASSERT( cloned.GetSanctionTurns() == 10, "player sanction duration was not cloned" );
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not cloned"
@@ -293,6 +295,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player ecological damage event count was not serialized"
 				);
 				GT_ASSERT( roundtrip.GetMajorAtrocities() == 2, "player major atrocity count was not serialized" );
+				GT_ASSERT( roundtrip.GetSanctionTurns() == 10, "player sanction duration was not serialized" );
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
 					"player social engineering choices were not serialized"
@@ -472,6 +475,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetDiplomaticLoanOffers().empty() && legacy.GetDiplomaticLoans().empty(),
 					"legacy player diplomatic loans did not default to empty"
 				);
+				GT_ASSERT( legacy.GetSanctionTurns() == 0, "legacy player sanctions did not default to zero" );
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -585,6 +589,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_empty_loan = true;
 				}
 				GT_ASSERT( rejected_empty_loan, "empty diplomatic loan accepted" );
+
+				bool rejected_invalid_sanctions = false;
+				try {
+					Player invalid( "Sanctioned", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetSanctionTurns( Player::MAX_SANCTION_TURNS + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_sanctions = true;
+				}
+				GT_ASSERT( rejected_invalid_sanctions, "invalid sanction duration accepted" );
 				GT_OK();
 			}
 		);

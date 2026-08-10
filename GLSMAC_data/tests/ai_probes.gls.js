@@ -13,6 +13,8 @@ let plague_loss = 0;
 let has_retroviral_engineering = false;
 let base_size = 3;
 let base_minerals = 20;
+let sanction_turns = 0;
+let commerce = 0;
 
 const player = {
 	id: 0,
@@ -20,6 +22,7 @@ const player = {
 	has_infiltrated: (other) => { return infiltrated; },
 	get_diplomatic_relation: (other) => { return relation; },
 	has_technology: (id) => { return id == 'RetroviralEngineering' && has_retroviral_engineering; },
+	get_sanction_turns: () => { return sanction_turns; },
 };
 const target_player = {id: 1, energy_credits: 200};
 const base_tile = {};
@@ -62,6 +65,9 @@ const game = {
 		}
 		if (key == 'f_probe_get_plague_population_loss') {
 			return (target) => { return plague_loss; };
+		}
+		if (key == 'f_economy_get_player_commerce') {
+			return (current_game, current_player) => { return commerce; };
 		}
 	},
 	get_player: (id) => { return target_player; },
@@ -125,4 +131,8 @@ research_loss = 0;
 has_retroviral_engineering = true;
 base_size = 6;
 plague_loss = 3;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'genetic_plague');
+commerce = 20;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'incite_drone_riots');
+sanction_turns = 10;
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'genetic_plague');

@@ -3,6 +3,8 @@ const is_player = (player) => {
 		#typeof(player) == 'Object' &&
 		#typeof(player.get_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_energy_credits) == 'Callable' &&
+		#typeof(player.get_sanction_turns) == 'Callable' &&
+		#typeof(player.set_sanction_turns) == 'Callable' &&
 		#typeof(player.set_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_diplomatic_offer) == 'Callable' &&
 		#typeof(player.set_diplomatic_offer) == 'Callable' &&
@@ -121,6 +123,9 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (proposer.get_diplomatic_relation(recipient) == 'vendetta') {
 		return 'Regular trade is unavailable during a vendetta';
 	}
+	if (proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0) {
+		return 'Regular trade is suspended by economic sanctions';
+	}
 	const proposer_energy = proposer.get_energy_credits();
 	const recipient_energy = recipient.get_energy_credits();
 	if (proposer_energy < terms.offer_energy) {
@@ -224,6 +229,9 @@ const validate_loan_offer = (proposer, recipient, terms) => {
 		recipient.get_diplomatic_relation(proposer) == 'vendetta'
 	) {
 		return 'Diplomatic loans are unavailable during a vendetta';
+	}
+	if (proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0) {
+		return 'Diplomatic loans are suspended by economic sanctions';
 	}
 	if (
 		proposer.get_diplomatic_loan(recipient) != null ||

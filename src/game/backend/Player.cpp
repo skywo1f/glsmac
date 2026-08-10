@@ -50,6 +50,7 @@ Player::Player( const Player* const other ) {
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_major_atrocities = other->m_major_atrocities;
+	m_sanction_turns = other->m_sanction_turns;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -202,6 +203,17 @@ void Player::SetMajorAtrocities( const int64_t major_atrocities ) {
 		THROW( "player major atrocity count is out of range" );
 	}
 	m_major_atrocities = major_atrocities;
+}
+
+int64_t Player::GetSanctionTurns() const {
+	return m_sanction_turns;
+}
+
+void Player::SetSanctionTurns( const int64_t sanction_turns ) {
+	if ( sanction_turns < 0 || sanction_turns > MAX_SANCTION_TURNS ) {
+		THROW( "player economic sanction duration is out of range" );
+	}
+	m_sanction_turns = sanction_turns;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -633,6 +645,28 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_sanction_turns",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetSanctionTurns() );
+				} )
+			},
+			{
+				"set_sanction_turns",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( sanction_turns, 0, Int );
+					try {
+						SetSanctionTurns( sanction_turns );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -999,6 +1033,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( loan.balance );
 		buf.WriteInt( loan.payment );
 	}
+	buf.WriteInt( m_sanction_turns );
 
 	return buf;
 }
@@ -1180,6 +1215,13 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	int64_t sanction_turns = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		sanction_turns = buf.ReadInt();
+		if ( sanction_turns < 0 || sanction_turns > MAX_SANCTION_TURNS ) {
+			THROW( "invalid serialized player economic sanction duration" );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1204,6 +1246,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_trades = std::move( diplomatic_trades );
 	m_diplomatic_loan_offers = std::move( diplomatic_loan_offers );
 	m_diplomatic_loans = std::move( diplomatic_loans );
+	m_sanction_turns = sanction_turns;
 
 }
 

@@ -160,7 +160,8 @@ const update_diplomacy = (game, player) => {
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
-				accept: diplomacy.get_trade_acceptance_score({
+				accept: player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
+					diplomacy.get_trade_acceptance_score({
 					relation: player.get_diplomatic_relation(other),
 					own_power: own_power,
 					other_power: get_player_power(game, other),
@@ -181,7 +182,8 @@ const update_diplomacy = (game, player) => {
 			game.event_as(player.id, 'respond_diplomatic_loan', {
 				player: player,
 				proposer: other,
-				accept: diplomacy.get_loan_acceptance_score({
+				accept: player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
+					diplomacy.get_loan_acceptance_score({
 					relation: player.get_diplomatic_relation(other),
 					own_power: own_power,
 					other_power: get_player_power(game, other),
@@ -238,6 +240,7 @@ const update_diplomacy = (game, player) => {
 		if (
 			other.id == player.id ||
 			player.get_diplomatic_relation(other) == 'vendetta' ||
+			player.get_sanction_turns() > 0 || other.get_sanction_turns() > 0 ||
 			other.get_diplomatic_offer(player) != '' ||
 			player.get_diplomatic_offer(other) != '' ||
 			other.get_diplomatic_trade(player) != null ||
@@ -277,6 +280,7 @@ const update_diplomacy = (game, player) => {
 	for (other of game.get_players()) {
 		if (
 			other.id == player.id ||
+			player.get_sanction_turns() > 0 || other.get_sanction_turns() > 0 ||
 			other.get_diplomatic_offer(player) != '' ||
 			player.get_diplomatic_offer(other) != '' ||
 			other.get_diplomatic_trade(player) != null ||

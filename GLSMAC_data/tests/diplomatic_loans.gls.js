@@ -31,6 +31,7 @@ const make_player = (id, name, energy, stale_energy_property) => {
 	let loan_offers = {};
 	let loans = {};
 	let current_energy = energy;
+	let sanction_turns = 0;
 	let player = null;
 	const key = (other) => { return 'p' + #to_string(other.id); };
 	player = {
@@ -89,6 +90,8 @@ const make_player = (id, name, energy, stale_energy_property) => {
 			const other_key = key(other);
 			loans[other_key] = #undefined;
 		},
+		get_sanction_turns: () => { return sanction_turns; },
+		set_sanction_turns: (turns) => { sanction_turns = turns; },
 		get_energy_credits: () => { return current_energy; },
 		set_energy_credits: (value) => {
 			current_energy = value;
@@ -182,6 +185,19 @@ test.assert(alpha.energy_credits == 120);
 test.assert(beta.energy_credits == 100);
 test.assert(alpha.get_diplomatic_loan(beta).balance == 120);
 
+alpha.set_sanction_turns(3);
+payment = {
+	caller: 0,
+	game: game,
+	data: {borrower: alpha, lender: beta},
+};
+payment.applied = process_payment.apply(payment);
+test.assert(alpha.energy_credits == 120);
+test.assert(beta.energy_credits == 100);
+test.assert(alpha.get_diplomatic_loan(beta).balance == 120);
+process_payment.rollback(payment);
+alpha.set_sanction_turns(0);
+
 alpha.set_energy_credits(2);
 payment = {
 	caller: 0,
@@ -274,6 +290,9 @@ proposal.data.terms = terms;
 alpha.set_diplomatic_relation(beta, 'vendetta');
 test.assert(#is_defined(propose_loan.validate(proposal)));
 alpha.set_diplomatic_relation(beta, 'treaty');
+alpha.set_sanction_turns(10);
+test.assert(#is_defined(propose_loan.validate(proposal)));
+alpha.set_sanction_turns(0);
 
 proposal.data.target = alpha;
 test.assert(#is_defined(propose_loan.validate(proposal)));

@@ -13,6 +13,7 @@
 	const initial_energy_stamp = 137;
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
+	const sanction_turns_stamp = 3;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -93,20 +94,25 @@
 			},
 			apply: (e) => {
 				const borrower = e.game.get_player(e.caller);
-				const previous = borrower.get_diplomatic_loan(e.data.lender);
+				const previous = {
+					loan: borrower.get_diplomatic_loan(e.data.lender),
+					sanction_turns: borrower.get_sanction_turns(),
+				};
 				borrower.set_diplomatic_loan(e.data.lender, {
 					balance: loan_balance_stamp,
 					payment: loan_payment_stamp,
 				});
+				borrower.set_sanction_turns(sanction_turns_stamp);
 				return previous;
 			},
 			rollback: (e) => {
 				const borrower = e.game.get_player(e.caller);
-				if (e.applied == null) {
+				if (e.applied.loan == null) {
 					borrower.clear_diplomatic_loan(e.data.lender);
 				} else {
-					borrower.set_diplomatic_loan(e.data.lender, e.applied);
+					borrower.set_diplomatic_loan(e.data.lender, e.applied.loan);
 				}
+				borrower.set_sanction_turns(e.applied.sanction_turns);
 			},
 		});
 
@@ -398,13 +404,17 @@
 							}
 							return true;
 						}
-						if (loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp) {
-							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial loan stamp is invalid');
+						if (
+							loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp ||
+							game.get_player().get_sanction_turns() != sanction_turns_stamp
+						) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial loan or sanction stamp is invalid');
 							glsmac.exit();
 							return false;
 						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;

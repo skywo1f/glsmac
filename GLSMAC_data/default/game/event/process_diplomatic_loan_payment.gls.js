@@ -28,13 +28,16 @@ return {
 			borrower.get_diplomatic_relation(lender) == 'vendetta' ||
 			lender.get_diplomatic_relation(borrower) == 'vendetta'
 		);
+		const sanctioned = (
+			borrower.get_sanction_turns() > 0 || lender.get_sanction_turns() > 0
+		);
 		let paid = 0;
 		let penalty = 0;
 		let balance = loan.balance;
 		if (at_war) {
 			penalty = #min(loan.payment, MAX_ENERGY_CREDITS - balance);
 			balance += penalty;
-		} else {
+		} else if (!sanctioned) {
 			const scheduled = #min(loan.payment, balance);
 			const lender_capacity = MAX_ENERGY_CREDITS - lender.get_energy_credits();
 			paid = #min(scheduled, #min(borrower.get_energy_credits(), lender_capacity));
@@ -63,6 +66,7 @@ return {
 			balance: balance,
 			paid: paid,
 			penalty: penalty,
+			suspended: sanctioned && !at_war,
 		});
 		return snapshot;
 	},

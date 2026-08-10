@@ -5,6 +5,7 @@ const hurry_base_production = #include('../default/game/event/hurry_base_product
 const liquidate_base_facility = #include('../default/game/event/liquidate_base_facility');
 
 let player = null;
+let player_sanction_turns = 0;
 player = {
 	id: 1,
 	energy_credits: 5,
@@ -12,6 +13,7 @@ player = {
 	get_research_state: () => { return {technologies: []}; },
 	get_faction: () => { return {is_progenitor: false}; },
 	get_diplomatic_relation: (other) => { return 'neutral'; },
+	get_sanction_turns: () => { return player_sanction_turns; },
 };
 let other_player = null;
 other_player = {
@@ -21,6 +23,7 @@ other_player = {
 	get_research_state: () => { return {technologies: []}; },
 	get_faction: () => { return {is_progenitor: false}; },
 	get_diplomatic_relation: (other) => { return 'neutral'; },
+	get_sanction_turns: () => { return 0; },
 };
 let positive_economy_multiplier = 0.0;
 let positive_psych_multiplier = 0.0;
@@ -172,6 +175,15 @@ test.assert(events[2].data.player == player);
 test.assert(events[2].data.energy_credits == 6);
 test.assert(events[3].data.energy_credits == 0);
 
+events = [];
+player_sanction_turns = 1;
+callbacks.turn({});
+test.assert(#sizeof(events) == 3);
+test.assert(events[0].name == 'settle_player_economy');
+test.assert(events[1].name == 'settle_player_economy');
+test.assert(events[2].name == 'process_diplomatic_sanctions');
+player_sanction_turns = 0;
+
 let trigger_count = 0;
 const event_game = {trigger: (name, data) => {
 	test.assert(name == 'economy_updated' && data.player.id == player.id);
@@ -234,6 +246,7 @@ poor_player = {
 	get_research_state: () => { return {technologies: []}; },
 	get_faction: () => { return {is_progenitor: false}; },
 	get_diplomatic_relation: (other) => { return 'neutral'; },
+	get_sanction_turns: () => { return 0; },
 };
 const network_node = {id: 'NetworkNode', energy_maintenance: 1, psych_bonus: 0};
 const poor_base = {

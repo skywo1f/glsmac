@@ -19,6 +19,7 @@ for (id of economic_technology_ids) {
 
 const make_player = (id, name, known) => {
 	let relations = {};
+	let sanction_turns = 0;
 	const faction = {is_progenitor: false};
 	return {
 		id: id,
@@ -34,6 +35,8 @@ const make_player = (id, name, known) => {
 		set_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
 		},
+		get_sanction_turns: () => { return sanction_turns; },
+		set_sanction_turns: (turns) => { sanction_turns = turns; },
 	};
 };
 
@@ -91,6 +94,15 @@ test.assert(values.f_economy_get_base_commerce(game, alpha_unmatched).total == 0
 test.assert(values.f_economy_get_player_commerce(game, alpha) == 22);
 test.assert(values.f_economy_get_player_commerce(game, beta) == 3);
 test.assert(values.f_economy_get_player(game, alpha) == 124);
+
+alpha.set_sanction_turns(10);
+test.assert(values.f_economy_get_player_commerce(game, alpha) == 0);
+test.assert(values.f_economy_get_player_commerce(game, beta) == 0);
+alpha.set_sanction_turns(0);
+beta.set_sanction_turns(10);
+test.assert(values.f_economy_get_player_commerce(game, alpha) == 0);
+test.assert(values.f_economy_get_player_commerce(game, beta) == 0);
+beta.set_sanction_turns(0);
 
 alpha.set_relation(beta, 'treaty');
 beta.set_relation(alpha, 'treaty');

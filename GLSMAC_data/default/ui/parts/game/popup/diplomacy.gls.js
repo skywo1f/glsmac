@@ -95,6 +95,7 @@ return {
 			'diplomatic_loan_proposed',
 			'diplomatic_loan_updated',
 			'diplomatic_loan_resolved',
+			'diplomatic_sanctions_updated',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -459,7 +460,17 @@ return {
 		const outgoing_loan = this.target.get_diplomatic_loan_offer(this.player);
 		const player_debt = this.player.get_diplomatic_loan(this.target);
 		const target_debt = this.target.get_diplomatic_loan(this.player);
-		this.relation_text.text = 'Current relation: ' + relation_name(relation);
+		const player_sanctions = this.player.get_sanction_turns();
+		const target_sanctions = this.target.get_sanction_turns();
+		let sanction_text = '';
+		if (player_sanctions > 0) {
+			sanction_text = '; you are sanctioned for ' + #to_string(player_sanctions) + ' years';
+		}
+		if (target_sanctions > 0) {
+			sanction_text += '; ' + this.target.name + ' is sanctioned for ' +
+				#to_string(target_sanctions) + ' years';
+		}
+		this.relation_text.text = 'Current relation: ' + relation_name(relation) + sanction_text;
 		this.offer_text.text = incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '');
@@ -504,7 +515,10 @@ return {
 			this.reject_trade.show();
 			return;
 		}
-		if (outgoing_trade != null || relation == 'vendetta') {
+		if (
+			outgoing_trade != null || relation == 'vendetta' ||
+			player_sanctions > 0 || target_sanctions > 0
+		) {
 			return;
 		}
 
@@ -523,7 +537,7 @@ return {
 		}
 		if (
 			outgoing_loan != null || player_debt != null || target_debt != null ||
-			relation == 'vendetta'
+			relation == 'vendetta' || player_sanctions > 0 || target_sanctions > 0
 		) {
 			return;
 		}

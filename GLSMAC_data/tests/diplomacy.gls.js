@@ -57,6 +57,7 @@ const make_player = (id, name) => {
 	let trades = {};
 	let loan_offers = {};
 	let loans = {};
+	let sanction_turns = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
 	let player = null;
 	player = {
@@ -107,6 +108,8 @@ const make_player = (id, name) => {
 		clear_diplomatic_loan: (other) => {
 			loans['p' + #to_string(other.id)] = #undefined;
 		},
+		get_sanction_turns: () => { return sanction_turns; },
+		set_sanction_turns: (turns) => { sanction_turns = turns; },
 		get_research_state: () => { return #clone(research_state); },
 		set_research_state: (state) => { research_state = #clone(state); },
 		has_technology: (technology_id) => {
@@ -263,6 +266,12 @@ trade.data.terms.offer_energy = 20;
 trade.data.terms.request_energy = 10;
 test.assert(#is_defined(propose_trade.validate(trade)));
 trade.data.terms.request_energy = 0;
+
+beta.clear_diplomatic_trade(alpha);
+alpha.set_sanction_turns(10);
+test.assert(#is_defined(propose_trade.validate(trade)));
+alpha.set_sanction_turns(0);
+trade.applied = propose_trade.apply(trade);
 
 vendetta.applied = declare_vendetta.apply(vendetta);
 test.assert(beta.get_diplomatic_trade(alpha) == null);

@@ -44,6 +44,7 @@ return (game) => {
 		'propose_diplomatic_loan',
 		'respond_diplomatic_loan',
 		'process_diplomatic_loan_payment',
+		'process_diplomatic_sanctions',
 		'probe_operation',
 		'fungal_bloom',
 		'declare_victory',

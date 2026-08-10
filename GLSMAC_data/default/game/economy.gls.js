@@ -150,14 +150,17 @@ const get_player_commerce_ledger = (game, player) => {
 		ledger['b' + #to_string(entry.base.id)] = {total: 0, partners: []};
 	}
 	const faction = player.get_faction();
-	if (faction.is_progenitor) {
+	if (faction.is_progenitor || player.get_sanction_turns() > 0) {
 		return ledger;
 	}
 	const total_resolver = game.get('f_technology_get_total_commerce_bonus');
 	const total_technology = total_resolver();
 	const commerce_technology = get_commerce_technology(game, player);
 	for (partner of game.get_players()) {
-		if (partner.id == player.id || partner.get_faction().is_progenitor) {
+		if (
+			partner.id == player.id || partner.get_faction().is_progenitor ||
+			partner.get_sanction_turns() > 0
+		) {
 			continue;
 		}
 		const relation = player.get_diplomatic_relation(partner);
@@ -302,6 +305,11 @@ return (game) => {
 					player: player,
 					liquidation_count: 0,
 				});
+			}
+			for (player of game.get_players()) {
+				if (player.get_sanction_turns() > 0) {
+					game.event('process_diplomatic_sanctions', {player: player});
+				}
 			}
 		});
 	});

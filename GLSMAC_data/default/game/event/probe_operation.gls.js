@@ -445,6 +445,7 @@ return {
 			target_energy: target_player.energy_credits,
 			infiltrated: actor.has_infiltrated(target_player),
 			actor_atrocities: actor.get_major_atrocities(),
+			actor_sanction_turns: actor.get_sanction_turns(),
 		};
 
 		if (e.resolved.cost > 0) {
@@ -512,6 +513,12 @@ return {
 			applied.pop_types = snapshot_surviving_pop_types(base, e.resolved.population_loss);
 			applied.population = remove_base_population(e.game, base, e.resolved.population_loss);
 			actor.set_major_atrocities(applied.actor_atrocities + 1);
+			actor.set_sanction_turns(#min(1000000, applied.actor_sanction_turns + 10));
+			e.game.trigger('diplomatic_sanctions_updated', {
+				player: actor,
+				turns: actor.get_sanction_turns(),
+			});
+			e.game.message('Economic sanctions imposed against ' + actor.name + ' for 10 years.');
 			refresh_base_psych(e.game, base);
 			e.game.trigger('update_base', {base: base});
 		} else if (e.resolved.success && operation == 'subvert_unit') {
@@ -600,7 +607,12 @@ return {
 		actor.set_infiltrated(target_player, e.applied.infiltrated);
 		actor.set_energy_credits(e.applied.actor_energy);
 		actor.set_major_atrocities(e.applied.actor_atrocities);
+		actor.set_sanction_turns(e.applied.actor_sanction_turns);
 		target_player.set_energy_credits(e.applied.target_energy);
+		e.game.trigger('diplomatic_sanctions_updated', {
+			player: actor,
+			turns: e.applied.actor_sanction_turns,
+		});
 		restore_unit(e.game, e.applied.probe);
 		if (#is_defined(e.applied.diplomacy)) {
 			e.game.get('f_diplomacy_restore_pair')(actor, target_player, e.applied.diplomacy);

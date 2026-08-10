@@ -72,9 +72,11 @@ const get_base_action = (game, player, probe, base) => {
 		player.has_technology('RetroviralEngineering') && base.get_size() >= 6 &&
 		plague_loss > 0
 	) {
+		const commerce = game.get('f_economy_get_player_commerce')(game, player);
+		const sanction_cost = player.get_sanction_turns() > 0 ? 0 : commerce * 10000;
 		best = consider(best, {
 			operation: 'genetic_plague', target: base,
-			score: 95000 + plague_loss * 7000,
+			score: 95000 + plague_loss * 7000 - sanction_cost,
 		});
 	}
 	if (game.get('f_probe_can_sabotage')(base)) {

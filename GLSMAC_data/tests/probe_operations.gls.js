@@ -10,6 +10,7 @@ const make_player = (id, energy, technologies, target) => {
 	let loan_offers = {};
 	let loans = {};
 	let major_atrocities = 0;
+	let sanction_turns = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
 		id: id,
@@ -30,6 +31,8 @@ const make_player = (id, energy, technologies, target) => {
 	};
 	player.get_major_atrocities = () => { return major_atrocities; };
 	player.set_major_atrocities = (value) => { major_atrocities = value; };
+	player.get_sanction_turns = () => { return sanction_turns; };
+	player.set_sanction_turns = (value) => { sanction_turns = value; };
 	player.has_infiltrated = (other) => {
 			return #is_defined(infiltrated['p' + #to_string(other.id)]) &&
 				infiltrated['p' + #to_string(other.id)];
@@ -406,10 +409,12 @@ e.resolved.population_loss = 2;
 e.applied = probe_operation.apply(e);
 test.assert(f.target_base.get_size() == 2);
 test.assert(f.actor.get_major_atrocities() == 1);
+test.assert(f.actor.get_sanction_turns() == 10);
 test.assert(f.target_base.get('accumulated_nutrients') == 0);
 probe_operation.rollback(e);
 test.assert(f.target_base.get_size() == 4);
 test.assert(f.actor.get_major_atrocities() == 0);
+test.assert(f.actor.get_sanction_turns() == 0);
 test.assert(f.target_base.get('accumulated_nutrients') == 18);
 
 f = make_fixture();
