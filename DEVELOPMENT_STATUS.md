@@ -124,6 +124,10 @@ The following original-SMAC systems remain absent or materially incomplete:
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
 - several remaining facility effects, including alien-artifact study,
   submersion, Psi Gates, prototype-cost handling, and disease protection;
+- the seven absent base-facility definitions are Skunkworks, Psi Gate, Sky
+  Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
+  Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
+  Dome, and Aerospace Complex are represented but remain partial;
 - several remaining Secret Project effects and victory-adjacent rules;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;

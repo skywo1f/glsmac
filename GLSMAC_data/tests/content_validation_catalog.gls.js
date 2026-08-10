@@ -35,6 +35,18 @@ test.assert(catalog.project_coverage.status.TheLongevityVaccine == 'complete');
 test.assert(catalog.project_coverage.status.TheCloningVats == 'complete');
 test.assert(catalog.project_coverage.status.TheTelepathicMatrix == 'complete');
 test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'partial');
+for (id of [
+	'NetworkNode', 'ResearchHospital', 'Nanohospital', 'PressureDome',
+	'AerospaceComplex',
+]) {
+	test.assert(catalog.facility_coverage.status[id] == 'partial');
+}
+for (id of [
+	'Skunkworks', 'PsiGate', 'SkyHydroponicsLab', 'NessusMiningStation',
+	'OrbitalPowerTransmitter', 'OrbitalDefensePod', 'StockpileEnergy',
+]) {
+	test.assert(content.get_facility(catalog, id) == null);
+}
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
