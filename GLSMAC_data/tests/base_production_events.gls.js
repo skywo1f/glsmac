@@ -4,8 +4,10 @@ const remove_base_production = #include('../default/game/event/remove_base_produ
 const process_base_production = #include('../default/game/event/process_base_production');
 
 let prototyped_components = ['ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor'];
+let orbital_counts = {};
 const owner = {
 	id: 1,
+	name: 'University',
 	get_faction: () => { return {id: 'UNIVERSITY'}; },
 	get_prototyped_components: () => { return #clone(prototyped_components); },
 	has_prototyped_component: (id) => {
@@ -18,6 +20,12 @@ const owner = {
 	},
 	set_prototyped_components: (value) => {
 		prototyped_components = #clone(value);
+	},
+	get_orbital_facility_count: (id) => {
+		return #is_defined(orbital_counts[id]) ? orbital_counts[id] : 0;
+	},
+	set_orbital_facility_count: (id, count) => {
+		orbital_counts[id] = count == 0 ? #undefined : count;
 	},
 };
 const tile = {id: 'base-tile'};
@@ -229,6 +237,15 @@ const stockpile_energy = {
 	mineral_to_energy_divisor: 2,
 	unit_morale_bonus: 0,
 };
+const sky_hydroponics = {
+	id: 'SkyHydroponicsLab',
+	name: 'Sky Hydroponics Lab',
+	production_kind: 'facility',
+	mineral_cost: 120,
+	orbital_resource: 'NUTRIENTS',
+	orbital_defense: false,
+	unit_morale_bonus: 0,
+};
 const definitions = [
 	mind_worms,
 	spore_launcher,
@@ -252,6 +269,7 @@ const definitions = [
 	centauri_preserve,
 	temple_of_planet,
 	stockpile_energy,
+	sky_hydroponics,
 ];
 
 let production_queue = [];
@@ -307,22 +325,37 @@ const queue_is_valid = (candidate_queue) => {
 	}
 	let queued_facilities = [];
 	for (item of candidate_queue) {
-		if (!#is_defined(find_definition(item.production_kind, item.id))) {
+		const definition = find_definition(item.production_kind, item.id);
+		if (!#is_defined(definition)) {
 			return false;
 		}
 		if (item.production_kind == 'facility' || item.production_kind == 'project') {
-			if (has_facility(item.id)) {
+			const is_repeatable = item.production_kind == 'facility' && (
+				(
+					#is_defined(definition.mineral_to_energy_divisor) &&
+					definition.mineral_to_energy_divisor > 0
+				) || (
+					#is_defined(definition.orbital_resource) &&
+					definition.orbital_resource != ''
+				) || (
+					#is_defined(definition.orbital_defense) &&
+					definition.orbital_defense
+				)
+			);
+			if (!is_repeatable && has_facility(item.id)) {
 				return false;
 			}
 			if (item.production_kind == 'project' && #is_defined(completed_project_base)) {
 				return false;
 			}
-			for (facility_id of queued_facilities) {
-				if (facility_id == item.id) {
-					return false;
+			if (!is_repeatable) {
+				for (facility_id of queued_facilities) {
+					if (facility_id == item.id) {
+						return false;
+					}
 				}
+				queued_facilities :+item.id;
 			}
-			queued_facilities :+item.id;
 		}
 	}
 	return true;
@@ -440,6 +473,7 @@ const base = {
 		return has_facility(id);
 	},
 	add_facility: (id) => {
+		test.assert(id != 'SkyHydroponicsLab');
 		test.assert(!has_facility(id));
 		built_facilities :+id;
 		if (#is_defined(find_definition('project', id))) {
@@ -626,6 +660,19 @@ game = {
 				project_completion_rollbacks :+applied.project_id;
 			};
 		}
+		if (key == 'f_orbital_apply_launch') {
+			return (target_base, definition) => {
+				test.assert(target_base == base && definition == sky_hydroponics);
+				const count = owner.get_orbital_facility_count(definition.id);
+				owner.set_orbital_facility_count(definition.id, count + 1);
+				return {player: owner, id: definition.id, count: count};
+			};
+		}
+		if (key == 'f_orbital_rollback_launch') {
+			return (applied) => {
+				applied.player.set_orbital_facility_count(applied.id, applied.count);
+			};
+		}
 		throw Error('Unexpected game callback: ' + key);
 	},
 	um: {
@@ -797,6 +844,22 @@ process_base_production.rollback(event);
 test.assert(accumulated_minerals == 13);
 test.assert(get_queue_state() == ['facility:StockpileEnergy']);
 pending_production = 7;
+
+production_queue = [sky_hydroponics, sky_hydroponics];
+test.assert(queue_is_valid(production_queue));
+accumulated_minerals = 115;
+orbital_counts = {};
+event.applied = process_base_production.apply(event);
+test.assert(accumulated_minerals == 2);
+test.assert(get_queue_state() == ['facility:SkyHydroponicsLab']);
+test.assert(owner.get_orbital_facility_count('SkyHydroponicsLab') == 1);
+test.assert(!has_facility('SkyHydroponicsLab'));
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 115);
+test.assert(get_queue_state() == [
+	'facility:SkyHydroponicsLab', 'facility:SkyHydroponicsLab',
+]);
+test.assert(owner.get_orbital_facility_count('SkyHydroponicsLab') == 0);
 
 production_queue = [mind_worms];
 built_facilities = [

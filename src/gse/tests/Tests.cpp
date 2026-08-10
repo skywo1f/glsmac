@@ -255,6 +255,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetMajorAtrocities( 2 );
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
+				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -276,6 +277,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					cloned.GetIntegrityBlemishes() == 4,
 					"player diplomatic integrity was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
+					"player orbital facilities were not cloned"
 				);
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
@@ -304,6 +309,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetIntegrityBlemishes() == 4,
 					"player diplomatic integrity was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
+					"player orbital facilities were not serialized"
 				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
@@ -489,6 +498,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetIntegrityBlemishes() == 0,
 					"legacy player diplomatic integrity did not default to noble"
 				);
+				GT_ASSERT(
+					legacy.GetOrbitalFacilities().empty(),
+					"legacy player orbital facilities did not default to empty"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -622,6 +635,19 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_integrity = true;
 				}
 				GT_ASSERT( rejected_invalid_integrity, "invalid diplomatic integrity accepted" );
+
+				bool rejected_invalid_orbital_count = false;
+				try {
+					Player invalid( "Orbital", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetOrbitalFacilityCount(
+						"SkyHydroponicsLab",
+						Player::MAX_ORBITAL_FACILITY_COUNT + 1
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_orbital_count = true;
+				}
+				GT_ASSERT( rejected_invalid_orbital_count, "invalid orbital facility count accepted" );
 				GT_OK();
 			}
 		);

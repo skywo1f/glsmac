@@ -76,6 +76,9 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENTS = 1024;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENT_ID_LENGTH = 128;
+	static constexpr size_t MAX_ORBITAL_FACILITY_TYPES = 64;
+	static constexpr size_t MAX_ORBITAL_FACILITY_ID_LENGTH = 128;
+	static constexpr int64_t MAX_ORBITAL_FACILITY_COUNT = 1000000;
 
 	const technologies_t& GetTechnologies() const;
 	bool HasTechnology( const std::string& id ) const;
@@ -100,6 +103,10 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const prototyped_components_t& GetPrototypedComponents() const;
 	bool HasPrototypedComponent( const std::string& id ) const;
 	void SetPrototypedComponents( const prototyped_components_t& components );
+	using orbital_facilities_t = std::map< std::string, int64_t >;
+	const orbital_facilities_t& GetOrbitalFacilities() const;
+	int64_t GetOrbitalFacilityCount( const std::string& id ) const;
+	void SetOrbitalFacilityCount( const std::string& id, const int64_t count );
 
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
@@ -222,6 +229,7 @@ private:
 	prototyped_components_t m_prototyped_components = {
 		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
 	};
+	orbital_facilities_t m_orbital_facilities = {};
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};

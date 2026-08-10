@@ -72,7 +72,9 @@ FacilityDef::FacilityDef(
 	const int64_t efficiency_rating_bonus,
 	const int64_t defender_morale_minimum,
 	const bool prototype_cost_waiver,
-	const int64_t mineral_to_energy_divisor
+	const int64_t mineral_to_energy_divisor,
+	const std::string& orbital_resource,
+	const bool orbital_defense
 )
 	: m_id( id )
 	, m_name( name )
@@ -136,7 +138,9 @@ FacilityDef::FacilityDef(
 	, m_efficiency_rating_bonus( efficiency_rating_bonus )
 	, m_defender_morale_minimum( defender_morale_minimum )
 	, m_prototype_cost_waiver( prototype_cost_waiver )
-	, m_mineral_to_energy_divisor( mineral_to_energy_divisor ) {
+	, m_mineral_to_energy_divisor( mineral_to_energy_divisor )
+	, m_orbital_resource( orbital_resource )
+	, m_orbital_defense( orbital_defense ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -211,6 +215,14 @@ FacilityDef::FacilityDef(
 			m_mineral_to_energy_divisor > 0 &&
 			( m_is_project || m_mineral_cost != 0 )
 		) ||
+		(
+			!m_orbital_resource.empty() &&
+			m_orbital_resource != "NUTRIENTS" &&
+			m_orbital_resource != "MINERALS" &&
+			m_orbital_resource != "ENERGY"
+		) ||
+		( !m_orbital_resource.empty() && m_orbital_defense ) ||
+		( ( !m_orbital_resource.empty() || m_orbital_defense ) && m_is_project ) ||
 		!m_is_project && (
 			!m_granted_facility.empty() ||
 			m_global_talent_bonus != 0 ||
@@ -336,6 +348,8 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_defender_morale_minimum );
 	buf.WriteBool( def->m_prototype_cost_waiver );
 	buf.WriteInt( def->m_mineral_to_energy_divisor );
+	buf.WriteString( def->m_orbital_resource );
+	buf.WriteBool( def->m_orbital_defense );
 	return buf;
 }
 
@@ -403,6 +417,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto defender_morale_minimum = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto prototype_cost_waiver = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	const auto mineral_to_energy_divisor = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto orbital_resource = buf.GetRemaining() > 0 ? buf.ReadString() : "";
+	const auto orbital_defense = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -466,7 +482,9 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		efficiency_rating_bonus,
 		defender_morale_minimum,
 		prototype_cost_waiver,
-		mineral_to_energy_divisor
+		mineral_to_energy_divisor,
+		orbital_resource,
+		orbital_defense
 	);
 }
 
@@ -727,6 +745,14 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"mineral_to_energy_divisor",
 			VALUE( gse::value::Int, , m_mineral_to_energy_divisor )
+		},
+		{
+			"orbital_resource",
+			VALUE( gse::value::String, , m_orbital_resource )
+		},
+		{
+			"orbital_defense",
+			VALUE( gse::value::Bool, , m_orbital_defense )
 		},
 	};
 WRAPIMPL_END_PTR()

@@ -96,6 +96,8 @@ test.assert(values.f_project_get_effects(target_base) == {
 	ignore_power_penalties: false,
 	ignore_thought_control_penalties: false,
 	ignore_cybernetic_penalties: false,
+	orbital_access: false,
+	orbital_production_multiplier: 1.0,
 });
 test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
@@ -108,6 +110,11 @@ test.assert(effects.native_fungus_combat);
 
 project.id = 'TheNanoFactory';
 test.assert(values.f_project_get_player_effects(owner).unit_upgrade_cost_multiplier == 0.5);
+
+project.id = 'TheSpaceElevator';
+effects = values.f_project_get_player_effects(owner);
+test.assert(effects.orbital_access);
+test.assert(effects.orbital_production_multiplier == 2.0);
 
 project.id = 'TheXenoempathyDome';
 effects = values.f_project_get_player_effects(owner);

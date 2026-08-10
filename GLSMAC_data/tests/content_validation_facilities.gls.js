@@ -20,3 +20,15 @@ test.assert(content.validator.validate(invalid).errors == [
 	'facilities.StockpileEnergy.mineral_to_energy_divisor: requires a zero-cost non-project definition',
 	'facilities.StockpileEnergy.mineral_cost: does not match base-game manifest value 0',
 ]);
+
+invalid = content.make_catalog();
+content.get_facility(invalid, 'SkyHydroponicsLab').data.orbital_resource = 'SCIENCE';
+test.assert(content.validator.validate(invalid).errors == [
+	'facilities.SkyHydroponicsLab.orbital_resource: must be NUTRIENTS, MINERALS, or ENERGY',
+]);
+
+invalid = content.make_catalog();
+content.get_facility(invalid, 'OrbitalDefensePod').data.orbital_resource = 'ENERGY';
+test.assert(content.validator.validate(invalid).errors == [
+	'facilities.OrbitalDefensePod: cannot be both an orbital resource and defense facility',
+]);

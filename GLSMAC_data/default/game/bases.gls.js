@@ -22,9 +22,25 @@ const get_production_cost = (game, base, production) => {
 		production,
 		production.mineral_cost
 	);
-	return #is_defined(resolver)
+	let result = #is_defined(resolver)
 		? resolver(base.get_owner(), base_cost)
 		: base_cost;
+	const is_orbital = (
+		#is_defined(production.orbital_resource) && production.orbital_resource != ''
+	) || (#is_defined(production.orbital_defense) && production.orbital_defense);
+	if (is_orbital) {
+		const get_project_effects = #is_defined(game.get)
+			? game.get('f_project_get_player_effects')
+			: #undefined;
+		if (#is_defined(get_project_effects)) {
+			const effects = get_project_effects(base.get_owner());
+			const multiplier = #is_defined(effects.orbital_production_multiplier)
+				? effects.orbital_production_multiplier
+				: 1.0;
+			result = #ceil(#to_float(result) / multiplier);
+		}
+	}
+	return result;
 };
 
 const get_effective_facilities = (game, base) => {
@@ -768,6 +784,14 @@ return (game) => {
 			result.NUTRIENTS = result.NUTRIENTS + facility.nutrient_bonus;
 			result.MINERALS = result.MINERALS + facility.mineral_bonus;
 			result.ENERGY = result.ENERGY + facility.energy_bonus;
+		}
+		const get_orbital_bonus = game.get('f_orbital_get_base_resource_bonus');
+		if (#is_defined(get_orbital_bonus)) {
+			result.NUTRIENTS = result.NUTRIENTS +
+				get_orbital_bonus(e.base, 'NUTRIENTS');
+			result.MINERALS = result.MINERALS +
+				get_orbital_bonus(e.base, 'MINERALS');
+			result.ENERGY = result.ENERGY + get_orbital_bonus(e.base, 'ENERGY');
 		}
 		if (#is_defined(economy_base_resolver)) {
 			result.ENERGY = result.ENERGY + economy_base_resolver(

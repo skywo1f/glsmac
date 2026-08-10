@@ -35,6 +35,26 @@ test.assert(catalog.facility_coverage.status.StockpileEnergy == 'complete');
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
 test.assert(content.get_facility(catalog, 'AerospaceComplex').data.full_repair_air);
+test.assert(catalog.facility_coverage.status.AerospaceComplex == 'complete');
+test.assert(
+	content.get_facility(catalog, 'SkyHydroponicsLab').data.orbital_resource ==
+	'NUTRIENTS'
+);
+test.assert(
+	content.get_facility(catalog, 'NessusMiningStation').data.orbital_resource ==
+	'MINERALS'
+);
+test.assert(
+	content.get_facility(catalog, 'OrbitalPowerTransmitter').data.orbital_resource ==
+	'ENERGY'
+);
+test.assert(content.get_facility(catalog, 'OrbitalDefensePod').data.orbital_defense);
+for (id of [
+	'SkyHydroponicsLab', 'NessusMiningStation', 'OrbitalPowerTransmitter',
+	'OrbitalDefensePod',
+]) {
+	test.assert(content.get_facility(catalog, id).data.required_facility == 'AerospaceComplex');
+}
 test.assert(content.get_facility(catalog, 'TheAsceticVirtues').data.global_police_rating_bonus == 1);
 test.assert(content.get_facility(catalog, 'TheSelfAwareColony').data.global_extra_police_units == 1);
 test.assert(catalog.project_coverage.status.TheLongevityVaccine == 'complete');
@@ -58,20 +78,19 @@ for (id of [
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
 for (id of [
-	'ResearchHospital', 'Nanohospital', 'PressureDome', 'AerospaceComplex',
+	'ResearchHospital', 'Nanohospital', 'PressureDome', 'OrbitalDefensePod',
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
 for (id of [
-	'PsiGate', 'SkyHydroponicsLab', 'NessusMiningStation',
-	'OrbitalPowerTransmitter', 'OrbitalDefensePod',
+	'PsiGate',
 ]) {
 	test.assert(content.get_facility(catalog, id) == null);
 }
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 33,
-	complete_facilities: 29,
+	facilities: 37,
+	complete_facilities: 33,
 	partial_facilities: 4,
 	implemented_projects: 33,
 	complete_projects: 31,

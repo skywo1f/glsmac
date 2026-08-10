@@ -65,6 +65,8 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		efficiency_rating_bonus: 0,
 		defender_morale_minimum: 0,
 		mineral_to_energy_divisor: 0,
+		orbital_resource: '',
+		orbital_defense: false,
 	};
 };
 
@@ -86,6 +88,10 @@ const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
 const energy_bank = facility('EnergyBank', 0, 0, 0, 0, 0.0, 1, 80, 1.0, 0.5);
 const stockpile = facility('StockpileEnergy', 0, 0, 0, 0, 0.0, 0, 0);
 stockpile.mineral_to_energy_divisor = 2;
+const sky_hydroponics = facility('SkyHydroponicsLab', 0, 0, 0, 0, 0.0, 0, 120);
+sky_hydroponics.orbital_resource = 'NUTRIENTS';
+const orbital_defense = facility('OrbitalDefensePod', 0, 0, 0, 0, 0.0, 0, 120);
+orbital_defense.orbital_defense = true;
 const command_center = facility('CommandCenter', 0, 0, 0, 0, 0.0, 1, 40);
 command_center.unit_morale_land_bonus = 2;
 const naval_yard = facility('NavalYard', 0, 0, 0, 0, 0.0, 2, 80);
@@ -139,6 +145,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 		available_energy: energy,
 		needs_population_capacity: false,
 		base_size: 1,
+		get_orbital_marginal_yield: (def) => { return 0; },
 	};
 };
 
@@ -240,6 +247,23 @@ test.assert(production.choose(base, [laser], [stockpile], peaceful_context).id =
 test.assert(production.score_stockpile(stockpile, peaceful_context) != null);
 peaceful_context.needs_growth = true;
 test.assert(production.score_stockpile(stockpile, peaceful_context) == null);
+
+let orbital_context = context(false, false, false, false, 10);
+orbital_context.needs_military = false;
+orbital_context.get_orbital_marginal_yield = (def) => {
+	return def.id == 'SkyHydroponicsLab' ? 3 : 0;
+};
+test.assert(production.score_orbital(sky_hydroponics, orbital_context) != null);
+test.assert(production.score_orbital(orbital_defense, orbital_context) == null);
+test.assert(
+	production.choose(base, [laser], [stockpile, sky_hydroponics], orbital_context).id ==
+	'SkyHydroponicsLab'
+);
+orbital_context.get_orbital_marginal_yield = (def) => { return 0; };
+test.assert(production.score_orbital(sky_hydroponics, orbital_context) == null);
+orbital_context.needs_garrison = true;
+orbital_context.get_orbital_marginal_yield = (def) => { return 3; };
+test.assert(production.score_orbital(sky_hydroponics, orbital_context) == null);
 
 let blocked_expansion_context = context(false, false, true, false, 0);
 blocked_expansion_context.can_expand = false;

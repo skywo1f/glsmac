@@ -71,6 +71,8 @@ const facility_fields = {
 	defender_morale_minimum: true,
 	prototype_cost_waiver: true,
 	mineral_to_energy_divisor: true,
+	orbital_resource: true,
+	orbital_defense: true,
 };
 
 const facility_manifest_fields = {
@@ -528,6 +530,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 			1,
 			MAX_DEFINITION_VALUE
 		);
+		validate_optional_string(data, 'orbital_resource', path, errors);
+		validate_bool(data, 'orbital_defense', path, errors, false);
 		validate_string(data, 'name', path, errors, true);
 		const is_mineral_conversion =
 			#is_defined(data.mineral_to_energy_divisor) &&
@@ -547,6 +551,28 @@ const validate_facilities = (facilities, technologies, errors) => {
 				path + '.mineral_to_energy_divisor',
 				'requires a zero-cost non-project definition'
 			);
+		}
+		const orbital_resource = #is_defined(data.orbital_resource)
+			? data.orbital_resource
+			: '';
+		const is_orbital_defense = #is_defined(data.orbital_defense) &&
+			data.orbital_defense;
+		const is_orbital = orbital_resource != '' || is_orbital_defense;
+		if (
+			orbital_resource != '' && orbital_resource != 'NUTRIENTS' &&
+			orbital_resource != 'MINERALS' && orbital_resource != 'ENERGY'
+		) {
+			add_error(
+				errors,
+				path + '.orbital_resource',
+				'must be NUTRIENTS, MINERALS, or ENERGY'
+			);
+		}
+		if (orbital_resource != '' && is_orbital_defense) {
+			add_error(errors, path, 'cannot be both an orbital resource and defense facility');
+		}
+		if (is_orbital && data.is_project) {
+			add_error(errors, path, 'orbital facilities cannot be Secret Projects');
 		}
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'mineral_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -619,6 +645,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0) ||
 			(#is_defined(data.prototype_cost_waiver) && data.prototype_cost_waiver) ||
 			is_mineral_conversion ||
+			is_orbital ||
 			(#is_defined(data.granted_facility) && data.granted_facility != '') ||
 			(#is_defined(data.global_talent_bonus) && data.global_talent_bonus > 0) ||
 			(#is_defined(data.global_growth_rating_bonus) && data.global_growth_rating_bonus > 0) ||

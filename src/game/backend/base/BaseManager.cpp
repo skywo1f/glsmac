@@ -403,6 +403,8 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, defender_morale_minimum, def, "defender_morale_minimum", Int, 0 );
 				N_GETPROP_OPT( bool, prototype_cost_waiver, def, "prototype_cost_waiver", Bool, false );
 				N_GETPROP_OPT( int64_t, mineral_to_energy_divisor, def, "mineral_to_energy_divisor", Int, 0 );
+				N_GETPROP_OPT( std::string, orbital_resource, def, "orbital_resource", String, "" );
+				N_GETPROP_OPT( bool, orbital_defense, def, "orbital_defense", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -497,6 +499,14 @@ WRAPIMPL_BEGIN( BaseManager )
 						mineral_to_energy_divisor > 0 &&
 						( is_project || mineral_cost != 0 )
 					) ||
+					(
+						!orbital_resource.empty() &&
+						orbital_resource != "NUTRIENTS" &&
+						orbital_resource != "MINERALS" &&
+						orbital_resource != "ENERGY"
+					) ||
+					( !orbital_resource.empty() && orbital_defense ) ||
+					( ( !orbital_resource.empty() || orbital_defense ) && is_project ) ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -615,7 +625,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					efficiency_rating_bonus,
 					defender_morale_minimum,
 					prototype_cost_waiver,
-					mineral_to_energy_divisor
+					mineral_to_energy_divisor,
+					orbital_resource,
+					orbital_defense
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

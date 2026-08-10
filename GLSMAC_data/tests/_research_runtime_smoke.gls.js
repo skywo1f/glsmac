@@ -37,7 +37,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 33 facilities, 33 projects, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 37 facilities, 33 projects, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -198,6 +198,9 @@
 				let funding_requested = false;
 				let funding_wait_ticks = 0;
 				#async(100, () => {
+					if (!ui_started) {
+						return true;
+					}
 					funding_wait_ticks++;
 					const funded_player = game.get_player();
 					if (!funding_requested) {
@@ -208,7 +211,7 @@
 						});
 						return true;
 					}
-					if (funded_player.energy_credits != 1000) {
+					if (funded_player.get_energy_credits() != 1000) {
 						if (funding_wait_ticks >= 100) {
 							fail('social engineering test funding timed out');
 							return false;
@@ -235,7 +238,7 @@
 							}
 							return true;
 						}
-						if (social_player.energy_credits != 680) {
+						if (social_player.get_energy_credits() != 680) {
 							fail('three-model Transcend upheaval cost was not 320 energy credits');
 							return false;
 						}
@@ -363,6 +366,7 @@
 					fail('generated unit catalog is unavailable at runtime');
 					return;
 				}
+				base.add_facility('AerospaceComplex');
 				for (gate of production_gates) {
 					const expected_available =
 						gate[1] != 'HabitationDome' && gate[1] != 'TheAscentToTranscendence' &&
@@ -372,6 +376,7 @@
 						return;
 					}
 				}
+				base.remove_facility('AerospaceComplex');
 				base.add_facility('HabComplex');
 				if (!base.can_set_production('facility', 'HabitationDome')) {
 					fail('Habitation Dome stayed locked after Hab Complex');
@@ -532,8 +537,11 @@
 					drone_modifier += definition.drone_modifier;
 					talent_bonus += definition.talent_bonus;
 					suppress_psych += definition.suppress_psych ? 1 : 0;
+					const is_orbital = definition.orbital_resource != '' ||
+						definition.orbital_defense;
 					if (
 						definition.mineral_to_energy_divisor == 0 &&
+						!is_orbital &&
 						!base.has_facility(facility_id)
 					) {
 						base.add_facility(facility_id);
@@ -543,7 +551,7 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 33 ||
+					#sizeof(facility_ids) != 37 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
 					maintenance != 73 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
@@ -572,18 +580,27 @@
 					fail('batch facility effects are invalid');
 					return;
 				}
+				base.set_production_queue([]);
 				for (facility_id of facility_ids) {
 					const definition = game.get_bm().get_facility_def(facility_id);
-					if (
-						definition.mineral_to_energy_divisor > 0
-							? (
-								base.has_facility(facility_id) ||
-								!base.can_set_production('facility', facility_id) ||
-								base.can_queue_production('facility', facility_id)
-							)
-							: !base.has_facility(facility_id)
-					) {
-						fail('batch facility construction missed ' + facility_id);
+					const is_orbital = definition.orbital_resource != '' ||
+						definition.orbital_defense;
+					const has_facility = base.has_facility(facility_id);
+					const can_set = base.can_set_production('facility', facility_id);
+					const can_queue = base.can_queue_production('facility', facility_id);
+					let construction_is_valid = has_facility;
+					if (definition.mineral_to_energy_divisor > 0) {
+						construction_is_valid = !has_facility && can_set && !can_queue;
+					} else if (is_orbital) {
+						construction_is_valid = !has_facility && can_set && can_queue;
+					}
+					if (!construction_is_valid) {
+						fail(
+							'batch facility construction missed ' + facility_id +
+							' (installed=' + #to_string(has_facility) +
+							', set=' + #to_string(can_set) +
+							', queue=' + #to_string(can_queue) + ')'
+						);
 						return;
 					}
 				}
@@ -615,6 +632,56 @@
 				process_base_production.rollback(stockpile_event);
 				base.set_production_queue(previous_queue);
 				base.set_accumulated_minerals(previous_minerals);
+
+				const sky = game.get_bm().get_facility_def('SkyHydroponicsLab');
+				const orbital_count = player.get_orbital_facility_count(sky.id);
+				const orbital_intake_before = base.get_intake().NUTRIENTS;
+				const orbital_cost = game.get('f_base_get_production_cost')(base, sky);
+				base.set_accumulated_minerals(orbital_cost);
+				base.set_production('facility', sky.id);
+				let orbital_event = {caller: 0, game: game, data: {base: base}};
+				orbital_event.applied = process_base_production.apply(orbital_event);
+				if (
+					player.get_orbital_facility_count(sky.id) != orbital_count + 1 ||
+					base.has_facility(sky.id) ||
+					base.get_intake().NUTRIENTS != orbital_intake_before + 1
+				) {
+					fail('orbital launch or resource contribution is invalid');
+					return;
+				}
+				process_base_production.rollback(orbital_event);
+				if (
+					player.get_orbital_facility_count(sky.id) != orbital_count ||
+					base.get_intake().NUTRIENTS != orbital_intake_before
+				) {
+					fail('orbital launch rollback is invalid');
+					return;
+				}
+				base.set_production_queue(previous_queue);
+				base.set_accumulated_minerals(previous_minerals);
+
+				base.add_facility('TheSpaceElevator');
+				base.remove_facility('AerospaceComplex');
+				const elevator_cost = game.get('f_base_get_production_cost')(base, sky);
+				const industry_cost = game.get('f_social_get_mineral_cost')(
+					player,
+					sky.mineral_cost
+				);
+				const elevator_access = base.can_set_production('facility', sky.id);
+				const expected_elevator_cost = #ceil(#to_float(industry_cost) / 2.0);
+				if (
+					!elevator_access || elevator_cost != expected_elevator_cost
+				) {
+					fail(
+						'Space Elevator orbital access or production multiplier is invalid' +
+						' (access=' + #to_string(elevator_access) +
+						', cost=' + #to_string(elevator_cost) +
+						', expected=' + #to_string(expected_elevator_cost) + ')'
+					);
+					return;
+				}
+				base.remove_facility('TheSpaceElevator');
+				base.add_facility('AerospaceComplex');
 
 				const begin_victory_test = () => {
 					const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');

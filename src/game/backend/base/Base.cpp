@@ -248,13 +248,25 @@ bool Base::CanProduce( const production_t& production ) const {
 			auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
 			const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
 			const bool is_conversion = def && def->m_mineral_to_energy_divisor > 0;
+			const bool is_orbital = def && (
+				!def->m_orbital_resource.empty() || def->m_orbital_defense
+			);
+			const auto* const space_elevator = is_orbital
+				? m_game->GetBM()->GetProjectBase( "TheSpaceElevator" )
+				: nullptr;
+			const bool has_orbital_access =
+				is_orbital && space_elevator && space_elevator->m_owner == m_owner;
 			return
 				def &&
 				def->m_is_project == ( production.kind == PK_PROJECT ) &&
 				( def->m_mineral_cost > 0 || is_conversion ) &&
-				( is_conversion || !HasFacility( production.id ) ) &&
+				( is_conversion || is_orbital || !HasFacility( production.id ) ) &&
 				( !def->m_is_project || !m_game->GetBM()->GetProjectBase( production.id ) ) &&
-				( def->m_required_facility.empty() || HasFacility( def->m_required_facility ) ) &&
+				(
+					def->m_required_facility.empty() ||
+					HasFacility( def->m_required_facility ) ||
+					has_orbital_access
+				) &&
 				(
 					def->m_required_project.empty() ||
 					m_game->GetBM()->GetProjectBase( def->m_required_project )
@@ -345,7 +357,11 @@ void Base::AddFacility( GSE_CALLABLE, const std::string& id ) {
 	if ( !def ) {
 		GSE_ERROR( gse::EC.INVALID_DEFINITION, "Unknown base facility: " + id );
 	}
-	if ( def->m_mineral_to_energy_divisor > 0 ) {
+	if (
+		def->m_mineral_to_energy_divisor > 0 ||
+		!def->m_orbital_resource.empty() ||
+		def->m_orbital_defense
+	) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Repeatable production cannot be added as a base facility: " + id );
 	}
 	if ( def->m_is_project && m_game->GetBM()->GetProjectBase( id ) ) {
@@ -1206,8 +1222,14 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 			error = "Cannot produce " + GetProductionKindString( production.kind ) + ": " + production.id;
 			return false;
 		}
+		bool is_repeatable = false;
 		if ( production.kind == PK_FACILITY ) {
 			const auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
+			is_repeatable = def && (
+				def->m_mineral_to_energy_divisor > 0 ||
+				!def->m_orbital_resource.empty() ||
+				def->m_orbital_defense
+			);
 			if ( def && def->m_mineral_to_energy_divisor > 0 && index != 0 ) {
 				error = "Repeatable production must be first in the production queue: " + production.id;
 				return false;
@@ -1215,6 +1237,7 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 		}
 		if (
 			production.kind != PK_UNIT &&
+			!is_repeatable &&
 			!queued_constructions.insert( production.id ).second
 		) {
 			error = "Construction is already in the production queue: " + production.id;
@@ -1232,7 +1255,11 @@ bool Base::ValidateFacilities( const facilities_t& facilities, std::string& erro
 			error = "Unknown base facility: " + id;
 			return false;
 		}
-		if ( def->m_mineral_to_energy_divisor > 0 ) {
+		if (
+			def->m_mineral_to_energy_divisor > 0 ||
+			!def->m_orbital_resource.empty() ||
+			def->m_orbital_defense
+		) {
 			error = "Repeatable production cannot be stored as a base facility: " + id;
 			return false;
 		}

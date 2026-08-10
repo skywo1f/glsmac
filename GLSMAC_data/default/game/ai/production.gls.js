@@ -65,6 +65,34 @@ const score_stockpile = (def, context) => {
 		#max(context.mineral_surplus, 0) * 100;
 };
 
+const score_orbital = (def, context) => {
+	const is_orbital_resource = #is_defined(def.orbital_resource) &&
+		def.orbital_resource != '';
+	if (
+		!is_orbital_resource ||
+		context.needs_garrison || context.needs_former ||
+		(context.needs_colony && context.can_expand) ||
+		!#is_defined(context.get_orbital_marginal_yield)
+	) {
+		return null;
+	}
+	const marginal_yield = context.get_orbital_marginal_yield(def);
+	if (marginal_yield <= 0) {
+		return null;
+	}
+	let priority = get_priority(context, 'development', 50);
+	if (def.orbital_resource == 'NUTRIENTS') {
+		priority = get_priority(context, 'growth', context.needs_growth ? 100 : 0);
+	} else if (def.orbital_resource == 'MINERALS') {
+		priority = #max(
+			get_priority(context, 'development', 50),
+			get_priority(context, 'military', context.needs_military ? 100 : 0)
+		);
+	}
+	return 25000 + marginal_yield * (4000 + priority * 150) -
+		get_mineral_cost(def, context);
+};
+
 const score_unit = (def, context) => {
 	if (def.can_found_base) {
 		const sea_colony_bonus =
@@ -114,6 +142,12 @@ const score_unit = (def, context) => {
 const score_facility = (def, context) => {
 	if (#is_defined(def.mineral_to_energy_divisor) && def.mineral_to_energy_divisor > 0) {
 		return score_stockpile(def, context);
+	}
+	if (
+		(#is_defined(def.orbital_resource) && def.orbital_resource != '') ||
+		(#is_defined(def.orbital_defense) && def.orbital_defense)
+	) {
+		return score_orbital(def, context);
 	}
 	if (
 		def.id == 'Headquarters' && #is_defined(context.needs_headquarters) &&
@@ -437,6 +471,7 @@ return {
 	get_unit_ability_score: get_unit_ability_score,
 	score_unit: score_unit,
 	score_stockpile: score_stockpile,
+	score_orbital: score_orbital,
 	score_facility: score_facility,
 	score_project: score_project,
 	score_hurry: score_hurry,

@@ -90,7 +90,9 @@ public:
 		const int64_t efficiency_rating_bonus = 0,
 		const int64_t defender_morale_minimum = 0,
 		const bool prototype_cost_waiver = false,
-		const int64_t mineral_to_energy_divisor = 0
+		const int64_t mineral_to_energy_divisor = 0,
+		const std::string& orbital_resource = "",
+		const bool orbital_defense = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -157,6 +159,8 @@ public:
 	const int64_t m_defender_morale_minimum;
 	const bool m_prototype_cost_waiver;
 	const int64_t m_mineral_to_energy_divisor;
+	const std::string m_orbital_resource;
+	const bool m_orbital_defense;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

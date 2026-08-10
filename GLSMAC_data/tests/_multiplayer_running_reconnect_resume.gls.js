@@ -11,6 +11,7 @@
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
+	const sky_hydroponics_stamp = 3;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
@@ -148,6 +149,12 @@
 			if (game.get_player().get_prototyped_components() != prototyped_components_stamp) {
 				return 'prototyped unit components were not restored';
 			}
+			if (
+				game.get_player().get_orbital_facility_count('SkyHydroponicsLab') !=
+				sky_hydroponics_stamp
+			) {
+				return 'orbital facility counts were not restored';
+			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
 			}
@@ -243,6 +250,10 @@
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
 			const skunkworks = game.get_bm().get_facility_def('Skunkworks');
 			const stockpile_energy = game.get_bm().get_facility_def('StockpileEnergy');
+			const sky_hydroponics = game.get_bm().get_facility_def('SkyHydroponicsLab');
+			const nessus_mining = game.get_bm().get_facility_def('NessusMiningStation');
+			const orbital_power = game.get_bm().get_facility_def('OrbitalPowerTransmitter');
+			const orbital_defense = game.get_bm().get_facility_def('OrbitalDefensePod');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const research_hospital = game.get_bm().get_facility_def('ResearchHospital');
 			const robotic_assembly = game.get_bm().get_facility_def('RoboticAssemblyPlant');
@@ -318,6 +329,11 @@
 				!skunkworks.prototype_cost_waiver ||
 				stockpile_energy.mineral_cost != 0 ||
 				stockpile_energy.mineral_to_energy_divisor != 2 ||
+				sky_hydroponics.orbital_resource != 'NUTRIENTS' ||
+				nessus_mining.orbital_resource != 'MINERALS' ||
+				orbital_power.orbital_resource != 'ENERGY' ||
+				!orbital_defense.orbital_defense ||
+				sky_hydroponics.required_facility != 'AerospaceComplex' ||
 				hologram_theatre.psych_multiplier != 0.5 ||
 				research_hospital.research_multiplier != 0.5 ||
 				research_hospital.psych_multiplier != 0.25 ||

@@ -116,6 +116,7 @@ return {
 		let pop_type_snapshots = [];
 		let network_node_link_state = #undefined;
 		let prototype_state = #undefined;
+		let orbital_launch = #undefined;
 
 		if (#is_defined(production)) {
 			const pending_minerals = e.game.get('f_base_get_pending_production')(base);
@@ -123,6 +124,16 @@ return {
 				production.production_kind == 'facility' &&
 				#is_defined(production.mineral_to_energy_divisor) &&
 				production.mineral_to_energy_divisor > 0;
+			const is_orbital =
+				production.production_kind == 'facility' && (
+					(
+						#is_defined(production.orbital_resource) &&
+						production.orbital_resource != ''
+					) || (
+						#is_defined(production.orbital_defense) &&
+						production.orbital_defense
+					)
+				);
 			let updated_minerals = old_minerals +
 				(is_mineral_conversion ? 0 : pending_minerals);
 			const production_cost_resolver = e.game.get('f_base_get_production_cost');
@@ -195,8 +206,15 @@ return {
 						production.production_kind == 'project'
 					) {
 						base.remove_production(0);
-						base.add_facility(production.id);
-						completed_facility = production.id;
+						if (is_orbital) {
+							orbital_launch = e.game.get('f_orbital_apply_launch')(
+								base,
+								production
+							);
+						} else {
+							base.add_facility(production.id);
+							completed_facility = production.id;
+						}
 						if (production.id == 'NetworkNode') {
 							const linked_key = 'network_node_artifact_linked';
 							network_node_link_state = {
@@ -260,6 +278,7 @@ return {
 			pop_type_snapshots: pop_type_snapshots,
 			network_node_link_state: network_node_link_state,
 			prototype_state: prototype_state,
+			orbital_launch: orbital_launch,
 		};
 	},
 
@@ -277,6 +296,9 @@ return {
 		}
 		if (#is_defined(e.applied.prototype_state)) {
 			prototype_rules.rollback(e.applied.prototype_state);
+		}
+		if (#is_defined(e.applied.orbital_launch)) {
+			e.game.get('f_orbital_rollback_launch')(e.applied.orbital_launch);
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);

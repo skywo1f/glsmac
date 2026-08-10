@@ -81,6 +81,11 @@ scenarios, for:
 - Stockpile Energy is a repeatable base-production mode that preserves stored
   minerals and converts each turn's mineral surplus directly to reserves at
   the original two-to-one rate, with player UI and conservative AI fallback;
+- Sky Hydroponics Labs, Nessus Mining Stations, and Orbital Power Transmitters
+  are repeatable faction-wide launches with persistent counts, population-capped
+  base yields, the original halved output without an Aerospace Complex, and
+  marginal-yield-aware AI production; the Space Elevator waives Aerospace
+  restrictions and doubles orbital production, with save/reconnect coverage;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -129,7 +134,7 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 33 of 38 base facilities represented: 29 complete and 4 partial;
+- 37 of 38 base facilities represented: 33 complete and 4 partial;
 - all 33 Secret Projects represented: 31 complete and 2 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -157,18 +162,18 @@ The following original-SMAC systems remain absent or materially incomplete:
   global warming, sea-level changes, volcanoes, several ecology-related Secret
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
-- orbital facilities, orbital limits, Planet Busters, and orbital defense;
+- Planet Busters and Orbital Defense Pod interception; defensive pods are
+  represented as repeatable persistent launches, but cannot have their original
+  combat effect until Planet Busters exist;
 - several remaining facility effects, including submersion, Psi Gates, disease
   protection, and Alien Artifact production contributions to Secret Projects
   and prototypes;
-- the five absent base-facility definitions are Psi Gate, Sky Hydroponics Lab,
-  Nessus Mining Station, Orbital Power Transmitter, and Orbital Defense Pod;
-  both hospitals, Pressure Dome, and
-  Aerospace Complex are represented but remain partial;
+- Psi Gate is the only absent base-facility definition; both hospitals,
+  Pressure Dome, and Orbital Defense Pod are represented but remain partial;
 - the two partial Secret Projects are the Empath Guild and Space Elevator; the
   Empath Guild still lacks its +50% council-election vote bonus, and the Space
-  Elevator's remaining effects and victory-adjacent rules require an individual
-  parity audit;
+  Elevator still lacks global orbital insertion and its remaining Drop Pod
+  interactions;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -179,12 +184,11 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 92 cases: 73 isolated native/script GSE tests
-and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
-all cases in one uninterrupted invocation on the tested Windows machine, but
-long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 73-case isolated Release GSE matrix (72 scripts and one native test)
-passed in one bounded invocation in 148.21 seconds.
+The Release CTest matrix contains 93 cases: 74 isolated native/script GSE tests
+and 19 asset-backed runtime scenarios. The current 74-case isolated Release GSE
+matrix (73 scripts and one native test) passed in one bounded invocation in
+141.54 seconds. Long runtime timing and process-lifecycle cases remain
+intermittently unstable.
 Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
@@ -214,6 +218,12 @@ movement rollback, doubled fungus planting and removal, independent Former
 ability stacking, bred-native lifecycle bonus, AI valuation, and complete
 catalog status.
 
+Orbital coverage validates resource-satellite access, half and full yields,
+population caps, repeat launches, marginal faction-wide AI valuation, Space
+Elevator access and production bonuses, rollback, save serialization, and
+definition metadata. The current installed-asset research runtime passed in
+17.78 seconds with live launches before and after Space Elevator construction.
+
 The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,
 technology, principal, repayment, partial-payment, wartime-penalty, vendetta,
@@ -221,9 +231,10 @@ and rollback tests; stale-wrapper multi-lender accounting; and AI-policy and
 UI-parser tests. The current asset-backed diplomacy quickstart passed in 8.01
 seconds with a treaty, commerce, reciprocal technology trade, loan acceptance,
 peaceful repayment, treaty-betrayal integrity loss, vendetta, and wartime debt
-growth. The current running multiplayer reconnect passed in 25.15 seconds and
-restored exact active-loan, sanction-duration, diplomatic-integrity, and
-Children's Creche local-rating definition state.
+growth. The current running multiplayer reconnect passed in 36.74 seconds and
+restored exact active-loan, sanction-duration, diplomatic-integrity, orbital
+facility counts, orbital definition metadata, and Children's Creche
+local-rating definition state.
 Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed

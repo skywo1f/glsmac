@@ -53,6 +53,7 @@ Player::Player( const Player* const other ) {
 	m_sanction_turns = other->m_sanction_turns;
 	m_integrity_blemishes = other->m_integrity_blemishes;
 	m_prototyped_components = other->m_prototyped_components;
+	m_orbital_facilities = other->m_orbital_facilities;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -247,6 +248,35 @@ void Player::SetPrototypedComponents( const prototyped_components_t& components 
 		}
 	}
 	m_prototyped_components = components;
+}
+
+const Player::orbital_facilities_t& Player::GetOrbitalFacilities() const {
+	return m_orbital_facilities;
+}
+
+int64_t Player::GetOrbitalFacilityCount( const std::string& id ) const {
+	const auto it = m_orbital_facilities.find( id );
+	return it == m_orbital_facilities.end() ? 0 : it->second;
+}
+
+void Player::SetOrbitalFacilityCount( const std::string& id, const int64_t count ) {
+	if ( id.empty() || id.size() > MAX_ORBITAL_FACILITY_ID_LENGTH ) {
+		THROW( "orbital facility ID is invalid" );
+	}
+	if ( count < 0 || count > MAX_ORBITAL_FACILITY_COUNT ) {
+		THROW( "orbital facility count is out of range" );
+	}
+	if ( count == 0 ) {
+		m_orbital_facilities.erase( id );
+		return;
+	}
+	if (
+		m_orbital_facilities.find( id ) == m_orbital_facilities.end() &&
+		m_orbital_facilities.size() >= MAX_ORBITAL_FACILITY_TYPES
+	) {
+		THROW( "too many orbital facility types" );
+	}
+	m_orbital_facilities[ id ] = count;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -767,6 +797,41 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_orbital_facilities",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::object_properties_t result = {};
+					for ( const auto& [ id, count ] : m_orbital_facilities ) {
+						result.insert( { id, VALUE( gse::value::Int, , count ) } );
+					}
+					return VALUE( gse::value::Object, , GSE_CALL_NOGC, result );
+				} )
+			},
+			{
+				"get_orbital_facility_count",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( id, 0, String );
+					return VALUE( gse::value::Int, , GetOrbitalFacilityCount( id ) );
+				} )
+			},
+			{
+				"set_orbital_facility_count",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE( id, 0, String );
+					N_GETVALUE( count, 1, Int );
+					try {
+						SetOrbitalFacilityCount( id, count );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1139,6 +1204,11 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_prototyped_components ) {
 		buf.WriteString( id );
 	}
+	buf.WriteInt( m_orbital_facilities.size() );
+	for ( const auto& [ id, count ] : m_orbital_facilities ) {
+		buf.WriteString( id );
+		buf.WriteInt( count );
+	}
 
 	return buf;
 }
@@ -1353,6 +1423,24 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	orbital_facilities_t orbital_facilities = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto orbital_count = buf.ReadCollectionSize( "player orbital facility" );
+		if ( orbital_count > MAX_ORBITAL_FACILITY_TYPES ) {
+			THROW( "invalid serialized player orbital facility type count" );
+		}
+		for ( size_t i = 0 ; i < orbital_count ; i++ ) {
+			const auto id = buf.ReadString();
+			const auto count = buf.ReadInt();
+			if (
+				id.empty() || id.size() > MAX_ORBITAL_FACILITY_ID_LENGTH ||
+				count <= 0 || count > MAX_ORBITAL_FACILITY_COUNT ||
+				!orbital_facilities.emplace( id, count ).second
+			) {
+				THROW( "invalid or duplicate serialized player orbital facility" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1380,6 +1468,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_sanction_turns = sanction_turns;
 	m_integrity_blemishes = integrity_blemishes;
 	m_prototyped_components = std::move( prototyped_components );
+	m_orbital_facilities = std::move( orbital_facilities );
 
 }
 

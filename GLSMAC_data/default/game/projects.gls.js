@@ -32,6 +32,8 @@ const empty_effects = () => {
 		ignore_power_penalties: false,
 		ignore_thought_control_penalties: false,
 		ignore_cybernetic_penalties: false,
+		orbital_access: false,
+		orbital_production_multiplier: 1.0,
 	};
 };
 
@@ -159,6 +161,10 @@ const get_player_effects = (game, player) => {
 		);
 		if (project.id == 'TheNanoFactory') {
 			result.unit_upgrade_cost_multiplier = 0.5;
+		}
+		if (project.id == 'TheSpaceElevator') {
+			result.orbital_access = true;
+			result.orbital_production_multiplier = 2.0;
 		}
 		if (project.id == 'ThePholusMutagen') {
 			result.ecology_divisor_bonus = result.ecology_divisor_bonus + 1;
@@ -331,6 +337,7 @@ return (game) => {
 	};
 
 	game.set('f_project_get_owned', (base) => { return get_owned_projects(game, base); });
+	game.set('f_project_has', (player, id) => { return has_project(game, player, id); });
 	game.set('f_project_get_effects', (base) => { return get_effects(game, base); });
 	game.set(
 		'f_project_get_player_effects',

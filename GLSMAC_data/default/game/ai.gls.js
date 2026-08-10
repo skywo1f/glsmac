@@ -704,6 +704,10 @@ const queue_production = (game, player, bases, units) => {
 			get_mineral_cost: (def) => {
 				return game.get('f_base_get_production_cost')(base, def);
 			},
+			get_orbital_marginal_yield: (def) => {
+				const resolver = game.get('f_orbital_get_marginal_yield');
+				return #is_defined(resolver) ? resolver(player, def) : 0;
+			},
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
 			empath_guild_infiltration_count: empath_guild_infiltration_count,

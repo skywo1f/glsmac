@@ -54,6 +54,22 @@ const effects = {
 	BioenhancementCenter: {unit_morale_bonus: 2, native_lifecycle_bonus: 1},
 	CentauriPreserve: {native_lifecycle_bonus: 1},
 	TempleOfPlanet: {native_lifecycle_bonus: 1},
+	SkyHydroponicsLab: {
+		orbital_resource: 'NUTRIENTS',
+		required_facility: 'AerospaceComplex',
+	},
+	NessusMiningStation: {
+		orbital_resource: 'MINERALS',
+		required_facility: 'AerospaceComplex',
+	},
+	OrbitalPowerTransmitter: {
+		orbital_resource: 'ENERGY',
+		required_facility: 'AerospaceComplex',
+	},
+	OrbitalDefensePod: {
+		orbital_defense: true,
+		required_facility: 'AerospaceComplex',
+	},
 	StockpileEnergy: {mineral_to_energy_divisor: 2},
 };
 
@@ -61,7 +77,7 @@ const partial_effects = {
 	ResearchHospital: true,
 	Nanohospital: true,
 	PressureDome: true,
-	AerospaceComplex: true,
+	OrbitalDefensePod: true,
 };
 
 const project_effects = {

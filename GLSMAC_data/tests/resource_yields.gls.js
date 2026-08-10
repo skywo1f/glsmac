@@ -174,6 +174,7 @@ const bm = {
 const game_callbacks = {};
 let effective_facilities = #undefined;
 let global_mineral_bonus = 0;
+let orbital_bonus = {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0};
 const game = {
 	get_bm: () => { return bm; },
 	event: (name, data) => {},
@@ -195,6 +196,9 @@ const game = {
 				network_node_drone_modifier: 0,
 				prevent_riots: false,
 			}; };
+		}
+		if (key == 'f_orbital_get_base_resource_bonus') {
+			return (base, resource) => { return orbital_bonus[resource]; };
 		}
 		return #undefined;
 	},
@@ -243,6 +247,14 @@ effective_facilities = base.get_facilities() + [{
 global_mineral_bonus = 2;
 const project_intake = bm_callbacks.get_base_intake({base: base});
 test.assert(project_intake == {NUTRIENTS: 3, MINERALS: 10, ENERGY: 5});
+
+base.get_facilities = () => { return []; };
+effective_facilities = [];
+global_mineral_bonus = 0;
+orbital_bonus = {NUTRIENTS: 3, MINERALS: 2, ENERGY: 1};
+const orbital_intake = bm_callbacks.get_base_intake({base: base});
+test.assert(orbital_intake == {NUTRIENTS: 5, MINERALS: 4, ENERGY: 3});
+orbital_bonus = {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0};
 
 worked_tile.terraforming.forest = true;
 effective_facilities = [{
