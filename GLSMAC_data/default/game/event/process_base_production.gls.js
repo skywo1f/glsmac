@@ -58,7 +58,9 @@ const get_production_morale = (game, base, production) => {
 				? facility.native_lifecycle_bonus
 				: 0;
 		} else {
-			training_morale_bonus += facility.unit_morale_bonus;
+			if (#is_defined(production.offense) && production.offense > 0) {
+				training_morale_bonus += facility.unit_morale_bonus;
+			}
 			if (#is_defined(production.is_land) && production.is_land) {
 				training_morale_bonus += #is_defined(facility.unit_morale_land_bonus)
 					? facility.unit_morale_land_bonus

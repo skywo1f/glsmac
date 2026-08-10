@@ -30,6 +30,7 @@ const colony_pod = {
 	mineral_cost: 30,
 	can_found_base: true,
 	is_native: false,
+	offense: 0,
 	morale_set: 'STANDARD',
 	is_land: true,
 	is_water: false,
@@ -42,6 +43,7 @@ const land_patrol = {
 	mineral_cost: 20,
 	can_found_base: false,
 	is_native: false,
+	offense: 1,
 	morale_set: 'STANDARD',
 	is_land: true,
 	is_water: false,
@@ -55,6 +57,7 @@ const trained_land_patrol = {
 	mineral_cost: 20,
 	can_found_base: false,
 	is_native: false,
+	offense: 1,
 	morale_set: 'STANDARD',
 	is_land: true,
 	is_water: false,
@@ -68,6 +71,7 @@ const sea_patrol = {
 	mineral_cost: 20,
 	can_found_base: false,
 	is_native: false,
+	offense: 1,
 	morale_set: 'STANDARD',
 	is_land: false,
 	is_water: true,
@@ -80,6 +84,7 @@ const air_patrol = {
 	mineral_cost: 20,
 	can_found_base: false,
 	is_native: false,
+	offense: 1,
 	morale_set: 'STANDARD',
 	is_land: false,
 	is_water: false,
@@ -799,7 +804,7 @@ test.assert(#sizeof(base_pops) == 1);
 
 const doctor_pop = make_pop('DOCTOR', #undefined);
 base_pops = [worker_pop, doctor_pop];
-built_facilities = ['CommandCenter'];
+built_facilities = ['CommandCenter', 'BioenhancementCenter'];
 accumulated_minerals = 25;
 spawned_unit = #undefined;
 spawn_data = #undefined;

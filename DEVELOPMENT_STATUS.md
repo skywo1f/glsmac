@@ -31,6 +31,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
   low-MORALE halving of conventional unit training bonuses; POLICE includes
   original garrison limits, +3 doubled control, Non-Lethal Methods, Ascetic
   Virtues, Self-Aware Colony, AI worker stability, and base-screen diagnostics;
+- Bioenhancement Centers grant +2 training morale only to conventional military
+  units and +1 lifecycle to bred native life, excluding civilian units from the
+  general training bonus;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
   and starting capitals;
@@ -81,7 +84,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 18 complete and 13 partial;
+- 31 of 38 base facilities represented: 19 complete and 12 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.

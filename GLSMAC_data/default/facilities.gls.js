@@ -66,7 +66,6 @@ const partial_effects = {
 	PunishmentSphere: true,
 	PressureDome: true,
 	AerospaceComplex: true,
-	BioenhancementCenter: true,
 	CentauriPreserve: true,
 	TempleOfPlanet: true,
 };
