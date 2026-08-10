@@ -264,11 +264,24 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"IndustrialBase",
 				};
 				source.SetDiplomaticTrade( 5, trade );
+				const Player::diplomatic_loan_offer_t loan_offer = { false, 100, 6, 20 };
+				const Player::diplomatic_loan_t loan = { 120, 6 };
+				source.SetDiplomaticLoanOffer( 6, loan_offer );
+				source.SetDiplomaticLoan( 7, loan );
 				Player cloned( &source );
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticLoanOffer( 6 ) &&
+						*cloned.GetDiplomaticLoanOffer( 6 ) == loan_offer,
+					"pending diplomatic loan offer was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticLoan( 7 ) && *cloned.GetDiplomaticLoan( 7 ) == loan,
+					"diplomatic loan was not cloned"
 				);
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
@@ -302,8 +315,23 @@ void AddTests( task::gsetests::GSETests* task ) {
 					roundtrip.GetDiplomaticTrade( 5 ) && *roundtrip.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not serialized"
 				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoanOffer( 6 ) &&
+						*roundtrip.GetDiplomaticLoanOffer( 6 ) == loan_offer,
+					"pending diplomatic loan offer was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoan( 7 ) && *roundtrip.GetDiplomaticLoan( 7 ) == loan,
+					"diplomatic loan was not serialized"
+				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
+				roundtrip.ClearDiplomaticLoanOffer( 6 );
+				roundtrip.ClearDiplomaticLoan( 7 );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoanOffers().empty() && roundtrip.GetDiplomaticLoans().empty(),
+					"cleared diplomatic loan state was retained"
+				);
 				roundtrip.SetInfiltrated( 4, false );
 				GT_ASSERT(
 					roundtrip.GetInfiltratedPlayers().empty(),
@@ -440,6 +468,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetDiplomaticTrades().empty(),
 					"legacy player diplomatic trades did not default to empty"
 				);
+				GT_ASSERT(
+					legacy.GetDiplomaticLoanOffers().empty() && legacy.GetDiplomaticLoans().empty(),
+					"legacy player diplomatic loans did not default to empty"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -533,6 +565,26 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_bidirectional_energy_trade,
 					"bidirectional diplomatic energy trade accepted"
 				);
+
+				bool rejected_underfunded_loan_offer = false;
+				try {
+					Player invalid( "Borrower", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticLoanOffer( 1, { false, 100, 4, 20 } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_underfunded_loan_offer = true;
+				}
+				GT_ASSERT( rejected_underfunded_loan_offer, "underfunded diplomatic loan offer accepted" );
+
+				bool rejected_empty_loan = false;
+				try {
+					Player invalid( "Borrower", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticLoan( 1, {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_empty_loan = true;
+				}
+				GT_ASSERT( rejected_empty_loan, "empty diplomatic loan accepted" );
 				GT_OK();
 			}
 		);

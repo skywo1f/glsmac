@@ -172,6 +172,27 @@ const update_diplomacy = (game, player) => {
 			return;
 		}
 	}
+	for (other of game.get_players()) {
+		if (other.id == player.id) {
+			continue;
+		}
+		const loan_offer = player.get_diplomatic_loan_offer(other);
+		if (loan_offer != null) {
+			game.event_as(player.id, 'respond_diplomatic_loan', {
+				player: player,
+				proposer: other,
+				accept: diplomacy.get_loan_acceptance_score({
+					relation: player.get_diplomatic_relation(other),
+					own_power: own_power,
+					other_power: get_player_power(game, other),
+					own_energy: player.energy_credits,
+					own_is_lender: !loan_offer.proposer_is_lender,
+					terms: loan_offer,
+				}) >= 0.0,
+			});
+			return;
+		}
+	}
 
 	if ((game.get_turn() + player.id) % 8 != 0) {
 		return;
@@ -247,6 +268,47 @@ const update_diplomacy = (game, player) => {
 			player: player,
 			target: best_trade_target,
 			terms: best_trade.terms,
+		});
+		return;
+	}
+
+	let best_loan = null;
+	let best_loan_target = null;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id ||
+			other.get_diplomatic_offer(player) != '' ||
+			player.get_diplomatic_offer(other) != '' ||
+			other.get_diplomatic_trade(player) != null ||
+			player.get_diplomatic_trade(other) != null ||
+			other.get_diplomatic_loan_offer(player) != null ||
+			player.get_diplomatic_loan_offer(other) != null ||
+			other.get_diplomatic_loan(player) != null ||
+			player.get_diplomatic_loan(other) != null
+		) {
+			continue;
+		}
+		const proposal = diplomacy.get_loan_proposal({
+			relation: player.get_diplomatic_relation(other),
+			own_power: own_power,
+			other_power: get_player_power(game, other),
+			own_energy: player.energy_credits,
+			other_energy: other.energy_credits,
+		});
+		if (
+			proposal != null &&
+			(best_loan == null || proposal.score > best_loan.score ||
+				(proposal.score == best_loan.score && other.id < best_loan_target.id))
+		) {
+			best_loan = proposal;
+			best_loan_target = other;
+		}
+	}
+	if (best_loan != null) {
+		game.event_as(player.id, 'propose_diplomatic_loan', {
+			player: player,
+			target: best_loan_target,
+			terms: best_loan.terms,
 		});
 	}
 };

@@ -34,6 +34,16 @@ const trade_text = (game, terms) => {
 	);
 };
 
+const loan_terms_text = (terms, proposer, recipient) => {
+	const lender = terms.proposer_is_lender ? proposer : recipient;
+	const borrower = terms.proposer_is_lender ? recipient : proposer;
+	return (
+		lender.name + ' lends ' + borrower.name + ' ' + #to_string(terms.principal) +
+		' EC; ' + #to_string(terms.payment) + ' EC/year for ' +
+		#to_string(terms.turns) + ' years'
+	);
+};
+
 return {
 
 	init: (p) => {
@@ -61,6 +71,18 @@ return {
 		this.propose_trade_button = null;
 		this.accept_trade = null;
 		this.reject_trade = null;
+		this.loan_text = null;
+		this.loan_error = null;
+		this.loan_principal_label = null;
+		this.loan_principal = null;
+		this.loan_payment_label = null;
+		this.loan_payment = null;
+		this.loan_turns_label = null;
+		this.loan_turns = null;
+		this.offer_loan_button = null;
+		this.request_loan_button = null;
+		this.accept_loan = null;
+		this.reject_loan = null;
 
 		for (event_name of [
 			'diplomacy_updated',
@@ -70,6 +92,9 @@ return {
 			'diplomatic_trade_proposed',
 			'diplomatic_trade_updated',
 			'diplomatic_trade_resolved',
+			'diplomatic_loan_proposed',
+			'diplomatic_loan_updated',
+			'diplomatic_loan_resolved',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -78,7 +103,8 @@ return {
 				}
 				if (
 					(observed_event_name == 'diplomatic_proposal' ||
-						observed_event_name == 'diplomatic_trade_proposed') &&
+						observed_event_name == 'diplomatic_trade_proposed' ||
+						observed_event_name == 'diplomatic_loan_proposed') &&
 					e.target.id == p.game.get_player().id
 				) {
 					p.modules.popup.show('diplomacy');
@@ -86,7 +112,7 @@ return {
 			});
 		}
 
-		return p.create('DIPLOMACY', 600, 454, (body, cb) => {
+		return p.create('DIPLOMACY', 600, 650, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});
 			this.opponent_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -199,8 +225,64 @@ return {
 				return true;
 			});
 
+			this.loan_text = body.text({
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 386,
+			});
+			this.loan_principal_label = body.text({
+				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 414,
+			});
+			this.loan_principal = body.input({
+				class: 'popup-input', align: 'top right', right: 10, top: 410,
+				width: 160, value: '100',
+			});
+			this.loan_payment_label = body.text({
+				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 442,
+			});
+			this.loan_payment = body.input({
+				class: 'popup-input', align: 'top right', right: 10, top: 438,
+				width: 160, value: '7',
+			});
+			this.loan_turns_label = body.text({
+				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 470,
+			});
+			this.loan_turns = body.input({
+				class: 'popup-input', align: 'top right', right: 10, top: 466,
+				width: 160, value: '20',
+			});
+			this.loan_error = body.text({
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 494,
+			});
+			this.offer_loan_button = body.button({
+				class: 'game-popup-button', text: 'Offer Loan', top: 522,
+			});
+			this.offer_loan_button.on('click', (e) => {
+				this.propose_loan(true);
+				return true;
+			});
+			this.request_loan_button = body.button({
+				class: 'game-popup-button', text: 'Request Loan', top: 546,
+			});
+			this.request_loan_button.on('click', (e) => {
+				this.propose_loan(false);
+				return true;
+			});
+			this.accept_loan = body.button({
+				class: 'game-popup-button', text: 'Accept Loan', top: 522,
+			});
+			this.accept_loan.on('click', (e) => {
+				this.respond_loan(true);
+				return true;
+			});
+			this.reject_loan = body.button({
+				class: 'game-popup-button', text: 'Reject Loan', top: 546,
+			});
+			this.reject_loan.on('click', (e) => {
+				this.respond_loan(false);
+				return true;
+			});
+
 			body.button({
-				class: 'game-popup-button', text: 'Close', top: 422, is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 618, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -213,6 +295,7 @@ return {
 		this.offer_energy.value = '0';
 		this.request_energy.value = '0';
 		this.trade_error.text = '';
+		this.loan_error.text = '';
 		this.refresh();
 	},
 
@@ -274,6 +357,47 @@ return {
 		}
 	},
 
+	propose_loan: (proposer_is_lender) => {
+		if (this.player == null || this.target == null) {
+			return;
+		}
+		const principal = this.parse_energy(this.loan_principal.value);
+		const payment = this.parse_energy(this.loan_payment.value);
+		const turns = this.parse_energy(this.loan_turns.value);
+		if (
+			principal == null || principal <= 0 ||
+			payment == null || payment <= 0 ||
+			turns == null || turns <= 0 || turns > 1000
+		) {
+			this.loan_error.text = 'Loan terms must be positive whole numbers (maximum 1000 years).';
+			return;
+		}
+		const repayment = payment * turns;
+		if (repayment > 1000000000 || repayment < principal || repayment > principal * 4) {
+			this.loan_error.text = 'Total repayment must be between the principal and four times it.';
+			return;
+		}
+		this.loan_error.text = '';
+		this.p.game.event('propose_diplomatic_loan', {
+			player: this.player,
+			target: this.target,
+			terms: {
+				proposer_is_lender: proposer_is_lender,
+				principal: principal,
+				payment: payment,
+				turns: turns,
+			},
+		});
+	},
+
+	respond_loan: (accept) => {
+		if (this.player != null && this.target != null) {
+			this.p.game.event('respond_diplomatic_loan', {
+				player: this.player, proposer: this.target, accept: accept,
+			});
+		}
+	},
+
 	get_technology_items: (source, recipient) => {
 		let items = [['', 'No technology']];
 		for (id of source.get_research_state().technologies) {
@@ -296,20 +420,33 @@ return {
 			this.request_energy_label, this.request_energy,
 			this.propose_trade_button,
 		];
+		const loan_editor = [
+			this.loan_principal_label, this.loan_principal,
+			this.loan_payment_label, this.loan_payment,
+			this.loan_turns_label, this.loan_turns,
+			this.offer_loan_button, this.request_loan_button,
+		];
 		for (button of relation_buttons) {
 			button.hide();
 		}
 		for (control of trade_editor) {
 			control.hide();
 		}
+		for (control of loan_editor) {
+			control.hide();
+		}
 		this.accept_trade.hide();
 		this.reject_trade.hide();
+		this.accept_loan.hide();
+		this.reject_loan.hide();
 
 		if (this.player == null || this.target == null) {
 			this.relation_text.text = '';
 			this.offer_text.text = '';
 			this.trade_text.text = '';
 			this.trade_error.text = '';
+			this.loan_text.text = '';
+			this.loan_error.text = '';
 			return;
 		}
 
@@ -318,6 +455,10 @@ return {
 		const outgoing = this.target.get_diplomatic_offer(this.player);
 		const incoming_trade = this.player.get_diplomatic_trade(this.target);
 		const outgoing_trade = this.target.get_diplomatic_trade(this.player);
+		const incoming_loan = this.player.get_diplomatic_loan_offer(this.target);
+		const outgoing_loan = this.target.get_diplomatic_loan_offer(this.player);
+		const player_debt = this.player.get_diplomatic_loan(this.target);
+		const target_debt = this.target.get_diplomatic_loan(this.player);
 		this.relation_text.text = 'Current relation: ' + relation_name(relation);
 		this.offer_text.text = incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
@@ -327,6 +468,21 @@ return {
 			: (outgoing_trade != null
 				? 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade)
 				: '');
+		this.loan_text.text = player_debt != null
+			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
+				#to_string(player_debt.payment) + ' EC/year'
+			: (target_debt != null
+				? this.target.name + ' owes you ' + #to_string(target_debt.balance) + ' EC; ' +
+					#to_string(target_debt.payment) + ' EC/year'
+				: (incoming_loan != null
+					? 'Incoming loan: ' + loan_terms_text(incoming_loan, this.target, this.player)
+					: (outgoing_loan != null
+						? 'Loan awaiting response: ' + loan_terms_text(
+							outgoing_loan,
+							this.player,
+							this.target
+						)
+						: '')));
 
 		if (incoming != '') {
 			this.accept_offer.show();
@@ -357,6 +513,21 @@ return {
 		this.offer_technology.value = '';
 		this.request_technology.value = '';
 		for (control of trade_editor) {
+			control.show();
+		}
+
+		if (incoming_loan != null) {
+			this.accept_loan.show();
+			this.reject_loan.show();
+			return;
+		}
+		if (
+			outgoing_loan != null || player_debt != null || target_debt != null ||
+			relation == 'vendetta'
+		) {
+			return;
+		}
+		for (control of loan_editor) {
 			control.show();
 		}
 	},

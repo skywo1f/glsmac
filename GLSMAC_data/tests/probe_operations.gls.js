@@ -7,6 +7,8 @@ const make_player = (id, energy, technologies, target) => {
 	let relations = {};
 	let offers = {};
 	let trades = {};
+	let loan_offers = {};
+	let loans = {};
 	let major_atrocities = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
@@ -15,6 +17,7 @@ const make_player = (id, energy, technologies, target) => {
 		energy_credits: energy,
 		probe_rating: 0,
 	};
+	player.get_energy_credits = () => { return player.energy_credits; };
 	player.set_energy_credits = (value) => { player.energy_credits = value; };
 	player.read_energy_credits = () => { return player.energy_credits; };
 	player.get_research_state = () => { return research; };
@@ -57,6 +60,26 @@ const make_player = (id, energy, technologies, target) => {
 		};
 	player.clear_diplomatic_trade = (other) => {
 		trades['p' + #to_string(other.id)] = #undefined;
+		};
+	player.get_diplomatic_loan_offer = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(loan_offers[key]) ? loan_offers[key] : null;
+		};
+	player.set_diplomatic_loan_offer = (other, value) => {
+		loan_offers['p' + #to_string(other.id)] = value;
+		};
+	player.clear_diplomatic_loan_offer = (other) => {
+		loan_offers['p' + #to_string(other.id)] = #undefined;
+		};
+	player.get_diplomatic_loan = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(loans[key]) ? loans[key] : null;
+		};
+	player.set_diplomatic_loan = (other, value) => {
+		loans['p' + #to_string(other.id)] = value;
+		};
+	player.clear_diplomatic_loan = (other) => {
+		loans['p' + #to_string(other.id)] = #undefined;
 		};
 	return player;
 };

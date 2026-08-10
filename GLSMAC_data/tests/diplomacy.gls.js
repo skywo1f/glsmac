@@ -17,6 +17,9 @@ const game = {
 	set: (name, value) => { values[name] = value; },
 	get: (name) => { return values[name]; },
 	is_turn_complete: (player_id) => { return false; },
+	is_master: () => { return true; },
+	get_players: () => { return []; },
+	event: (name, data) => {},
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
 	message: (text) => {},
 };
@@ -52,6 +55,8 @@ const make_player = (id, name) => {
 	let relations = {};
 	let offers = {};
 	let trades = {};
+	let loan_offers = {};
+	let loans = {};
 	let research_state = {technologies: [], target: '', progress: 0};
 	let player = null;
 	player = {
@@ -82,6 +87,26 @@ const make_player = (id, name) => {
 		clear_diplomatic_trade: (other) => {
 			trades['p' + #to_string(other.id)] = #undefined;
 		},
+		get_diplomatic_loan_offer: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(loan_offers[key]) ? #clone(loan_offers[key]) : null;
+		},
+		set_diplomatic_loan_offer: (other, terms) => {
+			loan_offers['p' + #to_string(other.id)] = #clone(terms);
+		},
+		clear_diplomatic_loan_offer: (other) => {
+			loan_offers['p' + #to_string(other.id)] = #undefined;
+		},
+		get_diplomatic_loan: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(loans[key]) ? #clone(loans[key]) : null;
+		},
+		set_diplomatic_loan: (other, terms) => {
+			loans['p' + #to_string(other.id)] = #clone(terms);
+		},
+		clear_diplomatic_loan: (other) => {
+			loans['p' + #to_string(other.id)] = #undefined;
+		},
 		get_research_state: () => { return #clone(research_state); },
 		set_research_state: (state) => { research_state = #clone(state); },
 		has_technology: (technology_id) => {
@@ -92,6 +117,7 @@ const make_player = (id, name) => {
 			}
 			return false;
 		},
+		get_energy_credits: () => { return player.energy_credits; },
 		set_energy_credits: (energy) => { player.energy_credits = energy; },
 	};
 	return player;

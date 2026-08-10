@@ -55,6 +55,8 @@ Player::Player( const Player* const other ) {
 	m_diplomatic_offers = other->m_diplomatic_offers;
 	m_infiltrated_players = other->m_infiltrated_players;
 	m_diplomatic_trades = other->m_diplomatic_trades;
+	m_diplomatic_loan_offers = other->m_diplomatic_loan_offers;
+	m_diplomatic_loans = other->m_diplomatic_loans;
 }
 
 Player::~Player() {
@@ -341,6 +343,70 @@ void Player::ClearDiplomaticTrade( const size_t player_id ) {
 	m_diplomatic_trades.erase( player_id );
 }
 
+const Player::diplomatic_loan_offers_t& Player::GetDiplomaticLoanOffers() const {
+	return m_diplomatic_loan_offers;
+}
+
+const Player::diplomatic_loan_offer_t* Player::GetDiplomaticLoanOffer( const size_t player_id ) const {
+	const auto it = m_diplomatic_loan_offers.find( player_id );
+	return it == m_diplomatic_loan_offers.end() ? nullptr : &it->second;
+}
+
+void Player::SetDiplomaticLoanOffer( const size_t player_id, const diplomatic_loan_offer_t& offer ) {
+	if ( player_id >= MAX_DIPLOMATIC_LOAN_OFFERS ) {
+		THROW( "diplomatic loan offer player ID is out of range" );
+	}
+	if (
+		offer.principal <= 0 || offer.principal > MAX_ENERGY_CREDITS ||
+		offer.payment <= 0 || offer.payment > MAX_ENERGY_CREDITS ||
+		offer.turns <= 0 || offer.turns > MAX_DIPLOMATIC_LOAN_TURNS ||
+		offer.payment > MAX_ENERGY_CREDITS / offer.turns
+	) {
+		THROW( "diplomatic loan offer terms are out of range" );
+	}
+	const auto repayment = offer.payment * offer.turns;
+	if ( repayment < offer.principal || repayment > offer.principal * 4 ) {
+		THROW( "diplomatic loan repayment is outside supported terms" );
+	}
+	m_diplomatic_loan_offers[ player_id ] = offer;
+}
+
+void Player::ClearDiplomaticLoanOffer( const size_t player_id ) {
+	if ( player_id >= MAX_DIPLOMATIC_LOAN_OFFERS ) {
+		THROW( "diplomatic loan offer player ID is out of range" );
+	}
+	m_diplomatic_loan_offers.erase( player_id );
+}
+
+const Player::diplomatic_loans_t& Player::GetDiplomaticLoans() const {
+	return m_diplomatic_loans;
+}
+
+const Player::diplomatic_loan_t* Player::GetDiplomaticLoan( const size_t player_id ) const {
+	const auto it = m_diplomatic_loans.find( player_id );
+	return it == m_diplomatic_loans.end() ? nullptr : &it->second;
+}
+
+void Player::SetDiplomaticLoan( const size_t player_id, const diplomatic_loan_t& loan ) {
+	if ( player_id >= MAX_DIPLOMATIC_LOANS ) {
+		THROW( "diplomatic loan player ID is out of range" );
+	}
+	if (
+		loan.balance <= 0 || loan.balance > MAX_ENERGY_CREDITS ||
+		loan.payment <= 0 || loan.payment > MAX_ENERGY_CREDITS
+	) {
+		THROW( "diplomatic loan is out of range" );
+	}
+	m_diplomatic_loans[ player_id ] = loan;
+}
+
+void Player::ClearDiplomaticLoan( const size_t player_id ) {
+	if ( player_id >= MAX_DIPLOMATIC_LOANS ) {
+		THROW( "diplomatic loan player ID is out of range" );
+	}
+	m_diplomatic_loans.erase( player_id );
+}
+
 const Player::infiltrated_players_t& Player::GetInfiltratedPlayers() const {
 	return m_infiltrated_players;
 }
@@ -501,6 +567,13 @@ WRAPIMPL_BEGIN( Player )
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return VALUE( gse::value::Bool, , HasTechnology( id ) );
+				} )
+			},
+			{
+				"get_energy_credits",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetEnergyCredits() );
 				} )
 			},
 			{
@@ -724,6 +797,119 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_diplomatic_loan_offer",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot negotiate a loan with itself" );
+					}
+					const auto* const offer = GetDiplomaticLoanOffer( other->m_slotnum );
+					if ( !offer ) {
+						return VALUE( gse::value::Null );
+					}
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "proposer_is_lender", VALUE( gse::value::Bool, , offer->proposer_is_lender ) },
+						{ "principal", VALUE( gse::value::Int, , offer->principal ) },
+						{ "payment", VALUE( gse::value::Int, , offer->payment ) },
+						{ "turns", VALUE( gse::value::Int, , offer->turns ) },
+					} );
+				} )
+			},
+			{
+				"set_diplomatic_loan_offer",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( terms, 1, Object );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot negotiate a loan with itself" );
+					}
+					N_GETPROP( proposer_is_lender, terms, "proposer_is_lender", Bool );
+					N_GETPROP( principal, terms, "principal", Int );
+					N_GETPROP( payment, terms, "payment", Int );
+					N_GETPROP( turns, terms, "turns", Int );
+					try {
+						SetDiplomaticLoanOffer( other->m_slotnum, {
+							proposer_is_lender,
+							principal,
+							payment,
+							turns,
+						} );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"clear_diplomatic_loan_offer",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot negotiate a loan with itself" );
+					}
+					ClearDiplomaticLoanOffer( other->m_slotnum );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_diplomatic_loan",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( lender, 0, Player );
+					if ( lender == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot owe itself a loan" );
+					}
+					const auto* const loan = GetDiplomaticLoan( lender->m_slotnum );
+					if ( !loan ) {
+						return VALUE( gse::value::Null );
+					}
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "balance", VALUE( gse::value::Int, , loan->balance ) },
+						{ "payment", VALUE( gse::value::Int, , loan->payment ) },
+					} );
+				} )
+			},
+			{
+				"set_diplomatic_loan",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( lender, 0, Player );
+					N_GETVALUE( terms, 1, Object );
+					if ( lender == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot owe itself a loan" );
+					}
+					N_GETPROP( balance, terms, "balance", Int );
+					N_GETPROP( payment, terms, "payment", Int );
+					try {
+						SetDiplomaticLoan( lender->m_slotnum, { balance, payment } );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"clear_diplomatic_loan",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( lender, 0, Player );
+					if ( lender == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot owe itself a loan" );
+					}
+					ClearDiplomaticLoan( lender->m_slotnum );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"has_infiltrated",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -798,6 +984,20 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteString( trade.offer_technology );
 		buf.WriteInt( trade.request_energy );
 		buf.WriteString( trade.request_technology );
+	}
+	buf.WriteInt( m_diplomatic_loan_offers.size() );
+	for ( const auto& [ player_id, offer ] : m_diplomatic_loan_offers ) {
+		buf.WriteInt( player_id );
+		buf.WriteBool( offer.proposer_is_lender );
+		buf.WriteInt( offer.principal );
+		buf.WriteInt( offer.payment );
+		buf.WriteInt( offer.turns );
+	}
+	buf.WriteInt( m_diplomatic_loans.size() );
+	for ( const auto& [ player_id, loan ] : m_diplomatic_loans ) {
+		buf.WriteInt( player_id );
+		buf.WriteInt( loan.balance );
+		buf.WriteInt( loan.payment );
 	}
 
 	return buf;
@@ -943,6 +1143,43 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	diplomatic_loan_offers_t diplomatic_loan_offers = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto offer_count = buf.ReadCollectionSize( "player diplomatic loan offer" );
+		if ( offer_count > MAX_DIPLOMATIC_LOAN_OFFERS ) {
+			THROW( "invalid serialized player diplomatic loan offer count" );
+		}
+		for ( size_t i = 0 ; i < offer_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic loan offer player ID" );
+			const diplomatic_loan_offer_t offer = {
+				buf.ReadBool(),
+				buf.ReadInt(),
+				buf.ReadInt(),
+				buf.ReadInt(),
+			};
+			Player validator( "loan offer validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticLoanOffer( player_id, offer );
+			if ( !diplomatic_loan_offers.emplace( player_id, offer ).second ) {
+				THROW( "duplicate serialized diplomatic loan offer player ID" );
+			}
+		}
+	}
+	diplomatic_loans_t diplomatic_loans = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto loan_count = buf.ReadCollectionSize( "player diplomatic loan" );
+		if ( loan_count > MAX_DIPLOMATIC_LOANS ) {
+			THROW( "invalid serialized player diplomatic loan count" );
+		}
+		for ( size_t i = 0 ; i < loan_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic loan player ID" );
+			const diplomatic_loan_t loan = { buf.ReadInt(), buf.ReadInt() };
+			Player validator( "loan validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticLoan( player_id, loan );
+			if ( !diplomatic_loans.emplace( player_id, loan ).second ) {
+				THROW( "duplicate serialized diplomatic loan player ID" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -965,6 +1202,8 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_infiltrated_players = std::move( infiltrated_players );
 	m_major_atrocities = major_atrocities;
 	m_diplomatic_trades = std::move( diplomatic_trades );
+	m_diplomatic_loan_offers = std::move( diplomatic_loan_offers );
+	m_diplomatic_loans = std::move( diplomatic_loans );
 
 }
 

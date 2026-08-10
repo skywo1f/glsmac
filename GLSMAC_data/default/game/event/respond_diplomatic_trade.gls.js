@@ -33,18 +33,18 @@ return {
 		const terms = player.get_diplomatic_trade(proposer);
 		const snapshot = {
 			terms: terms,
-			player_energy: player.energy_credits,
-			proposer_energy: proposer.energy_credits,
+			player_energy: player.get_energy_credits(),
+			proposer_energy: proposer.get_energy_credits(),
 			player_research: player.get_research_state(),
 			proposer_research: proposer.get_research_state(),
 		};
 		player.clear_diplomatic_trade(proposer);
 		if (e.data.accept) {
 			proposer.set_energy_credits(
-				proposer.energy_credits - terms.offer_energy + terms.request_energy
+				proposer.get_energy_credits() - terms.offer_energy + terms.request_energy
 			);
 			player.set_energy_credits(
-				player.energy_credits - terms.request_energy + terms.offer_energy
+				player.get_energy_credits() - terms.request_energy + terms.offer_energy
 			);
 			e.game.get('f_diplomacy_grant_technology')(player, terms.offer_technology);
 			e.game.get('f_diplomacy_grant_technology')(proposer, terms.request_technology);

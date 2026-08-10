@@ -11,6 +11,8 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const initial_energy_stamp = 137;
+	const loan_balance_stamp = 91;
+	const loan_payment_stamp = 7;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -80,6 +82,31 @@
 			},
 			rollback: (e) => {
 				e.game.get_player(e.caller).set_energy_credits(e.applied.energy_credits);
+			},
+		});
+
+		game.register_event('running_reconnect_set_loan', {
+			validate: (e) => {
+				if (e.data.lender.id == e.caller) {
+					return 'Reconnect loan lender must be another player';
+				}
+			},
+			apply: (e) => {
+				const borrower = e.game.get_player(e.caller);
+				const previous = borrower.get_diplomatic_loan(e.data.lender);
+				borrower.set_diplomatic_loan(e.data.lender, {
+					balance: loan_balance_stamp,
+					payment: loan_payment_stamp,
+				});
+				return previous;
+			},
+			rollback: (e) => {
+				const borrower = e.game.get_player(e.caller);
+				if (e.applied == null) {
+					borrower.clear_diplomatic_loan(e.data.lender);
+				} else {
+					borrower.set_diplomatic_loan(e.data.lender, e.applied);
+				}
 			},
 		});
 
@@ -268,6 +295,7 @@
 			let founding_requested = false;
 			let terraform_requested = false;
 			let energy_requested = false;
+			let loan_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -361,7 +389,22 @@
 							}
 							return true;
 						}
+						const lender = game.get_player(get_remote_player_id());
+						const loan = game.get_player().get_diplomatic_loan(lender);
+						if (loan == null) {
+							if (!loan_requested) {
+								loan_requested = true;
+								game.event('running_reconnect_set_loan', {lender: lender});
+							}
+							return true;
+						}
+						if (loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial loan stamp is invalid');
+							glsmac.exit();
+							return false;
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;

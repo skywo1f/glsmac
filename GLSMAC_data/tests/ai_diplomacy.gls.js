@@ -101,3 +101,84 @@ test.assert(diplomacy.get_trade_proposal({
 	own_technologies: [{id: 'CentauriEcology', cost: 40}],
 	other_technologies: [{id: 'IndustrialBase', cost: 50}],
 }) == null);
+
+const fair_loan = {
+	proposer_is_lender: false,
+	principal: 100,
+	payment: 7,
+	turns: 20,
+};
+test.assert(diplomacy.get_loan_acceptance_score({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 300,
+	own_is_lender: true,
+	terms: fair_loan,
+}) >= 0.0);
+test.assert(diplomacy.get_loan_acceptance_score({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 20,
+	own_is_lender: false,
+	terms: fair_loan,
+}) >= 0.0);
+test.assert(diplomacy.get_loan_acceptance_score({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 20,
+	own_is_lender: false,
+	terms: {
+		proposer_is_lender: true,
+		principal: 100,
+		payment: 20,
+		turns: 20,
+	},
+}) < 0.0);
+test.assert(diplomacy.get_loan_acceptance_score({
+	relation: 'vendetta',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 300,
+	own_is_lender: true,
+	terms: fair_loan,
+}) < 0.0);
+
+let loan_proposal = diplomacy.get_loan_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 20,
+	other_energy: 300,
+});
+test.assert(loan_proposal != null);
+test.assert(!loan_proposal.terms.proposer_is_lender);
+test.assert(loan_proposal.terms.principal > 0);
+test.assert(loan_proposal.terms.payment * loan_proposal.terms.turns >= loan_proposal.terms.principal);
+
+loan_proposal = diplomacy.get_loan_proposal({
+	relation: 'pact',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 300,
+	other_energy: 20,
+});
+test.assert(loan_proposal != null);
+test.assert(loan_proposal.terms.proposer_is_lender);
+
+test.assert(diplomacy.get_loan_proposal({
+	relation: 'neutral',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 20,
+	other_energy: 300,
+}) == null);
+test.assert(diplomacy.get_loan_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 150,
+	other_energy: 160,
+}) == null);

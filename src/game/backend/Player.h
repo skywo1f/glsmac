@@ -134,6 +134,43 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_t& trade );
 	void ClearDiplomaticTrade( const size_t player_id );
 
+	struct diplomatic_loan_offer_t {
+		bool proposer_is_lender = true;
+		int64_t principal = 0;
+		int64_t payment = 0;
+		int64_t turns = 0;
+
+		bool operator==( const diplomatic_loan_offer_t& other ) const {
+			return
+				proposer_is_lender == other.proposer_is_lender &&
+				principal == other.principal &&
+				payment == other.payment &&
+				turns == other.turns;
+		}
+	};
+	using diplomatic_loan_offers_t = std::map< size_t, diplomatic_loan_offer_t >;
+	static constexpr size_t MAX_DIPLOMATIC_LOAN_OFFERS = 64;
+	static constexpr int64_t MAX_DIPLOMATIC_LOAN_TURNS = 1000;
+	const diplomatic_loan_offers_t& GetDiplomaticLoanOffers() const;
+	const diplomatic_loan_offer_t* GetDiplomaticLoanOffer( const size_t player_id ) const;
+	void SetDiplomaticLoanOffer( const size_t player_id, const diplomatic_loan_offer_t& offer );
+	void ClearDiplomaticLoanOffer( const size_t player_id );
+
+	struct diplomatic_loan_t {
+		int64_t balance = 0;
+		int64_t payment = 0;
+
+		bool operator==( const diplomatic_loan_t& other ) const {
+			return balance == other.balance && payment == other.payment;
+		}
+	};
+	using diplomatic_loans_t = std::map< size_t, diplomatic_loan_t >;
+	static constexpr size_t MAX_DIPLOMATIC_LOANS = 64;
+	const diplomatic_loans_t& GetDiplomaticLoans() const;
+	const diplomatic_loan_t* GetDiplomaticLoan( const size_t player_id ) const;
+	void SetDiplomaticLoan( const size_t player_id, const diplomatic_loan_t& loan );
+	void ClearDiplomaticLoan( const size_t player_id );
+
 	using infiltrated_players_t = std::set< size_t >;
 	static constexpr size_t MAX_INFILTRATED_PLAYERS = 64;
 	const infiltrated_players_t& GetInfiltratedPlayers() const;
@@ -173,6 +210,8 @@ private:
 	diplomatic_relations_t m_diplomatic_offers = {};
 	infiltrated_players_t m_infiltrated_players = {};
 	diplomatic_trades_t m_diplomatic_trades = {};
+	diplomatic_loan_offers_t m_diplomatic_loan_offers = {};
+	diplomatic_loans_t m_diplomatic_loans = {};
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(

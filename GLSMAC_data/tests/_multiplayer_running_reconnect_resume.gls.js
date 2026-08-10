@@ -7,6 +7,8 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const initial_energy_stamp = 137;
+	const loan_balance_stamp = 91;
+	const loan_payment_stamp = 7;
 	// The Believers' +2 SUPPORT rating covers the two snapshot units for free.
 	const processed_turn_unit_support = 0;
 	const defeated_snapshot_unit_id = 3;
@@ -116,6 +118,21 @@
 				return
 					'energy credits are ' + #to_string(game.get_player().energy_credits) +
 					', expected ' + #to_string(initial_energy_stamp);
+			}
+			let lender = null;
+			for (player of game.get_players()) {
+				if (player.id != game.get_player().id) {
+					lender = player;
+					break;
+				}
+			}
+			const loan = lender == null ? null : game.get_player().get_diplomatic_loan(lender);
+			if (
+				loan == null ||
+				loan.balance != loan_balance_stamp ||
+				loan.payment != loan_payment_stamp
+			) {
+				return 'active diplomatic loan was not restored';
 			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
@@ -417,6 +434,7 @@
 				#print('RUNNING_RECONNECT_TERRAFORM_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESEARCH_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_ENERGY_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_LOAN_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}

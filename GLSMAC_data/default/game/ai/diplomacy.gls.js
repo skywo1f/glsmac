@@ -172,10 +172,92 @@ const get_trade_proposal = (state) => {
 	return best;
 };
 
+const get_loan_acceptance_score = (state) => {
+	if (state.relation == 'vendetta') {
+		return 0.0 - 100000.0;
+	}
+	const principal = #to_float(state.terms.principal);
+	const total_repayment = #to_float(state.terms.payment * state.terms.turns);
+	const discounted_repayment = total_repayment /
+		(1.0 + #to_float(state.terms.turns) * 0.004);
+	let relation_bonus = 0.0 - 10.0;
+	if (state.relation == 'treaty') {
+		relation_bonus = 5.0;
+	} else if (state.relation == 'pact') {
+		relation_bonus = 12.0;
+	}
+	const relative_strength = get_relative_strength(state.own_power, state.other_power);
+	if (state.own_is_lender) {
+		if (state.own_energy - state.terms.principal < 50) {
+			return 0.0 - 100000.0;
+		}
+		const default_risk = #max(0.0, relative_strength) * principal * 0.15;
+		return discounted_repayment - principal + relation_bonus - default_risk;
+	}
+	const liquidity_value = #to_float(#max(0, 100 - state.own_energy)) * 0.4;
+	const payment_pressure = #to_float(#max(
+		0,
+		state.terms.payment - #max(2, (state.own_energy + state.terms.principal) / 10)
+	)) * 2.0;
+	return principal - discounted_repayment + liquidity_value + relation_bonus - payment_pressure;
+};
+
+const get_loan_proposal = (state) => {
+	if (state.relation != 'treaty' && state.relation != 'pact') {
+		return null;
+	}
+	let proposer_is_lender = false;
+	let lender_energy = state.other_energy;
+	let borrower_energy = state.own_energy;
+	if (state.own_energy >= 250 && state.other_energy <= 80) {
+		proposer_is_lender = true;
+		lender_energy = state.own_energy;
+		borrower_energy = state.other_energy;
+	} else if (!(state.own_energy <= 80 && state.other_energy >= 250)) {
+		return null;
+	}
+	const available = lender_energy - 100;
+	const need = #max(40, 120 - borrower_energy);
+	const principal = #floor(#to_float(#min(100, #min(available, need))) / 10.0) * 10;
+	if (principal < 20) {
+		return null;
+	}
+	const turns = 20;
+	const payment = #ceil(#to_float(principal) * 1.25 / #to_float(turns));
+	const terms = {
+		proposer_is_lender: proposer_is_lender,
+		principal: principal,
+		payment: payment,
+		turns: turns,
+	};
+	const proposer_score = get_loan_acceptance_score({
+		relation: state.relation,
+		own_power: state.own_power,
+		other_power: state.other_power,
+		own_energy: state.own_energy,
+		own_is_lender: proposer_is_lender,
+		terms: terms,
+	});
+	const recipient_score = get_loan_acceptance_score({
+		relation: state.relation,
+		own_power: state.other_power,
+		other_power: state.own_power,
+		own_energy: state.other_energy,
+		own_is_lender: !proposer_is_lender,
+		terms: terms,
+	});
+	if (proposer_score < 0.0 || recipient_score < 0.0) {
+		return null;
+	}
+	return {terms: terms, score: proposer_score + recipient_score * 0.25};
+};
+
 return {
 	get_acceptance_score: get_acceptance_score,
 	should_accept: should_accept,
 	get_proposal: get_proposal,
 	get_trade_acceptance_score: get_trade_acceptance_score,
 	get_trade_proposal: get_trade_proposal,
+	get_loan_acceptance_score: get_loan_acceptance_score,
+	get_loan_proposal: get_loan_proposal,
 };

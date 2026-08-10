@@ -2,12 +2,19 @@ const is_player = (player) => {
 	return (
 		#typeof(player) == 'Object' &&
 		#typeof(player.get_diplomatic_relation) == 'Callable' &&
+		#typeof(player.get_energy_credits) == 'Callable' &&
 		#typeof(player.set_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_diplomatic_offer) == 'Callable' &&
 		#typeof(player.set_diplomatic_offer) == 'Callable' &&
 		#typeof(player.get_diplomatic_trade) == 'Callable' &&
 		#typeof(player.set_diplomatic_trade) == 'Callable' &&
-		#typeof(player.clear_diplomatic_trade) == 'Callable'
+		#typeof(player.clear_diplomatic_trade) == 'Callable' &&
+		#typeof(player.get_diplomatic_loan_offer) == 'Callable' &&
+		#typeof(player.set_diplomatic_loan_offer) == 'Callable' &&
+		#typeof(player.clear_diplomatic_loan_offer) == 'Callable' &&
+		#typeof(player.get_diplomatic_loan) == 'Callable' &&
+		#typeof(player.set_diplomatic_loan) == 'Callable' &&
+		#typeof(player.clear_diplomatic_loan) == 'Callable'
 	);
 };
 
@@ -28,6 +35,8 @@ const snapshot_pair = (player, other) => {
 		other_offer: other.get_diplomatic_offer(player),
 		player_trade: player.get_diplomatic_trade(other),
 		other_trade: other.get_diplomatic_trade(player),
+		player_loan_offer: player.get_diplomatic_loan_offer(other),
+		other_loan_offer: other.get_diplomatic_loan_offer(player),
 	};
 };
 
@@ -39,6 +48,14 @@ const restore_trade = (recipient, proposer, trade) => {
 	}
 };
 
+const restore_loan_offer = (recipient, proposer, offer) => {
+	if (offer == null) {
+		recipient.clear_diplomatic_loan_offer(proposer);
+	} else {
+		recipient.set_diplomatic_loan_offer(proposer, offer);
+	}
+};
+
 const restore_pair = (player, other, snapshot) => {
 	player.set_diplomatic_relation(other, snapshot.player_relation);
 	other.set_diplomatic_relation(player, snapshot.other_relation);
@@ -46,6 +63,8 @@ const restore_pair = (player, other, snapshot) => {
 	other.set_diplomatic_offer(player, snapshot.other_offer);
 	restore_trade(player, other, snapshot.player_trade);
 	restore_trade(other, player, snapshot.other_trade);
+	restore_loan_offer(player, other, snapshot.player_loan_offer);
+	restore_loan_offer(other, player, snapshot.other_loan_offer);
 };
 
 const set_bilateral_relation = (player, other, relation) => {
@@ -62,6 +81,8 @@ const clear_offers = (player, other) => {
 	clear_relation_offers(player, other);
 	player.clear_diplomatic_trade(other);
 	other.clear_diplomatic_trade(player);
+	player.clear_diplomatic_loan_offer(other);
+	other.clear_diplomatic_loan_offer(player);
 };
 
 const validate_trade = (game, proposer, recipient, terms) => {
@@ -100,16 +121,18 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (proposer.get_diplomatic_relation(recipient) == 'vendetta') {
 		return 'Regular trade is unavailable during a vendetta';
 	}
-	if (proposer.energy_credits < terms.offer_energy) {
+	const proposer_energy = proposer.get_energy_credits();
+	const recipient_energy = recipient.get_energy_credits();
+	if (proposer_energy < terms.offer_energy) {
 		return 'Proposer cannot afford the offered energy';
 	}
-	if (recipient.energy_credits < terms.request_energy) {
+	if (recipient_energy < terms.request_energy) {
 		return 'Recipient cannot afford the requested energy';
 	}
-	if (recipient.energy_credits + terms.offer_energy > 1000000000) {
+	if (recipient_energy + terms.offer_energy > 1000000000) {
 		return 'Recipient cannot hold the offered energy';
 	}
-	if (proposer.energy_credits + terms.request_energy > 1000000000) {
+	if (proposer_energy + terms.request_energy > 1000000000) {
 		return 'Proposer cannot hold the requested energy';
 	}
 	for (technology of [
@@ -159,6 +182,64 @@ const grant_technology = (game, player, id) => {
 	return true;
 };
 
+const get_loan_parties = (proposer, recipient, terms) => {
+	return terms.proposer_is_lender
+		? {lender: proposer, borrower: recipient}
+		: {lender: recipient, borrower: proposer};
+};
+
+const validate_loan_offer = (proposer, recipient, terms) => {
+	const pair_error = validate_pair(proposer, recipient);
+	if (#is_defined(pair_error)) {
+		return pair_error;
+	}
+	if (#typeof(terms) != 'Object') {
+		return 'Diplomatic loan terms must be an object';
+	}
+	if (
+		#typeof(terms.proposer_is_lender) != 'Bool' ||
+		#typeof(terms.principal) != 'Int' ||
+		#typeof(terms.payment) != 'Int' ||
+		#typeof(terms.turns) != 'Int'
+	) {
+		return 'Diplomatic loan terms have invalid fields';
+	}
+	if (
+		terms.principal <= 0 || terms.principal > 1000000000 ||
+		terms.payment <= 0 || terms.payment > 1000000000 ||
+		terms.turns <= 0 || terms.turns > 1000
+	) {
+		return 'Diplomatic loan terms are out of range';
+	}
+	const repayment = terms.payment * terms.turns;
+	if (
+		repayment > 1000000000 ||
+		repayment < terms.principal ||
+		repayment > terms.principal * 4
+	) {
+		return 'Diplomatic loan repayment is outside supported terms';
+	}
+	if (
+		proposer.get_diplomatic_relation(recipient) == 'vendetta' ||
+		recipient.get_diplomatic_relation(proposer) == 'vendetta'
+	) {
+		return 'Diplomatic loans are unavailable during a vendetta';
+	}
+	if (
+		proposer.get_diplomatic_loan(recipient) != null ||
+		recipient.get_diplomatic_loan(proposer) != null
+	) {
+		return 'Only one active loan is supported between two factions';
+	}
+	const parties = get_loan_parties(proposer, recipient, terms);
+	if (parties.lender.get_energy_credits() < terms.principal) {
+		return 'Lender cannot afford the loan principal';
+	}
+	if (parties.borrower.get_energy_credits() + terms.principal > 1000000000) {
+		return 'Borrower cannot hold the loan principal';
+	}
+};
+
 return (game) => {
 	game.on('start', (e) => {
 		game.set('f_diplomacy_validate_pair', validate_pair);
@@ -170,8 +251,28 @@ return (game) => {
 		game.set('f_diplomacy_validate_trade', (proposer, recipient, terms) => {
 			return validate_trade(game, proposer, recipient, terms);
 		});
+		game.set('f_diplomacy_get_loan_parties', get_loan_parties);
+		game.set('f_diplomacy_validate_loan_offer', validate_loan_offer);
 		game.set('f_diplomacy_grant_technology', (player, id) => {
 			return grant_technology(game, player, id);
+		});
+		game.on('turn', (e) => {
+			if (!game.is_master()) {
+				return;
+			}
+			for (borrower of game.get_players()) {
+				for (lender of game.get_players()) {
+					if (
+						borrower.id != lender.id &&
+						borrower.get_diplomatic_loan(lender) != null
+					) {
+						game.event('process_diplomatic_loan_payment', {
+							borrower: borrower,
+							lender: lender,
+						});
+					}
+				}
+			}
 		});
 	});
 };
