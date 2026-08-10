@@ -57,8 +57,6 @@ const effects = {
 
 const partial_effects = {
 	NetworkNode: true,
-	TreeFarm: true,
-	HybridForest: true,
 	ResearchHospital: true,
 	Nanohospital: true,
 	PressureDome: true,

@@ -6,6 +6,8 @@ test.assert(result.errors == []);
 test.assert(content.get_facility(catalog, 'TreeFarm').data.forest_nutrient_bonus == 1);
 test.assert(content.get_facility(catalog, 'HybridForest').data.forest_nutrient_bonus == 1);
 test.assert(content.get_facility(catalog, 'HybridForest').data.forest_energy_bonus == 1);
+test.assert(catalog.facility_coverage.status.TreeFarm == 'complete');
+test.assert(catalog.facility_coverage.status.HybridForest == 'complete');
 test.assert(content.get_facility(catalog, 'Headquarters').data.energy_bonus == 1);
 test.assert(!#is_defined(content.get_facility(catalog, 'Headquarters').data.defender_morale_bonus));
 test.assert(catalog.facility_coverage.status.Headquarters == 'complete');
@@ -36,8 +38,8 @@ test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'partial');
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
-	complete_facilities: 24,
-	partial_facilities: 7,
+	complete_facilities: 26,
+	partial_facilities: 5,
 	implemented_projects: 33,
 	complete_projects: 23,
 	partial_projects: 10,

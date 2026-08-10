@@ -40,6 +40,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
   mind-control cost;
 - Centauri Preserves and Temples of Planet cumulatively divide mineral-driven
   ecological damage and each grant bred native life +1 lifecycle;
+- Tree Farms and Hybrid Forests apply their cumulative forest resource,
+  ECONOMY, PSYCH, and exact terraforming-damage reductions;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
   and starting capitals;
@@ -91,7 +93,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 24 complete and 7 partial;
+- 31 of 38 base facilities represented: 26 complete and 5 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -120,8 +122,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
-- several remaining facility effects, including submersion, Psi Gates,
-  prototype-cost handling, and disease protection;
+- several remaining facility effects, including alien-artifact study,
+  submersion, Psi Gates, prototype-cost handling, and disease protection;
 - several remaining Secret Project effects and victory-adjacent rules;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
