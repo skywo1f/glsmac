@@ -86,6 +86,8 @@ test.assert(values.f_project_get_effects(target_base) == {
 	full_repair: true,
 	police_rating_bonus: 1,
 	extra_police_units: 2,
+	ecology_divisor_bonus: 0,
+	native_fungus_combat: false,
 	drone_modifier: 0,
 	economy_multiplier: 0.0,
 	ignore_power_penalties: false,
@@ -96,8 +98,13 @@ test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_e
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);
 
-project.id = 'TheCloningVats';
+project.id = 'ThePholusMutagen';
 let effects = values.f_project_get_player_effects(owner);
+test.assert(effects.ecology_divisor_bonus == 1);
+test.assert(effects.native_fungus_combat);
+
+project.id = 'TheCloningVats';
+effects = values.f_project_get_player_effects(owner);
 test.assert(effects.ignore_power_penalties);
 test.assert(effects.ignore_thought_control_penalties);
 test.assert(!effects.ignore_cybernetic_penalties);

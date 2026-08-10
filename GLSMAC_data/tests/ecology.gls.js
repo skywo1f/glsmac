@@ -47,6 +47,7 @@ let context = {
 	life: 2,
 	difficulty: 3,
 	perihelion: false,
+	ecology_divisor_bonus: 0,
 };
 
 let result = values.f_ecology_calculate(context);
@@ -84,6 +85,12 @@ test.assert(result.mineral_damage == 2);
 context.major_atrocities = 2;
 result = values.f_ecology_calculate(context);
 test.assert(result.value == 12);
+
+context.major_atrocities = 0;
+context.ecology_divisor_bonus = 1;
+result = values.f_ecology_calculate(context);
+test.assert(result.facility_divisor == 4);
+test.assert(result.mineral_damage == 1);
 
 test.assert(values.f_ecology_get_life_level(0.0) == 0);
 test.assert(values.f_ecology_get_life_level(0.25) == 1);

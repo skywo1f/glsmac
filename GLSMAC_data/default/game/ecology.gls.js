@@ -48,7 +48,11 @@ const calculate = (context) => {
 		clean_allowance - clean_terraforming
 	);
 	const minerals_after_clean = #max(context.minerals - clean_minerals, 0);
-	let facility_divisor = 1;
+	let facility_divisor = 1 + (
+		#is_defined(context.ecology_divisor_bonus)
+			? context.ecology_divisor_bonus
+			: 0
+	);
 	for (id of ['CentauriPreserve', 'TempleOfPlanet', 'Nanoreplicator']) {
 		if (has_facility(context.facilities, id)) {
 			facility_divisor++;
@@ -117,12 +121,19 @@ const get_base_damage = (game, base) => {
 	const ratings_resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(ratings_resolver) ? ratings_resolver(owner) : {planet: 0};
 	const settings = game.get_settings().global;
+	const project_resolver = game.get('f_project_get_player_effects');
+	const project_effects = #is_defined(project_resolver)
+		? project_resolver(owner)
+		: {ecology_divisor_bonus: 0};
 	const difficulty_level = #is_defined(owner.difficulty_level)
 		? owner.difficulty_level
 		: settings.difficulty_level;
 	return calculate({
 		tiles: tiles,
 		facilities: facility_ids,
+		ecology_divisor_bonus: #is_defined(project_effects.ecology_divisor_bonus)
+			? project_effects.ecology_divisor_bonus
+			: 0,
 		minerals: base.get_intake().MINERALS,
 		previous_damages: owner.get_ecological_damage_events(),
 		major_atrocities: owner.get_major_atrocities(),

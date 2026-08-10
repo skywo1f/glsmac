@@ -38,6 +38,9 @@ scenarios, for:
   other factions after research, trade, probe theft, project completion, or
   project capture, with deterministic multiplayer events and rival-aware AI
   valuation;
+- the Pholus Mutagen adds one faction-wide ecological mitigator, gives
+  conventional units the native +50% fungus attack benefit, and grants bred
+  native life +1 lifecycle;
 - the Universal Translator grants up to two free available technologies on
   completion, preserving existing research progress with deterministic
   rollback and explicit AI production value;
@@ -110,7 +113,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 26 complete and 7 partial;
+- all 33 Secret Projects represented: 27 complete and 6 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -144,11 +147,11 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- the seven partial Secret Projects are the Empath Guild, Xenoempathy Dome,
-  Pholus Mutagen, Universal Translator, Network Backbone, Nano Factory, and
-  Space Elevator; the Empath Guild still lacks its +50% council-election vote
-  bonus, and the others' remaining effects and victory-adjacent rules require
-  individual parity audits;
+- the six partial Secret Projects are the Empath Guild, Xenoempathy Dome,
+  Universal Translator, Network Backbone, Nano Factory, and Space Elevator;
+  the Empath Guild still lacks its +50% council-election vote bonus, and the
+  others' remaining effects and victory-adjacent rules require individual
+  parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -183,6 +186,10 @@ Empath Guild coverage validates construction and capture acquisition, exact
 rollback, preservation of pre-existing infiltration, and rival-aware AI
 valuation. The installed-asset AI production smoke passed with the live
 infiltration context in 146.70 seconds.
+
+Pholus Mutagen coverage validates the faction-wide ecology divisor, native
+fungus combat behavior for conventional units, bred-native lifecycle bonus,
+AI valuation, and complete catalog status.
 
 The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,

@@ -121,12 +121,20 @@ const get_base_defense_multiplier = (defender, attacker, game) => {
 
 const get_project_effects = (unit, game) => {
 	if (!#is_defined(game) || !#is_defined(game.get)) {
-		return {psi_attack_multiplier: 1.0, psi_defense_multiplier: 1.0};
+		return {
+			psi_attack_multiplier: 1.0,
+			psi_defense_multiplier: 1.0,
+			native_fungus_combat: false,
+		};
 	}
 	const resolver = game.get('f_project_get_player_effects');
 	return #is_defined(resolver)
 		? resolver(unit.get_owner())
-		: {psi_attack_multiplier: 1.0, psi_defense_multiplier: 1.0};
+		: {
+			psi_attack_multiplier: 1.0,
+			psi_defense_multiplier: 1.0,
+			native_fungus_combat: false,
+		};
 };
 
 const get_combat_powers = (attacker, defender, game) => {
@@ -153,7 +161,10 @@ const get_combat_powers = (attacker, defender, game) => {
 		defence_modifier += 0.5;
 	}
 	if (defender_tile.features.xenofungus) {
-		if (attacker_def.is_native) {
+		if (
+			attacker_def.is_native ||
+			get_project_effects(attacker, game).native_fungus_combat
+		) {
 			attack_modifier += 0.5;
 		} else {
 			defence_modifier += 0.5;

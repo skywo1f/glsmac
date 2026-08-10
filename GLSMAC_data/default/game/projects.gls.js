@@ -21,6 +21,8 @@ const empty_effects = () => {
 		full_repair: false,
 		police_rating_bonus: 0,
 		extra_police_units: 0,
+		ecology_divisor_bonus: 0,
+		native_fungus_combat: false,
 		drone_modifier: 0,
 		economy_multiplier: 0.0,
 		ignore_power_penalties: false,
@@ -151,6 +153,10 @@ const get_player_effects = (game, player) => {
 				? project.global_extra_police_units
 				: 0
 		);
+		if (project.id == 'ThePholusMutagen') {
+			result.ecology_divisor_bonus = result.ecology_divisor_bonus + 1;
+			result.native_fungus_combat = true;
+		}
 		if (project.id == 'TheCloningVats') {
 			result.ignore_power_penalties = true;
 			result.ignore_thought_control_penalties = true;

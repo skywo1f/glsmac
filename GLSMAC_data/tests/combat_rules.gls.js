@@ -79,6 +79,31 @@ test.assert(combat_rules.get_combat_powers(attacker, occupying_defender).defence
 const native_attacker = make_unit(attack_tile, 1, 1, 1, true, 'land');
 test.assert(combat_rules.get_combat_powers(native_attacker, defender).defence == 2.5);
 
+const fungus_tile = make_tile();
+fungus_tile.features.xenofungus = true;
+const fungus_defender = make_unit(fungus_tile, 2, 1, 2, false, 'land');
+const normal_fungus_powers = combat_rules.get_combat_powers(attacker, fungus_defender);
+const pholus_game = {
+	get: (key) => {
+		if (key == 'f_social_get_morale_bonus') {
+			return #undefined;
+		}
+		test.assert(key == 'f_project_get_player_effects');
+		return (player) => { return {
+			psi_attack_multiplier: 1.0,
+			psi_defense_multiplier: 1.0,
+			native_fungus_combat: player.id == attacker.owner,
+		}; };
+	},
+};
+const pholus_fungus_powers = combat_rules.get_combat_powers(
+	attacker,
+	fungus_defender,
+	pholus_game
+);
+test.assert(pholus_fungus_powers.attack == normal_fungus_powers.attack * 1.5);
+test.assert(normal_fungus_powers.defence == pholus_fungus_powers.defence * 1.5);
+
 const project_psi_game = {
 	get: (key) => {
 		if (key == 'f_social_get_morale_bonus') {

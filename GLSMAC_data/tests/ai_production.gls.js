@@ -101,6 +101,9 @@ const planetary_datalinks = facility('ThePlanetaryDatalinks', 0, 0, 0, 0, 0.0, 0
 planetary_datalinks.production_kind = 'project';
 const empath_guild = facility('TheEmpathGuild', 0, 0, 0, 0, 0.0, 0, 200);
 empath_guild.production_kind = 'project';
+const pholus_mutagen = facility('ThePholusMutagen', 0, 0, 0, 0, 0.0, 0, 400);
+pholus_mutagen.production_kind = 'project';
+pholus_mutagen.global_native_lifecycle_bonus = 1;
 const universal_translator = facility('TheUniversalTranslator', 0, 0, 0, 0, 0.0, 0, 300);
 universal_translator.production_kind = 'project';
 const all_units = [scout, rover, laser, defender, former, colony];
@@ -166,9 +169,14 @@ project_ready_context.can_start_project = true;
 test.assert(production.score_project(command_nexus, project_ready_context) != null);
 test.assert(production.score_project(planetary_datalinks, project_ready_context) != null);
 test.assert(production.score_project(empath_guild, project_ready_context) != null);
+test.assert(production.score_project(pholus_mutagen, project_ready_context) != null);
 test.assert(production.score_project(universal_translator, project_ready_context) != null);
 test.assert(
 	production.score_project(universal_translator, project_ready_context) >
+	production.score_project(command_nexus, project_ready_context)
+);
+test.assert(
+	production.score_project(pholus_mutagen, project_ready_context) >
 	production.score_project(command_nexus, project_ready_context)
 );
 let no_datalinks_candidates_context = context(false, false, false, false, 10);
