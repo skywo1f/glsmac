@@ -1,3 +1,5 @@
+const project_acquisition = #include('./project_acquisition');
+
 const empty_effects = () => {
 	return {
 		talent_bonus: 0,
@@ -198,6 +200,17 @@ const get_effective_facilities = (game, base) => {
 return (game) => {
 	let planetary_datalinks_pending = false;
 	const apply_completion_effects = (base, project_id) => {
+		if (project_id == 'TheEmpathGuild') {
+			const applied = project_acquisition.apply_empath_guild(game, base);
+			if (#is_defined(applied)) {
+				game.message(
+					base.get_owner().name +
+					' has infiltrated every faction through The Empath Guild.'
+				);
+				return {kind: 'empath_guild', applied: applied};
+			}
+			return #undefined;
+		}
 		if (project_id != 'TheUniversalTranslator') {
 			return #undefined;
 		}
@@ -248,12 +261,17 @@ return (game) => {
 			queue_datalinks();
 		}
 		return {
+			kind: 'universal_translator',
 			player: player,
 			state: previous,
 			completed_count: #sizeof(completed_names),
 		};
 	};
 	const rollback_completion_effects = (applied) => {
+		if (applied.kind == 'empath_guild') {
+			project_acquisition.rollback_empath_guild(applied.applied);
+			return;
+		}
 		applied.player.set_research_state(applied.state);
 		game.trigger('research_updated', {player: applied.player});
 	};

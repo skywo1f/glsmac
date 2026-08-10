@@ -68,6 +68,7 @@ const project_effects = {
 	TheCommandNexus: {granted_facility: 'CommandCenter'},
 	TheWeatherParadigm: {global_terraforming_rate_multiplier: 1.5},
 	TheMerchantExchange: {worked_tile_energy_bonus: 1},
+	TheEmpathGuild: {},
 	TheCitizensDefenseForce: {granted_facility: 'PerimeterDefense'},
 	TheVirtualWorld: {network_node_drone_modifier: -2},
 	ThePlanetaryTransitSystem: {new_base_population: 3, small_base_drone_modifier: -1},
@@ -108,6 +109,7 @@ const project_effects = {
 };
 
 const partial_project_effects = {
+	TheEmpathGuild: true,
 	TheXenoempathyDome: true,
 	ThePholusMutagen: true,
 	TheUniversalTranslator: true,

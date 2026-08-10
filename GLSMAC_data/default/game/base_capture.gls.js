@@ -1,3 +1,5 @@
+const project_acquisition = #include('./project_acquisition');
+
 const get_rehome_base = (game, unit, owner_id, lost_base) => {
 	let best = null;
 	let best_distance = 0;
@@ -61,6 +63,9 @@ const capture_base = (game, base, new_owner) => {
 	}
 
 	base.set_owner(new_owner);
+	const empath_guild_infiltration = base.has_facility('TheEmpathGuild')
+		? project_acquisition.apply_empath_guild(game, base)
+		: #undefined;
 	if (#is_defined(game.get) && base.has_facility('ThePlanetaryDatalinks')) {
 		const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
 		if (#is_defined(queue_datalinks)) {
@@ -80,10 +85,14 @@ const capture_base = (game, base, new_owner) => {
 		old_queue: old_queue,
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
+		empath_guild_infiltration: empath_guild_infiltration,
 	};
 };
 
 const restore_base = (base, snapshot) => {
+	if (#is_defined(snapshot.empath_guild_infiltration)) {
+		project_acquisition.rollback_empath_guild(snapshot.empath_guild_infiltration);
+	}
 	if (base.get_owner().id != snapshot.old_owner.id) {
 		base.set_owner(snapshot.old_owner);
 	}

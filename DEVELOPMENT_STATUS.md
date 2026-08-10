@@ -30,6 +30,10 @@ scenarios, for:
   grants bred native life +1 lifecycle;
 - the Hunter-Seeker Algorithm blocks all enemy probe operations against the
   owner's bases and units, and AI Probe Teams avoid immune targets;
+- the Empath Guild grants persistent infiltration of every rival on completion
+  or capture, preserves existing intelligence through rollback, and receives
+  rival-aware AI production value; unrestricted diplomacy already permits
+  contact with every faction;
 - the Planetary Datalinks automatically grants every technology known by three
   other factions after research, trade, probe theft, project completion, or
   project capture, with deterministic multiplayer events and rival-aware AI
@@ -142,8 +146,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   Dome, and Aerospace Complex are represented but remain partial;
 - the seven partial Secret Projects are the Empath Guild, Xenoempathy Dome,
   Pholus Mutagen, Universal Translator, Network Backbone, Nano Factory, and
-  Space Elevator; their remaining effects and
-  victory-adjacent rules require individual parity audits;
+  Space Elevator; the Empath Guild still lacks its +50% council-election vote
+  bonus, and the others' remaining effects and victory-adjacent rules require
+  individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -154,11 +159,11 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 88 cases: 69 isolated native/script GSE tests
+The Release CTest matrix contains 89 cases: 70 isolated native/script GSE tests
 and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 69-case Release GSE matrix passed in one bounded invocation in
+The preceding 69-case Release GSE matrix passed in one bounded invocation in
 128.88 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
@@ -173,6 +178,11 @@ threshold, multi-technology grants, research-target rollover, host-only event
 authorship, client application, rollback, duplicate-event suppression, and AI
 valuation. Its four-faction installed-asset runtime smoke passed in 12.75
 seconds.
+
+Empath Guild coverage validates construction and capture acquisition, exact
+rollback, preservation of pre-existing infiltration, and rival-aware AI
+valuation. The installed-asset AI production smoke passed with the live
+infiltration context in 146.70 seconds.
 
 The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,

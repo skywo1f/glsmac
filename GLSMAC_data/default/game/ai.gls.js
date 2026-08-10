@@ -576,6 +576,12 @@ const queue_production = (game, player, bases, units) => {
 	const planetary_datalinks_technology_count = #is_defined(get_datalinks_candidates)
 		? #sizeof(get_datalinks_candidates(player))
 		: 0;
+	let empath_guild_infiltration_count = 0;
+	for (other of game.get_players()) {
+		if (other.id != player.id && !player.has_infiltrated(other)) {
+			empath_guild_infiltration_count++;
+		}
+	}
 	let hurry_candidates = [];
 	let has_headquarters = false;
 	let headquarters_queue_base = null;
@@ -684,6 +690,7 @@ const queue_production = (game, player, bases, units) => {
 			},
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
+			empath_guild_infiltration_count: empath_guild_infiltration_count,
 			available_energy: available_energy,
 			priorities: priorities,
 		};

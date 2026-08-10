@@ -99,6 +99,8 @@ command_nexus.production_kind = 'project';
 command_nexus.granted_facility = 'CommandCenter';
 const planetary_datalinks = facility('ThePlanetaryDatalinks', 0, 0, 0, 0, 0.0, 0, 300);
 planetary_datalinks.production_kind = 'project';
+const empath_guild = facility('TheEmpathGuild', 0, 0, 0, 0, 0.0, 0, 200);
+empath_guild.production_kind = 'project';
 const universal_translator = facility('TheUniversalTranslator', 0, 0, 0, 0, 0.0, 0, 300);
 universal_translator.production_kind = 'project';
 const all_units = [scout, rover, laser, defender, former, colony];
@@ -163,6 +165,7 @@ let project_ready_context = context(false, false, false, false, 10);
 project_ready_context.can_start_project = true;
 test.assert(production.score_project(command_nexus, project_ready_context) != null);
 test.assert(production.score_project(planetary_datalinks, project_ready_context) != null);
+test.assert(production.score_project(empath_guild, project_ready_context) != null);
 test.assert(production.score_project(universal_translator, project_ready_context) != null);
 test.assert(
 	production.score_project(universal_translator, project_ready_context) >
@@ -174,6 +177,13 @@ project_ready_context.planetary_datalinks_technology_count = 2;
 test.assert(
 	production.score_project(planetary_datalinks, project_ready_context) >
 	production.score_project(planetary_datalinks, no_datalinks_candidates_context)
+);
+let no_empath_targets_context = context(false, false, false, false, 10);
+no_empath_targets_context.can_start_project = true;
+project_ready_context.empath_guild_infiltration_count = 2;
+test.assert(
+	production.score_project(empath_guild, project_ready_context) >
+	production.score_project(empath_guild, no_empath_targets_context)
 );
 locked.Recycling = true;
 locked.Recreation = true;
