@@ -25,6 +25,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
   low-MORALE halving of conventional unit training bonuses;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   Children's Creche bonuses, no-headquarters fallback, and starting capitals;
+- Headquarters relocation by production, faction-wide runtime uniqueness,
+  destruction on enemy capture, and reversible restoration;
 - original-SMAC ecological damage based on local terraforming, worked squares,
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
@@ -72,8 +74,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   diplomatic/reputation consequences for atrocities;
 - remaining social effects: adoption costs, commerce thresholds, and full
   police and away-unit behavior;
-- headquarters relocation, uniqueness, and capture-transfer behavior, plus
-  explicit player-facing inefficiency diagnostics;
+- paid emergency Headquarters evacuation before capture and explicit
+  player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
   global warming, sea-level changes, volcanoes, several ecology-related Secret
   Project effects, and the original engine's
@@ -97,7 +99,7 @@ and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 64-case Release GSE matrix passed in one bounded invocation in
-114.74 seconds. All 18 asset-backed runtime scenarios also passed against an
+117.72 seconds. All 18 asset-backed runtime scenarios also passed against an
 installed Planetary Pack in three bounded invocations: the live probe scenario
 in 7.46 seconds, six gameplay and snapshot scenarios in 92.70 seconds, and the
 remaining eleven content and AI scenarios in 544.16 seconds. The
@@ -114,6 +116,11 @@ missions, resident defense, AI policy, UI loading, and an asset-backed
 quickstart covering the live production gate and unit subversion. The expanded
 82-case matrix is green across bounded invocations, but has not been run as one
 invocation.
+
+After the Headquarters relocation and capture rules were added, all 64 GSE
+cases passed again, and the installed-asset general gameplay and AI runtime
+smokes passed in 8.27 and 109.90 seconds. The general smoke directly completes
+and rolls back a Headquarters relocation between two live bases.
 
 The last all-green Release matrix passed 74/74 in one uninterrupted
 688.11-second invocation. A later full validation passed 72/74 in 768.06

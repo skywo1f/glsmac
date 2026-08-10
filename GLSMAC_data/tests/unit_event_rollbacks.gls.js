@@ -911,6 +911,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	];
 	destination_base = {
 		id: 9,
+		has_facility: (id) => { return false; },
 		get_owner: () => {
 			return current_base_owner;
 		},

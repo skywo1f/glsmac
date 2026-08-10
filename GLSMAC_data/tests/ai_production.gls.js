@@ -74,6 +74,7 @@ probe_team.weapon = 'ProbeTeam';
 const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
 sea_colony.is_water = true;
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
+const headquarters = facility('Headquarters', 0, 0, 1, 0, 0.0, 0, 50);
 const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
 const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
 const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
@@ -128,6 +129,12 @@ sea_expansion_context.needs_sea_colony = false;
 test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
+
+let headquarters_context = context(false, false, false, false, 10);
+headquarters_context.needs_headquarters = false;
+test.assert(production.score_facility(headquarters, headquarters_context) == null);
+headquarters_context.needs_headquarters = true;
+test.assert(production.score_facility(headquarters, headquarters_context) > 120000);
 
 let probe_context = context(false, false, false, false, 10);
 probe_context.needs_military = false;

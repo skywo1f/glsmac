@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const process_base_production = #include('../default/game/event/process_base_production');
 
 	let starting_pop_count = 0;
 	let starting_base_unit_count = 0;
@@ -488,6 +489,31 @@
 					return;
 				}
 				#print('RUNTIME_SMOKE_EFFICIENCY_PASS');
+				const capital = bases[0];
+				const headquarters = game.get_bm().get_facility_def('Headquarters');
+				lifecycle_base.set_production('facility', headquarters.id);
+				lifecycle_base.set_accumulated_minerals(headquarters.mineral_cost);
+				let headquarters_event = {caller: 0, game: game, data: {base: lifecycle_base}};
+				headquarters_event.applied = process_base_production.apply(headquarters_event);
+				if (
+					!lifecycle_base.has_facility('Headquarters') ||
+					capital.has_facility('Headquarters') ||
+					#sizeof(headquarters_event.applied.previous_headquarters) != 1
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not complete');
+					glsmac.exit();
+					return;
+				}
+				process_base_production.rollback(headquarters_event);
+				if (
+					lifecycle_base.has_facility('Headquarters') ||
+					!capital.has_facility('Headquarters')
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not roll back');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_HEADQUARTERS_RELOCATION_PASS');
 
 				const old_base_id = lifecycle_base.id;
 				const founding_site_coords = find_founding_site_coords();

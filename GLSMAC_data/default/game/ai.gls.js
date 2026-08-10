@@ -420,6 +420,21 @@ const queue_production = (game, player, bases, units) => {
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
 	let hurry_candidates = [];
+	let has_headquarters = false;
+	let headquarters_queue_base = null;
+	for (candidate of bases) {
+		if (candidate.has_facility('Headquarters')) {
+			has_headquarters = true;
+		}
+		if (headquarters_queue_base == null) {
+			for (queued of candidate.get_production_queue()) {
+				if (queued.production_kind == 'facility' && queued.id == 'Headquarters') {
+					headquarters_queue_base = candidate;
+					break;
+				}
+			}
+		}
+	}
 	for (base of bases) {
 		const garrison_count = combat.get_garrison_count(base, player.id);
 		const support_cost_resolver = game.get('f_social_get_support_cost');
@@ -489,6 +504,9 @@ const queue_production = (game, player, bases, units) => {
 				#sizeof(game.get_players()) > 1 &&
 				probe_count < #max(1, #floor(#to_float(#sizeof(bases)) / 4.0)),
 			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
+			needs_headquarters:
+				!has_headquarters &&
+				(headquarters_queue_base == null || headquarters_queue_base == base),
 			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
 			needs_population_capacity:
@@ -517,6 +535,15 @@ const queue_production = (game, player, bases, units) => {
 			facility_defs,
 			context
 		);
+		if (headquarters_queue_base == base) {
+			headquarters_queue_base = null;
+		}
+		if (
+			selected != null && selected.kind == 'facility' &&
+			selected.def.id == 'Headquarters'
+		) {
+			headquarters_queue_base = base;
+		}
 		if (selected != null && selected.kind == 'unit') {
 			if (selected.def.can_terraform) {
 				former_count++;

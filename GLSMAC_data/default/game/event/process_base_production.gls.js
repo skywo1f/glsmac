@@ -32,6 +32,21 @@ const cancel_project_queues = (game, project_id, completing_base) => {
 	return snapshots;
 };
 
+const relocate_headquarters = (game, completing_base) => {
+	let previous = [];
+	for (candidate of game.get_bm().get_bases()) {
+		if (
+			candidate != completing_base &&
+			candidate.get_owner().id == completing_base.get_owner().id &&
+			candidate.has_facility('Headquarters')
+		) {
+			candidate.remove_facility('Headquarters');
+			previous :+candidate;
+		}
+	}
+	return previous;
+};
+
 const get_production_morale = (game, base, production) => {
 	let morale = 1 + unit_abilities.get_morale_bonus(production);
 	let training_morale_bonus = 0;
@@ -90,6 +105,7 @@ return {
 		const production = base.get_production();
 		let produced_unit = #undefined;
 		let completed_facility = #undefined;
+		let previous_headquarters = [];
 		let cancelled_project_queues = [];
 		let consumed_pops = [];
 		let pop_type_snapshots = [];
@@ -149,6 +165,9 @@ return {
 						base.remove_production(0);
 						base.add_facility(production.id);
 						completed_facility = production.id;
+						if (production.id == 'Headquarters') {
+							previous_headquarters = relocate_headquarters(e.game, base);
+						}
 						if (production.production_kind == 'project') {
 							cancelled_project_queues = cancel_project_queues(
 								e.game,
@@ -179,6 +198,7 @@ return {
 			old_queue: old_queue,
 			produced_unit: produced_unit,
 			completed_facility: completed_facility,
+			previous_headquarters: previous_headquarters,
 			cancelled_project_queues: cancelled_project_queues,
 			consumed_pops: consumed_pops,
 			pop_type_snapshots: pop_type_snapshots,
@@ -191,6 +211,11 @@ return {
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);
+		}
+		if (#is_defined(e.applied.previous_headquarters)) {
+			for (previous_headquarters of e.applied.previous_headquarters) {
+				previous_headquarters.add_facility('Headquarters');
+			}
 		}
 		for (snapshot of e.applied.cancelled_project_queues) {
 			snapshot.base.set_production_queue(snapshot.queue);

@@ -96,6 +96,12 @@ const score_unit = (def, context) => {
 };
 
 const score_facility = (def, context) => {
+	if (
+		def.id == 'Headquarters' && #is_defined(context.needs_headquarters) &&
+		!context.needs_headquarters
+	) {
+		return null;
+	}
 	if (get_remaining_maintenance_budget(def, context.available_energy) == null) {
 		return null;
 	}
@@ -113,6 +119,9 @@ const score_facility = (def, context) => {
 	const infrastructure_bonus = (
 		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
 	) ? BASIC_INFRASTRUCTURE_SCORE_BONUS : 0;
+	const headquarters_bonus = def.id == 'Headquarters' && context.needs_headquarters
+		? 120000
+		: 0;
 	const forest_nutrient_bonus = #is_defined(def.forest_nutrient_bonus)
 		? def.forest_nutrient_bonus
 		: 0;
@@ -127,7 +136,7 @@ const score_facility = (def, context) => {
 		(#is_defined(def.full_repair_water) && def.full_repair_water ? 1 : 0) +
 		(#is_defined(def.full_repair_air) && def.full_repair_air ? 1 : 0) +
 		(#is_defined(def.full_repair_native) && def.full_repair_native ? 1 : 0);
-	return 30000 + infrastructure_bonus +
+	return 30000 + infrastructure_bonus + headquarters_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
 		def.growth_rating_bonus * nutrient_weight * 4 +

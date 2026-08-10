@@ -92,6 +92,13 @@ const recycling_tanks = {
 	mineral_cost: 40,
 	unit_morale_bonus: 0,
 };
+const headquarters = {
+	id: 'Headquarters',
+	name: 'Headquarters',
+	production_kind: 'facility',
+	mineral_cost: 50,
+	unit_morale_bonus: 0,
+};
 const recreation_commons = {
 	id: 'RecreationCommons',
 	name: 'Recreation Commons',
@@ -171,6 +178,7 @@ const definitions = [
 	sea_patrol,
 	air_patrol,
 	recycling_tanks,
+	headquarters,
 	recreation_commons,
 	human_genome_project,
 	command_center,
@@ -194,6 +202,7 @@ let base_pops = [];
 let processed_psych = [];
 let completed_project_base = #undefined;
 let competing_production_queue = [];
+let competing_has_headquarters = false;
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
@@ -412,7 +421,18 @@ const base = {
 };
 
 const competing_base = {
+	id: 12,
+	get_owner: () => { return owner; },
 	get_production_queue: () => { return competing_production_queue; },
+	has_facility: (id) => { return id == 'Headquarters' && competing_has_headquarters; },
+	remove_facility: (id) => {
+		test.assert(id == 'Headquarters' && competing_has_headquarters);
+		competing_has_headquarters = false;
+	},
+	add_facility: (id) => {
+		test.assert(id == 'Headquarters' && !competing_has_headquarters);
+		competing_has_headquarters = true;
+	},
 	remove_production: (index) => {
 		let updated = [];
 		for (let i = 0; i < #sizeof(competing_production_queue); i++) {
@@ -929,3 +949,18 @@ test.assert(base_pops[0].get_type() == 'WORKER');
 test.assert(base_pops[1].get_type() == 'WORKER');
 test.assert(base_pops[2].get_type() == 'WORKER');
 test.assert(base_pops[3].get_type() == 'DRONE');
+
+production_queue = [headquarters];
+built_facilities = [];
+competing_has_headquarters = true;
+accumulated_minerals = 45;
+pending_production = 7;
+processed_psych = [];
+event.applied = process_base_production.apply(event);
+test.assert(has_facility('Headquarters'));
+test.assert(!competing_has_headquarters);
+test.assert(#sizeof(event.applied.previous_headquarters) == 1);
+test.assert(event.applied.previous_headquarters[0] == competing_base);
+process_base_production.rollback(event);
+test.assert(!has_facility('Headquarters'));
+test.assert(competing_has_headquarters);

@@ -55,6 +55,10 @@ const capture_base = (game, base, new_owner) => {
 	const old_owner = base.get_owner();
 	const old_queue = get_queue_specs(base);
 	const rehomed_units = rehome_units(game, base, old_owner.id);
+	const captured_headquarters = base.has_facility('Headquarters');
+	if (captured_headquarters) {
+		base.remove_facility('Headquarters');
+	}
 
 	base.set_owner(new_owner);
 	let valid_queue = [];
@@ -69,12 +73,16 @@ const capture_base = (game, base, new_owner) => {
 		old_owner: old_owner,
 		old_queue: old_queue,
 		rehomed_units: rehomed_units,
+		captured_headquarters: captured_headquarters,
 	};
 };
 
 const restore_base = (base, snapshot) => {
 	if (base.get_owner().id != snapshot.old_owner.id) {
 		base.set_owner(snapshot.old_owner);
+	}
+	if (snapshot.captured_headquarters && !base.has_facility('Headquarters')) {
+		base.add_facility('Headquarters');
 	}
 	base.set_production_queue(snapshot.old_queue);
 	restore_units(snapshot.rehomed_units);
