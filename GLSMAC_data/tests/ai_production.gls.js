@@ -64,6 +64,7 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		global_extra_police_units: 0,
 		efficiency_rating_bonus: 0,
 		defender_morale_minimum: 0,
+		mineral_to_energy_divisor: 0,
 	};
 };
 
@@ -83,6 +84,8 @@ const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
 const recreation = facility('Recreation', 0, 0, 0, 4, 0.0, 1, 40);
 const perimeter = facility('Perimeter', 0, 0, 0, 0, 0.0, 0, 50, 2.0);
 const energy_bank = facility('EnergyBank', 0, 0, 0, 0, 0.0, 1, 80, 1.0, 0.5);
+const stockpile = facility('StockpileEnergy', 0, 0, 0, 0, 0.0, 0, 0);
+stockpile.mineral_to_energy_divisor = 2;
 const command_center = facility('CommandCenter', 0, 0, 0, 0, 0.0, 1, 40);
 command_center.unit_morale_land_bonus = 2;
 const naval_yard = facility('NavalYard', 0, 0, 0, 0, 0.0, 2, 80);
@@ -233,6 +236,10 @@ test.assert(production.choose(base, [beta, alpha], [], context(false, false, fal
 let peaceful_context = context(false, false, false, false, 0);
 peaceful_context.needs_military = false;
 test.assert(production.choose(base, [laser], [], peaceful_context) == null);
+test.assert(production.choose(base, [laser], [stockpile], peaceful_context).id == 'StockpileEnergy');
+test.assert(production.score_stockpile(stockpile, peaceful_context) != null);
+peaceful_context.needs_growth = true;
+test.assert(production.score_stockpile(stockpile, peaceful_context) == null);
 
 let blocked_expansion_context = context(false, false, true, false, 0);
 blocked_expansion_context.can_expand = false;

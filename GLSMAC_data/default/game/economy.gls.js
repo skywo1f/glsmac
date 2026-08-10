@@ -256,6 +256,25 @@ const get_base_psych = (game, base) => {
 	return psych.value + psych.bonus;
 };
 
+const get_base_stockpile_energy = (game, base) => {
+	if (!#is_defined(base.get_production)) {
+		return 0;
+	}
+	const production = base.get_production();
+	if (
+		!#is_defined(production) ||
+		production.production_kind != 'facility' ||
+		!#is_defined(production.mineral_to_energy_divisor) ||
+		production.mineral_to_energy_divisor <= 0
+	) {
+		return 0;
+	}
+	return #floor(
+		#to_float(#max(game.get('f_base_get_pending_production')(base), 0)) /
+		#to_float(production.mineral_to_energy_divisor)
+	);
+};
+
 const get_hurry_cost = (game, base) => {
 	const production = base.get_production();
 	if (!#is_defined(production)) {
@@ -288,7 +307,7 @@ const get_player_economy = (game, player) => {
 	let result = get_player_commerce(game, player);
 	for (base of game.get_bm().get_bases()) {
 		if (base.get_owner().id == player.id) {
-			result += get_base_economy(game, base);
+			result += get_base_economy(game, base) + get_base_stockpile_energy(game, base);
 		}
 	}
 	return result;
@@ -327,6 +346,7 @@ return (game) => {
 		game.set('f_economy_get_base_commerce', get_base_commerce);
 		game.set('f_economy_get_player_commerce_ledger', get_player_commerce_ledger);
 		game.set('f_economy_get_base_psych', get_base_psych);
+		game.set('f_economy_get_base_stockpile_energy', get_base_stockpile_energy);
 		game.set('f_economy_get_player_commerce', get_player_commerce);
 		game.set('f_economy_get_player', get_player_economy);
 		game.set('f_economy_get_hurry_cost', (base) => { return get_hurry_cost(game, base); });

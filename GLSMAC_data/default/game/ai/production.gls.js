@@ -49,6 +49,22 @@ const get_remaining_maintenance_budget = (def, available_energy) => {
 		: null;
 };
 
+const score_stockpile = (def, context) => {
+	if (
+		!#is_defined(def.mineral_to_energy_divisor) ||
+		def.mineral_to_energy_divisor <= 0 ||
+		context.needs_garrison || context.needs_former || context.needs_military ||
+		(context.needs_colony && context.can_expand) || context.needs_psych ||
+		context.needs_growth || context.needs_population_capacity ||
+		(#is_defined(context.needs_infrastructure) && context.needs_infrastructure)
+	) {
+		return null;
+	}
+	return 1000 + get_priority(context, 'development', 50) * 10 +
+		#max(0, 0 - context.available_energy) * 2000 +
+		#max(context.mineral_surplus, 0) * 100;
+};
+
 const score_unit = (def, context) => {
 	if (def.can_found_base) {
 		const sea_colony_bonus =
@@ -96,6 +112,9 @@ const score_unit = (def, context) => {
 };
 
 const score_facility = (def, context) => {
+	if (#is_defined(def.mineral_to_energy_divisor) && def.mineral_to_energy_divisor > 0) {
+		return score_stockpile(def, context);
+	}
 	if (
 		def.id == 'Headquarters' && #is_defined(context.needs_headquarters) &&
 		!context.needs_headquarters
@@ -417,6 +436,7 @@ return {
 	get_remaining_maintenance_budget: get_remaining_maintenance_budget,
 	get_unit_ability_score: get_unit_ability_score,
 	score_unit: score_unit,
+	score_stockpile: score_stockpile,
 	score_facility: score_facility,
 	score_project: score_project,
 	score_hurry: score_hurry,

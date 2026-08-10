@@ -89,7 +89,8 @@ public:
 		const int64_t global_extra_police_units = 0,
 		const int64_t efficiency_rating_bonus = 0,
 		const int64_t defender_morale_minimum = 0,
-		const bool prototype_cost_waiver = false
+		const bool prototype_cost_waiver = false,
+		const int64_t mineral_to_energy_divisor = 0
 	);
 	virtual ~FacilityDef() = default;
 
@@ -155,6 +156,7 @@ public:
 	const int64_t m_efficiency_rating_bonus;
 	const int64_t m_defender_morale_minimum;
 	const bool m_prototype_cost_waiver;
+	const int64_t m_mineral_to_energy_divisor;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

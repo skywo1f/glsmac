@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const process_base_production = #include('../default/game/event/process_base_production');
 
 	const technologies = #include('../default/technologies');
 	const facility_catalog = #include('../default/facilities');
@@ -36,7 +37,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 32 facilities, 33 projects, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 33 facilities, 33 projects, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -531,7 +532,10 @@
 					drone_modifier += definition.drone_modifier;
 					talent_bonus += definition.talent_bonus;
 					suppress_psych += definition.suppress_psych ? 1 : 0;
-					if (!base.has_facility(facility_id)) {
+					if (
+						definition.mineral_to_energy_divisor == 0 &&
+						!base.has_facility(facility_id)
+					) {
 						base.add_facility(facility_id);
 					}
 				}
@@ -539,7 +543,7 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 32 ||
+					#sizeof(facility_ids) != 33 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
 					maintenance != 73 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
@@ -569,11 +573,48 @@
 					return;
 				}
 				for (facility_id of facility_ids) {
-					if (!base.has_facility(facility_id)) {
+					const definition = game.get_bm().get_facility_def(facility_id);
+					if (
+						definition.mineral_to_energy_divisor > 0
+							? (
+								base.has_facility(facility_id) ||
+								!base.can_set_production('facility', facility_id) ||
+								base.can_queue_production('facility', facility_id)
+							)
+							: !base.has_facility(facility_id)
+					) {
 						fail('batch facility construction missed ' + facility_id);
 						return;
 					}
 				}
+
+				let previous_queue = [];
+				for (queued of base.get_production_queue()) {
+					previous_queue :+{
+						kind: queued.production_kind,
+						id: queued.id,
+					};
+				}
+				const previous_minerals = base.get_accumulated_minerals();
+				base.set_accumulated_minerals(13);
+				base.set_production('facility', 'StockpileEnergy');
+				const stockpile_credits = game.get(
+					'f_economy_get_base_stockpile_energy'
+				)(game, base);
+				let stockpile_event = {caller: 0, game: game, data: {base: base}};
+				stockpile_event.applied = process_base_production.apply(stockpile_event);
+				if (
+					stockpile_credits <= 0 ||
+					base.get_accumulated_minerals() != 13 ||
+					base.get_production().id != 'StockpileEnergy' ||
+					base.has_facility('StockpileEnergy')
+				) {
+					fail('Stockpile Energy runtime conversion state is invalid');
+					return;
+				}
+				process_base_production.rollback(stockpile_event);
+				base.set_production_queue(previous_queue);
+				base.set_accumulated_minerals(previous_minerals);
 
 				const begin_victory_test = () => {
 					const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');

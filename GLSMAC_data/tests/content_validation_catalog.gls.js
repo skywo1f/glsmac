@@ -28,6 +28,10 @@ test.assert(catalog.facility_coverage.status.TempleOfPlanet == 'complete');
 test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native);
 test.assert(content.get_facility(catalog, 'Skunkworks').data.prototype_cost_waiver);
 test.assert(catalog.facility_coverage.status.Skunkworks == 'complete');
+test.assert(
+	content.get_facility(catalog, 'StockpileEnergy').data.mineral_to_energy_divisor == 2
+);
+test.assert(catalog.facility_coverage.status.StockpileEnergy == 'complete');
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
 test.assert(content.get_facility(catalog, 'AerospaceComplex').data.full_repair_air);
@@ -60,14 +64,14 @@ for (id of [
 }
 for (id of [
 	'PsiGate', 'SkyHydroponicsLab', 'NessusMiningStation',
-	'OrbitalPowerTransmitter', 'OrbitalDefensePod', 'StockpileEnergy',
+	'OrbitalPowerTransmitter', 'OrbitalDefensePod',
 ]) {
 	test.assert(content.get_facility(catalog, id) == null);
 }
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 32,
-	complete_facilities: 28,
+	facilities: 33,
+	complete_facilities: 29,
 	partial_facilities: 4,
 	implemented_projects: 33,
 	complete_projects: 31,

@@ -487,6 +487,7 @@
 			const aerospace_complex = game.get_bm().get_facility_def('AerospaceComplex');
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
 			const skunkworks = game.get_bm().get_facility_def('Skunkworks');
+			const stockpile_energy = game.get_bm().get_facility_def('StockpileEnergy');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const research_hospital = game.get_bm().get_facility_def('ResearchHospital');
 			const robotic_assembly = game.get_bm().get_facility_def('RoboticAssemblyPlant');
@@ -547,6 +548,8 @@
 				biology_lab.research_bonus != 2 ||
 				biology_lab.native_lifecycle_bonus != 1 ||
 				!skunkworks.prototype_cost_waiver ||
+				stockpile_energy.mineral_cost != 0 ||
+				stockpile_energy.mineral_to_energy_divisor != 2 ||
 				hologram_theatre.psych_multiplier != 0.5 ||
 				research_hospital.research_multiplier != 0.5 ||
 				research_hospital.psych_multiplier != 0.25 ||

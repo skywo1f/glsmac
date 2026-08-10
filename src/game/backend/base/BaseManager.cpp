@@ -402,10 +402,12 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, efficiency_rating_bonus, def, "efficiency_rating_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, defender_morale_minimum, def, "defender_morale_minimum", Int, 0 );
 				N_GETPROP_OPT( bool, prototype_cost_waiver, def, "prototype_cost_waiver", Bool, false );
+				N_GETPROP_OPT( int64_t, mineral_to_energy_divisor, def, "mineral_to_energy_divisor", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
-					mineral_cost <= 0 ||
+					mineral_cost < 0 ||
+					( mineral_cost == 0 && mineral_to_energy_divisor == 0 ) ||
 					mineral_cost > base::FacilityDef::MAX_MINERAL_COST ||
 					nutrient_bonus < 0 ||
 					nutrient_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
@@ -489,6 +491,12 @@ WRAPIMPL_BEGIN( BaseManager )
 					efficiency_rating_bonus > base::FacilityDef::MAX_GROWTH_RATING_BONUS ||
 					defender_morale_minimum < 0 ||
 					defender_morale_minimum > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					mineral_to_energy_divisor < 0 ||
+					mineral_to_energy_divisor > base::FacilityDef::MAX_RESOURCE_BONUS ||
+					(
+						mineral_to_energy_divisor > 0 &&
+						( is_project || mineral_cost != 0 )
+					) ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -606,7 +614,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_extra_police_units,
 					efficiency_rating_bonus,
 					defender_morale_minimum,
-					prototype_cost_waiver
+					prototype_cost_waiver,
+					mineral_to_energy_divisor
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

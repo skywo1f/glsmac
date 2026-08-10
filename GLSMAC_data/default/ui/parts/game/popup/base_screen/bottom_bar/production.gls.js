@@ -69,6 +69,9 @@ return {
 				return #to_string(progress_in) + ' TURNS';
 			},
 		);
+		if (#is_defined(data.conversion_label)) {
+			this.production_label.text = data.conversion_label;
+		}
 
 	},
 

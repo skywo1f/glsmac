@@ -71,7 +71,8 @@ FacilityDef::FacilityDef(
 	const int64_t global_extra_police_units,
 	const int64_t efficiency_rating_bonus,
 	const int64_t defender_morale_minimum,
-	const bool prototype_cost_waiver
+	const bool prototype_cost_waiver,
+	const int64_t mineral_to_energy_divisor
 )
 	: m_id( id )
 	, m_name( name )
@@ -134,11 +135,13 @@ FacilityDef::FacilityDef(
 	, m_global_extra_police_units( global_extra_police_units )
 	, m_efficiency_rating_bonus( efficiency_rating_bonus )
 	, m_defender_morale_minimum( defender_morale_minimum )
-	, m_prototype_cost_waiver( prototype_cost_waiver ) {
+	, m_prototype_cost_waiver( prototype_cost_waiver )
+	, m_mineral_to_energy_divisor( mineral_to_energy_divisor ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
-		m_mineral_cost <= 0 ||
+		m_mineral_cost < 0 ||
+		( m_mineral_cost == 0 && m_mineral_to_energy_divisor == 0 ) ||
 		m_mineral_cost > MAX_MINERAL_COST ||
 		m_nutrient_bonus < 0 ||
 		m_nutrient_bonus > MAX_RESOURCE_BONUS ||
@@ -202,6 +205,12 @@ FacilityDef::FacilityDef(
 		m_efficiency_rating_bonus > MAX_GROWTH_RATING_BONUS ||
 		m_defender_morale_minimum < 0 ||
 		m_defender_morale_minimum > MAX_UNIT_MORALE_BONUS ||
+		m_mineral_to_energy_divisor < 0 ||
+		m_mineral_to_energy_divisor > MAX_RESOURCE_BONUS ||
+		(
+			m_mineral_to_energy_divisor > 0 &&
+			( m_is_project || m_mineral_cost != 0 )
+		) ||
 		!m_is_project && (
 			!m_granted_facility.empty() ||
 			m_global_talent_bonus != 0 ||
@@ -326,6 +335,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_efficiency_rating_bonus );
 	buf.WriteInt( def->m_defender_morale_minimum );
 	buf.WriteBool( def->m_prototype_cost_waiver );
+	buf.WriteInt( def->m_mineral_to_energy_divisor );
 	return buf;
 }
 
@@ -392,6 +402,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto efficiency_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto defender_morale_minimum = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto prototype_cost_waiver = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto mineral_to_energy_divisor = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	return new FacilityDef(
 		id,
 		name,
@@ -454,7 +465,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		global_extra_police_units,
 		efficiency_rating_bonus,
 		defender_morale_minimum,
-		prototype_cost_waiver
+		prototype_cost_waiver,
+		mineral_to_energy_divisor
 	);
 }
 
@@ -711,6 +723,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"prototype_cost_waiver",
 			VALUE( gse::value::Bool, , m_prototype_cost_waiver )
+		},
+		{
+			"mineral_to_energy_divisor",
+			VALUE( gse::value::Int, , m_mineral_to_energy_divisor )
 		},
 	};
 WRAPIMPL_END_PTR()

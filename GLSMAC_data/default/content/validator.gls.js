@@ -70,6 +70,7 @@ const facility_fields = {
 	efficiency_rating_bonus: true,
 	defender_morale_minimum: true,
 	prototype_cost_waiver: true,
+	mineral_to_energy_divisor: true,
 };
 
 const facility_manifest_fields = {
@@ -518,8 +519,35 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'global_extra_police_units', path, errors, false, 0, 10);
 		validate_int(data, 'efficiency_rating_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'defender_morale_minimum', path, errors, false, 0, 10);
+		validate_int(
+			data,
+			'mineral_to_energy_divisor',
+			path,
+			errors,
+			false,
+			1,
+			MAX_DEFINITION_VALUE
+		);
 		validate_string(data, 'name', path, errors, true);
-		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
+		const is_mineral_conversion =
+			#is_defined(data.mineral_to_energy_divisor) &&
+			data.mineral_to_energy_divisor > 0;
+		validate_int(
+			data,
+			'mineral_cost',
+			path,
+			errors,
+			true,
+			is_mineral_conversion ? 0 : 1,
+			MAX_DEFINITION_VALUE
+		);
+		if (is_mineral_conversion && (data.mineral_cost != 0 || data.is_project)) {
+			add_error(
+				errors,
+				path + '.mineral_to_energy_divisor',
+				'requires a zero-cost non-project definition'
+			);
+		}
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'mineral_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'energy_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -590,6 +618,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
 			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0) ||
 			(#is_defined(data.prototype_cost_waiver) && data.prototype_cost_waiver) ||
+			is_mineral_conversion ||
 			(#is_defined(data.granted_facility) && data.granted_facility != '') ||
 			(#is_defined(data.global_talent_bonus) && data.global_talent_bonus > 0) ||
 			(#is_defined(data.global_growth_rating_bonus) && data.global_growth_rating_bonus > 0) ||

@@ -54,6 +54,7 @@ const effects = {
 	BioenhancementCenter: {unit_morale_bonus: 2, native_lifecycle_bonus: 1},
 	CentauriPreserve: {native_lifecycle_bonus: 1},
 	TempleOfPlanet: {native_lifecycle_bonus: 1},
+	StockpileEnergy: {mineral_to_energy_divisor: 2},
 };
 
 const partial_effects = {

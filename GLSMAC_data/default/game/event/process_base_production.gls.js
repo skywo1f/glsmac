@@ -118,7 +118,13 @@ return {
 		let prototype_state = #undefined;
 
 		if (#is_defined(production)) {
-			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
+			const pending_minerals = e.game.get('f_base_get_pending_production')(base);
+			const is_mineral_conversion =
+				production.production_kind == 'facility' &&
+				#is_defined(production.mineral_to_energy_divisor) &&
+				production.mineral_to_energy_divisor > 0;
+			let updated_minerals = old_minerals +
+				(is_mineral_conversion ? 0 : pending_minerals);
 			const production_cost_resolver = e.game.get('f_base_get_production_cost');
 			const production_cost = #is_defined(production_cost_resolver)
 				? production_cost_resolver(base, production)
@@ -129,7 +135,11 @@ return {
 				production.can_found_base
 			) ? 1 : 0;
 			const has_population = population_cost == 0 || base.get_size() > population_cost;
-			if (updated_minerals >= production_cost && has_population) {
+			if (
+				!is_mineral_conversion &&
+				updated_minerals >= production_cost &&
+				has_population
+			) {
 				const existing_project_base = production.production_kind == 'project'
 					? e.game.get_bm().get_project_base(production.id)
 					: #undefined;

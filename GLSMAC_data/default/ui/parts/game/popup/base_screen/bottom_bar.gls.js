@@ -103,12 +103,26 @@ return {
 				base,
 				production
 			);
+			const is_mineral_conversion =
+				#is_defined(production.mineral_to_energy_divisor) &&
+				production.mineral_to_energy_divisor > 0;
+			const stockpile_energy = is_mineral_conversion
+				? this.p.game.get('f_economy_get_base_stockpile_energy')(
+					this.p.game,
+					base
+				)
+				: 0;
 			this.parts.production.set({
 				name: production.name,
 				rows: #max(#ceil(#to_float(production_cost) / 10.0), 1),
 				columns: 10,
-				filled: #min(base.get_accumulated_minerals(), production_cost),
-				pending: pending,
+				filled: is_mineral_conversion
+					? 0
+					: #min(base.get_accumulated_minerals(), production_cost),
+				pending: is_mineral_conversion ? 0 : pending,
+				conversion_label: is_mineral_conversion
+					? #to_string(stockpile_energy) + ' EC / TURN'
+					: #undefined,
 			});
 		} else {
 			this.parts.production.set({

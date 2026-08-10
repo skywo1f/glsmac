@@ -78,6 +78,9 @@ scenarios, for:
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
   and starting capitals;
+- Stockpile Energy is a repeatable base-production mode that preserves stored
+  minerals and converts each turn's mineral surplus directly to reserves at
+  the original two-to-one rate, with player UI and conservative AI fallback;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -126,7 +129,7 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 32 of 38 base facilities represented: 28 complete and 4 partial;
+- 33 of 38 base facilities represented: 29 complete and 4 partial;
 - all 33 Secret Projects represented: 31 complete and 2 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -158,9 +161,9 @@ The following original-SMAC systems remain absent or materially incomplete:
 - several remaining facility effects, including submersion, Psi Gates, disease
   protection, and Alien Artifact production contributions to Secret Projects
   and prototypes;
-- the six absent base-facility definitions are Psi Gate, Sky Hydroponics Lab,
-  Nessus Mining Station, Orbital Power Transmitter, Orbital Defense Pod, and
-  Stockpile Energy; both hospitals, Pressure Dome, and
+- the five absent base-facility definitions are Psi Gate, Sky Hydroponics Lab,
+  Nessus Mining Station, Orbital Power Transmitter, and Orbital Defense Pod;
+  both hospitals, Pressure Dome, and
   Aerospace Complex are represented but remain partial;
 - the two partial Secret Projects are the Empath Guild and Space Elevator; the
   Empath Guild still lacks its +50% council-election vote bonus, and the Space

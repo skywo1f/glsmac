@@ -221,6 +221,14 @@ const temple_of_planet = {
 	unit_morale_bonus: 0,
 	native_lifecycle_bonus: 1,
 };
+const stockpile_energy = {
+	id: 'StockpileEnergy',
+	name: 'Stockpile Energy',
+	production_kind: 'facility',
+	mineral_cost: 0,
+	mineral_to_energy_divisor: 2,
+	unit_morale_bonus: 0,
+};
 const definitions = [
 	mind_worms,
 	spore_launcher,
@@ -243,6 +251,7 @@ const definitions = [
 	biology_lab,
 	centauri_preserve,
 	temple_of_planet,
+	stockpile_energy,
 ];
 
 let production_queue = [];
@@ -378,7 +387,13 @@ const base = {
 	},
 	can_queue_production: (kind, id) => {
 		const definition = find_definition(kind, id);
-		if (!#is_defined(definition)) {
+		if (
+			!#is_defined(definition) ||
+			(
+				#is_defined(definition.mineral_to_energy_divisor) &&
+				definition.mineral_to_energy_divisor > 0
+			)
+		) {
 			return false;
 		}
 		let candidate_queue = [];
@@ -770,6 +785,18 @@ test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
 test.assert(!#is_defined(spawned_unit));
 test.assert(despawned_unit.id == 17);
 built_facilities = [];
+
+production_queue = [stockpile_energy];
+accumulated_minerals = 13;
+pending_production = 7;
+event.applied = process_base_production.apply(event);
+test.assert(accumulated_minerals == 13);
+test.assert(get_queue_state() == ['facility:StockpileEnergy']);
+test.assert(!has_facility('StockpileEnergy'));
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 13);
+test.assert(get_queue_state() == ['facility:StockpileEnergy']);
+pending_production = 7;
 
 production_queue = [mind_worms];
 built_facilities = [
