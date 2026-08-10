@@ -12,6 +12,16 @@ const RATING_LIMITS = {
 	research: {min: 0 - 5, max: 5},
 };
 
+const UPHEAVAL_COSTS = [0, 8, 27, 64, 125];
+const UPHEAVAL_DIFFICULTY_MULTIPLIERS = {
+	Citizen: 0,
+	Specialist: 1,
+	Talent: 2,
+	Librarian: 3,
+	Thinker: 4,
+	Transcend: 5,
+};
+
 const policy = (id, name, required_technology, ratings) => {
 	return {
 		id: id,
@@ -208,6 +218,21 @@ const get_available_choices = (player, category_id) => {
 	return result;
 };
 
+const get_adoption_cost = (player, choices) => {
+	const current = get_choices(player);
+	let change_count = 0;
+	for (category of categories) {
+		if (current[category.id] != choices[category.id]) {
+			change_count++;
+		}
+	}
+	const difficulty = player.difficulty_level;
+	const multiplier = #is_defined(UPHEAVAL_DIFFICULTY_MULTIPLIERS[difficulty])
+		? UPHEAVAL_DIFFICULTY_MULTIPLIERS[difficulty]
+		: UPHEAVAL_DIFFICULTY_MULTIPLIERS.Transcend;
+	return UPHEAVAL_COSTS[change_count] * multiplier;
+};
+
 const get_mineral_cost = (player, base_cost) => {
 	const industry = get_ratings(player).industry;
 	return #max(1, #ceil(#to_float(base_cost * (10 - industry)) / 10.0));
@@ -313,6 +338,7 @@ return (game) => {
 		game.set('f_social_get_ratings_for_choices', get_ratings_for_choices);
 		game.set('f_social_validate_choices', validate_choices);
 		game.set('f_social_get_available_choices', get_available_choices);
+		game.set('f_social_get_adoption_cost', get_adoption_cost);
 		game.set('f_social_get_mineral_cost', get_mineral_cost);
 		game.set('f_social_get_support_cost', get_support_cost);
 		game.set('f_social_get_police_rules', get_police_rules);

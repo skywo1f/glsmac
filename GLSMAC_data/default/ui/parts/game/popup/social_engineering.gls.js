@@ -15,8 +15,10 @@ return {
 		this.pending = null;
 		this.selects = {};
 		this.rating_lines = [];
+		this.cost_text = null;
+		this.adopt_button = null;
 
-		return p.create('SOCIAL ENGINEERING', 520, 234, (body, cb) => {
+		return p.create('SOCIAL ENGINEERING', 520, 264, (body, cb) => {
 			const categories = p.game.get('f_social_get_categories')();
 			let top = 8;
 			for (category of categories) {
@@ -56,24 +58,40 @@ return {
 					top: 132 + i * 18,
 				});
 			}
+			this.cost_text = body.text({
+				class: 'game-popup-text',
+				text: '',
+				left: 10,
+				right: 10,
+				top: 190,
+			});
 
 			body.button({
 				class: 'game-popup-button',
 				text: 'Cancel',
-				top: 190,
+				top: 216,
 				is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
 			});
 
-			body.button({
+			this.adopt_button = body.button({
 				class: 'game-popup-button',
 				text: 'Adopt social model',
-				top: 212,
+				top: 240,
 				is_ok: true,
-			}).on('click', (e) => {
+			});
+			this.adopt_button.on('click', (e) => {
 				if (this.player != null && this.pending != null) {
+					const cost = p.game.get('f_social_get_adoption_cost')(
+						this.player,
+						this.pending
+					);
+					if (cost > this.player.energy_credits) {
+						this.refresh_ratings();
+						return true;
+					}
 					p.game.event('set_social_engineering', {
 						player: this.player,
 						choices: this.pending,
@@ -102,6 +120,17 @@ return {
 		this.rating_lines[0].text = lines[0];
 		this.rating_lines[1].text = lines[1];
 		this.rating_lines[2].text = lines[2];
+		const cost = this.p.game.get('f_social_get_adoption_cost')(
+			this.player,
+			this.pending
+		);
+		this.cost_text.text = 'UPHEAVAL COST: ' + #to_string(cost) +
+			' EC   RESERVES: ' + #to_string(this.player.energy_credits) + ' EC';
+		if (cost <= this.player.energy_credits) {
+			this.adopt_button.show();
+		} else {
+			this.adopt_button.hide();
+		}
 	},
 
 	on_show: () => {

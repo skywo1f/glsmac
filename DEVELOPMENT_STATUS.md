@@ -18,7 +18,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - game setup, turn progression, research, economy, base growth, worker
   assignment, production queues, support, and persistent social engineering;
 - all 16 original social models, original-faction rating modifiers and immunity,
-  technology gating, human selection UI, and strategy-weighted AI selection;
+  technology gating, the complete difficulty-scaled upheaval cost table, atomic
+  energy accounting, cost-aware human selection UI, and strategy-weighted AI
+  selection that stages paid category changes to avoid multi-model surcharges;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -91,9 +93,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
   vendetta/council consequences for major atrocities;
-- remaining social effects: adoption costs and POLICE penalties for military
-  units away from friendly territory; exact away-unit accounting remains
-  dependent on the absent territorial-ownership/border system;
+- remaining social effects: POLICE penalties for military units away from
+  friendly territory; exact away-unit accounting remains dependent on the
+  absent territorial-ownership/border system;
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
@@ -119,7 +121,7 @@ and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 67-case Release GSE matrix passed in one bounded invocation in
-117.48 seconds. Before the loan, sanction, and integrity milestones, all 18
+118.05 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -164,6 +166,12 @@ selection, Ascetic Virtues, and Self-Aware Colony. The native definition and
 legacy-serialization suite, seven focused Release tests, and the installed-asset
 research/project runtime are green for this milestone. Away-unit drones are not
 claimed because GLSMAC does not yet model faction territory outside bases.
+Social-adoption coverage validates free Citizen changes and the original
+Specialist-through-Transcend costs for one through four simultaneous model
+changes, insufficient-funds rejection, exact reversible energy accounting,
+economy notifications, UI cost and reserve display, and cost-aware AI staging.
+The installed-asset research runtime passed in 8.44 seconds and charged a live
+three-model Transcend adoption exactly 320 energy credits.
 Integrity coverage verifies the original eight status labels, treaty and pact
 penalties, aggressor-only changes, saturation, reversible declaration and
 detected-probe paths, AI agreement and loan trust, UI status loading, native

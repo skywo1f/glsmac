@@ -69,8 +69,58 @@ const choose = (player, categories, get_available, get_ratings, priorities) => {
 	return selected;
 };
 
+const choose_adoption = (
+	player,
+	desired,
+	categories,
+	get_ratings,
+	priorities,
+	get_cost,
+	available_energy
+) => {
+	const current = player.get_social_engineering();
+	if (get_cost(player, desired) == 0) {
+		return desired;
+	}
+	let selected = {
+		politics: current.politics,
+		economics: current.economics,
+		values: current.values,
+		future_society: current.future_society,
+	};
+	let best_score = score_ratings(get_ratings(player, current), priorities);
+	let best_cost = 0;
+	for (category of categories) {
+		if (current[category.id] == desired[category.id]) {
+			continue;
+		}
+		let candidate = {
+			politics: current.politics,
+			economics: current.economics,
+			values: current.values,
+			future_society: current.future_society,
+		};
+		candidate[category.id] = desired[category.id];
+		const cost = get_cost(player, candidate);
+		if (cost > available_energy) {
+			continue;
+		}
+		const score = score_ratings(get_ratings(player, candidate), priorities);
+		if (
+			score > best_score ||
+			(score == best_score && best_cost > 0 && cost < best_cost)
+		) {
+			selected = candidate;
+			best_score = score;
+			best_cost = cost;
+		}
+	}
+	return selected;
+};
+
 return {
 	score_ratings: score_ratings,
 	choices_equal: choices_equal,
 	choose: choose,
+	choose_adoption: choose_adoption,
 };

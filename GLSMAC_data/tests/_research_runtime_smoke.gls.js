@@ -44,6 +44,23 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.register_event('research_runtime_seed_energy', {
+			validate: (e) => {
+				if (e.caller != 0 && e.caller != e.data.player.id) {
+					return 'Only the runtime test player may seed its energy balance';
+				}
+			},
+			apply: (e) => {
+				const previous = e.data.player.energy_credits;
+				e.data.player.set_energy_credits(e.data.energy_credits);
+				e.game.trigger('economy_updated', {player: e.data.player});
+				return {energy_credits: previous};
+			},
+			rollback: (e) => {
+				e.data.player.set_energy_credits(e.applied.energy_credits);
+				e.game.trigger('economy_updated', {player: e.data.player});
+			},
+		});
 
 		game.on('start_ui', (e) => {
 			ui_started = true;
@@ -140,26 +157,53 @@
 					target: '',
 					progress: 0,
 				});
-				game.event('set_social_engineering', {
-					player: player,
-					choices: {
-						politics: 'Democratic',
-						economics: 'Planned',
-						values: 'Wealth',
-						future_society: 'None',
-					},
-				});
-				let social_wait_ticks = 0;
+				let funding_requested = false;
+				let funding_wait_ticks = 0;
 				#async(100, () => {
-					social_wait_ticks++;
-					if (player.get_social_engineering().politics != 'Democratic') {
-						if (social_wait_ticks >= 100) {
-							fail('social engineering event application timed out');
+					funding_wait_ticks++;
+					const funded_player = game.get_player();
+					if (!funding_requested) {
+						funding_requested = true;
+						game.event('research_runtime_seed_energy', {
+							player: funded_player,
+							energy_credits: 1000,
+						});
+						return true;
+					}
+					if (funded_player.energy_credits != 1000) {
+						if (funding_wait_ticks >= 100) {
+							fail('social engineering test funding timed out');
 							return false;
 						}
 						return true;
 					}
-					game.event('complete_turn', {});
+					game.event('set_social_engineering', {
+						player: funded_player,
+						choices: {
+							politics: 'Democratic',
+							economics: 'Planned',
+							values: 'Wealth',
+							future_society: 'None',
+						},
+					});
+					let social_wait_ticks = 0;
+					#async(100, () => {
+						social_wait_ticks++;
+						const social_player = game.get_player();
+						if (social_player.get_social_engineering().politics != 'Democratic') {
+							if (social_wait_ticks >= 100) {
+								fail('social engineering event application timed out');
+								return false;
+							}
+							return true;
+						}
+						if (social_player.energy_credits != 680) {
+							fail('three-model Transcend upheaval cost was not 320 energy credits');
+							return false;
+						}
+						game.event('complete_turn', {});
+						return false;
+					});
 					return false;
 				});
 				return;

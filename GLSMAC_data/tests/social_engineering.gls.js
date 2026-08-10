@@ -24,10 +24,14 @@ let choices = {
 };
 let technologies = {};
 let faction_id = 'GAIANS';
+let energy_credits = 100;
 const player = {
 	id: 1,
+	difficulty_level: 'Transcend',
 	get_social_engineering: () => { return choices; },
 	set_social_engineering: (value) => { choices = value; },
+	get_energy_credits: () => { return energy_credits; },
+	set_energy_credits: (value) => { energy_credits = value; },
 	get_faction: () => { return {id: faction_id}; },
 	has_technology: (id) => { return #is_defined(technologies[id]); },
 };
@@ -59,6 +63,44 @@ test.assert(!#is_defined(values.f_social_validate_choices(player, {
 	future_society: 'None',
 })));
 test.assert(#sizeof(values.f_social_get_available_choices(player, 'politics')) == 2);
+test.assert(values.f_social_get_adoption_cost(player, choices) == 0);
+
+const adoption_choices = [
+	{
+		politics: 'PoliceState', economics: 'Simple',
+		values: 'Survival', future_society: 'None',
+	},
+	{
+		politics: 'PoliceState', economics: 'Planned',
+		values: 'Survival', future_society: 'None',
+	},
+	{
+		politics: 'PoliceState', economics: 'Planned',
+		values: 'Power', future_society: 'None',
+	},
+	{
+		politics: 'PoliceState', economics: 'Planned',
+		values: 'Power', future_society: 'Cybernetic',
+	},
+];
+const adoption_costs = {
+	Citizen: [0, 0, 0, 0],
+	Specialist: [8, 27, 64, 125],
+	Talent: [16, 54, 128, 250],
+	Librarian: [24, 81, 192, 375],
+	Thinker: [32, 108, 256, 500],
+	Transcend: [40, 135, 320, 625],
+};
+for (difficulty in adoption_costs) {
+	player.difficulty_level = difficulty;
+	for (let i = 0; i < 4; i++) {
+		test.assert(
+			values.f_social_get_adoption_cost(player, adoption_choices[i]) ==
+			adoption_costs[difficulty][i]
+		);
+	}
+}
+player.difficulty_level = 'Transcend';
 
 technologies = {
 	EthicalCalculus: true,
@@ -167,11 +209,20 @@ const social_event = {
 		},
 	},
 };
+energy_credits = 39;
+test.assert(#is_defined(set_social_engineering.validate(social_event)));
+energy_credits = 100;
 test.assert(!#is_defined(set_social_engineering.validate(social_event)));
 social_event.applied = set_social_engineering.apply(social_event);
 test.assert(choices.politics == 'PoliceState');
+test.assert(energy_credits == 60);
 test.assert(refreshed_ratings == [2]);
 set_social_engineering.rollback(social_event);
 test.assert(choices == original_choices);
+test.assert(energy_credits == 100);
 test.assert(refreshed_ratings == [2, 0]);
-test.assert(#sizeof(triggers) == 2);
+test.assert(#sizeof(triggers) == 4);
+test.assert(triggers[0].name == 'social_engineering_updated');
+test.assert(triggers[1].name == 'economy_updated');
+test.assert(triggers[2].name == 'social_engineering_updated');
+test.assert(triggers[3].name == 'economy_updated');

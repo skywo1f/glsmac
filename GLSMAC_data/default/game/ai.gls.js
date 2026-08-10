@@ -801,12 +801,22 @@ const update_social_engineering = (game, player, bases, units) => {
 		metrics.combat_count,
 		metrics.mobile_combat_count
 	);
-	const selected = social_engineering.choose(
+	const categories = game.get('f_social_get_categories')();
+	const desired = social_engineering.choose(
 		player,
-		game.get('f_social_get_categories')(),
+		categories,
 		game.get('f_social_get_available_choices'),
 		game.get('f_social_get_ratings_for_choices'),
 		priorities
+	);
+	const selected = social_engineering.choose_adoption(
+		player,
+		desired,
+		categories,
+		game.get('f_social_get_ratings_for_choices'),
+		priorities,
+		game.get('f_social_get_adoption_cost'),
+		player.energy_credits
 	);
 	if (!social_engineering.choices_equal(selected, player.get_social_engineering())) {
 		game.event_as(player.id, 'set_social_engineering', {

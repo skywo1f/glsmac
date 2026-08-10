@@ -18,6 +18,7 @@ let choices = {
 	future_society: 'None',
 };
 const player = {
+	difficulty_level: 'Transcend',
 	get_social_engineering: () => { return choices; },
 	get_faction: () => { return {id: 'NEUTRAL'}; },
 	has_technology: (id) => { return #is_defined(technologies[id]); },
@@ -65,3 +66,54 @@ const peaceful_score = ai_social.score_ratings({
 	expansion: 0, terraforming: 0,
 });
 test.assert(military_score > peaceful_score);
+
+const desired = {
+	politics: 'Democratic',
+	economics: 'Planned',
+	values: 'Power',
+	future_society: 'Cybernetic',
+};
+const adoption_priorities = {
+	development: 50, growth: 100, psych: 25, military: 50,
+	expansion: 50, terraforming: 25,
+};
+let adoption = ai_social.choose_adoption(
+	player,
+	desired,
+	values.f_social_get_categories(),
+	values.f_social_get_ratings_for_choices,
+	adoption_priorities,
+	values.f_social_get_adoption_cost,
+	39
+);
+test.assert(ai_social.choices_equal(adoption, choices));
+
+adoption = ai_social.choose_adoption(
+	player,
+	desired,
+	values.f_social_get_categories(),
+	values.f_social_get_ratings_for_choices,
+	adoption_priorities,
+	values.f_social_get_adoption_cost,
+	40
+);
+let adoption_changes = 0;
+for (category of values.f_social_get_categories()) {
+	if (adoption[category.id] != choices[category.id]) {
+		adoption_changes++;
+	}
+}
+test.assert(adoption_changes == 1);
+test.assert(values.f_social_get_adoption_cost(player, adoption) == 40);
+
+player.difficulty_level = 'Citizen';
+adoption = ai_social.choose_adoption(
+	player,
+	desired,
+	values.f_social_get_categories(),
+	values.f_social_get_ratings_for_choices,
+	adoption_priorities,
+	values.f_social_get_adoption_cost,
+	0
+);
+test.assert(ai_social.choices_equal(adoption, desired));
