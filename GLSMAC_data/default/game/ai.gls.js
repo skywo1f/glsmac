@@ -582,6 +582,16 @@ const queue_production = (game, player, bases, units) => {
 			empath_guild_infiltration_count++;
 		}
 	}
+	let global_network_node_count = 0;
+	for (candidate of game.get_bm().get_bases()) {
+		if (candidate.has_facility('NetworkNode')) {
+			global_network_node_count++;
+		}
+	}
+	const get_commerce_ledger = game.get('f_economy_get_player_commerce_ledger');
+	const commerce_ledger = #is_defined(get_commerce_ledger)
+		? get_commerce_ledger(game, player)
+		: {};
 	let hurry_candidates = [];
 	let has_headquarters = false;
 	let headquarters_queue_base = null;
@@ -599,6 +609,10 @@ const queue_production = (game, player, bases, units) => {
 		}
 	}
 	for (base of bases) {
+		const commerce_key = 'b' + #to_string(base.id);
+		const base_commerce = #is_defined(commerce_ledger[commerce_key])
+			? commerce_ledger[commerce_key].total
+			: 0;
 		const garrison_count = combat.get_garrison_count(base, player.id);
 		const support_cost_resolver = game.get('f_social_get_support_cost');
 		const free_support_resolver = game.get('f_social_get_free_support');
@@ -691,6 +705,8 @@ const queue_production = (game, player, bases, units) => {
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
 			empath_guild_infiltration_count: empath_guild_infiltration_count,
+			network_backbone_research_bonus:
+				global_network_node_count + base_commerce,
 			available_energy: available_energy,
 			priorities: priorities,
 		};

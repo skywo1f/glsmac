@@ -1,4 +1,5 @@
 const PSYCH_ALLOCATION = 0.2;
+const LABS_ALLOCATION = 0.4;
 
 const get_effective_facilities = (game, base) => {
 	const resolver = game.get('f_base_get_effective_facilities');
@@ -65,6 +66,21 @@ const get_base_energy = (game, base) => {
 	};
 };
 
+const get_base_economy_multiplier = (game, base) => {
+	let result = 0.0;
+	for (facility of get_effective_facilities(game, base)) {
+		if (#is_defined(facility.economy_multiplier)) {
+			result += facility.economy_multiplier;
+		}
+	}
+	const project_effects = get_project_effects(game, base);
+	return result + (
+		#is_defined(project_effects.economy_multiplier)
+			? project_effects.economy_multiplier
+			: 0.0
+	);
+};
+
 const get_base_allocation = (game, base) => {
 	const consumption = base.get_consumption();
 	const energy = get_base_energy(game, base);
@@ -74,23 +90,17 @@ const get_base_allocation = (game, base) => {
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
 	let psych_bonus = 0;
 	let psych_multiplier = 0.0;
-	let economy_multiplier = 0.0;
 	for (facility of get_effective_facilities(game, base)) {
 		psych_bonus += facility.psych_bonus;
 		psych_multiplier += #is_defined(facility.psych_multiplier)
 			? facility.psych_multiplier
 			: 0.0;
-		if (#is_defined(facility.economy_multiplier)) {
-			economy_multiplier += facility.economy_multiplier;
-		}
 	}
-	const project_effects = get_project_effects(game, base);
-	economy_multiplier += #is_defined(project_effects.economy_multiplier)
-		? project_effects.economy_multiplier
-		: 0.0;
 	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
 	const economy_value = total_energy - labs.value - psych;
-	const economy_bonus = #ceil(#to_float(#max(economy_value, 0)) * economy_multiplier);
+	const economy_bonus = #ceil(
+		#to_float(#max(economy_value, 0)) * get_base_economy_multiplier(game, base)
+	);
 	return {
 		economy: {
 			allocation: 1.0 - labs.allocation - PSYCH_ALLOCATION,
@@ -107,8 +117,19 @@ const get_base_allocation = (game, base) => {
 };
 
 const get_base_economy = (game, base) => {
-	const economy = get_base_allocation(game, base).economy;
-	return economy.value + economy.bonus;
+	const consumption = base.get_consumption();
+	const total_energy = get_base_energy(game, base).net - consumption.ENERGY;
+	const energy_surplus = #max(total_energy, 0);
+	const labs_resolver = game.get('f_technology_get_base_labs_value');
+	const labs = #is_defined(labs_resolver)
+		? labs_resolver(base)
+		: #round(#to_float(energy_surplus) * LABS_ALLOCATION);
+	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
+	const value = total_energy - labs - psych;
+	const bonus = #ceil(
+		#to_float(#max(value, 0)) * get_base_economy_multiplier(game, base)
+	);
+	return value + bonus;
 };
 
 const get_ranked_bases = (game, player) => {
@@ -304,6 +325,7 @@ return (game) => {
 		game.set('f_economy_get_base_allocation', get_base_allocation);
 		game.set('f_economy_get_base', get_base_economy);
 		game.set('f_economy_get_base_commerce', get_base_commerce);
+		game.set('f_economy_get_player_commerce_ledger', get_player_commerce_ledger);
 		game.set('f_economy_get_base_psych', get_base_psych);
 		game.set('f_economy_get_player_commerce', get_player_commerce);
 		game.set('f_economy_get_player', get_player_economy);

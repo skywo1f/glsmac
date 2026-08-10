@@ -91,7 +91,7 @@ const project_effects = {
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
 	TheDreamTwister: {global_psi_attack_multiplier: 1.5},
-	TheNetworkBackbone: {network_node_research_bonus: 1},
+	TheNetworkBackbone: {},
 	TheNanoFactory: {global_full_repair: true},
 	TheLivingRefinery: {global_support_bonus: 2},
 	TheCloningVats: {global_growth_rating_bonus: 10},
@@ -111,7 +111,6 @@ const project_effects = {
 const partial_project_effects = {
 	TheEmpathGuild: true,
 	TheUniversalTranslator: true,
-	TheNetworkBackbone: true,
 	TheNanoFactory: true,
 	TheSpaceElevator: true,
 };

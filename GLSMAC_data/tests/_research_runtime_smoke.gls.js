@@ -407,7 +407,7 @@
 					project_effects.maintenance_multiplier != 0.5 ||
 					project_effects.native_lifecycle_bonus != 2 ||
 					project_effects.network_node_drone_modifier != -2 ||
-					project_effects.network_node_research_bonus != 1 ||
+					project_effects.network_node_research_bonus != 0 ||
 					project_effects.terraforming_rate_multiplier != 1.5 ||
 					project_effects.new_base_population != 3 ||
 					project_effects.small_base_drone_modifier != -1 ||

@@ -78,21 +78,36 @@ const network_backbone_game = {
 		if (key == 'f_base_get_effective_facilities') {
 			return (base) => { return base.get_facilities(); };
 		}
-		if (key == 'f_project_get_effects') {
-			return (base) => { return {network_node_research_bonus: 1}; };
+		if (key == 'f_economy_get_base_commerce') {
+			return (game, base) => { return {total: 3, partners: []}; };
 		}
 		return #undefined;
 	},
+	get_bm: () => { return {get_bases: () => { return [
+		{has_facility: (id) => { return id == 'NetworkNode'; }},
+		{has_facility: (id) => { return false; }},
+		{has_facility: (id) => { return id == 'NetworkNode'; }},
+	]; }}; },
 };
 const network_backbone_base = {
+	get_intake: base.get_intake,
+	get_consumption: base.get_consumption,
+	get_facilities: () => { return []; },
+	has_facility: (id) => { return id == 'TheNetworkBackbone'; },
+};
+test.assert(
+	technologies.get_base_labs(network_backbone_base, network_backbone_game)
+	== {allocation: 0.4, value: 2, bonus: 7, total: 9}
+);
+const ordinary_network_node_base = {
 	get_intake: base.get_intake,
 	get_consumption: base.get_consumption,
 	get_facilities: () => { return []; },
 	has_facility: (id) => { return id == 'NetworkNode'; },
 };
 test.assert(
-	technologies.get_base_labs(network_backbone_base, network_backbone_game)
-	== {allocation: 0.4, value: 2, bonus: 3, total: 5}
+	technologies.get_base_labs(ordinary_network_node_base, network_backbone_game)
+	== {allocation: 0.4, value: 2, bonus: 2, total: 4}
 );
 
 const network_labs = technologies.get_base_labs({

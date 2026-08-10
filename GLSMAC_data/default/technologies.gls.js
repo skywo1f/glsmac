@@ -1,6 +1,7 @@
 const catalog = #include('content/base_technologies');
 const definitions = catalog.definitions;
 const technology_order = catalog.order;
+const LABS_ALLOCATION = 0.4;
 
 const get_definition = (id) => {
 	if (!#is_defined(definitions[id])) {
@@ -61,9 +62,24 @@ const get_initial_state = (player, choose_target) => {
 	};
 };
 
-const get_base_labs = (base, game) => {
-	const allocation = 0.4;
-	const base_bonus = 2;
+const get_network_backbone_research_bonus = (base, game) => {
+	if (!#is_defined(game) || !base.has_facility('TheNetworkBackbone')) {
+		return 0;
+	}
+	let result = 0;
+	const commerce_resolver = game.get('f_economy_get_base_commerce');
+	if (#is_defined(commerce_resolver)) {
+		result += commerce_resolver(game, base).total;
+	}
+	for (candidate of game.get_bm().get_bases()) {
+		if (candidate.has_facility('NetworkNode')) {
+			result++;
+		}
+	}
+	return result;
+};
+
+const get_base_labs_value = (base, game) => {
 	const intake = base.get_intake();
 	const consumption = base.get_consumption();
 	const energy_resolver = #is_defined(game)
@@ -73,7 +89,12 @@ const get_base_labs = (base, game) => {
 		? energy_resolver(base).net
 		: intake.ENERGY;
 	const energy_surplus = #max(energy - consumption.ENERGY, 0);
-	const allocated = #round(#to_float(energy_surplus) * allocation);
+	return #round(#to_float(energy_surplus) * LABS_ALLOCATION);
+};
+
+const get_base_labs = (base, game) => {
+	const base_bonus = 2;
+	const allocated = get_base_labs_value(base, game);
 	let research_multiplier = 0.0;
 	let fixed_facility_bonus = 0;
 	const resolver = #is_defined(game) ? game.get('f_base_get_effective_facilities') : #undefined;
@@ -82,12 +103,7 @@ const get_base_labs = (base, game) => {
 		research_multiplier += facility.research_multiplier;
 		fixed_facility_bonus += #is_defined(facility.research_bonus) ? facility.research_bonus : 0;
 	}
-	if (#is_defined(game) && base.has_facility('NetworkNode')) {
-		const get_project_effects = game.get('f_project_get_effects');
-		if (#is_defined(get_project_effects)) {
-			fixed_facility_bonus += get_project_effects(base).network_node_research_bonus;
-		}
-	}
+	fixed_facility_bonus += get_network_backbone_research_bonus(base, game);
 	const facility_bonus = #ceil(
 		#to_float(allocated + base_bonus + fixed_facility_bonus) * research_multiplier
 	);
@@ -99,7 +115,7 @@ const get_base_labs = (base, game) => {
 		? #max(0, #round(#to_float(pre_social_total) * social_resolver(base.get_owner())))
 		: pre_social_total;
 	return {
-		allocation: allocation,
+		allocation: LABS_ALLOCATION,
 		value: allocated,
 		bonus: total - allocated,
 		total: total,
@@ -124,6 +140,7 @@ return {
 	get_next_target: get_next_target,
 	get_total_commerce_bonus: get_total_commerce_bonus,
 	get_initial_state: get_initial_state,
+	get_base_labs_value: get_base_labs_value,
 	get_base_labs: get_base_labs,
 	get_player_labs: get_player_labs,
 
@@ -150,6 +167,9 @@ return {
 			game.set('f_technology_get_definition', get_definition);
 			game.set('f_technology_get_order', () => { return technology_order; });
 			game.set('f_technology_get_total_commerce_bonus', get_total_commerce_bonus);
+			game.set('f_technology_get_base_labs_value', (base) => {
+				return get_base_labs_value(base, game);
+			});
 			game.set('f_technology_get_base_labs', (base) => { return get_base_labs(base, game); });
 			game.set('f_technology_get_next_target', choose_next_target);
 			game.set('f_technology_get_player_labs', get_player_labs);

@@ -190,10 +190,12 @@ const score_project = (def, context) => {
 	const is_pholus_mutagen = def.id == 'ThePholusMutagen';
 	const is_xenoempathy_dome = def.id == 'TheXenoempathyDome';
 	const is_universal_translator = def.id == 'TheUniversalTranslator';
+	const is_network_backbone = def.id == 'TheNetworkBackbone';
 	const has_effect = is_planetary_datalinks || is_empath_guild ||
 		is_pholus_mutagen ||
 		is_xenoempathy_dome ||
 		is_universal_translator ||
+		is_network_backbone ||
 		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
 		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
 		def.defense_multiplier > 1.0 || def.economy_multiplier > 0.0 ||
@@ -255,7 +257,16 @@ const score_project = (def, context) => {
 				: 0
 		) + (is_pholus_mutagen ? 80000 : 0) +
 		(is_xenoempathy_dome ? 90000 : 0) +
-		(is_universal_translator ? 100000 : 0);
+		(is_universal_translator ? 100000 : 0) +
+		(
+			is_network_backbone
+				? 50000 + (
+					#is_defined(context.network_backbone_research_bonus)
+						? context.network_backbone_research_bonus
+						: 0
+				) * 15000
+				: 0
+		);
 };
 
 const score_hurry = (def, context) => {

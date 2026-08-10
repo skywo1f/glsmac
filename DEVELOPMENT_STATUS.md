@@ -26,6 +26,8 @@ scenarios, for:
   Power and Thought Control penalties, Network Backbone immunity to the
   Cybernetic penalty, and all Planned, Simple/Green, and Free Market branches
   of the Longevity Vaccine;
+- the Network Backbone adds its base's live commerce receipts and every Network
+  Node on Planet to that base's research output;
 - Voice of Planet unlocks the Ascent to Transcendence for every faction and
   grants bred native life +1 lifecycle;
 - the Hunter-Seeker Algorithm blocks all enemy probe operations against the
@@ -116,7 +118,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 28 complete and 5 partial;
+- all 33 Secret Projects represented: 29 complete and 4 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -150,10 +152,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- the five partial Secret Projects are the Empath Guild, Universal Translator,
-  Network Backbone, Nano Factory, and Space Elevator; the Empath Guild still
-  lacks its +50% council-election vote bonus, and the others' remaining effects
-  and victory-adjacent rules require individual parity audits;
+- the four partial Secret Projects are the Empath Guild, Universal Translator,
+  Nano Factory, and Space Elevator; the Empath Guild still lacks its +50%
+  council-election vote bonus, and the others' remaining effects and
+  victory-adjacent rules require individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -169,7 +171,7 @@ and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 70-case Release GSE matrix passed in one bounded invocation in
-128.38 seconds. Before the loan, sanction, and integrity milestones, all 18
+159.24 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -242,12 +244,12 @@ economy notifications, UI cost and reserve display, and cost-aware AI staging.
 The installed-asset research runtime passed in 8.44 seconds and charged a live
 three-model Transcend adoption exactly 320 energy credits.
 Project-policy coverage validates both Cloning Vats penalty immunities,
-Network Backbone Cybernetic immunity, global Longevity Vaccine drone relief for
-Planned and Simple/Green economics, and its local +50% Free Market economy
-bonus. The five direct project/social/psych/economy/catalog tests, six dependent
+Network Backbone Cybernetic immunity and exact commerce/Network Node lab bonus,
+global Longevity Vaccine drone relief for Planned and Simple/Green economics,
+and its local +50% Free Market economy bonus. The five direct
+project/social/psych/economy/catalog tests, six dependent
 AI/production/support/commerce/research tests, and the 9.32-second installed-
-asset project runtime are green. Network Backbone remains partial because its
-remaining commerce and Network Node lab accounting is not yet exact.
+asset project runtime are green.
 Children's Creche coverage validates its exact local GROWTH and EFFIC ratings,
 the conventional-defender MORALE floor for weak social models, no stacking over
 stronger social morale, native and enemy-occupier exclusions, doubled enemy

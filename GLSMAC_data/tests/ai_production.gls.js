@@ -109,6 +109,8 @@ xenoempathy_dome.production_kind = 'project';
 xenoempathy_dome.global_native_lifecycle_bonus = 1;
 const universal_translator = facility('TheUniversalTranslator', 0, 0, 0, 0, 0.0, 0, 300);
 universal_translator.production_kind = 'project';
+const network_backbone = facility('TheNetworkBackbone', 0, 0, 0, 0, 0.0, 0, 300);
+network_backbone.production_kind = 'project';
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -175,6 +177,7 @@ test.assert(production.score_project(empath_guild, project_ready_context) != nul
 test.assert(production.score_project(pholus_mutagen, project_ready_context) != null);
 test.assert(production.score_project(xenoempathy_dome, project_ready_context) != null);
 test.assert(production.score_project(universal_translator, project_ready_context) != null);
+test.assert(production.score_project(network_backbone, project_ready_context) != null);
 test.assert(
 	production.score_project(universal_translator, project_ready_context) >
 	production.score_project(command_nexus, project_ready_context)
@@ -186,6 +189,13 @@ test.assert(
 test.assert(
 	production.score_project(xenoempathy_dome, project_ready_context) >
 	production.score_project(command_nexus, project_ready_context)
+);
+let strong_backbone_context = context(false, false, false, false, 10);
+strong_backbone_context.can_start_project = true;
+strong_backbone_context.network_backbone_research_bonus = 6;
+test.assert(
+	production.score_project(network_backbone, strong_backbone_context) >
+	production.score_project(network_backbone, project_ready_context)
 );
 let no_datalinks_candidates_context = context(false, false, false, false, 10);
 no_datalinks_candidates_context.can_start_project = true;

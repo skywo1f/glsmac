@@ -64,8 +64,9 @@ const bases = [alpha_low, beta_low, alpha_unmatched, beta_high, alpha_high];
 let callbacks = {};
 let values = {
 	f_technology_get_base_labs: (base) => {
-		return {allocation: 0.4, value: 0, bonus: 0, total: 0};
+		throw Error('commerce ranking must not resolve lab bonuses');
 	},
+	f_technology_get_base_labs_value: (base) => { return 0; },
 	f_technology_get_definition: technologies.get_definition,
 	f_technology_get_total_commerce_bonus: technologies.get_total_commerce_bonus,
 	f_social_get_ratings: (player) => { return {effic: 0}; },
@@ -81,6 +82,7 @@ const game = {
 };
 define_economy(game);
 callbacks.start({});
+test.assert(#is_defined(values.f_economy_get_player_commerce_ledger));
 
 alpha.set_relation(beta, 'pact');
 beta.set_relation(alpha, 'pact');
@@ -91,6 +93,8 @@ test.assert(commerce.partners == [{
 }]);
 test.assert(values.f_economy_get_base_commerce(game, alpha_low).total == 7);
 test.assert(values.f_economy_get_base_commerce(game, alpha_unmatched).total == 0);
+const alpha_ledger = values.f_economy_get_player_commerce_ledger(game, alpha);
+test.assert(alpha_ledger.b1.total == 15);
 test.assert(values.f_economy_get_player_commerce(game, alpha) == 22);
 test.assert(values.f_economy_get_player_commerce(game, beta) == 3);
 test.assert(values.f_economy_get_player(game, alpha) == 124);
