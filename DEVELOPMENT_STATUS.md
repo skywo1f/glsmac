@@ -27,6 +27,8 @@ The Windows x64 Release build has asset-backed automated coverage for:
   of the Longevity Vaccine;
 - Voice of Planet unlocks the Ascent to Transcendence for every faction and
   grants bred native life +1 lifecycle;
+- the Hunter-Seeker Algorithm blocks all enemy probe operations against the
+  owner's bases and units, and AI Probe Teams avoid immune targets;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -96,7 +98,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 24 complete and 9 partial;
+- all 33 Secret Projects represented: 25 complete and 8 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -130,11 +132,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- the nine partial Secret Projects are the Empath Guild, Xenoempathy Dome,
-  Planetary Datalinks, Hunter-Seeker Algorithm, Pholus Mutagen, Universal
-  Translator, Network Backbone, Nano Factory, and Space Elevator; their
-  remaining effects and victory-adjacent rules require individual parity
-  audits;
+- the eight partial Secret Projects are the Empath Guild, Xenoempathy Dome,
+  Planetary Datalinks, Pholus Mutagen, Universal Translator, Network Backbone,
+  Nano Factory, and Space Elevator; their remaining effects and
+  victory-adjacent rules require individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad

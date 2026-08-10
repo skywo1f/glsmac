@@ -83,6 +83,7 @@ const project_effects = {
 		global_police_rating_bonus: 1,
 	},
 	TheLongevityVaccine: {},
+	TheHunterSeekerAlgorithm: {},
 	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
