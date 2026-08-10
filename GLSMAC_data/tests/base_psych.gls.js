@@ -3,7 +3,13 @@ const define_bases = #include('../default/game/bases');
 const callbacks = {};
 const values = {};
 let psych_energy = 2;
+let police_rating = 0;
+let base_units = [];
+const owner = {id: 1};
 values.f_economy_get_base_psych = (game, base) => { return psych_energy; };
+values.f_social_get_ratings = (player) => {
+	return {economy: 0, support: 0, talent: 0, police: police_rating, growth: 0};
+};
 
 const game = {
 	get_bm: () => {
@@ -61,8 +67,12 @@ const laborers = [
 const doctor = make_pop('DOCTOR', false);
 let pops = laborers + [doctor];
 let facilities = [];
+const base_tile = {
+	get_units: () => { return base_units; },
+};
 const base = {
-	get_owner: () => { return {}; },
+	get_owner: () => { return owner; },
+	get_tile: () => { return base_tile; },
 	get_pops: () => { return pops; },
 	get_size: () => { return #sizeof(pops); },
 	get_facilities: () => { return facilities; },
@@ -157,3 +167,95 @@ values.f_base_process_psych(game, base, 10);
 state = values.f_base_get_psych(base);
 test.assert(state.workers == 6 && state.drones == 0 && state.talents == 0);
 test.assert(values.f_base_get_stable_worker_count(base, 0) == 7);
+
+const make_unit = (owner_id, health, offense, ability_ids) => {
+	const def = {offense: offense, abilities: ability_ids};
+	return {
+		owner: owner_id,
+		health: health,
+		get_def: () => { return def; },
+	};
+};
+const normal_police = make_unit(owner.id, 1.0, 1, []);
+const nonlethal_police = make_unit(owner.id, 1.0, 1, ['NonLethalMethods']);
+const dead_police = make_unit(owner.id, 0.0, 1, ['NonLethalMethods']);
+const rival_police = make_unit(2, 1.0, 1, ['NonLethalMethods']);
+const noncombat_unit = make_unit(owner.id, 1.0, 0, ['NonLethalMethods']);
+const reset_laborers = () => {
+	pops = [
+		make_pop('WORKER', true),
+		make_pop('WORKER', true),
+		make_pop('WORKER', true),
+		make_pop('WORKER', true),
+		make_pop('WORKER', true),
+		make_pop('WORKER', true),
+	];
+	facilities = [];
+	psych_energy = 0;
+};
+
+reset_laborers();
+police_rating = 0 - 2;
+base_units = [normal_police];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 3);
+test.assert(state.police == {
+	rating: 0 - 2, unit_limit: 0, unit_multiplier: 1,
+	present_units: 1, used_units: 0, extra_units: 0, suppression: 0,
+});
+
+police_rating = 0 - 1;
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 2 && state.workers == 4);
+test.assert(state.police.suppression == 1 && state.police.used_units == 1);
+
+police_rating = 0;
+base_units = [normal_police, nonlethal_police, normal_police];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 1 && state.police.suppression == 2);
+test.assert(state.police.present_units == 3 && state.police.used_units == 1);
+
+police_rating = 1;
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 0 && state.talents == 0);
+test.assert(state.police.unit_limit == 2 && state.police.suppression == 3);
+
+police_rating = 3;
+base_units = [nonlethal_police];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 0 && state.talents == 0);
+test.assert(state.police.unit_multiplier == 2 && state.police.suppression == 4);
+
+police_rating = 2;
+base_units = [dead_police, rival_police, noncombat_unit];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 3);
+test.assert(state.police.present_units == 0 && state.police.suppression == 0);
+
+police_rating = 0 - 2;
+base_units = [normal_police];
+values.f_project_get_effects = (target_base) => {
+	return {
+		talent_bonus: 0,
+		network_node_drone_modifier: 0,
+		prevent_riots: false,
+		small_base_drone_modifier: 0,
+		police_rating_bonus: 1,
+		extra_police_units: 1,
+	};
+};
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 1);
+test.assert(state.police.rating == 0 - 1 && state.police.extra_units == 1);
+test.assert(state.police.suppression == 2);
+
+values.f_project_get_effects = #undefined;
+police_rating = 0 - 1;
+test.assert(values.f_base_get_stable_worker_count(base, 0) == 5);

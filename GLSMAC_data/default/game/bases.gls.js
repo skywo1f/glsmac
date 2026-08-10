@@ -10,7 +10,7 @@ const DEFAULT_POPULATION_LIMIT = 7;
 const get_social_ratings = (game, player) => {
 	const resolver = #is_defined(game.get) ? game.get('f_social_get_ratings') : #undefined;
 	return #is_defined(resolver) ? resolver(player) : {
-		economy: 0, support: 0, talent: 0, growth: 0,
+		economy: 0, support: 0, talent: 0, police: 0, growth: 0,
 	};
 };
 
@@ -42,6 +42,79 @@ const get_project_effects = (game, base) => {
 		network_node_research_bonus: 0,
 		prevent_riots: false,
 		small_base_drone_modifier: 0,
+		police_rating_bonus: 0,
+		extra_police_units: 0,
+	};
+};
+
+const get_police_rules = (game, player, rating_bonus) => {
+	const resolver = #is_defined(game.get) ? game.get('f_social_get_police_rules') : #undefined;
+	if (#is_defined(resolver)) {
+		return resolver(player, rating_bonus);
+	}
+	const bonus = #is_defined(rating_bonus) ? rating_bonus : 0;
+	const rating = #max(0 - 5, #min(3, get_social_ratings(game, player).police + bonus));
+	let unit_limit = 0;
+	if (rating >= 2) {
+		unit_limit = 3;
+	} else if (rating == 1) {
+		unit_limit = 2;
+	} else if (rating >= 0 - 1) {
+		unit_limit = 1;
+	}
+	return {
+		rating: rating,
+		unit_limit: unit_limit,
+		unit_multiplier: rating >= 3 ? 2 : 1,
+	};
+};
+
+const get_police_state = (game, base) => {
+	const project_effects = get_project_effects(game, base);
+	const owner = #is_defined(base.get_owner) ? base.get_owner() : null;
+	const rating_bonus = #is_defined(project_effects.police_rating_bonus)
+		? project_effects.police_rating_bonus
+		: 0;
+	const rules = owner == null
+		? {rating: 0, unit_limit: 1, unit_multiplier: 1}
+		: get_police_rules(game, owner, rating_bonus);
+	let normal_units = 0;
+	let enhanced_units = 0;
+	if (#is_defined(base.get_tile)) {
+		const tile = base.get_tile();
+		if (tile != null && #is_defined(tile.get_units)) {
+			for (unit of tile.get_units()) {
+				const def = unit.get_def();
+				if (
+					owner != null && unit.owner == owner.id && unit.health > 0.0 &&
+					def.offense > 0
+				) {
+					if (unit_abilities.get_police_effect(unit) > 1) {
+						enhanced_units++;
+					} else {
+						normal_units++;
+					}
+				}
+			}
+		}
+	}
+	const present_units = normal_units + enhanced_units;
+	const used_units = #min(present_units, rules.unit_limit);
+	const used_enhanced_units = #min(enhanced_units, used_units);
+	const used_normal_units = used_units - used_enhanced_units;
+	const extra_units = rules.unit_limit > 0 && #is_defined(project_effects.extra_police_units)
+		? project_effects.extra_police_units
+		: 0;
+	return {
+		rating: rules.rating,
+		unit_limit: rules.unit_limit,
+		unit_multiplier: rules.unit_multiplier,
+		present_units: present_units,
+		used_units: used_units,
+		extra_units: extra_units,
+		suppression: (
+			used_enhanced_units * 2 + used_normal_units + extra_units
+		) * rules.unit_multiplier,
 	};
 };
 
@@ -71,6 +144,7 @@ const get_psych_state = (game, base) => {
 		workers: 0,
 		specialists: 0,
 		psych: game.get('f_economy_get_base_psych')(game, base),
+		police: get_police_state(game, base),
 		is_rioting: false,
 	};
 	for (pop of base.get_pops()) {
@@ -147,6 +221,18 @@ const apply_psych_improvements = (base, improvements) => {
 	}
 };
 
+const suppress_drones = (base, suppression) => {
+	for (pop of base.get_pops()) {
+		if (suppression <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
+			pop.set_type('WORKER');
+			suppression--;
+		}
+	}
+};
+
 const process_psych = (game, base, allocated_psych) => {
 	let laborer_count = 0;
 	let psych = allocated_psych;
@@ -169,6 +255,7 @@ const process_psych = (game, base, allocated_psych) => {
 		}
 		return;
 	}
+	suppress_drones(base, get_police_state(game, base).suppression);
 	apply_psych_improvements(base, effects.talent_bonus);
 	apply_psych_improvements(
 		base,
@@ -353,6 +440,7 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 	if (effects.suppress_psych) {
 		return population;
 	}
+	const police_suppression = get_police_state(game, base).suppression;
 	let result = 0;
 	for (let workers = population; workers >= 0; workers--) {
 		const doctors = population - workers;
@@ -362,6 +450,7 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 		) + effects.talent_bonus;
 		const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
 		let drones = #max(workers - content_citizens, 0);
+		drones -= #min(drones, police_suppression);
 		const pacified = #min(drones, improvements);
 		drones -= pacified;
 		improvements -= pacified;
@@ -783,6 +872,7 @@ return (game) => {
 		game.set('f_base_reset_nutrients', reset_nutrients);
 		game.set('f_base_process_growth', process_growth);
 		game.set('f_base_process_psych', process_psych);
+		game.set('f_base_get_police', (base) => { return get_police_state(game, base); });
 		game.set('f_base_get_psych', (base) => { return get_psych_state(game, base); });
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);

@@ -83,7 +83,10 @@ const project_effects = {
 		global_naval_movement_bonus: 2.0,
 	},
 	TheSupercollider: {research_multiplier: 1.0},
-	TheAsceticVirtues: {global_population_limit_bonus: 2},
+	TheAsceticVirtues: {
+		global_population_limit_bonus: 2,
+		global_police_rating_bonus: 1,
+	},
 	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
@@ -92,7 +95,10 @@ const project_effects = {
 	TheNanoFactory: {global_full_repair: true},
 	TheLivingRefinery: {global_support_bonus: 2},
 	TheCloningVats: {global_growth_rating_bonus: 10},
-	TheSelfAwareColony: {global_maintenance_multiplier: 0.5},
+	TheSelfAwareColony: {
+		global_maintenance_multiplier: 0.5,
+		global_extra_police_units: 1,
+	},
 	ClinicalImmortality: {global_talent_bonus: 1},
 	TheSpaceElevator: {economy_multiplier: 1.0},
 	TheSingularityInductor: {granted_facility: 'QuantumConverter'},
@@ -103,12 +109,10 @@ const project_effects = {
 
 const partial_project_effects = {
 	TheXenoempathyDome: true,
-	TheAsceticVirtues: true,
 	ThePholusMutagen: true,
 	TheNetworkBackbone: true,
 	TheNanoFactory: true,
 	TheCloningVats: true,
-	TheSelfAwareColony: true,
 	TheSpaceElevator: true,
 	TheTelepathicMatrix: true,
 };

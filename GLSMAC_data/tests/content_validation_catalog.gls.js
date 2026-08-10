@@ -11,14 +11,16 @@ test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native)
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
 test.assert(content.get_facility(catalog, 'AerospaceComplex').data.full_repair_air);
+test.assert(content.get_facility(catalog, 'TheAsceticVirtues').data.global_police_rating_bonus == 1);
+test.assert(content.get_facility(catalog, 'TheSelfAwareColony').data.global_extra_police_units == 1);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
 	complete_facilities: 17,
 	partial_facilities: 14,
 	implemented_projects: 33,
-	complete_projects: 18,
-	partial_projects: 15,
+	complete_projects: 20,
+	partial_projects: 13,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

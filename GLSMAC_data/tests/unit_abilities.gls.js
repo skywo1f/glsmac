@@ -14,6 +14,8 @@ test.assert(abilities.get_support_cost(unit_def([])) == 1);
 test.assert(abilities.get_support_cost(unit(['CleanReactor'])) == 0);
 test.assert(abilities.get_morale_bonus(unit_def([])) == 0);
 test.assert(abilities.get_morale_bonus(unit_def(['HighMorale'])) == 1);
+test.assert(abilities.get_police_effect(unit_def([])) == 1);
+test.assert(abilities.get_police_effect(unit(['NonLethalMethods'])) == 2);
 
 test.assert(abilities.get_terraforming_rate_multiplier(unit_def([]), 'farm') == 1.0);
 test.assert(

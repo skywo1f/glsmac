@@ -397,6 +397,8 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( bool, full_repair_air, def, "full_repair_air", Bool, false );
 				N_GETPROP_OPT( bool, full_repair_native, def, "full_repair_native", Bool, false );
 				N_GETPROP_OPT( int64_t, defender_morale_bonus, def, "defender_morale_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_police_rating_bonus, def, "global_police_rating_bonus", Int, 0 );
+				N_GETPROP_OPT( int64_t, global_extra_police_units, def, "global_extra_police_units", Int, 0 );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -476,6 +478,10 @@ WRAPIMPL_BEGIN( BaseManager )
 					forest_energy_bonus > base::FacilityDef::MAX_RESOURCE_BONUS ||
 					defender_morale_bonus < 0 ||
 					defender_morale_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					global_police_rating_bonus < 0 ||
+					global_police_rating_bonus > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
+					global_extra_police_units < 0 ||
+					global_extra_police_units > base::FacilityDef::MAX_UNIT_MORALE_BONUS ||
 					global_terraforming_rate_multiplier < 1.0f ||
 					global_terraforming_rate_multiplier > base::FacilityDef::MAX_DEFENSE_MULTIPLIER ||
 					new_base_population < 0 ||
@@ -521,7 +527,9 @@ WRAPIMPL_BEGIN( BaseManager )
 						global_psi_attack_multiplier != 1.0f ||
 						global_psi_defense_multiplier != 1.0f ||
 						global_naval_movement_bonus != 0.0f ||
-						global_full_repair
+						global_full_repair ||
+						global_police_rating_bonus != 0 ||
+						global_extra_police_units != 0
 					)
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid base facility definition: " + id );
@@ -586,7 +594,9 @@ WRAPIMPL_BEGIN( BaseManager )
 					full_repair_water,
 					full_repair_air,
 					full_repair_native,
-					defender_morale_bonus
+					defender_morale_bonus,
+					global_police_rating_bonus,
+					global_extra_police_units
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

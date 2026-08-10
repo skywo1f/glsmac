@@ -19,10 +19,12 @@ The Windows x64 Release build has asset-backed automated coverage for:
   assignment, production queues, support, and persistent social engineering;
 - all 16 original social models, original-faction rating modifiers and immunity,
   technology gating, human selection UI, and strategy-weighted AI selection;
-- social ECONOMY, SUPPORT, TALENT, MORALE, GROWTH, INDUSTRY, and RESEARCH
+- social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
-  low-MORALE halving of conventional unit training bonuses;
+  low-MORALE halving of conventional unit training bonuses; POLICE includes
+  original garrison limits, +3 doubled control, Non-Lethal Methods, Ascetic
+  Virtues, Self-Aware Colony, AI worker stability, and base-screen diagnostics;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   Children's Creche bonuses, no-headquarters fallback, and starting capitals;
 - Headquarters relocation by production, faction-wide runtime uniqueness,
@@ -89,8 +91,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
   vendetta/council consequences for major atrocities;
-- remaining social effects: adoption costs and full police and away-unit
-  behavior;
+- remaining social effects: adoption costs and POLICE penalties for military
+  units away from friendly territory; exact away-unit accounting remains
+  dependent on the absent territorial-ownership/border system;
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
@@ -153,6 +156,14 @@ embargoes, suspended peaceful repayments, atrocity imposition and rollback,
 post-economy yearly expiry, AI commerce-cost awareness, UI status loading, and
 network snapshot restoration. The sanction-aware asset-backed Probe Team smoke
 passed in 7.03 seconds.
+
+POLICE coverage validates the full -5 through +3 garrison table, disabled and
+one/two/three-unit limits, the +3 doubled effect, Non-Lethal Methods priority,
+dead/foreign/noncombat exclusion, drone-only suppression, AI stable-worker
+selection, Ascetic Virtues, and Self-Aware Colony. The native definition and
+legacy-serialization suite, seven focused Release tests, and the installed-asset
+research/project runtime are green for this milestone. Away-unit drones are not
+claimed because GLSMAC does not yet model faction territory outside bases.
 Integrity coverage verifies the original eight status labels, treaty and pact
 penalties, aggressor-only changes, saturation, reversible declaration and
 detected-probe paths, AI agreement and loan trust, UI status loading, native

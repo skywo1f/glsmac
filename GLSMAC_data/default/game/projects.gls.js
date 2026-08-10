@@ -17,6 +17,8 @@ const empty_effects = () => {
 		psi_defense_multiplier: 1.0,
 		naval_movement_bonus: 0.0,
 		full_repair: false,
+		police_rating_bonus: 0,
+		extra_police_units: 0,
 	};
 };
 
@@ -85,6 +87,16 @@ const get_player_effects = (game, player) => {
 		);
 		result.full_repair = result.full_repair || (
 			#is_defined(project.global_full_repair) && project.global_full_repair
+		);
+		result.police_rating_bonus = result.police_rating_bonus + (
+			#is_defined(project.global_police_rating_bonus)
+				? project.global_police_rating_bonus
+				: 0
+		);
+		result.extra_police_units = result.extra_police_units + (
+			#is_defined(project.global_extra_police_units)
+				? project.global_extra_police_units
+				: 0
 		);
 	}
 	return result;

@@ -245,6 +245,8 @@
 			const tree_farm = game.get_bm().get_facility_def('TreeFarm');
 			const hybrid_forest = game.get_bm().get_facility_def('HybridForest');
 			const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
+			const ascetic_virtues = game.get_bm().get_facility_def('TheAsceticVirtues');
+			const self_aware_colony = game.get_bm().get_facility_def('TheSelfAwareColony');
 			if (
 				recycling_tanks.id != 'RecyclingTanks' ||
 				recycling_tanks.production_kind != 'facility' ||
@@ -275,6 +277,8 @@
 				recycling_tanks.native_lifecycle_bonus != 0 ||
 				recycling_tanks.defender_morale_bonus != 0 ||
 				headquarters.defender_morale_bonus != 1 ||
+				ascetic_virtues.global_police_rating_bonus != 1 ||
+				self_aware_colony.global_extra_police_units != 1 ||
 				recreation_commons.psych_bonus != 0 ||
 				recreation_commons.drone_modifier != -2 ||
 				recreation_commons.required_technology != 'SocialPsych' ||

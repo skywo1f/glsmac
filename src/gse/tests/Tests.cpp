@@ -793,6 +793,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy_facility_parsed->m_native_lifecycle_bonus == 0,
 					"legacy facility definition gained a growth or lifecycle effect"
 				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_global_police_rating_bonus == 0 &&
+					legacy_facility_parsed->m_global_extra_police_units == 0,
+					"legacy facility definition gained a police effect"
+				);
 
 				const auto make_unit_def = [](
 					const int64_t mineral_cost,

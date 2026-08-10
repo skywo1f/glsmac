@@ -1,3 +1,16 @@
+const refresh_player_psych = (game, player) => {
+	const get_psych = game.get('f_economy_get_base_psych');
+	const process_psych = game.get('f_base_process_psych');
+	if (!#is_defined(get_psych) || !#is_defined(process_psych)) {
+		return;
+	}
+	for (base of game.get_bm().get_bases()) {
+		if (base.get_owner().id == player.id) {
+			process_psych(game, base, get_psych(game, base));
+		}
+	}
+};
+
 return {
 
 	validate: (e) => {
@@ -20,6 +33,7 @@ return {
 	apply: (e) => {
 		const previous = e.data.player.get_social_engineering();
 		e.data.player.set_social_engineering(e.data.choices);
+		refresh_player_psych(e.game, e.data.player);
 		e.game.trigger('social_engineering_updated', {
 			player: e.data.player,
 		});
@@ -28,6 +42,7 @@ return {
 
 	rollback: (e) => {
 		e.data.player.set_social_engineering(e.applied);
+		refresh_player_psych(e.game, e.data.player);
 		e.game.trigger('social_engineering_updated', {
 			player: e.data.player,
 		});

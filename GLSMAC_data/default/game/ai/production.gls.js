@@ -198,7 +198,8 @@ const score_project = (def, context) => {
 		def.new_base_population > 0 || def.small_base_drone_modifier != 0 ||
 		def.global_psi_attack_multiplier > 1.0 ||
 		def.global_psi_defense_multiplier > 1.0 ||
-		def.global_naval_movement_bonus > 0.0 || def.global_full_repair;
+		def.global_naval_movement_bonus > 0.0 || def.global_full_repair ||
+		def.global_police_rating_bonus > 0 || def.global_extra_police_units > 0;
 	if (!has_effect) {
 		return null;
 	}
@@ -217,7 +218,9 @@ const score_project = (def, context) => {
 		#round((def.global_psi_attack_multiplier - 1.0) * 60000.0) +
 		#round((def.global_psi_defense_multiplier - 1.0) * 60000.0) +
 		#round(def.global_naval_movement_bonus * 20000.0) +
-		(def.global_full_repair ? 40000 : 0);
+		(def.global_full_repair ? 40000 : 0) +
+		def.global_police_rating_bonus * 30000 +
+		def.global_extra_police_units * 30000;
 };
 
 const score_hurry = (def, context) => {

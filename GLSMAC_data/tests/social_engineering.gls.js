@@ -1,10 +1,17 @@
 const define_social_engineering = #include('../default/game/social_engineering');
+const set_social_engineering = #include('../default/game/event/set_social_engineering');
 
 const callbacks = {};
 const values = {};
+let bases = [];
+let triggers = [];
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
+	get: (name) => { return values[name]; },
+	get_bm: () => { return {get_bases: () => { return bases; }}; },
+	is_turn_complete: (player_id) => { return false; },
+	trigger: (name, data) => { triggers :+{name: name, data: data}; },
 };
 define_social_engineering(game);
 callbacks.start({});
@@ -18,7 +25,9 @@ let choices = {
 let technologies = {};
 let faction_id = 'GAIANS';
 const player = {
+	id: 1,
 	get_social_engineering: () => { return choices; },
+	set_social_engineering: (value) => { choices = value; },
 	get_faction: () => { return {id: faction_id}; },
 	has_technology: (id) => { return #is_defined(technologies[id]); },
 };
@@ -117,3 +126,52 @@ test.assert(values.f_social_get_new_base_minerals(player) == 0);
 
 choices.politics = 'Frontier';
 test.assert(values.f_social_get_new_base_minerals(player) == 10);
+
+let police = values.f_social_get_police_rules(player, 0 - 100);
+test.assert(police == {rating: 0 - 5, unit_limit: 0, unit_multiplier: 1});
+police = values.f_social_get_police_rules(player, 0 - 1);
+test.assert(police == {rating: 0 - 1, unit_limit: 1, unit_multiplier: 1});
+police = values.f_social_get_police_rules(player, 0);
+test.assert(police == {rating: 0, unit_limit: 1, unit_multiplier: 1});
+police = values.f_social_get_police_rules(player, 1);
+test.assert(police == {rating: 1, unit_limit: 2, unit_multiplier: 1});
+police = values.f_social_get_police_rules(player, 2);
+test.assert(police == {rating: 2, unit_limit: 3, unit_multiplier: 1});
+police = values.f_social_get_police_rules(player, 100);
+test.assert(police == {rating: 3, unit_limit: 3, unit_multiplier: 2});
+
+technologies.DoctrineLoyalty = true;
+const original_choices = choices;
+const owned_base = {get_owner: () => { return player; }};
+const rival_base = {get_owner: () => { return {id: 2}; }};
+bases = [owned_base, rival_base];
+let refreshed_ratings = [];
+values.f_economy_get_base_psych = (target_game, target_base) => {
+	test.assert(target_game == game && target_base == owned_base);
+	return 3;
+};
+values.f_base_process_psych = (target_game, target_base, psych) => {
+	test.assert(target_game == game && target_base == owned_base && psych == 3);
+	refreshed_ratings :+values.f_social_get_ratings(player).police;
+};
+const social_event = {
+	caller: player.id,
+	game: game,
+	data: {
+		player: player,
+		choices: {
+			politics: 'PoliceState',
+			economics: 'Simple',
+			values: 'Survival',
+			future_society: 'None',
+		},
+	},
+};
+test.assert(!#is_defined(set_social_engineering.validate(social_event)));
+social_event.applied = set_social_engineering.apply(social_event);
+test.assert(choices.politics == 'PoliceState');
+test.assert(refreshed_ratings == [2]);
+set_social_engineering.rollback(social_event);
+test.assert(choices == original_choices);
+test.assert(refreshed_ratings == [2, 0]);
+test.assert(#sizeof(triggers) == 2);

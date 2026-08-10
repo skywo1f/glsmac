@@ -28,6 +28,7 @@ return {
 			['DRONES', state.drones],
 			['SPECIALISTS', state.specialists],
 			['PSYCH ENERGY', state.psych],
+			['POLICE CONTROL', state.police.suppression],
 		];
 		let top = 62;
 		for (row of rows) {

@@ -65,6 +65,8 @@ const facility_fields = {
 	global_psi_defense_multiplier: true,
 	global_naval_movement_bonus: true,
 	global_full_repair: true,
+	global_police_rating_bonus: true,
+	global_extra_police_units: true,
 };
 
 const facility_manifest_fields = {
@@ -509,6 +511,8 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_number(data, 'global_psi_defense_multiplier', path, errors, false, 1.0, 10.0);
 		validate_number(data, 'global_naval_movement_bonus', path, errors, false, 0.0, 10.0);
 		validate_bool(data, 'global_full_repair', path, errors, false);
+		validate_int(data, 'global_police_rating_bonus', path, errors, false, 0, 10);
+		validate_int(data, 'global_extra_police_units', path, errors, false, 0, 10);
 		validate_string(data, 'name', path, errors, true);
 		validate_int(data, 'mineral_cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_int(data, 'nutrient_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
@@ -632,7 +636,15 @@ const validate_facilities = (facilities, technologies, errors) => {
 				#is_defined(data.global_naval_movement_bonus) &&
 				data.global_naval_movement_bonus > 0.0
 			) ||
-			(#is_defined(data.global_full_repair) && data.global_full_repair);
+			(#is_defined(data.global_full_repair) && data.global_full_repair) ||
+			(
+				#is_defined(data.global_police_rating_bonus) &&
+				data.global_police_rating_bonus > 0
+			) ||
+			(
+				#is_defined(data.global_extra_police_units) &&
+				data.global_extra_police_units > 0
+			);
 		if (!has_effect && !(#is_defined(data.is_project) && data.is_project)) {
 			add_error(errors, path, 'has no implemented gameplay effect');
 		}

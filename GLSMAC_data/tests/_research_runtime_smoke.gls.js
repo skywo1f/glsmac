@@ -369,6 +369,8 @@
 					project_effects.psi_attack_multiplier != 1.5 ||
 					project_effects.psi_defense_multiplier != 1.5 ||
 					project_effects.naval_movement_bonus != 2.0 ||
+					project_effects.police_rating_bonus != 1 ||
+					project_effects.extra_police_units != 1 ||
 					!project_effects.full_repair ||
 					!project_effects.prevent_riots ||
 					!#is_defined(effective_ids.CommandCenter) ||

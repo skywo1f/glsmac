@@ -23,6 +23,8 @@ const project = {
 	global_psi_defense_multiplier: 1.25,
 	global_naval_movement_bonus: 2.0,
 	global_full_repair: true,
+	global_police_rating_bonus: 1,
+	global_extra_police_units: 2,
 };
 
 const owner = {id: 1};
@@ -76,6 +78,8 @@ test.assert(values.f_project_get_effects(target_base) == {
 	psi_defense_multiplier: 1.25,
 	naval_movement_bonus: 2.0,
 	full_repair: true,
+	police_rating_bonus: 1,
+	extra_police_units: 2,
 });
 test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);

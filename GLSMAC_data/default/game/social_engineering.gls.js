@@ -217,6 +217,27 @@ const get_support_cost = (player) => {
 	return get_ratings(player).support <= 0 - 4 ? 2 : 1;
 };
 
+const get_police_rules = (player, rating_bonus) => {
+	const bonus = #is_defined(rating_bonus) ? rating_bonus : 0;
+	const rating = #max(
+		RATING_LIMITS.police.min,
+		#min(RATING_LIMITS.police.max, get_ratings(player).police + bonus)
+	);
+	let unit_limit = 0;
+	if (rating >= 2) {
+		unit_limit = 3;
+	} else if (rating == 1) {
+		unit_limit = 2;
+	} else if (rating >= 0 - 1) {
+		unit_limit = 1;
+	}
+	return {
+		rating: rating,
+		unit_limit: unit_limit,
+		unit_multiplier: rating >= 3 ? 2 : 1,
+	};
+};
+
 const get_free_support = (player, base_size) => {
 	const support = get_ratings(player).support;
 	if (support <= 0 - 3) { return 0; }
@@ -294,6 +315,7 @@ return (game) => {
 		game.set('f_social_get_available_choices', get_available_choices);
 		game.set('f_social_get_mineral_cost', get_mineral_cost);
 		game.set('f_social_get_support_cost', get_support_cost);
+		game.set('f_social_get_police_rules', get_police_rules);
 		game.set('f_social_get_free_support', get_free_support);
 		game.set('f_social_get_new_base_minerals', get_new_base_minerals);
 		game.set('f_social_get_unit_training_morale_bonus', get_unit_training_morale_bonus);

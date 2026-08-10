@@ -60,6 +60,8 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 		global_psi_defense_multiplier: 1.0,
 		global_naval_movement_bonus: 0.0,
 		global_full_repair: false,
+		global_police_rating_bonus: 0,
+		global_extra_police_units: 0,
 	};
 };
 
