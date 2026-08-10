@@ -31,6 +31,14 @@
 		const game = e.game;
 		game.on('start_ui', (e) => {
 			const player = game.get_player();
+			const get_owned_base = (owner) => {
+				for (base of game.get_bm().get_bases()) {
+					if (base.get_owner().id == owner.id) {
+						return base;
+					}
+				}
+				return null;
+			};
 			let other = null;
 			for (candidate of game.get_players()) {
 				if (candidate.id != player.id) {
@@ -74,6 +82,18 @@
 						},
 						'accepted treaty did not become bilateral',
 						() => {
+							const commerce_base = get_owned_base(player);
+							const commerce = commerce_base == null
+								? null
+								: game.get('f_economy_get_base_commerce')(game, commerce_base);
+							if (
+								commerce == null || #sizeof(commerce.partners) != 1 ||
+								commerce.partners[0].player_id != other.id ||
+								commerce.partners[0].relation != 'treaty'
+							) {
+								fail('accepted treaty did not establish base commerce');
+								return;
+							}
 							let offered_technology = '';
 							for (id of player.get_research_state().technologies) {
 								if (!other.has_technology(id)) {
@@ -131,9 +151,19 @@
 												},
 												'vendetta did not become bilateral',
 												() => {
+													const ended_commerce = game.get(
+														'f_economy_get_base_commerce'
+													)(game, get_owned_base(player));
+													if (
+														ended_commerce.total != 0 ||
+														#sizeof(ended_commerce.partners) != 0
+													) {
+														fail('vendetta did not end base commerce');
+														return;
+													}
 													finished = true;
 													#print(
-														'DIPLOMACY_RUNTIME_PASS: treaty, reciprocal trade, and vendetta'
+														'DIPLOMACY_RUNTIME_PASS: treaty commerce, reciprocal trade, and vendetta'
 													);
 													glsmac.exit();
 												}

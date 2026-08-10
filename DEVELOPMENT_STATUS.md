@@ -39,6 +39,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - persistent structured energy and technology trade offers, atomic reversible
   settlement, human negotiation controls, and relation-, strength-, and
   value-aware AI proposals and responses;
+- original-SMAC base-paired commerce income for reciprocal treaties and pacts,
+  including imported economic-technology flags, ECONOMY and Morgan bonuses,
+  deterministic per-partner base diagnostics, and AI research valuation;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
   energy drain, drone riots, researcher assassination, genetic plague, unit
@@ -68,15 +71,16 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including commerce income, loans and repayment, map and
-  commlink exchanges, reputation, surrender, council elections, diplomatic
-  victory, and richer bundled or counteroffers;
+- deeper diplomacy including loans and repayment, map and commlink exchanges,
+  reputation and commerce sanctions, surrender, council elections, diplomatic
+  victory, Global Trade Pact/Governor commerce modifiers, and richer bundled
+  or counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and global
   diplomatic/reputation consequences for atrocities;
-- remaining social effects: adoption costs, commerce thresholds, and full
-  police and away-unit behavior;
+- remaining social effects: adoption costs and full police and away-unit
+  behavior;
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
@@ -97,12 +101,12 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 82 cases: 64 isolated native/script GSE tests
+The Release CTest matrix contains 83 cases: 65 isolated native/script GSE tests
 and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 64-case Release GSE matrix passed in one bounded invocation in
-117.72 seconds. All 18 asset-backed runtime scenarios also passed against an
+The current 65-case Release GSE matrix passed in one bounded invocation in
+115.42 seconds. All 18 asset-backed runtime scenarios also passed against an
 installed Planetary Pack in three bounded invocations: the live probe scenario
 in 7.46 seconds, six gameplay and snapshot scenarios in 92.70 seconds, and the
 remaining eleven content and AI scenarios in 544.16 seconds. The
@@ -117,9 +121,17 @@ asset-backed treaty/reciprocal-technology-trade/vendetta quickstart, and a
 running-game reconnect. Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed
-quickstart covering the live production gate and unit subversion. The expanded
+quickstart covering the live production gate and unit subversion. The preceding
 82-case matrix is green across bounded invocations, but has not been run as one
 invocation.
+
+Commerce coverage validates the original base-ranking and pairing formula,
+asymmetric technology benefits, treaty/pact scaling, social and faction
+bonuses, unmatched bases, reciprocal-relation requirements, Progenitor
+exclusion, player-income aggregation, AI research valuation, and base-screen
+loading.
+The installed-asset diplomacy quickstart also verifies that treaty commerce is
+created and a later vendetta removes it.
 
 After the Headquarters relocation and capture rules were added, all 64 GSE
 cases passed again, and the installed-asset general gameplay and AI runtime

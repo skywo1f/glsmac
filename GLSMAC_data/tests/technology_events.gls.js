@@ -7,6 +7,7 @@ test.assert(biogenetics == {
 	id: 'Biogenetics',
 	name: 'Biogenetics',
 	cost: 30,
+	commerce_bonus: 0,
 	prerequisites: [],
 });
 test.assert(technologies.get_definition('CentauriEcology').prerequisites == []);

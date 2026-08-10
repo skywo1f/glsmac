@@ -4,6 +4,7 @@ const technology_fields = {
 	id: true,
 	name: true,
 	cost: true,
+	commerce_bonus: true,
 	prerequisites: true,
 };
 
@@ -360,6 +361,7 @@ const validate_technologies = (definitions, order, errors) => {
 		}
 		validate_string(definition, 'name', path, errors, true);
 		validate_int(definition, 'cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
+		validate_int(definition, 'commerce_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		if (#typeof(definition.prerequisites) != 'Array') {
 			add_error(errors, path + '.prerequisites', 'must be an array');
 			graph_is_valid = false;

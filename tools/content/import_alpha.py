@@ -34,6 +34,7 @@ class TechnologyRow:
     name: str
     code: str
     prerequisite_codes: tuple[str, ...]
+    flags: int
 
 
 @dataclass(frozen=True)
@@ -141,7 +142,7 @@ def read_technologies(path: Path) -> list[TechnologyRow]:
     technologies: list[TechnologyRow] = []
     for line in read_section(path, "TECHNOLOGY"):
         row = next(csv.reader([line], skipinitialspace=True))
-        if len(row) < 8:
+        if len(row) < 9:
             raise ValueError(f"invalid TECHNOLOGY row: {line}")
         name = row[0].strip()
         if name.lower() == "deleted" or name.startswith("User Technology "):
@@ -154,6 +155,7 @@ def read_technologies(path: Path) -> list[TechnologyRow]:
                 name=name,
                 code=row[1].strip(),
                 prerequisite_codes=prerequisite_codes,
+                flags=int(row[8].strip(), 2),
             )
         )
     return technologies
@@ -303,6 +305,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
 
     prerequisites: dict[str, tuple[str, ...]] = {}
     names: dict[str, str] = {}
+    commerce_bonuses: dict[str, int] = {}
     order: list[str] = []
     for row in rows:
         technology_id = code_to_id[row.code]
@@ -316,6 +319,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
             ) from exc
         prerequisites[technology_id] = prerequisite_ids
         names[technology_id] = row.name
+        commerce_bonuses[technology_id] = 1 if row.flags & (1 << 2) else 0
         order.append(technology_id)
 
     tiers: dict[str, int] = {}
@@ -358,6 +362,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
                 f"\t\tid: {quote(technology_id)},",
                 f"\t\tname: {quote(names[technology_id])},",
                 f"\t\tcost: {cost},",
+                f"\t\tcommerce_bonus: {commerce_bonuses[technology_id]},",
                 f"\t\tprerequisites: [{prerequisite_list}],",
                 "\t},",
             ]

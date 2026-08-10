@@ -1,7 +1,7 @@
 const research = #include('../default/game/ai/research');
 
 const technology = (id, cost) => {
-	return {id: id, cost: cost};
+	return {id: id, cost: cost, commerce_bonus: 0};
 };
 const unit = (id, required_technology, offense, defense, movement, can_found_base, can_terraform) => {
 	return {
@@ -98,6 +98,13 @@ low_development_context.priorities = {development: 0};
 test.assert(
 	research.score_technology(economics, [], [energy_bank], development_context) >
 	research.score_technology(economics, [], [energy_bank], low_development_context)
+);
+
+const trade_technology = technology('Trade', 70);
+trade_technology.commerce_bonus = 1;
+test.assert(
+	research.score_technology(trade_technology, [], [], development_context) >
+	research.score_technology(trade_technology, [], [], low_development_context)
 );
 
 const secrets = technology('Secrets', 80);

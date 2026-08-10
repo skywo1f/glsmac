@@ -9,18 +9,25 @@ player = {
 	id: 1,
 	energy_credits: 5,
 	set_energy_credits: (value) => { player.energy_credits = value; },
+	get_research_state: () => { return {technologies: []}; },
+	get_faction: () => { return {is_progenitor: false}; },
+	get_diplomatic_relation: (other) => { return 'neutral'; },
 };
 let other_player = null;
 other_player = {
 	id: 2,
 	energy_credits: 0,
 	set_energy_credits: (value) => { other_player.energy_credits = value; },
+	get_research_state: () => { return {technologies: []}; },
+	get_faction: () => { return {is_progenitor: false}; },
+	get_diplomatic_relation: (other) => { return 'neutral'; },
 };
 let positive_economy_multiplier = 0.0;
 let positive_psych_multiplier = 0.0;
 const positive_tile = {distance: 0};
 const deficit_tile = {distance: 1};
 const positive_base = {
+	id: 1,
 	get_owner: () => { return player; },
 	get_tile: () => { return positive_tile; },
 	get_intake: () => { return {ENERGY: 10}; },
@@ -33,6 +40,7 @@ const positive_base = {
 	}]; },
 };
 const deficit_base = {
+	id: 2,
 	get_owner: () => { return player; },
 	get_tile: () => { return deficit_tile; },
 	get_intake: () => { return {ENERGY: 2}; },
@@ -53,6 +61,9 @@ let values = {
 		};
 	},
 	f_social_get_ratings: (owner) => { return {effic: efficiency_rating}; },
+	f_social_get_commerce_bonus: (owner) => { return 0; },
+	f_technology_get_definition: (id) => { return null; },
+	f_technology_get_total_commerce_bonus: () => { return 6; },
 };
 let events = [];
 let economy_bases = [positive_base, deficit_base];
@@ -93,6 +104,7 @@ positive_economy_multiplier = 0.0;
 let has_creche = false;
 const remote_tile = {distance: 8};
 const remote_base = {
+	id: 3,
 	get_owner: () => { return player; },
 	get_tile: () => { return remote_tile; },
 	get_intake: () => { return {ENERGY: 32}; },
@@ -219,11 +231,15 @@ poor_player = {
 	id: 3,
 	energy_credits: 0,
 	set_energy_credits: (value) => { poor_player.energy_credits = value; },
+	get_research_state: () => { return {technologies: []}; },
+	get_faction: () => { return {is_progenitor: false}; },
+	get_diplomatic_relation: (other) => { return 'neutral'; },
 };
 const network_node = {id: 'NetworkNode', energy_maintenance: 1, psych_bonus: 0};
 const poor_base = {
 	id: 9,
 	get_owner: () => { return poor_player; },
+	get_tile: () => { return {distance: 0}; },
 	get_intake: () => { return {ENERGY: 0}; },
 	get_consumption: () => { return {ENERGY: poor_has_node ? 2 : 1}; },
 	get_facilities: () => { return poor_has_node ? [network_node] : []; },
@@ -239,6 +255,9 @@ let poor_values = {
 	},
 	f_economy_get_base_psych: (game, base) => { return 0; },
 	f_base_process_psych: (game, base, psych) => {},
+	f_social_get_commerce_bonus: (owner) => { return 0; },
+	f_technology_get_definition: (id) => { return null; },
+	f_technology_get_total_commerce_bonus: () => { return 6; },
 };
 let poor_events = [];
 let poor_game = null;
@@ -251,6 +270,7 @@ poor_game = {
 		get_facility_def: (id) => { return network_node; },
 	}; },
 	get_players: () => { return [poor_player]; },
+	get_tm: () => { return {get_distance: (from, to) => { return 0; }}; },
 	is_master: () => { return true; },
 	trigger: (name, data) => {
 		test.assert(name == 'economy_updated' && data.player == poor_player);

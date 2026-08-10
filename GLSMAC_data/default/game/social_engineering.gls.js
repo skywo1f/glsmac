@@ -107,6 +107,10 @@ const faction_immunities = {
 	HIVE: {effic: true},
 };
 
+const faction_commerce_bonuses = {
+	MORGANITES: 1,
+};
+
 const choices_by_category = {};
 for (category of categories) {
 	let choices = {};
@@ -261,6 +265,22 @@ const get_tile_energy_bonus = (player) => {
 	return get_ratings(player).economy >= 2 ? 1 : 0;
 };
 
+const get_commerce_bonus = (player) => {
+	const faction_id = get_faction_id(player);
+	let bonus = #is_defined(faction_commerce_bonuses[faction_id])
+		? faction_commerce_bonuses[faction_id]
+		: 0;
+	const economy = get_ratings(player).economy;
+	if (economy >= 5) {
+		bonus += 3;
+	} else if (economy == 4) {
+		bonus += 2;
+	} else if (economy == 3) {
+		bonus += 1;
+	}
+	return bonus;
+};
+
 const get_research_multiplier = (player) => {
 	return 1.0 + #to_float(get_ratings(player).research) * 0.1;
 };
@@ -280,6 +300,7 @@ return (game) => {
 		game.set('f_social_get_morale_bonus', get_morale_bonus);
 		game.set('f_social_get_economy_base_bonus', get_economy_base_bonus);
 		game.set('f_social_get_tile_energy_bonus', get_tile_energy_bonus);
+		game.set('f_social_get_commerce_bonus', get_commerce_bonus);
 		game.set('f_social_get_research_multiplier', get_research_multiplier);
 	});
 };

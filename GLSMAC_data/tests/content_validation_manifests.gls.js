@@ -21,8 +21,8 @@ test.assert(content.validator.validate(invalid).errors == [
 const cyclic = content.validator.validate({
 	technologies: {
 		definitions: {
-			Alpha: {id: 'Alpha', name: 'Alpha', cost: 10, prerequisites: ['Beta']},
-			Beta: {id: 'Beta', name: 'Beta', cost: 10, prerequisites: ['Alpha']},
+			Alpha: {id: 'Alpha', name: 'Alpha', cost: 10, commerce_bonus: 0, prerequisites: ['Beta']},
+			Beta: {id: 'Beta', name: 'Beta', cost: 10, commerce_bonus: 0, prerequisites: ['Alpha']},
 		},
 		order: ['Alpha', 'Beta'],
 	},

@@ -84,6 +84,7 @@ test.assert(values.f_social_get_morale_bonus(player, false) == 1);
 test.assert(values.f_social_get_morale_bonus(player, true) == 2);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 0 - 1);
 test.assert(values.f_social_get_tile_energy_bonus(player) == 0);
+test.assert(values.f_social_get_commerce_bonus(player) == 0);
 test.assert(values.f_social_get_research_multiplier(player) == 1.2);
 
 choices = {
@@ -100,6 +101,7 @@ test.assert(ratings.morale == 0 - 4);
 test.assert(values.f_social_get_mineral_cost(player, 40) == 28);
 test.assert(values.f_social_get_economy_base_bonus(player, false) == 4);
 test.assert(values.f_social_get_tile_energy_bonus(player) == 1);
+test.assert(values.f_social_get_commerce_bonus(player) == 4);
 test.assert(values.f_social_get_unit_training_morale_bonus(player, 4) == 2);
 test.assert(values.f_social_get_unit_training_morale_bonus(player, 1) == 0);
 

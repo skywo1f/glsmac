@@ -145,9 +145,9 @@ return {
 				// TODO
 			});
 		} else {
-			this.sections.economy.set_commerce({
-				// TODO
-			});
+			this.sections.economy.set_commerce(
+				game.get('f_economy_get_base_commerce')(game, base)
+			);
 		}
 
 		this.sections.game_state.set({

@@ -38,6 +38,14 @@ const get_next_target = (known) => {
 	return #sizeof(available) == 0 ? '' : available[0];
 };
 
+const get_total_commerce_bonus = () => {
+	let result = 0;
+	for (id of technology_order) {
+		result += definitions[id].commerce_bonus;
+	}
+	return result;
+};
+
 const get_initial_state = (player, choose_target) => {
 	let known = [];
 	for (id of player.get_faction().get_starting_technologies()) {
@@ -114,6 +122,7 @@ return {
 	get_definition: get_definition,
 	get_available_targets: get_available_targets,
 	get_next_target: get_next_target,
+	get_total_commerce_bonus: get_total_commerce_bonus,
 	get_initial_state: get_initial_state,
 	get_base_labs: get_base_labs,
 	get_player_labs: get_player_labs,
@@ -139,6 +148,7 @@ return {
 				return available[0];
 			};
 			game.set('f_technology_get_definition', get_definition);
+			game.set('f_technology_get_total_commerce_bonus', get_total_commerce_bonus);
 			game.set('f_technology_get_base_labs', (base) => { return get_base_labs(base, game); });
 			game.set('f_technology_get_next_target', choose_next_target);
 			game.set('f_technology_get_player_labs', get_player_labs);

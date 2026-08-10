@@ -6,6 +6,11 @@ const get_priority = (context, name, fallback) => {
 
 const score_technology = (technology, unit_defs, facility_defs, context) => {
 	let score = 1000 - technology.cost;
+	const development_priority = get_priority(context, 'development', 100);
+	const commerce_bonus = #is_defined(technology.commerce_bonus)
+		? technology.commerce_bonus
+		: 0;
+	score += commerce_bonus * (2000 + development_priority * 40);
 	for (def of unit_defs) {
 		if (def.required_technology != technology.id) {
 			continue;
@@ -38,7 +43,6 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		if (def.required_technology != technology.id) {
 			continue;
 		}
-		const development_priority = get_priority(context, 'development', 100);
 		const growth_priority = get_priority(
 			context,
 			'growth',
