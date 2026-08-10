@@ -254,6 +254,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetEcologicalDamageEvents( 4 );
 				source.SetMajorAtrocities( 2 );
 				source.SetSanctionTurns( 10 );
+				source.SetIntegrityBlemishes( 4 );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -272,6 +273,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				Player cloned( &source );
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
 				GT_ASSERT( cloned.GetSanctionTurns() == 10, "player sanction duration was not cloned" );
+				GT_ASSERT(
+					cloned.GetIntegrityBlemishes() == 4,
+					"player diplomatic integrity was not cloned"
+				);
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not cloned"
@@ -296,6 +301,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT( roundtrip.GetMajorAtrocities() == 2, "player major atrocity count was not serialized" );
 				GT_ASSERT( roundtrip.GetSanctionTurns() == 10, "player sanction duration was not serialized" );
+				GT_ASSERT(
+					roundtrip.GetIntegrityBlemishes() == 4,
+					"player diplomatic integrity was not serialized"
+				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
 					"player social engineering choices were not serialized"
@@ -476,6 +485,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"legacy player diplomatic loans did not default to empty"
 				);
 				GT_ASSERT( legacy.GetSanctionTurns() == 0, "legacy player sanctions did not default to zero" );
+				GT_ASSERT(
+					legacy.GetIntegrityBlemishes() == 0,
+					"legacy player diplomatic integrity did not default to noble"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -599,6 +612,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_sanctions = true;
 				}
 				GT_ASSERT( rejected_invalid_sanctions, "invalid sanction duration accepted" );
+
+				bool rejected_invalid_integrity = false;
+				try {
+					Player invalid( "Untrustworthy", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetIntegrityBlemishes( Player::MAX_INTEGRITY_BLEMISHES + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_integrity = true;
+				}
+				GT_ASSERT( rejected_invalid_integrity, "invalid diplomatic integrity accepted" );
 				GT_OK();
 			}
 		);

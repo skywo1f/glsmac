@@ -14,6 +14,7 @@
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
+	const integrity_blemishes_stamp = 4;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -97,12 +98,14 @@
 				const previous = {
 					loan: borrower.get_diplomatic_loan(e.data.lender),
 					sanction_turns: borrower.get_sanction_turns(),
+					integrity_blemishes: borrower.get_integrity_blemishes(),
 				};
 				borrower.set_diplomatic_loan(e.data.lender, {
 					balance: loan_balance_stamp,
 					payment: loan_payment_stamp,
 				});
 				borrower.set_sanction_turns(sanction_turns_stamp);
+				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
 				return previous;
 			},
 			rollback: (e) => {
@@ -113,6 +116,7 @@
 					borrower.set_diplomatic_loan(e.data.lender, e.applied.loan);
 				}
 				borrower.set_sanction_turns(e.applied.sanction_turns);
+				borrower.set_integrity_blemishes(e.applied.integrity_blemishes);
 			},
 		});
 
@@ -406,15 +410,17 @@
 						}
 						if (
 							loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp ||
-							game.get_player().get_sanction_turns() != sanction_turns_stamp
+							game.get_player().get_sanction_turns() != sanction_turns_stamp ||
+							game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp
 						) {
-							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial loan or sanction stamp is invalid');
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial diplomatic stamp is invalid');
 							glsmac.exit();
 							return false;
 						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_INTEGRITY_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;

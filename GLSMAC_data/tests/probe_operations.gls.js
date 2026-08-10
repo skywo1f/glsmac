@@ -11,6 +11,7 @@ const make_player = (id, energy, technologies, target) => {
 	let loans = {};
 	let major_atrocities = 0;
 	let sanction_turns = 0;
+	let integrity_blemishes = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
 		id: id,
@@ -33,6 +34,8 @@ const make_player = (id, energy, technologies, target) => {
 	player.set_major_atrocities = (value) => { major_atrocities = value; };
 	player.get_sanction_turns = () => { return sanction_turns; };
 	player.set_sanction_turns = (value) => { sanction_turns = value; };
+	player.get_integrity_blemishes = () => { return integrity_blemishes; };
+	player.set_integrity_blemishes = (value) => { integrity_blemishes = value; };
 	player.has_infiltrated = (other) => {
 			return #is_defined(infiltrated['p' + #to_string(other.id)]) &&
 				infiltrated['p' + #to_string(other.id)];
@@ -313,15 +316,19 @@ const result = (success, detected, survives) => {
 let f = make_fixture();
 let e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'infiltrate', target: f.target_base}};
 test.assert(!#is_defined(probe_operation.validate(e)));
+f.actor.set_diplomatic_relation(f.target_player, 'treaty');
+f.target_player.set_diplomatic_relation(f.actor, 'treaty');
 e.resolved = result(true, true, true);
 e.applied = probe_operation.apply(e);
 test.assert(f.actor.has_infiltrated(f.target_player));
 test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'vendetta');
+test.assert(f.actor.get_integrity_blemishes() == 1);
 test.assert(e.data.unit.morale == 3 && e.data.unit.movement == 0.0);
 test.assert(f.read_message() == 'Datalinks infiltrated. The operation was detected.');
 probe_operation.rollback(e);
 test.assert(!f.actor.has_infiltrated(f.target_player));
-test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
+test.assert(f.actor.get_integrity_blemishes() == 0);
 test.assert(f.um.get_unit(1).morale == 2 && f.um.get_unit(1).movement == 1.0);
 
 f = make_fixture();

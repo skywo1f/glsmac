@@ -96,6 +96,7 @@ return {
 			'diplomatic_loan_updated',
 			'diplomatic_loan_resolved',
 			'diplomatic_sanctions_updated',
+			'diplomatic_integrity_updated',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -462,15 +463,19 @@ return {
 		const target_debt = this.target.get_diplomatic_loan(this.player);
 		const player_sanctions = this.player.get_sanction_turns();
 		const target_sanctions = this.target.get_sanction_turns();
+		const integrity_name = this.p.game.get('f_diplomacy_get_integrity_name');
 		let sanction_text = '';
 		if (player_sanctions > 0) {
-			sanction_text = '; you are sanctioned for ' + #to_string(player_sanctions) + ' years';
+			sanction_text = '; sanctions: you ' + #to_string(player_sanctions) + 'y';
 		}
 		if (target_sanctions > 0) {
-			sanction_text += '; ' + this.target.name + ' is sanctioned for ' +
-				#to_string(target_sanctions) + ' years';
+			sanction_text += (player_sanctions > 0 ? ' / them ' : '; sanctions: them ') +
+				#to_string(target_sanctions) + 'y';
 		}
-		this.relation_text.text = 'Current relation: ' + relation_name(relation) + sanction_text;
+		this.relation_text.text =
+			'Relation: ' + relation_name(relation) + '; integrity: you ' +
+			integrity_name(this.player.get_integrity_blemishes()) + ' / them ' +
+			integrity_name(this.target.get_integrity_blemishes()) + sanction_text;
 		this.offer_text.text = incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '');

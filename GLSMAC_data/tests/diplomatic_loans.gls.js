@@ -32,6 +32,7 @@ const make_player = (id, name, energy, stale_energy_property) => {
 	let loans = {};
 	let current_energy = energy;
 	let sanction_turns = 0;
+	let integrity_blemishes = 0;
 	let player = null;
 	const key = (other) => { return 'p' + #to_string(other.id); };
 	player = {
@@ -92,6 +93,8 @@ const make_player = (id, name, energy, stale_energy_property) => {
 		},
 		get_sanction_turns: () => { return sanction_turns; },
 		set_sanction_turns: (turns) => { sanction_turns = turns; },
+		get_integrity_blemishes: () => { return integrity_blemishes; },
+		set_integrity_blemishes: (blemishes) => { integrity_blemishes = blemishes; },
 		get_energy_credits: () => { return current_energy; },
 		set_energy_credits: (value) => {
 			current_energy = value;

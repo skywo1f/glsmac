@@ -95,7 +95,9 @@
 				player.get_diplomatic_offer(other) != '' ||
 				player.get_diplomatic_trade(other) != null ||
 				player.get_diplomatic_loan_offer(other) != null ||
-				player.get_diplomatic_loan(other) != null
+				player.get_diplomatic_loan(other) != null ||
+				player.get_integrity_blemishes() != 0 ||
+				other.get_integrity_blemishes() != 0
 			) {
 				fail('initial diplomatic state is invalid');
 				return;
@@ -106,7 +108,9 @@
 					() => {
 						return (
 							player.get_diplomatic_relation(other) == 'vendetta' &&
-							other.get_diplomatic_relation(player) == 'vendetta'
+							other.get_diplomatic_relation(player) == 'vendetta' &&
+							player.get_integrity_blemishes() == 1 &&
+							other.get_integrity_blemishes() == 0
 						);
 					},
 					'vendetta did not become bilateral',
@@ -138,7 +142,7 @@
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: treaty commerce, reciprocal trade, loan repayment, and vendetta debt'
+									'DIPLOMACY_RUNTIME_PASS: treaty commerce, reciprocal trade, loan repayment, betrayal integrity, and vendetta debt'
 								);
 								glsmac.exit();
 							}

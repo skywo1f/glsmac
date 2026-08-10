@@ -140,6 +140,7 @@ const update_diplomacy = (game, player) => {
 					other_power: get_player_power(game, other),
 					own_bases: own_bases,
 					other_bases: get_player_base_count(game, other),
+					other_integrity_blemishes: other.get_integrity_blemishes(),
 				}),
 			});
 			return;
@@ -189,6 +190,7 @@ const update_diplomacy = (game, player) => {
 					other_power: get_player_power(game, other),
 					own_energy: player.energy_credits,
 					own_is_lender: !loan_offer.proposer_is_lender,
+					other_integrity_blemishes: other.get_integrity_blemishes(),
 					terms: loan_offer,
 				}) >= 0.0,
 			});
@@ -215,6 +217,7 @@ const update_diplomacy = (game, player) => {
 			other_power: get_player_power(game, other),
 			own_bases: own_bases,
 			other_bases: get_player_base_count(game, other),
+			other_integrity_blemishes: other.get_integrity_blemishes(),
 		});
 		if (
 			proposal != null &&
@@ -298,6 +301,8 @@ const update_diplomacy = (game, player) => {
 			other_power: get_player_power(game, other),
 			own_energy: player.energy_credits,
 			other_energy: other.energy_credits,
+			own_integrity_blemishes: player.get_integrity_blemishes(),
+			other_integrity_blemishes: other.get_integrity_blemishes(),
 		});
 		if (
 			proposal != null &&

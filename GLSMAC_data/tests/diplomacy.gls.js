@@ -12,6 +12,7 @@ test.assert(#typeof(diplomacy_popup.propose_trade) == 'Callable');
 const callbacks = {};
 const values = {};
 let triggers = [];
+let messages = [];
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
@@ -21,7 +22,7 @@ const game = {
 	get_players: () => { return []; },
 	event: (name, data) => {},
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
-	message: (text) => {},
+	message: (text) => { messages :+text; },
 };
 define_diplomacy(game);
 callbacks.start({});
@@ -58,6 +59,7 @@ const make_player = (id, name) => {
 	let loan_offers = {};
 	let loans = {};
 	let sanction_turns = 0;
+	let integrity_blemishes = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
 	let player = null;
 	player = {
@@ -110,6 +112,8 @@ const make_player = (id, name) => {
 		},
 		get_sanction_turns: () => { return sanction_turns; },
 		set_sanction_turns: (turns) => { sanction_turns = turns; },
+		get_integrity_blemishes: () => { return integrity_blemishes; },
+		set_integrity_blemishes: (blemishes) => { integrity_blemishes = blemishes; },
 		get_research_state: () => { return #clone(research_state); },
 		set_research_state: (state) => { research_state = #clone(state); },
 		has_technology: (technology_id) => {
@@ -128,6 +132,11 @@ const make_player = (id, name) => {
 
 const alpha = make_player(1, 'Alpha');
 const beta = make_player(2, 'Beta');
+test.assert(values.f_diplomacy_get_integrity_name(0) == 'Noble');
+test.assert(values.f_diplomacy_get_integrity_name(7) == 'Infamous');
+test.assert(values.f_diplomacy_get_betrayal_penalty('neutral') == 0);
+test.assert(values.f_diplomacy_get_betrayal_penalty('treaty') == 1);
+test.assert(values.f_diplomacy_get_betrayal_penalty('pact') == 2);
 
 let proposal = {
 	caller: 1,
@@ -181,9 +190,29 @@ test.assert(!#is_defined(declare_vendetta.validate(vendetta)));
 vendetta.applied = declare_vendetta.apply(vendetta);
 test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
 test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
+test.assert(alpha.get_integrity_blemishes() == 2);
+test.assert(beta.get_integrity_blemishes() == 0);
 declare_vendetta.rollback(vendetta);
 test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
 test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
+test.assert(alpha.get_integrity_blemishes() == 0);
+
+alpha.set_diplomatic_relation(beta, 'treaty');
+beta.set_diplomatic_relation(alpha, 'treaty');
+vendetta.applied = declare_vendetta.apply(vendetta);
+test.assert(alpha.get_integrity_blemishes() == 1);
+declare_vendetta.rollback(vendetta);
+test.assert(alpha.get_integrity_blemishes() == 0);
+test.assert(#sizeof(messages) == 2);
+
+alpha.set_integrity_blemishes(7);
+alpha.set_diplomatic_relation(beta, 'pact');
+beta.set_diplomatic_relation(alpha, 'pact');
+vendetta.applied = declare_vendetta.apply(vendetta);
+test.assert(alpha.get_integrity_blemishes() == 7);
+declare_vendetta.rollback(vendetta);
+test.assert(alpha.get_integrity_blemishes() == 7);
+alpha.set_integrity_blemishes(0);
 
 proposal.data.relation = 'ceasefire';
 test.assert(#is_defined(propose_relation.validate(proposal)));

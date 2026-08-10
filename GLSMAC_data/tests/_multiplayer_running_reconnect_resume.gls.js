@@ -10,6 +10,7 @@
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
+	const integrity_blemishes_stamp = 4;
 	// The Believers' +2 SUPPORT rating covers the two snapshot units for free.
 	const processed_turn_unit_support = 0;
 	const defeated_snapshot_unit_id = 3;
@@ -137,6 +138,9 @@
 			}
 			if (game.get_player().get_sanction_turns() != sanction_turns_stamp) {
 				return 'economic sanction duration was not restored';
+			}
+			if (game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp) {
+				return 'diplomatic integrity was not restored';
 			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
@@ -440,6 +444,7 @@
 				#print('RUNNING_RECONNECT_ENERGY_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_LOAN_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_SANCTIONS_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_INTEGRITY_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESUMED_CLIENT');
 				game.event('complete_turn', {});
 			}

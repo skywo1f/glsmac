@@ -9,6 +9,9 @@ const balanced = {
 	other_bases: 2,
 };
 test.assert(diplomacy.should_accept(balanced));
+balanced.other_integrity_blemishes = 3;
+test.assert(!diplomacy.should_accept(balanced));
+balanced.other_integrity_blemishes = 0;
 
 const dominant_at_war = {
 	offer: 'treaty',
@@ -42,6 +45,10 @@ const pact = {
 };
 test.assert(diplomacy.should_accept(pact));
 test.assert(diplomacy.get_proposal(pact).relation == 'pact');
+pact.other_integrity_blemishes = 3;
+test.assert(!diplomacy.should_accept(pact));
+test.assert(diplomacy.get_proposal(pact) == null);
+pact.other_integrity_blemishes = 0;
 
 pact.relation = 'neutral';
 test.assert(!diplomacy.should_accept(pact));
@@ -120,6 +127,15 @@ test.assert(diplomacy.get_loan_acceptance_score({
 	relation: 'treaty',
 	own_power: 10.0,
 	other_power: 10.0,
+	own_energy: 300,
+	own_is_lender: true,
+	other_integrity_blemishes: 7,
+	terms: fair_loan,
+}) < 0.0);
+test.assert(diplomacy.get_loan_acceptance_score({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
 	own_energy: 20,
 	own_is_lender: false,
 	terms: fair_loan,
@@ -167,6 +183,16 @@ loan_proposal = diplomacy.get_loan_proposal({
 });
 test.assert(loan_proposal != null);
 test.assert(loan_proposal.terms.proposer_is_lender);
+
+test.assert(diplomacy.get_loan_proposal({
+	relation: 'pact',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 300,
+	other_energy: 20,
+	own_integrity_blemishes: 0,
+	other_integrity_blemishes: 7,
+}) == null);
 
 test.assert(diplomacy.get_loan_proposal({
 	relation: 'neutral',

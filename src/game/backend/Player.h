@@ -73,6 +73,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
 	static constexpr int64_t MAX_MAJOR_ATROCITIES = 1000000;
 	static constexpr int64_t MAX_SANCTION_TURNS = 1000000;
+	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
 
 	const technologies_t& GetTechnologies() const;
 	bool HasTechnology( const std::string& id ) const;
@@ -91,6 +92,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetMajorAtrocities( const int64_t major_atrocities );
 	int64_t GetSanctionTurns() const;
 	void SetSanctionTurns( const int64_t sanction_turns );
+	int64_t GetIntegrityBlemishes() const;
+	void SetIntegrityBlemishes( const int64_t integrity_blemishes );
 
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
@@ -209,6 +212,7 @@ private:
 	int64_t m_ecological_damage_events = 0;
 	int64_t m_major_atrocities = 0;
 	int64_t m_sanction_turns = 0;
+	int64_t m_integrity_blemishes = 0;
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};

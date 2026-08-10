@@ -51,6 +51,7 @@ Player::Player( const Player* const other ) {
 	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_major_atrocities = other->m_major_atrocities;
 	m_sanction_turns = other->m_sanction_turns;
+	m_integrity_blemishes = other->m_integrity_blemishes;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -214,6 +215,17 @@ void Player::SetSanctionTurns( const int64_t sanction_turns ) {
 		THROW( "player economic sanction duration is out of range" );
 	}
 	m_sanction_turns = sanction_turns;
+}
+
+int64_t Player::GetIntegrityBlemishes() const {
+	return m_integrity_blemishes;
+}
+
+void Player::SetIntegrityBlemishes( const int64_t integrity_blemishes ) {
+	if ( integrity_blemishes < 0 || integrity_blemishes > MAX_INTEGRITY_BLEMISHES ) {
+		THROW( "player diplomatic integrity blemishes are out of range" );
+	}
+	m_integrity_blemishes = integrity_blemishes;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -667,6 +679,28 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_integrity_blemishes",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetIntegrityBlemishes() );
+				} )
+			},
+			{
+				"set_integrity_blemishes",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( integrity_blemishes, 0, Int );
+					try {
+						SetIntegrityBlemishes( integrity_blemishes );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1034,6 +1068,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( loan.payment );
 	}
 	buf.WriteInt( m_sanction_turns );
+	buf.WriteInt( m_integrity_blemishes );
 
 	return buf;
 }
@@ -1222,6 +1257,13 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized player economic sanction duration" );
 		}
 	}
+	int64_t integrity_blemishes = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		integrity_blemishes = buf.ReadInt();
+		if ( integrity_blemishes < 0 || integrity_blemishes > MAX_INTEGRITY_BLEMISHES ) {
+			THROW( "invalid serialized player diplomatic integrity blemishes" );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1247,6 +1289,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_loan_offers = std::move( diplomatic_loan_offers );
 	m_diplomatic_loans = std::move( diplomatic_loans );
 	m_sanction_turns = sanction_turns;
+	m_integrity_blemishes = integrity_blemishes;
 
 }
 

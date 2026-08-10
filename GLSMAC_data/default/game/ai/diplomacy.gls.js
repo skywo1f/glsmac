@@ -3,11 +3,18 @@ const get_relative_strength = (own_power, other_power) => {
 	return (other_power - own_power) / total;
 };
 
+const get_other_integrity_blemishes = (state) => {
+	return #is_defined(state.other_integrity_blemishes)
+		? state.other_integrity_blemishes
+		: 0;
+};
+
 const get_acceptance_score = (state) => {
 	const relative_strength = get_relative_strength(state.own_power, state.other_power);
 	const base_pressure = #to_float(state.other_bases - state.own_bases) * 4.0;
+	const integrity_blemishes = #to_float(get_other_integrity_blemishes(state));
 	if (state.offer == 'treaty') {
-		let score = 20.0 + relative_strength * 60.0 + base_pressure;
+		let score = 20.0 + relative_strength * 60.0 + base_pressure - integrity_blemishes * 8.0;
 		if (state.relation == 'vendetta') {
 			score -= 25.0;
 		}
@@ -20,7 +27,7 @@ const get_acceptance_score = (state) => {
 		if (state.relation != 'treaty') {
 			return 0.0 - 100.0;
 		}
-		return 5.0 + relative_strength * 35.0 + base_pressure;
+		return 5.0 + relative_strength * 35.0 + base_pressure - integrity_blemishes * 12.0;
 	}
 	return 0.0 - 100.0;
 };
@@ -38,6 +45,7 @@ const get_proposal = (state) => {
 			other_power: state.other_power,
 			own_bases: state.own_bases,
 			other_bases: state.other_bases,
+			other_integrity_blemishes: get_other_integrity_blemishes(state),
 		};
 		const score = get_acceptance_score(treaty_state);
 		return score >= 0.0 ? {relation: 'treaty', score: score} : null;
@@ -50,6 +58,7 @@ const get_proposal = (state) => {
 			other_power: state.other_power,
 			own_bases: state.own_bases,
 			other_bases: state.other_bases,
+			other_integrity_blemishes: get_other_integrity_blemishes(state),
 		};
 		const score = get_acceptance_score(pact_state);
 		return score >= 10.0 ? {relation: 'pact', score: score} : null;
@@ -192,7 +201,9 @@ const get_loan_acceptance_score = (state) => {
 			return 0.0 - 100000.0;
 		}
 		const default_risk = #max(0.0, relative_strength) * principal * 0.15;
-		return discounted_repayment - principal + relation_bonus - default_risk;
+		const integrity_risk =
+			#to_float(get_other_integrity_blemishes(state)) * principal * 0.06;
+		return discounted_repayment - principal + relation_bonus - default_risk - integrity_risk;
 	}
 	const liquidity_value = #to_float(#max(0, 100 - state.own_energy)) * 0.4;
 	const payment_pressure = #to_float(#max(
@@ -236,6 +247,9 @@ const get_loan_proposal = (state) => {
 		other_power: state.other_power,
 		own_energy: state.own_energy,
 		own_is_lender: proposer_is_lender,
+		other_integrity_blemishes: #is_defined(state.other_integrity_blemishes)
+			? state.other_integrity_blemishes
+			: 0,
 		terms: terms,
 	});
 	const recipient_score = get_loan_acceptance_score({
@@ -244,6 +258,9 @@ const get_loan_proposal = (state) => {
 		other_power: state.own_power,
 		own_energy: state.other_energy,
 		own_is_lender: !proposer_is_lender,
+		other_integrity_blemishes: #is_defined(state.own_integrity_blemishes)
+			? state.own_integrity_blemishes
+			: 0,
 		terms: terms,
 	});
 	if (proposer_score < 0.0 || recipient_score < 0.0) {

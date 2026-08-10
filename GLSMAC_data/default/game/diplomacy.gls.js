@@ -5,6 +5,8 @@ const is_player = (player) => {
 		#typeof(player.get_energy_credits) == 'Callable' &&
 		#typeof(player.get_sanction_turns) == 'Callable' &&
 		#typeof(player.set_sanction_turns) == 'Callable' &&
+		#typeof(player.get_integrity_blemishes) == 'Callable' &&
+		#typeof(player.set_integrity_blemishes) == 'Callable' &&
 		#typeof(player.set_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_diplomatic_offer) == 'Callable' &&
 		#typeof(player.set_diplomatic_offer) == 'Callable' &&
@@ -39,6 +41,8 @@ const snapshot_pair = (player, other) => {
 		other_trade: other.get_diplomatic_trade(player),
 		player_loan_offer: player.get_diplomatic_loan_offer(other),
 		other_loan_offer: other.get_diplomatic_loan_offer(player),
+		player_integrity_blemishes: player.get_integrity_blemishes(),
+		other_integrity_blemishes: other.get_integrity_blemishes(),
 	};
 };
 
@@ -67,9 +71,52 @@ const restore_pair = (player, other, snapshot) => {
 	restore_trade(other, player, snapshot.other_trade);
 	restore_loan_offer(player, other, snapshot.player_loan_offer);
 	restore_loan_offer(other, player, snapshot.other_loan_offer);
+	player.set_integrity_blemishes(snapshot.player_integrity_blemishes);
+	other.set_integrity_blemishes(snapshot.other_integrity_blemishes);
 };
 
-const set_bilateral_relation = (player, other, relation) => {
+const integrity_names = [
+	'Noble', 'Faithful', 'Scrupulous', 'Dependable',
+	'Ruthless', 'Treacherous', 'Wicked', 'Infamous',
+];
+
+const get_integrity_name = (blemishes) => {
+	const index = #min(7, #max(0, blemishes));
+	return integrity_names[index];
+};
+
+const get_betrayal_penalty = (relation) => {
+	if (relation == 'pact') {
+		return 2;
+	}
+	return relation == 'treaty' ? 1 : 0;
+};
+
+const record_betrayal = (game, player, other) => {
+	const relation = player.get_diplomatic_relation(other);
+	const penalty = get_betrayal_penalty(relation);
+	if (penalty == 0) {
+		return 0;
+	}
+	const updated = #min(7, player.get_integrity_blemishes() + penalty);
+	player.set_integrity_blemishes(updated);
+	game.trigger('diplomatic_integrity_updated', {
+		player: player,
+		target: other,
+		blemishes: updated,
+		integrity: get_integrity_name(updated),
+	});
+	game.message(
+		player.name + ' broke a ' + relation + ' with ' + other.name +
+		'; diplomatic integrity is now ' + get_integrity_name(updated) + '.'
+	);
+	return penalty;
+};
+
+const set_bilateral_relation = (game, player, other, relation) => {
+	if (relation == 'vendetta') {
+		record_betrayal(game, player, other);
+	}
 	player.set_diplomatic_relation(other, relation);
 	other.set_diplomatic_relation(player, relation);
 };
@@ -253,7 +300,11 @@ return (game) => {
 		game.set('f_diplomacy_validate_pair', validate_pair);
 		game.set('f_diplomacy_snapshot_pair', snapshot_pair);
 		game.set('f_diplomacy_restore_pair', restore_pair);
-		game.set('f_diplomacy_set_bilateral_relation', set_bilateral_relation);
+		game.set('f_diplomacy_get_integrity_name', get_integrity_name);
+		game.set('f_diplomacy_get_betrayal_penalty', get_betrayal_penalty);
+		game.set('f_diplomacy_set_bilateral_relation', (player, other, relation) => {
+			return set_bilateral_relation(game, player, other, relation);
+		});
 		game.set('f_diplomacy_clear_relation_offers', clear_relation_offers);
 		game.set('f_diplomacy_clear_offers', clear_offers);
 		game.set('f_diplomacy_validate_trade', (proposer, recipient, terms) => {

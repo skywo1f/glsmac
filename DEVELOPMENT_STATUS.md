@@ -36,6 +36,9 @@ The Windows x64 Release build has asset-backed automated coverage for:
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
   vendettas, and a player diplomacy screen;
+- persistent eight-level diplomatic integrity, with treaty and pact betrayal
+  consequences shared by declarations of war, direct attacks, and detected
+  covert operations, plus rollback, player diagnostics, and trust-aware AI;
 - persistent structured energy and technology trade offers, atomic reversible
   settlement, human negotiation controls, and relation-, strength-, and
   value-aware AI proposals and responses;
@@ -79,13 +82,13 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map and commlink exchanges, reputation,
-  surrender, council elections, diplomatic victory, Global Trade Pact/Governor
-  commerce modifiers, and richer bundled or counteroffers;
+- deeper diplomacy including map and commlink exchanges, surrender, council
+  elections, diplomatic victory, Global Trade Pact/Governor commerce
+  modifiers, and richer bundled or counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
-  vendetta/council/reputation consequences for major atrocities;
+  vendetta/council consequences for major atrocities;
 - remaining social effects: adoption costs and full police and away-unit
   behavior;
 - paid emergency Headquarters evacuation before capture and explicit
@@ -113,11 +116,11 @@ and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
 The current 67-case Release GSE matrix passed in one bounded invocation in
-121.15 seconds. Before the loan and sanction milestones, all 18 asset-backed runtime
-scenarios also passed against an installed Planetary Pack in three bounded
-invocations: the live probe scenario in 7.46 seconds, six gameplay and snapshot
-scenarios in 92.70 seconds, and the remaining eleven content and AI scenarios
-in 544.16 seconds. The
+117.48 seconds. Before the loan, sanction, and integrity milestones, all 18
+asset-backed runtime scenarios also passed against an installed Planetary Pack
+in three bounded invocations: the live probe scenario in 7.46 seconds, six
+gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
+content and AI scenarios in 544.16 seconds. The
 previous 58-case GSE set also passes in the MSVC AddressSanitizer configuration.
 Script isolation keeps allocator lifetime bounded and reports the exact script
 that fails.
@@ -126,13 +129,12 @@ The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,
 technology, principal, repayment, partial-payment, wartime-penalty, vendetta,
 and rollback tests; stale-wrapper multi-lender accounting; and AI-policy and
-UI-parser tests. The current asset-backed diplomacy quickstart passed in 8.24
+UI-parser tests. The current asset-backed diplomacy quickstart passed in 8.01
 seconds with a treaty, commerce, reciprocal technology trade, loan acceptance,
-peaceful repayment, vendetta, and wartime debt growth. A running multiplayer
-reconnect carrying an exact active-loan balance and payment passed in 26.25
-seconds. The current sanction-bearing reconnect passed in 26.02 seconds and
-restored the exact sanction duration alongside the active loan. Probe coverage
-includes persistent infiltration and
+peaceful repayment, treaty-betrayal integrity loss, vendetta, and wartime debt
+growth. The current running multiplayer reconnect passed in 25.76 seconds and
+restored exact active-loan, sanction-duration, and diplomatic-integrity state.
+Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed
 quickstart covering the live production gate and unit subversion. The preceding
@@ -151,6 +153,10 @@ embargoes, suspended peaceful repayments, atrocity imposition and rollback,
 post-economy yearly expiry, AI commerce-cost awareness, UI status loading, and
 network snapshot restoration. The sanction-aware asset-backed Probe Team smoke
 passed in 7.03 seconds.
+Integrity coverage verifies the original eight status labels, treaty and pact
+penalties, aggressor-only changes, saturation, reversible declaration and
+detected-probe paths, AI agreement and loan trust, UI status loading, native
+serialization, and live network snapshot restoration.
 
 After the Headquarters relocation and capture rules were added, all 64 GSE
 cases passed again, and the installed-asset general gameplay and AI runtime
