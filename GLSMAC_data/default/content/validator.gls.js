@@ -69,6 +69,7 @@ const facility_fields = {
 	global_extra_police_units: true,
 	efficiency_rating_bonus: true,
 	defender_morale_minimum: true,
+	prototype_cost_waiver: true,
 };
 
 const facility_manifest_fields = {
@@ -552,6 +553,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_number(data, 'air_defense_multiplier', path, errors, false, 1.0, 10.0);
 		validate_int(data, 'growth_rating_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'native_lifecycle_bonus', path, errors, false, 0, 10);
+		validate_bool(data, 'prototype_cost_waiver', path, errors, false);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -587,6 +589,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.air_defense_multiplier) && data.air_defense_multiplier > 1.0) ||
 			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
 			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0) ||
+			(#is_defined(data.prototype_cost_waiver) && data.prototype_cost_waiver) ||
 			(#is_defined(data.granted_facility) && data.granted_facility != '') ||
 			(#is_defined(data.global_talent_bonus) && data.global_talent_bonus > 0) ||
 			(#is_defined(data.global_growth_rating_bonus) && data.global_growth_rating_bonus > 0) ||

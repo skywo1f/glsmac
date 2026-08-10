@@ -3,7 +3,23 @@ const queue_base_production = #include('../default/game/event/queue_base_product
 const remove_base_production = #include('../default/game/event/remove_base_production');
 const process_base_production = #include('../default/game/event/process_base_production');
 
-const owner = {id: 1};
+let prototyped_components = ['ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor'];
+const owner = {
+	id: 1,
+	get_faction: () => { return {id: 'UNIVERSITY'}; },
+	get_prototyped_components: () => { return #clone(prototyped_components); },
+	has_prototyped_component: (id) => {
+		for (component of prototyped_components) {
+			if (component == id) {
+				return true;
+			}
+		}
+		return false;
+	},
+	set_prototyped_components: (value) => {
+		prototyped_components = #clone(value);
+	},
+};
 const tile = {id: 'base-tile'};
 const mind_worms = {
 	id: 'MindWorms',
@@ -63,6 +79,23 @@ const trained_land_patrol = {
 	is_water: false,
 	is_air: false,
 	abilities: ['HighMorale'],
+};
+const prototype_patrol = {
+	id: 'PrototypePatrol',
+	name: 'Prototype Patrol',
+	production_kind: 'unit',
+	mineral_cost: 20,
+	can_found_base: false,
+	is_native: false,
+	offense: 2,
+	morale_set: 'STANDARD',
+	is_land: true,
+	is_water: false,
+	is_air: false,
+	chassis: 'Speeder',
+	weapon: 'Laser',
+	armor: 'NoArmor',
+	abilities: [],
 };
 const sea_patrol = {
 	id: 'SeaPatrol',
@@ -194,6 +227,7 @@ const definitions = [
 	colony_pod,
 	land_patrol,
 	trained_land_patrol,
+	prototype_patrol,
 	sea_patrol,
 	air_patrol,
 	recycling_tanks,
@@ -971,6 +1005,25 @@ test.assert(accumulated_minerals == 13);
 test.assert(!#is_defined(spawned_unit));
 built_facilities = [];
 social_morale = 0;
+
+prototyped_components = ['ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor'];
+production_queue = [prototype_patrol];
+accumulated_minerals = 13;
+spawned_unit = #undefined;
+spawn_data = #undefined;
+event.applied = process_base_production.apply(event);
+test.assert(#is_defined(spawned_unit));
+test.assert(spawn_data.def == prototype_patrol.id);
+test.assert(spawn_data.morale == 2);
+test.assert(prototyped_components == [
+	'ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor', 'Speeder', 'Laser',
+]);
+process_base_production.rollback(event);
+test.assert(accumulated_minerals == 13);
+test.assert(!#is_defined(spawned_unit));
+test.assert(prototyped_components == [
+	'ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor',
+]);
 
 const worker_a = make_pop('WORKER', {id: 'worker-a'});
 const worker_b = make_pop('WORKER', {id: 'worker-b'});

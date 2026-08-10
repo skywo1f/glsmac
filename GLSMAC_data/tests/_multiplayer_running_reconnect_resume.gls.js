@@ -11,6 +11,9 @@
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
+	const prototyped_components_stamp = [
+		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
+	];
 	// The Believers' +2 SUPPORT rating covers the two snapshot units for free.
 	const processed_turn_unit_support = 0;
 	const defeated_snapshot_unit_id = 3;
@@ -142,6 +145,9 @@
 			if (game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp) {
 				return 'diplomatic integrity was not restored';
 			}
+			if (game.get_player().get_prototyped_components() != prototyped_components_stamp) {
+				return 'prototyped unit components were not restored';
+			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';
 			}
@@ -235,6 +241,7 @@
 			const naval_yard = game.get_bm().get_facility_def('NavalYard');
 			const aerospace_complex = game.get_bm().get_facility_def('AerospaceComplex');
 			const biology_lab = game.get_bm().get_facility_def('BiologyLab');
+			const skunkworks = game.get_bm().get_facility_def('Skunkworks');
 			const hologram_theatre = game.get_bm().get_facility_def('HologramTheatre');
 			const research_hospital = game.get_bm().get_facility_def('ResearchHospital');
 			const robotic_assembly = game.get_bm().get_facility_def('RoboticAssemblyPlant');
@@ -307,6 +314,7 @@
 				biology_lab.research_bonus != 2 ||
 				biology_lab.native_lifecycle_bonus != 1 ||
 				!biology_lab.full_repair_native ||
+				!skunkworks.prototype_cost_waiver ||
 				hologram_theatre.psych_multiplier != 0.5 ||
 				research_hospital.research_multiplier != 0.5 ||
 				research_hospital.psych_multiplier != 0.25 ||

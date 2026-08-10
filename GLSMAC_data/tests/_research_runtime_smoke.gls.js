@@ -36,7 +36,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 31 facilities, 33 projects, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 32 facilities, 33 projects, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -44,6 +44,8 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		let last_unit_upgrade = null;
+		let victory_projects_unlocked = null;
 		game.register_event('research_runtime_seed_energy', {
 			validate: (e) => {
 				if (e.caller != 0 && e.caller != e.data.player.id) {
@@ -60,6 +62,41 @@
 				e.data.player.set_energy_credits(e.applied.energy_credits);
 				e.game.trigger('economy_updated', {player: e.data.player});
 			},
+		});
+		game.register_event('research_runtime_complete_projects', {
+			validate: (e) => {
+				if (e.caller != 0 && e.caller != e.data.base.get_owner().id) {
+					return 'Only the runtime test base owner may complete its projects';
+				}
+			},
+			apply: (e) => {
+				e.data.base.add_facility('TheVoiceOfPlanet');
+				const ascent = e.game.get_bm().get_facility_def(
+					'TheAscentToTranscendence'
+				);
+				const unlocked = e.data.base.can_set_production('project', ascent.id);
+				e.data.base.add_facility(ascent.id);
+				e.game.trigger('research_runtime_projects_completed', {
+					unlocked: unlocked,
+				});
+				return {};
+			},
+			rollback: (e) => {
+				e.data.base.remove_facility('TheAscentToTranscendence');
+				e.data.base.remove_facility('TheVoiceOfPlanet');
+			},
+		});
+		game.on('unit_upgraded', (upgrade) => {
+			last_unit_upgrade = {
+				unit_id: upgrade.unit.id,
+				target_def_id: upgrade.unit.def,
+				previous_def_id: upgrade.previous_def_id,
+				cost: upgrade.cost,
+				energy_credits: upgrade.player.get_energy_credits(),
+			};
+		});
+		game.on('research_runtime_projects_completed', (result) => {
+			victory_projects_unlocked = result.unlocked;
 		});
 
 		game.on('start_ui', (e) => {
@@ -416,6 +453,7 @@
 					project_effects.naval_movement_bonus != 2.0 ||
 					project_effects.police_rating_bonus != 1 ||
 					project_effects.extra_police_units != 1 ||
+					project_effects.unit_upgrade_cost_multiplier != 0.5 ||
 					project_effects.drone_modifier != -2 ||
 					project_effects.economy_multiplier != 0.0 ||
 					!project_effects.ignore_power_penalties ||
@@ -501,9 +539,9 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 31 ||
+					#sizeof(facility_ids) != 32 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 72 || mineral_multiplier != 2.0 ||
+					maintenance != 73 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
 					research_multiplier != 2.0 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 2 ||
@@ -537,39 +575,93 @@
 					}
 				}
 
-				const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');
-				const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
-				if (
-					voice.global_native_lifecycle_bonus != 1 ||
-					ascent.required_project != 'TheVoiceOfPlanet' ||
-					base.can_set_production('project', ascent.id)
-				) {
-					fail('Ascent was available before Voice of Planet');
-					return;
-				}
-				base.add_facility('TheVoiceOfPlanet');
-				if (!base.can_set_production('project', ascent.id)) {
-					fail('Ascent stayed locked after Voice of Planet');
-					return;
-				}
-				base.add_facility(ascent.id);
-				let victory_wait_ticks = 0;
+				const begin_victory_test = () => {
+					const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');
+					const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
+					if (
+						voice.global_native_lifecycle_bonus != 1 ||
+						ascent.required_project != 'TheVoiceOfPlanet' ||
+						base.can_set_production('project', ascent.id)
+					) {
+						fail('Ascent was available before Voice of Planet');
+						return;
+					}
+					victory_projects_unlocked = null;
+					game.event('research_runtime_complete_projects', {base: base});
+					let victory_wait_ticks = 0;
+					#async(100, () => {
+						victory_wait_ticks++;
+						if (victory_projects_unlocked == null || !game.is_game_over()) {
+							if (victory_wait_ticks >= 100) {
+								fail('transcendence victory timed out');
+								return false;
+							}
+							return true;
+						}
+						if (!victory_projects_unlocked) {
+							fail('Ascent stayed locked after Voice of Planet');
+							return false;
+						}
+						const victory = game.get_victory_state();
+						if (victory != {type: 'transcendence', winner: player.id, turn: 3}) {
+							fail('transcendence victory state is invalid');
+							return false;
+						}
+						runtime_complete = true;
+						finish_if_ready();
+						return false;
+					});
+				};
+
+				base.add_facility('TheNanoFactory');
+				player.set_prototyped_components([
+					'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor',
+				]);
+				const upgrade_source = game.get_um().spawn_unit({
+					def: 'ScoutPatrol',
+					owner: player,
+					tile: base.get_tile(),
+					morale: 4,
+					health: 0.7,
+					home_base_id: base.id,
+				});
+				const upgrade_id = upgrade_source.id;
+				const upgrade_energy = player.get_energy_credits();
+				last_unit_upgrade = null;
+				game.event('upgrade_unit', {
+					unit: upgrade_source,
+					target_def_id: 'LaserInfantry',
+				});
+				let upgrade_wait_ticks = 0;
 				#async(100, () => {
-					victory_wait_ticks++;
-					if (!game.is_game_over()) {
-						if (victory_wait_ticks >= 100) {
-							fail('transcendence victory timed out');
+					upgrade_wait_ticks++;
+					if (
+						!game.get_um().has_unit(upgrade_id) ||
+						game.get_um().get_unit(upgrade_id).def == 'ScoutPatrol' ||
+						last_unit_upgrade == null
+					) {
+						if (upgrade_wait_ticks >= 100) {
+							fail('unit upgrade timed out');
 							return false;
 						}
 						return true;
 					}
-					const victory = game.get_victory_state();
-					if (victory != {type: 'transcendence', winner: player.id, turn: 3}) {
-						fail('transcendence victory state is invalid');
+					const upgraded = game.get_um().get_unit(upgrade_id);
+					if (
+						upgraded.def != 'LaserInfantry' || upgraded.morale != 4 ||
+						upgraded.health < 0.699 || upgraded.health > 0.701 ||
+						upgraded.home_base_id != base.id || upgraded.movement != 0.0 ||
+						!upgraded.moved_this_turn ||
+						last_unit_upgrade.unit_id != upgrade_id ||
+						last_unit_upgrade.target_def_id != 'LaserInfantry' ||
+						last_unit_upgrade.previous_def_id != 'ScoutPatrol' ||
+						last_unit_upgrade.cost != 10 ||
+						last_unit_upgrade.energy_credits != upgrade_energy - 10
+					) {
+						fail('unit upgrade runtime state is invalid');
 						return false;
 					}
-					runtime_complete = true;
-					finish_if_ready();
+					begin_victory_test();
 					return false;
 				});
 				return;

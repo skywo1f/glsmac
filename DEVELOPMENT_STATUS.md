@@ -51,6 +51,13 @@ scenarios, for:
   rollback and explicit AI production value; Alien Artifacts can also be
   studied for free technologies once per Network Node or without limit at the
   Translator base, with player controls, AI routing, and serialized usage;
+- persistent faction-wide chassis, weapon, and armor prototype history across
+  saves and reconnects, with the exact first-production surcharge, Skunkworks
+  and Spartan waivers, and the first prototype's morale bonus;
+- individual unit upgrades preserve identity, morale, health, and home base,
+  enforce original chassis/equipment/component rules, consume the unit's turn,
+  use the original energy-cost formula, receive the Nano Factory discount, and
+  expose player controls plus a reserve-aware AI policy;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -119,8 +126,8 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 27 complete and 4 partial;
-- all 33 Secret Projects represented: 30 complete and 3 partial;
+- 32 of 38 base facilities represented: 28 complete and 4 partial;
+- all 33 Secret Projects represented: 31 complete and 2 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -148,17 +155,17 @@ The following original-SMAC systems remain absent or materially incomplete:
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
-- several remaining facility effects, including submersion, Psi Gates,
-  prototype-cost handling, disease protection, and Alien Artifact production
-  contributions to Secret Projects and prototypes;
-- the seven absent base-facility definitions are Skunkworks, Psi Gate, Sky
-  Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
-  Defense Pod, and Stockpile Energy; both hospitals, Pressure Dome, and
+- several remaining facility effects, including submersion, Psi Gates, disease
+  protection, and Alien Artifact production contributions to Secret Projects
+  and prototypes;
+- the six absent base-facility definitions are Psi Gate, Sky Hydroponics Lab,
+  Nessus Mining Station, Orbital Power Transmitter, Orbital Defense Pod, and
+  Stockpile Energy; both hospitals, Pressure Dome, and
   Aerospace Complex are represented but remain partial;
-- the three partial Secret Projects are the Empath Guild, Nano Factory, and
-  Space Elevator; the Empath Guild still lacks its +50% council-election vote
-  bonus, and the others' remaining effects and victory-adjacent rules require
-  individual parity audits;
+- the two partial Secret Projects are the Empath Guild and Space Elevator; the
+  Empath Guild still lacks its +50% council-election vote bonus, and the Space
+  Elevator's remaining effects and victory-adjacent rules require an individual
+  parity audit;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -169,12 +176,12 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 90 cases: 71 isolated native/script GSE tests
+The Release CTest matrix contains 92 cases: 73 isolated native/script GSE tests
 and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 70-case Release script matrix passed in one bounded invocation in
-131.11 seconds, and the native GSE test passed separately in 1.18 seconds.
+The current 73-case isolated Release GSE matrix (72 scripts and one native test)
+passed in one bounded invocation in 148.21 seconds.
 Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six

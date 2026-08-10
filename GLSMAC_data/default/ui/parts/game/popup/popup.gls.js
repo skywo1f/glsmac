@@ -6,6 +6,7 @@ return {
 		'social_engineering',
 		'diplomacy',
 		'probe_operations',
+		'unit_upgrade',
 		'base_screen',
 	],
 

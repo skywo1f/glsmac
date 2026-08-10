@@ -22,6 +22,7 @@ const empty_effects = () => {
 		full_repair: false,
 		police_rating_bonus: 0,
 		extra_police_units: 0,
+		unit_upgrade_cost_multiplier: 1.0,
 		ecology_divisor_bonus: 0,
 		native_fungus_combat: false,
 		fungus_movement_as_road: false,
@@ -156,6 +157,9 @@ const get_player_effects = (game, player) => {
 				? project.global_extra_police_units
 				: 0
 		);
+		if (project.id == 'TheNanoFactory') {
+			result.unit_upgrade_cost_multiplier = 0.5;
+		}
 		if (project.id == 'ThePholusMutagen') {
 			result.ecology_divisor_bonus = result.ecology_divisor_bonus + 1;
 			result.native_fungus_combat = true;

@@ -401,6 +401,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, global_extra_police_units, def, "global_extra_police_units", Int, 0 );
 				N_GETPROP_OPT( int64_t, efficiency_rating_bonus, def, "efficiency_rating_bonus", Int, 0 );
 				N_GETPROP_OPT( int64_t, defender_morale_minimum, def, "defender_morale_minimum", Int, 0 );
+				N_GETPROP_OPT( bool, prototype_cost_waiver, def, "prototype_cost_waiver", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -604,7 +605,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					global_police_rating_bonus,
 					global_extra_police_units,
 					efficiency_rating_bonus,
-					defender_morale_minimum
+					defender_morale_minimum,
+					prototype_cost_waiver
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

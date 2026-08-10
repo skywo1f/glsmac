@@ -52,6 +52,7 @@ Player::Player( const Player* const other ) {
 	m_major_atrocities = other->m_major_atrocities;
 	m_sanction_turns = other->m_sanction_turns;
 	m_integrity_blemishes = other->m_integrity_blemishes;
+	m_prototyped_components = other->m_prototyped_components;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -226,6 +227,26 @@ void Player::SetIntegrityBlemishes( const int64_t integrity_blemishes ) {
 		THROW( "player diplomatic integrity blemishes are out of range" );
 	}
 	m_integrity_blemishes = integrity_blemishes;
+}
+
+const Player::prototyped_components_t& Player::GetPrototypedComponents() const {
+	return m_prototyped_components;
+}
+
+bool Player::HasPrototypedComponent( const std::string& id ) const {
+	return !id.empty() && m_prototyped_components.find( id ) != m_prototyped_components.end();
+}
+
+void Player::SetPrototypedComponents( const prototyped_components_t& components ) {
+	if ( components.size() > MAX_PROTOTYPED_COMPONENTS ) {
+		THROW( "too many prototyped unit components" );
+	}
+	for ( const auto& id : components ) {
+		if ( id.empty() || id.size() > MAX_PROTOTYPED_COMPONENT_ID_LENGTH ) {
+			THROW( "prototyped unit component ID is invalid" );
+		}
+	}
+	m_prototyped_components = components;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -701,6 +722,51 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_prototyped_components",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t result = {};
+					result.reserve( m_prototyped_components.size() );
+					for ( const auto& id : m_prototyped_components ) {
+						result.push_back( VALUE( gse::value::String, , id ) );
+					}
+					return VALUE( gse::value::Array, , result );
+				} )
+			},
+			{
+				"has_prototyped_component",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( id, 0, String );
+					return VALUE( gse::value::Bool, , HasPrototypedComponent( id ) );
+				} )
+			},
+			{
+				"set_prototyped_components",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( values, 0, Array );
+					prototyped_components_t components = {};
+					for ( size_t i = 0 ; i < values.size() ; i++ ) {
+						N_GETELEMENT( id, values, i, String );
+						if ( !components.insert( id ).second ) {
+							GSE_ERROR(
+								gse::EC.INVALID_CALL,
+								"Prototyped unit components must be unique"
+							);
+						}
+					}
+					try {
+						SetPrototypedComponents( components );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1069,6 +1135,10 @@ const types::Buffer Player::Serialize() const {
 	}
 	buf.WriteInt( m_sanction_turns );
 	buf.WriteInt( m_integrity_blemishes );
+	buf.WriteInt( m_prototyped_components.size() );
+	for ( const auto& id : m_prototyped_components ) {
+		buf.WriteString( id );
+	}
 
 	return buf;
 }
@@ -1264,6 +1334,25 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized player diplomatic integrity blemishes" );
 		}
 	}
+	prototyped_components_t prototyped_components = {
+		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
+	};
+	if ( buf.GetRemaining() > 0 ) {
+		prototyped_components.clear();
+		const auto component_count = buf.ReadCollectionSize( "prototyped unit component" );
+		if ( component_count > MAX_PROTOTYPED_COMPONENTS ) {
+			THROW( "invalid serialized prototyped unit component count" );
+		}
+		for ( size_t i = 0 ; i < component_count ; i++ ) {
+			const auto id = buf.ReadString();
+			if (
+				id.empty() || id.size() > MAX_PROTOTYPED_COMPONENT_ID_LENGTH ||
+				!prototyped_components.insert( id ).second
+			) {
+				THROW( "invalid or duplicate serialized prototyped unit component" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1290,6 +1379,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_loans = std::move( diplomatic_loans );
 	m_sanction_turns = sanction_turns;
 	m_integrity_blemishes = integrity_blemishes;
+	m_prototyped_components = std::move( prototyped_components );
 
 }
 

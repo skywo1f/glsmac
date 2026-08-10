@@ -1,4 +1,5 @@
 const unit_abilities = #include('../unit_abilities');
+const prototype_rules = #include('../prototype_rules');
 
 const get_queue_specs = (base) => {
 	let result = [];
@@ -47,8 +48,9 @@ const relocate_headquarters = (game, completing_base) => {
 	return previous;
 };
 
-const get_production_morale = (game, base, production) => {
-	let morale = 1 + unit_abilities.get_morale_bonus(production);
+const get_production_morale = (game, base, production, is_prototype) => {
+	let morale = 1 + unit_abilities.get_morale_bonus(production) +
+		(is_prototype ? 1 : 0);
 	let training_morale_bonus = 0;
 	const resolver = game.get('f_base_get_effective_facilities');
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
@@ -113,6 +115,7 @@ return {
 		let consumed_pops = [];
 		let pop_type_snapshots = [];
 		let network_node_link_state = #undefined;
+		let prototype_state = #undefined;
 
 		if (#is_defined(production)) {
 			let updated_minerals = old_minerals + e.game.get('f_base_get_pending_production')(base);
@@ -136,14 +139,29 @@ return {
 					updated_minerals -= production_cost;
 					const queue_size = #sizeof(base.get_production_queue());
 					if (production.production_kind == 'unit') {
+						const is_prototype = prototype_rules.is_prototype(
+							base.get_owner(),
+							production
+						);
 						produced_unit = e.game.um.spawn_unit({
 							def: production.id,
 							owner: base.get_owner(),
 							tile: base.get_tile(),
-							morale: get_production_morale(e.game, base, production),
+							morale: get_production_morale(
+								e.game,
+								base,
+								production,
+								is_prototype
+							),
 							health: 1.0,
 							home_base_id: base.id,
 						});
+						if (is_prototype) {
+							prototype_state = prototype_rules.apply(
+								base.get_owner(),
+								production
+							);
+						}
 						for (let i = 0; i < population_cost; i++) {
 							const pop = e.game.get('f_base_select_population_for_reduction')(base);
 							if (pop == null) {
@@ -231,6 +249,7 @@ return {
 			consumed_pops: consumed_pops,
 			pop_type_snapshots: pop_type_snapshots,
 			network_node_link_state: network_node_link_state,
+			prototype_state: prototype_state,
 		};
 	},
 
@@ -245,6 +264,9 @@ return {
 		}
 		if (#is_defined(e.applied.produced_unit)) {
 			e.game.um.despawn_unit(e.applied.produced_unit);
+		}
+		if (#is_defined(e.applied.prototype_state)) {
+			prototype_rules.rollback(e.applied.prototype_state);
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);

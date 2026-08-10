@@ -106,6 +106,9 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		score += (#is_defined(def.defender_morale_minimum)
 			? def.defender_morale_minimum
 			: 0) * (5000 + defense_priority * 250);
+		if (#is_defined(def.prototype_cost_waiver) && def.prototype_cost_waiver) {
+			score += 5000 + development_priority * 200;
+		}
 	}
 	return score;
 };

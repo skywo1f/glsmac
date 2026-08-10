@@ -142,6 +142,8 @@ const score_facility = (def, context) => {
 	const defender_morale_minimum = #is_defined(def.defender_morale_minimum)
 		? def.defender_morale_minimum
 		: 0;
+	const prototype_cost_waiver = #is_defined(def.prototype_cost_waiver) &&
+		def.prototype_cost_waiver;
 	return 30000 + infrastructure_bonus + headquarters_bonus +
 		development_priority * 200 +
 		def.nutrient_bonus * nutrient_weight + def.mineral_bonus * 900 +
@@ -174,7 +176,8 @@ const score_facility = (def, context) => {
 			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
 			def.native_lifecycle_bonus
 		) * morale_weight + defender_morale_minimum * morale_weight +
-		full_repair_capabilities * morale_weight * 2;
+		full_repair_capabilities * morale_weight * 2 +
+		(prototype_cost_waiver ? development_priority * 800 : 0);
 };
 
 const score_project = (def, context) => {

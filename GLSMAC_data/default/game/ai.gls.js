@@ -1252,6 +1252,27 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		if (!waiting_for_action && !waiting_for_animation) {
+			const choose_upgrade = game.get('f_unit_upgrade_choose_ai_target');
+			if (#is_defined(choose_upgrade)) {
+				for (unit of current_units) {
+					if (!action_state.can_attempt_action(unit, action_attempts)) {
+						continue;
+					}
+					const target = choose_upgrade(player, unit);
+					if (target != null) {
+						game.event_as(player.id, 'upgrade_unit', {
+							unit: unit,
+							target_def_id: target.id,
+						});
+						action_started = true;
+						action_delay = 100;
+						action_state.record_action_attempt(unit, action_attempts);
+						break;
+					}
+				}
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
 					continue;

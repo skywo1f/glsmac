@@ -1,5 +1,6 @@
 const pops = #include('pops');
 const unit_abilities = #include('unit_abilities');
+const prototype_rules = #include('prototype_rules');
 
 const globals = {};
 const CONTENT_CITIZENS = 3;
@@ -16,9 +17,14 @@ const get_social_ratings = (game, player) => {
 
 const get_production_cost = (game, base, production) => {
 	const resolver = #is_defined(game.get) ? game.get('f_social_get_mineral_cost') : #undefined;
+	const base_cost = prototype_rules.get_mineral_cost(
+		base,
+		production,
+		production.mineral_cost
+	);
 	return #is_defined(resolver)
-		? resolver(base.get_owner(), production.mineral_cost)
-		: production.mineral_cost;
+		? resolver(base.get_owner(), base_cost)
+		: base_cost;
 };
 
 const get_effective_facilities = (game, base) => {

@@ -74,6 +74,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_MAJOR_ATROCITIES = 1000000;
 	static constexpr int64_t MAX_SANCTION_TURNS = 1000000;
 	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
+	static constexpr size_t MAX_PROTOTYPED_COMPONENTS = 1024;
+	static constexpr size_t MAX_PROTOTYPED_COMPONENT_ID_LENGTH = 128;
 
 	const technologies_t& GetTechnologies() const;
 	bool HasTechnology( const std::string& id ) const;
@@ -94,6 +96,10 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetSanctionTurns( const int64_t sanction_turns );
 	int64_t GetIntegrityBlemishes() const;
 	void SetIntegrityBlemishes( const int64_t integrity_blemishes );
+	using prototyped_components_t = std::set< std::string >;
+	const prototyped_components_t& GetPrototypedComponents() const;
+	bool HasPrototypedComponent( const std::string& id ) const;
+	void SetPrototypedComponents( const prototyped_components_t& components );
 
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
@@ -213,6 +219,9 @@ private:
 	int64_t m_major_atrocities = 0;
 	int64_t m_sanction_turns = 0;
 	int64_t m_integrity_blemishes = 0;
+	prototyped_components_t m_prototyped_components = {
+		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
+	};
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};

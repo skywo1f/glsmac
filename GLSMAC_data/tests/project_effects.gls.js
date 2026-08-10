@@ -86,6 +86,7 @@ test.assert(values.f_project_get_effects(target_base) == {
 	full_repair: true,
 	police_rating_bonus: 1,
 	extra_police_units: 2,
+	unit_upgrade_cost_multiplier: 1.0,
 	ecology_divisor_bonus: 0,
 	native_fungus_combat: false,
 	fungus_movement_as_road: false,
@@ -104,6 +105,9 @@ project.id = 'ThePholusMutagen';
 let effects = values.f_project_get_player_effects(owner);
 test.assert(effects.ecology_divisor_bonus == 1);
 test.assert(effects.native_fungus_combat);
+
+project.id = 'TheNanoFactory';
+test.assert(values.f_project_get_player_effects(owner).unit_upgrade_cost_multiplier == 0.5);
 
 project.id = 'TheXenoempathyDome';
 effects = values.f_project_get_player_effects(owner);

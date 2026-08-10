@@ -14,6 +14,7 @@ const effects = {
 	EnergyBank: {economy_multiplier: 0.5},
 	NetworkNode: {research_multiplier: 0.5},
 	BiologyLab: {research_bonus: 2, native_lifecycle_bonus: 1, full_repair_native: true},
+	Skunkworks: {prototype_cost_waiver: true},
 	HologramTheatre: {drone_modifier: -2, psych_multiplier: 0.5},
 	ParadiseGarden: {talent_bonus: 2},
 	TreeFarm: {
@@ -109,7 +110,6 @@ const project_effects = {
 
 const partial_project_effects = {
 	TheEmpathGuild: true,
-	TheNanoFactory: true,
 	TheSpaceElevator: true,
 };
 

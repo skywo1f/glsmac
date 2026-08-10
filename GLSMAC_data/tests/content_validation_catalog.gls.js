@@ -26,6 +26,8 @@ test.assert(content.get_facility(catalog, 'TempleOfPlanet').data.native_lifecycl
 test.assert(catalog.facility_coverage.status.CentauriPreserve == 'complete');
 test.assert(catalog.facility_coverage.status.TempleOfPlanet == 'complete');
 test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native);
+test.assert(content.get_facility(catalog, 'Skunkworks').data.prototype_cost_waiver);
+test.assert(catalog.facility_coverage.status.Skunkworks == 'complete');
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
 test.assert(content.get_facility(catalog, 'AerospaceComplex').data.full_repair_air);
@@ -45,8 +47,9 @@ test.assert(catalog.project_coverage.status.TheXenoempathyDome == 'complete');
 test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'complete');
 test.assert(catalog.facility_coverage.status.NetworkNode == 'complete');
 test.assert(catalog.project_coverage.status.TheUniversalTranslator == 'complete');
+test.assert(catalog.project_coverage.status.TheNanoFactory == 'complete');
 for (id of [
-	'TheEmpathGuild', 'TheNanoFactory', 'TheSpaceElevator',
+	'TheEmpathGuild', 'TheSpaceElevator',
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
@@ -56,19 +59,19 @@ for (id of [
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
 for (id of [
-	'Skunkworks', 'PsiGate', 'SkyHydroponicsLab', 'NessusMiningStation',
+	'PsiGate', 'SkyHydroponicsLab', 'NessusMiningStation',
 	'OrbitalPowerTransmitter', 'OrbitalDefensePod', 'StockpileEnergy',
 ]) {
 	test.assert(content.get_facility(catalog, id) == null);
 }
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 31,
-	complete_facilities: 27,
+	facilities: 32,
+	complete_facilities: 28,
 	partial_facilities: 4,
 	implemented_projects: 33,
-	complete_projects: 30,
-	partial_projects: 3,
+	complete_projects: 31,
+	partial_projects: 2,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

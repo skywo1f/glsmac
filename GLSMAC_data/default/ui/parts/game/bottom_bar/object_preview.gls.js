@@ -18,6 +18,22 @@ return {
 		return #to_string(#to_float(#round(movement * 100.0)) / 100.0);
 	},
 
+	get_upgrade_targets: (unit) => {
+		const resolver = this.p.game.get('f_unit_upgrade_get_targets');
+		return #is_defined(resolver)
+			? resolver(this.p.game.get_player(), unit.get_def())
+			: [];
+	},
+
+	open_upgrade_popup: () => {
+		if (this.action_unit != null && #sizeof(this.get_upgrade_targets(this.action_unit)) > 0) {
+			this.p.modules.popup.set('unit_upgrade', {unit: this.action_unit});
+			this.p.modules.popup.show('unit_upgrade');
+			return true;
+		}
+		return false;
+	},
+
 	close_terraform_menu: () => {
 		if (this.terraform_menu != null) {
 			this.terraform_menu.hide();
@@ -234,6 +250,15 @@ return {
 					if (object.terraforming != 'none') {
 						this.action_button.show();
 					}
+				} else if (
+					is_owned && object.transport_id == 0 &&
+					#sizeof(this.get_upgrade_targets(object)) > 0
+				) {
+					this.action_unit = object;
+					this.action_mode = 'upgrade';
+					this.action_button.text = 'UPGRADE';
+					this.close_terraform_menu();
+					this.action_button.show();
 				} else {
 					this.action_unit = null;
 					this.action_mode = null;
@@ -336,6 +361,8 @@ return {
 				p.modules.popup.show('probe_operations');
 			} else if (this.action_mode == 'study_artifact') {
 				p.game.event('study_alien_artifact', {unit: this.action_unit});
+			} else if (this.action_mode == 'upgrade') {
+				this.open_upgrade_popup();
 			}
 			return true;
 		});
@@ -352,6 +379,9 @@ return {
 			}
 			if (this.action_mode == 'cancel_terraform' && e.code == 'C') {
 				p.game.event('cancel_terraform', {unit: this.action_unit});
+				return true;
+			}
+			if (e.code == 'U' && this.open_upgrade_popup()) {
 				return true;
 			}
 			if (this.action_mode == 'terraform') {

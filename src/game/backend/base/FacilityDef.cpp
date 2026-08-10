@@ -70,7 +70,8 @@ FacilityDef::FacilityDef(
 	const int64_t global_police_rating_bonus,
 	const int64_t global_extra_police_units,
 	const int64_t efficiency_rating_bonus,
-	const int64_t defender_morale_minimum
+	const int64_t defender_morale_minimum,
+	const bool prototype_cost_waiver
 )
 	: m_id( id )
 	, m_name( name )
@@ -132,7 +133,8 @@ FacilityDef::FacilityDef(
 	, m_global_police_rating_bonus( global_police_rating_bonus )
 	, m_global_extra_police_units( global_extra_police_units )
 	, m_efficiency_rating_bonus( efficiency_rating_bonus )
-	, m_defender_morale_minimum( defender_morale_minimum ) {
+	, m_defender_morale_minimum( defender_morale_minimum )
+	, m_prototype_cost_waiver( prototype_cost_waiver ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -323,6 +325,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_global_extra_police_units );
 	buf.WriteInt( def->m_efficiency_rating_bonus );
 	buf.WriteInt( def->m_defender_morale_minimum );
+	buf.WriteBool( def->m_prototype_cost_waiver );
 	return buf;
 }
 
@@ -388,6 +391,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto global_extra_police_units = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto efficiency_rating_bonus = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto defender_morale_minimum = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	const auto prototype_cost_waiver = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -449,7 +453,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		global_police_rating_bonus,
 		global_extra_police_units,
 		efficiency_rating_bonus,
-		defender_morale_minimum
+		defender_morale_minimum,
+		prototype_cost_waiver
 	);
 }
 
@@ -702,6 +707,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"defender_morale_minimum",
 			VALUE( gse::value::Int, , m_defender_morale_minimum )
+		},
+		{
+			"prototype_cost_waiver",
+			VALUE( gse::value::Bool, , m_prototype_cost_waiver )
 		},
 	};
 WRAPIMPL_END_PTR()
