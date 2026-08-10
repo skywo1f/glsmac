@@ -252,10 +252,13 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetResearchState( { "CentauriEcology" }, "", 0 );
 				source.SetEnergyCredits( 73 );
 				source.SetEcologicalDamageEvents( 4 );
+				source.SetMajorAtrocities( 2 );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
 				source.SetInfiltrated( 4, true );
+				Player cloned( &source );
+				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
@@ -265,6 +268,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					roundtrip.GetEcologicalDamageEvents() == 4,
 					"player ecological damage event count was not serialized"
 				);
+				GT_ASSERT( roundtrip.GetMajorAtrocities() == 2, "player major atrocity count was not serialized" );
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
 					"player social engineering choices were not serialized"
@@ -410,6 +414,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					player.WriteInt( 0 );
 					return player;
 				};
+				Player legacy( make_diplomatic_player() );
+				GT_ASSERT(
+					legacy.GetMajorAtrocities() == 0,
+					"legacy player major atrocity count did not default to zero"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -466,6 +475,20 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_infiltration = true;
 				}
 				GT_ASSERT( rejected_invalid_infiltration, "invalid player infiltration accepted" );
+
+				bool rejected_invalid_major_atrocities = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( Player::MAX_MAJOR_ATROCITIES + 1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_major_atrocities = true;
+				}
+				GT_ASSERT( rejected_invalid_major_atrocities, "invalid player major atrocity count accepted" );
 				GT_OK();
 			}
 		);

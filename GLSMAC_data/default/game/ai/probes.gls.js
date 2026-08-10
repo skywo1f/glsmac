@@ -54,10 +54,35 @@ const get_base_action = (game, player, probe, base) => {
 			score: 90000 + #min(target_player.energy_credits, 500) * 50,
 		});
 	}
-	best = consider(best, {
-		operation: 'sabotage', target: base,
-		score: 70000 + base.get_accumulated_minerals() * 100,
-	});
+	const research_loss = game.get('f_probe_get_assassination_research_loss')(target_player);
+	if (probe.morale >= 3 && research_loss > 0) {
+		best = consider(best, {
+			operation: 'assassinate_researchers', target: base,
+			score: 100000 + research_loss * 200,
+		});
+	}
+	if (game.get('f_probe_can_incite_drone_riots')(base)) {
+		best = consider(best, {
+			operation: 'incite_drone_riots', target: base,
+			score: 80000 + base.get_size() * 2000,
+		});
+	}
+	const plague_loss = game.get('f_probe_get_plague_population_loss')(base);
+	if (
+		player.has_technology('RetroviralEngineering') && base.get_size() >= 6 &&
+		plague_loss > 0
+	) {
+		best = consider(best, {
+			operation: 'genetic_plague', target: base,
+			score: 95000 + plague_loss * 7000,
+		});
+	}
+	if (game.get('f_probe_can_sabotage')(base)) {
+		best = consider(best, {
+			operation: 'sabotage', target: base,
+			score: 70000 + base.get_accumulated_minerals() * 100,
+		});
+	}
 	return best;
 };
 

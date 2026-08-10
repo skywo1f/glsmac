@@ -6,20 +6,28 @@ let hunter_seeker = false;
 let unknown_technologies = [];
 let mind_control_cost = 100;
 let subversion_cost = 50;
+let can_riot = true;
+let can_sabotage = true;
+let research_loss = 0;
+let plague_loss = 0;
+let has_retroviral_engineering = false;
+let base_size = 3;
+let base_minerals = 20;
 
 const player = {
 	id: 0,
 	energy_credits: 1000,
 	has_infiltrated: (other) => { return infiltrated; },
 	get_diplomatic_relation: (other) => { return relation; },
+	has_technology: (id) => { return id == 'RetroviralEngineering' && has_retroviral_engineering; },
 };
 const target_player = {id: 1, energy_credits: 200};
 const base_tile = {};
 const base = {
 	id: 10,
 	get_owner: () => { return target_player; },
-	get_size: () => { return 3; },
-	get_accumulated_minerals: () => { return 20; },
+	get_size: () => { return base_size; },
+	get_accumulated_minerals: () => { return base_minerals; },
 	get_tile: () => { return base_tile; },
 };
 const unit = {
@@ -43,6 +51,18 @@ const game = {
 		if (key == 'f_probe_get_subversion_cost') {
 			return (actor, target) => { return subversion_cost; };
 		}
+		if (key == 'f_probe_can_incite_drone_riots') {
+			return (target) => { return can_riot; };
+		}
+		if (key == 'f_probe_can_sabotage') {
+			return (target) => { return can_sabotage; };
+		}
+		if (key == 'f_probe_get_assassination_research_loss') {
+			return (target) => { return research_loss; };
+		}
+		if (key == 'f_probe_get_plague_population_loss') {
+			return (target) => { return plague_loss; };
+		}
 	},
 	get_player: (id) => { return target_player; },
 	get_tm: () => {
@@ -50,6 +70,7 @@ const game = {
 	},
 };
 const probe = {
+	morale: 2,
 	get_tile: () => {
 		return {
 			get_surrounding_tiles: () => {
@@ -93,3 +114,15 @@ test.assert(probes.choose_adjacent_action(game, player, probe).operation == 'dra
 const destination = probes.choose_target_base(game, player, probe, [base]);
 test.assert(destination.base == base);
 test.assert(destination.action.operation == 'drain_energy');
+
+target_player.energy_credits = 0;
+can_sabotage = false;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'incite_drone_riots');
+probe.morale = 3;
+research_loss = 40;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'assassinate_researchers');
+research_loss = 0;
+has_retroviral_engineering = true;
+base_size = 6;
+plague_loss = 3;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'genetic_plague');

@@ -125,7 +125,7 @@ const get_base_damage = (game, base) => {
 		facilities: facility_ids,
 		minerals: base.get_intake().MINERALS,
 		previous_damages: owner.get_ecological_damage_events(),
-		major_atrocities: 0,
+		major_atrocities: owner.get_major_atrocities(),
 		technologies: #sizeof(owner.get_research_state().technologies),
 		planet: ratings.planet,
 		life: get_life_level(settings.map.native_lifeforms),

@@ -110,9 +110,26 @@ return {
 		)) > 0) {
 			items :+['steal_technology', definitions.steal_technology.name];
 		}
-		items :+['sabotage', definitions.sabotage.name];
+		if (this.p.game.get('f_probe_can_sabotage')(this.target)) {
+			items :+['sabotage', definitions.sabotage.name];
+		}
 		if (target_player.energy_credits > 0 && actor.energy_credits < 1000000000) {
 			items :+['drain_energy', definitions.drain_energy.name];
+		}
+		if (this.p.game.get('f_probe_can_incite_drone_riots')(this.target)) {
+			items :+['incite_drone_riots', definitions.incite_drone_riots.name];
+		}
+		if (
+			this.unit.morale >= 3 &&
+			this.p.game.get('f_probe_get_assassination_research_loss')(target_player) > 0
+		) {
+			items :+['assassinate_researchers', definitions.assassinate_researchers.name];
+		}
+		if (
+			actor.has_technology('RetroviralEngineering') &&
+			this.p.game.get('f_probe_get_plague_population_loss')(this.target) > 0
+		) {
+			items :+['genetic_plague', definitions.genetic_plague.name];
 		}
 		const cost = this.p.game.get('f_probe_get_mind_control_cost')(actor, this.target);
 		if (cost != null) {
@@ -167,7 +184,8 @@ return {
 		const chance = this.p.game.get('f_probe_get_success_chance')(
 			this.unit,
 			target_player,
-			this.operation
+			this.operation,
+			this.target
 		);
 		this.status_text.text = cost > 0
 			? 'Cost: ' + #to_string(cost) + ' energy credits.'

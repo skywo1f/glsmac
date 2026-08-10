@@ -49,12 +49,17 @@ const headquarters = {
 	has_facility: (id) => { return id == 'Headquarters'; },
 	get_tile: () => { return {id: 'headquarters'}; },
 };
+const target_tile = {id: 'target'};
 const target_base = {
 	get_owner: () => { return target_player; },
 	get_facilities: () => { return []; },
 	has_facility: (id) => { return false; },
-	get_tile: () => { return {id: 'target'}; },
+	get_tile: () => { return target_tile; },
 	get_size: () => { return 4; },
+	get_pops: () => { return [
+		{get_type: () => { return 'WORKER'; }},
+		{get_type: () => { return 'DRONE'; }},
+	]; },
 };
 bases = [headquarters, target_base];
 
@@ -77,7 +82,25 @@ units = [target_unit];
 
 test.assert(values.f_probe_is_unit(probe));
 test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 85);
+test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate', target_base) == 85);
 test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 94);
+test.assert(values.f_probe_can_incite_drone_riots(target_base));
+test.assert(values.f_probe_get_assassination_research_loss({
+	get_research_state: () => { return {target: 'IndustrialBase', progress: 100}; },
+}) == 25);
+test.assert(values.f_probe_get_plague_population_loss(target_base) == 2);
+
+const defending_probe = {
+	id: 7, owner: 2, morale: 2, health: 1.0, transport_id: 0,
+	get_tile: () => { return target_base.get_tile(); },
+	get_def: () => { return {weapon: 'ProbeTeam'}; },
+};
+units :+defending_probe;
+test.assert(values.f_probe_get_defending_probe(target_player, target_base) == defending_probe);
+test.assert(values.f_probe_get_success_chance(
+	probe, target_player, 'infiltrate', target_base
+) == 65);
+units = [target_unit];
 
 target_def.abilities = ['PolymorphicEncryption'];
 test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 187);
@@ -102,6 +125,8 @@ target_base.has_facility = (id) => { return id == 'ChildrenSCreche'; };
 test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == base_cost * 2);
 target_base.has_facility = (id) => { return id == 'PunishmentSphere'; };
 test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == base_cost * 2);
+target_base.has_facility = (id) => { return id == 'ResearchHospital'; };
+test.assert(values.f_probe_get_plague_population_loss(target_base) == 1);
 target_base.has_facility = (id) => { return false; };
 
 const unknown = values.f_probe_get_unknown_technologies(actor, target_player);

@@ -53,6 +53,22 @@
 				fail('quickstart did not create an opponent');
 				return;
 			}
+			const operations = game.get('f_probe_get_operations')();
+			if (
+				!#is_defined(operations.incite_drone_riots) ||
+				!#is_defined(operations.assassinate_researchers) ||
+				!#is_defined(operations.genetic_plague)
+			) {
+				fail('advanced base-game probe operations are unavailable');
+				return;
+			}
+			const atrocities_before = actor.get_major_atrocities();
+			actor.set_major_atrocities(atrocities_before + 1);
+			if (actor.get_major_atrocities() != atrocities_before + 1) {
+				fail('major atrocity state did not update through the live player wrapper');
+				return;
+			}
+			actor.set_major_atrocities(atrocities_before);
 
 			let actor_base = null;
 			let target_base = null;
@@ -164,7 +180,7 @@
 					}
 					finished = true;
 					#print(
-						'PROBE_RUNTIME_PASS: validated buildable Probe Team, cost, subversion, promotion, movement, diplomacy, and notification'
+						'PROBE_RUNTIME_PASS: validated probe catalog, atrocity state, build gate, cost, subversion, promotion, movement, diplomacy, and notification'
 					);
 					glsmac.exit();
 					return false;

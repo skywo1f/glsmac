@@ -6,6 +6,7 @@ const make_player = (id, energy, technologies, target) => {
 	let infiltrated = {};
 	let relations = {};
 	let offers = {};
+	let major_atrocities = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
 		id: id,
@@ -17,6 +18,14 @@ const make_player = (id, energy, technologies, target) => {
 	player.read_energy_credits = () => { return player.energy_credits; };
 	player.get_research_state = () => { return research; };
 	player.set_research_state = (value) => { research = value; };
+	player.has_technology = (id) => {
+		for (known of research.technologies) {
+			if (known == id) { return true; }
+		}
+		return false;
+	};
+	player.get_major_atrocities = () => { return major_atrocities; };
+	player.set_major_atrocities = (value) => { major_atrocities = value; };
 	player.has_infiltrated = (other) => {
 			return #is_defined(infiltrated['p' + #to_string(other.id)]) &&
 				infiltrated['p' + #to_string(other.id)];
@@ -121,18 +130,40 @@ const make_fixture = () => {
 		let current_owner = owner;
 		let current_facilities = facilities;
 		let minerals = 30;
+		let nutrients = 18;
 		let queue = [{production_kind: 'unit', id: 'Defender'}];
-		let pop = {type: 'WORKER'};
-		pop.get_type = () => { return pop.type; };
-		pop.set_type = (value) => { pop.type = value; };
+		const make_pop = (type, worked_tile) => {
+			let pop = {type: type, worked_tile: worked_tile};
+			pop.get_type = () => { return pop.type; };
+			pop.set_type = (value) => { pop.type = value; };
+			pop.get = (key) => { return key == 'worked_tile' ? pop.worked_tile : #undefined; };
+			pop.set_worked_tile = (value) => { pop.worked_tile = value; };
+			return pop;
+		};
+		let pops = [
+			make_pop('WORKER', tile), make_pop('WORKER', #undefined),
+			make_pop('WORKER', #undefined), make_pop('WORKER', #undefined),
+		];
 		return {
 			id: id,
 			name: 'Base ' + #to_string(id),
 			get_owner: () => { return current_owner; },
 			set_owner: (value) => { current_owner = value; },
 			get_tile: () => { return tile; },
-			get_size: () => { return 4; },
-			get_pops: () => { return [pop]; },
+			get_size: () => { return #sizeof(pops); },
+			get_pops: () => { return pops; },
+			create_pop: (data) => {
+				const pop = make_pop(data.type, null);
+				pops :+pop;
+				return pop;
+			},
+			destroy_pop: (doomed) => {
+				let remaining = [];
+				for (pop of pops) { if (pop != doomed) { remaining :+pop; } }
+				pops = remaining;
+			},
+			get: (key) => { return key == 'accumulated_nutrients' ? nutrients : null; },
+			set: (key, value) => { if (key == 'accumulated_nutrients') { nutrients = value; } },
 			get_facilities: () => { return current_facilities; },
 			has_facility: (facility_id) => {
 				for (facility of current_facilities) {
@@ -202,6 +233,11 @@ const make_fixture = () => {
 	values.f_technology_get_next_target = (known, player) => { return ''; };
 	values.f_economy_get_base_psych = (game_value, base) => { return 0; };
 	values.f_base_process_psych = (game_value, base, psych) => {};
+	values.f_base_reset_nutrients = (game_value, base) => {
+		base.set('accumulated_nutrients', 0);
+	};
+	values.f_base_pop_unwork_tile = (base, pop) => { pop.set_worked_tile(#undefined); };
+	values.f_base_pop_work_tile = (base, pop, tile) => { pop.set_worked_tile(tile); };
 	define_probes(game);
 	define_diplomacy(game);
 	for (callback of callbacks.start) { callback({}); }
@@ -221,10 +257,19 @@ const make_fixture = () => {
 	};
 };
 
+const count_pop_type = (base, type) => {
+	let count = 0;
+	for (pop of base.get_pops()) {
+		if (pop.get_type() == type) { count += 1; }
+	}
+	return count;
+};
+
 const result = (success, detected, survives) => {
 	return {
 		success: success, detected: detected, survives: survives, chance: 85, cost: 0,
 		technology_id: '', sabotage_facility_id: '', drain_amount: 0,
+		research_loss: 0, population_loss: 0, defender_id: 0,
 	};
 };
 
@@ -286,6 +331,54 @@ test.assert(
 );
 
 f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'incite_drone_riots', target: f.target_base,
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = result(true, false, true);
+e.applied = probe_operation.apply(e);
+test.assert(count_pop_type(f.target_base, 'DRONE') == 1);
+probe_operation.rollback(e);
+test.assert(count_pop_type(f.target_base, 'DRONE') == 0);
+
+f = make_fixture();
+f.target_player.set_research_state({
+	technologies: ['PlanetaryNetworks'], target: 'IndustrialBase', progress: 100,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'assassinate_researchers', target: f.target_base,
+}};
+test.assert(#is_defined(probe_operation.validate(e)));
+f.probe.morale = 3;
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = result(true, false, true);
+e.resolved.research_loss = 25;
+e.applied = probe_operation.apply(e);
+test.assert(f.target_player.get_research_state().progress == 75);
+probe_operation.rollback(e);
+test.assert(f.target_player.get_research_state().progress == 100);
+
+f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'genetic_plague', target: f.target_base,
+}};
+test.assert(#is_defined(probe_operation.validate(e)));
+f.actor.set_research_state({
+	technologies: ['RetroviralEngineering'], target: 'PlanetaryNetworks', progress: 9,
+});
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = result(true, true, true);
+e.resolved.population_loss = 2;
+e.applied = probe_operation.apply(e);
+test.assert(f.target_base.get_size() == 2);
+test.assert(f.actor.get_major_atrocities() == 1);
+test.assert(f.target_base.get('accumulated_nutrients') == 0);
+probe_operation.rollback(e);
+test.assert(f.target_base.get_size() == 4);
+test.assert(f.actor.get_major_atrocities() == 0);
+test.assert(f.target_base.get('accumulated_nutrients') == 18);
+
+f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'subvert_unit', target: f.defender}};
 test.assert(!#is_defined(probe_operation.validate(e)));
 e.resolved = result(true, true, true);
@@ -318,6 +411,37 @@ test.assert(f.target_base.get_owner().id == 2);
 test.assert(f.um.get_unit(2).owner == 2 && f.um.get_unit(2).home_base_id == 10);
 test.assert(f.um.get_unit(4).owner == 2 && f.um.get_unit(4).home_base_id == 11);
 test.assert(remote_support.owner == 2 && remote_support.home_base_id == 10);
+
+f = make_fixture();
+const defending_probe = f.um.spawn_unit({
+	id: 5, def: 'ProbeTeam', owner: f.target_player, tile: f.target_base.get_tile(),
+	morale: 2, health: 1.0, movement: 1.0, home_base_id: f.target_base.id,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'infiltrate', target: f.target_base,
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(e.resolved.success && e.resolved.detected && e.resolved.defender_id == 5);
+e.applied = probe_operation.apply(e);
+test.assert(!f.um.has_unit(5));
+probe_operation.rollback(e);
+test.assert(f.um.has_unit(5) && f.um.get_unit(5).owner == 2);
+
+f = make_fixture();
+f.um.spawn_unit({
+	id: 5, def: 'ProbeTeam', owner: f.target_player, tile: f.target_base.get_tile(),
+	morale: 3, health: 1.0, movement: 1.0, home_base_id: f.target_base.id,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'infiltrate', target: f.target_base,
+}};
+e.resolved = result(false, true, false);
+e.resolved.defender_id = 5;
+e.applied = probe_operation.apply(e);
+test.assert(!f.um.has_unit(1) && f.um.has_unit(5));
+probe_operation.rollback(e);
+test.assert(f.um.has_unit(1) && f.um.has_unit(5));
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'drain_energy', target: f.target_base}};

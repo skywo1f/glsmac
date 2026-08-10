@@ -97,6 +97,51 @@ const restore_pop_types = (snapshots) => {
 	}
 };
 
+const get_riot_pop = (base) => {
+	for (pop of base.get_pops()) {
+		if (pop.get_type() != 'DRONE') {
+			return pop;
+		}
+	}
+	return null;
+};
+
+const snapshot_surviving_pop_types = (base, removed_count) => {
+	let result = [];
+	const pops = base.get_pops();
+	for (let i = 0; i < #sizeof(pops) - removed_count; i++) {
+		result :+{pop: pops[i], type: pops[i].get_type()};
+	}
+	return result;
+};
+
+const remove_base_population = (game, base, count) => {
+	let removed = [];
+	const old_nutrients = base.get('accumulated_nutrients');
+	game.get('f_base_reset_nutrients')(game, base);
+	for (let i = 0; i < count; i++) {
+		const pops = base.get_pops();
+		const pop = pops[#sizeof(pops) - 1];
+		const worked_tile = pop.get('worked_tile');
+		removed :+{type: pop.get_type(), worked_tile: worked_tile};
+		if (#is_defined(worked_tile)) {
+			game.get('f_base_pop_unwork_tile')(base, pop);
+		}
+		base.destroy_pop(pop);
+	}
+	return {pops: removed, nutrients: old_nutrients};
+};
+
+const restore_base_population = (game, base, snapshot) => {
+	for (let i = #sizeof(snapshot.pops) - 1; i >= 0; i--) {
+		const pop = base.create_pop({type: snapshot.pops[i].type});
+		if (#is_defined(snapshot.pops[i].worked_tile)) {
+			game.get('f_base_pop_work_tile')(base, pop, snapshot.pops[i].worked_tile);
+		}
+	}
+	base.set('accumulated_nutrients', snapshot.nutrients);
+};
+
 const refresh_base_psych = (game, base) => {
 	const get_psych = game.get('f_economy_get_base_psych');
 	const process_psych = game.get('f_base_process_psych');
@@ -143,6 +188,14 @@ const get_result_message = (game, operation, target, resolved) => {
 			: 'Sabotaged ' + resolved.sabotage_facility_id + ' at ' + target.name + '.';
 	} else if (operation == 'drain_energy') {
 		message = 'Drained ' + #to_string(resolved.drain_amount) + ' energy credits.';
+	} else if (operation == 'incite_drone_riots') {
+		message = 'Drone riots incited at ' + target.name + '.';
+	} else if (operation == 'assassinate_researchers') {
+		message = 'Prominent researchers assassinated; ' +
+			#to_string(resolved.research_loss) + ' research points lost.';
+	} else if (operation == 'genetic_plague') {
+		message = 'Genetic plague caused ' + #to_string(resolved.population_loss) +
+			' population casualties at ' + target.name + '.';
 	} else if (operation == 'subvert_unit') {
 		const definition = target.get_def();
 		message = 'Subverted ' + (
@@ -180,8 +233,7 @@ const validate_base_operation = (e, actor, target_player) => {
 		return 'Target faction has no technology available to steal';
 	}
 	if (
-		operation == 'sabotage' && base.get_accumulated_minerals() <= 0 &&
-		#sizeof(get_sabotage_facilities(base)) == 0
+		operation == 'sabotage' && !e.game.get('f_probe_can_sabotage')(base)
 	) {
 		return 'Target base has nothing available to sabotage';
 	}
@@ -190,6 +242,31 @@ const validate_base_operation = (e, actor, target_player) => {
 		(target_player.energy_credits <= 0 || actor.energy_credits >= 1000000000)
 	) {
 		return 'No energy credits can be drained from the target';
+	}
+	if (
+		operation == 'incite_drone_riots' &&
+		!e.game.get('f_probe_can_incite_drone_riots')(base)
+	) {
+		return 'Target base has no population available to incite';
+	}
+	if (operation == 'assassinate_researchers') {
+		if (e.data.unit.morale < 3) {
+			return 'Probe Team lacks the experience to assassinate researchers';
+		}
+		if (e.game.get('f_probe_get_assassination_research_loss')(target_player) <= 0) {
+			return 'Target faction has no active research to disrupt';
+		}
+	}
+	if (operation == 'genetic_plague') {
+		if (!actor.has_technology('RetroviralEngineering')) {
+			return 'Retroviral Engineering is required for genetic warfare';
+		}
+		if (e.game.get('f_probe_get_plague_population_loss')(base) <= 0) {
+			return 'Target base is too small for a genetic plague';
+		}
+		if (actor.get_major_atrocities() >= 1000000) {
+			return 'Major atrocity limit has been reached';
+		}
 	}
 	if (operation == 'mind_control_base') {
 		const cost = e.game.get('f_probe_get_mind_control_cost')(actor, base);
@@ -281,15 +358,24 @@ return {
 		const operation = e.data.operation;
 		const actor = e.game.get_player(e.caller);
 		const target_player = get_target_player(e.game, operation, e.data.target);
+		const operations = e.game.get('f_probe_get_operations')();
+		const defender = operations[operation].target == 'base'
+			? e.game.get('f_probe_get_defending_probe')(target_player, e.data.target)
+			: null;
 		const chance = e.game.get('f_probe_get_success_chance')(
 			e.data.unit,
 			target_player,
-			operation
+			operation,
+			e.data.target
 		);
 		const paid = operation == 'subvert_unit' || operation == 'mind_control_base';
-		const success = paid || e.game.random.get_int(1, 100) <= chance;
-		const detected = paid || !success || e.game.random.get_int(1, 100) <= 35;
-		const survives = paid || e.game.random.get_int(1, 100) <= (success ? 85 : 35);
+		const intercepted = defender != null;
+		const success = (paid && !intercepted) || e.game.random.get_int(1, 100) <= chance;
+		const detected = operation == 'genetic_plague' || intercepted || paid || !success ||
+			e.game.random.get_int(1, 100) <= 35;
+		const survives = intercepted && !success
+			? false
+			: paid || e.game.random.get_int(1, 100) <= (success ? 85 : 35);
 		let result = {
 			success: success,
 			detected: detected,
@@ -299,6 +385,9 @@ return {
 			technology_id: '',
 			sabotage_facility_id: '',
 			drain_amount: 0,
+			research_loss: 0,
+			population_loss: 0,
+			defender_id: defender == null ? 0 : defender.id,
 		};
 		if (operation == 'subvert_unit') {
 			result.cost = e.game.get('f_probe_get_subversion_cost')(actor, e.data.target);
@@ -326,6 +415,14 @@ return {
 					#max(1, #floor(#to_float(target_player.energy_credits) / 4.0))
 				)
 			);
+		} else if (success && operation == 'assassinate_researchers') {
+			result.research_loss = e.game.get('f_probe_get_assassination_research_loss')(
+				target_player
+			);
+		} else if (success && operation == 'genetic_plague') {
+			result.population_loss = e.game.get('f_probe_get_plague_population_loss')(
+				e.data.target
+			);
 		}
 		return result;
 	},
@@ -347,6 +444,7 @@ return {
 			actor_energy: actor.energy_credits,
 			target_energy: target_player.energy_credits,
 			infiltrated: actor.has_infiltrated(target_player),
+			actor_atrocities: actor.get_major_atrocities(),
 		};
 
 		if (e.resolved.cost > 0) {
@@ -354,6 +452,14 @@ return {
 		}
 		probe.movement = 0.0;
 		probe.moved_this_turn = true;
+		if (
+			e.resolved.success && e.resolved.defender_id > 0 &&
+			e.game.um.has_unit(e.resolved.defender_id)
+		) {
+			const defender = e.game.um.get_unit(e.resolved.defender_id);
+			applied.defending_probe = snapshot_unit(defender);
+			e.game.um.despawn_unit(defender);
+		}
 
 		if (e.resolved.success && operation == 'infiltrate') {
 			actor.set_infiltrated(target_player, true);
@@ -388,6 +494,26 @@ return {
 		} else if (e.resolved.success && operation == 'drain_energy') {
 			actor.set_energy_credits(actor.energy_credits + e.resolved.drain_amount);
 			target_player.set_energy_credits(target_player.energy_credits - e.resolved.drain_amount);
+		} else if (e.resolved.success && operation == 'incite_drone_riots') {
+			const base = e.data.target;
+			applied.pop_types = snapshot_pop_types(base);
+			get_riot_pop(base).set_type('DRONE');
+			e.game.trigger('update_base', {base: base});
+		} else if (e.resolved.success && operation == 'assassinate_researchers') {
+			applied.target_research = target_player.get_research_state();
+			target_player.set_research_state({
+				technologies: applied.target_research.technologies,
+				target: applied.target_research.target,
+				progress: #max(0, applied.target_research.progress - e.resolved.research_loss),
+			});
+			e.game.trigger('research_updated', {player: target_player});
+		} else if (e.resolved.success && operation == 'genetic_plague') {
+			const base = e.data.target;
+			applied.pop_types = snapshot_surviving_pop_types(base, e.resolved.population_loss);
+			applied.population = remove_base_population(e.game, base, e.resolved.population_loss);
+			actor.set_major_atrocities(applied.actor_atrocities + 1);
+			refresh_base_psych(e.game, base);
+			e.game.trigger('update_base', {base: base});
 		} else if (e.resolved.success && operation == 'subvert_unit') {
 			applied.transferred_units = [snapshot_unit(e.data.target)];
 			despawn_snapshots(e.game, applied.transferred_units);
@@ -428,6 +554,7 @@ return {
 			operation: operation,
 			success: e.resolved.success,
 			detected: e.resolved.detected,
+			atrocity: operation == 'genetic_plague' && e.resolved.success,
 		});
 		e.game.message(result_message);
 		return applied;
@@ -443,6 +570,12 @@ return {
 		}
 		if (#is_defined(e.applied.base_capture)) {
 			base_capture.restore_base(e.data.target, e.applied.base_capture);
+		}
+		if (#is_defined(e.applied.population)) {
+			restore_base_population(e.game, e.data.target, e.applied.population);
+		}
+		if (#is_defined(e.applied.defending_probe)) {
+			restore_unit(e.game, e.applied.defending_probe);
 		}
 		if (#is_defined(e.applied.base_minerals)) {
 			e.data.target.set_accumulated_minerals(e.applied.base_minerals);
@@ -460,8 +593,13 @@ return {
 			actor.set_research_state(e.applied.research);
 			e.game.trigger('research_updated', {player: actor});
 		}
+		if (#is_defined(e.applied.target_research)) {
+			target_player.set_research_state(e.applied.target_research);
+			e.game.trigger('research_updated', {player: target_player});
+		}
 		actor.set_infiltrated(target_player, e.applied.infiltrated);
 		actor.set_energy_credits(e.applied.actor_energy);
+		actor.set_major_atrocities(e.applied.actor_atrocities);
 		target_player.set_energy_credits(e.applied.target_energy);
 		restore_unit(e.game, e.applied.probe);
 		if (#is_defined(e.applied.diplomacy)) {
@@ -474,7 +612,10 @@ return {
 		}
 		e.game.trigger('economy_updated', {player: actor});
 		e.game.trigger('economy_updated', {player: target_player});
-		if (operation == 'sabotage' || operation == 'mind_control_base') {
+		if (
+			operation == 'sabotage' || operation == 'mind_control_base' ||
+			operation == 'incite_drone_riots' || operation == 'genetic_plague'
+		) {
 			e.game.trigger('update_base', {base: e.data.target});
 		}
 	},

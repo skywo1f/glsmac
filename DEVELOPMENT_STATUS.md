@@ -29,14 +29,16 @@ The Windows x64 Release build has asset-backed automated coverage for:
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
 - persistent faction-wide fungal-bloom counts, host-authored reversible fungus
-  eruptions, and live Eco Damage values on the base screen;
+  eruptions, persistent major-atrocity counts and ecological penalties, and
+  live Eco Damage values on the base screen;
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
   vendettas, a player diplomacy screen, and strength-aware AI responses;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
-  energy drain, unit subversion, base mind control, player controls, and a
-  relationship-, value-, affordability-, and distance-aware AI policy;
+  energy drain, drone riots, researcher assassination, genetic plague, unit
+  subversion, base mind control, resident Probe Team defense, player controls,
+  and a relationship-, value-, affordability-, and distance-aware AI policy;
 - land and sea colonization, terraforming, conventional and psi combat,
   conquest, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -64,17 +66,17 @@ The following original-SMAC systems remain absent or materially incomplete:
 - deeper diplomacy including commerce, technology and energy exchanges,
   commlink discovery, reputation, surrender, council elections, and diplomatic
   victory;
-- remaining probe-team parity: drone riots, researcher assassination, genetic
-  plague, probe-versus-probe defense, counterespionage, exact original
-  cost/outcome tuning, richer intelligence displays, and diplomatic/reputation
-  consequences;
+- remaining probe-team parity: captured faction leader rescue,
+  counterespionage, probe interrogation, exact original cost/outcome and
+  probe-combat tuning, richer intelligence displays, and global
+  diplomatic/reputation consequences for atrocities;
 - remaining social effects: adoption costs, commerce thresholds, and full
   police and away-unit behavior;
 - headquarters relocation, uniqueness, and capture-transfer behavior, plus
   explicit player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
-  global warming, sea-level changes, volcanoes, atrocity modifiers, several
-  ecology-related Secret Project effects, and the original engine's
+  global warming, sea-level changes, volcanoes, several ecology-related Secret
+  Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
 - orbital facilities, orbital limits, Planet Busters, and orbital defense;
 - several remaining facility effects, including submersion, Psi Gates,
@@ -94,8 +96,11 @@ The Release CTest matrix contains 82 cases: 64 isolated native/script GSE tests
 and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 64-case Release GSE matrix passed in two bounded invocations: tests
-1-32 passed in 127.31 seconds and tests 33-64 passed in 39.99 seconds. The
+The current 64-case Release GSE matrix passed in one bounded invocation in
+114.74 seconds. All 18 asset-backed runtime scenarios also passed against an
+installed Planetary Pack in three bounded invocations: the live probe scenario
+in 7.46 seconds, six gameplay and snapshot scenarios in 92.70 seconds, and the
+remaining eleven content and AI scenarios in 544.16 seconds. The
 previous 58-case GSE set also passes in the MSVC AddressSanitizer configuration.
 Script isolation keeps allocator lifetime bounded and reports the exact script
 that fails.
@@ -103,11 +108,12 @@ that fails.
 The diplomacy cases have passed focused Release validation: native
 serialization and malformed-state checks, isolated event and AI-policy tests,
 and an asset-backed quickstart covering a persisted proposal, bilateral treaty,
-and bilateral vendetta. The five new probe cases also pass focused Release
-validation: persistent native infiltration state, isolated rules, reversible
-operations, AI policy, UI loading, and an asset-backed quickstart covering the
-live production gate and unit subversion. The expanded 82-case matrix has not
-yet been run as one invocation.
+and bilateral vendetta. Probe coverage includes persistent infiltration and
+major-atrocity state, isolated rules, reversible operations for all implemented
+missions, resident defense, AI policy, UI loading, and an asset-backed
+quickstart covering the live production gate and unit subversion. The expanded
+82-case matrix is green across bounded invocations, but has not been run as one
+invocation.
 
 The last all-green Release matrix passed 74/74 in one uninterrupted
 688.11-second invocation. A later full validation passed 72/74 in 768.06

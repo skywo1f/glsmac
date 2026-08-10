@@ -108,6 +108,7 @@ const runtime_owner = {
 		};
 	},
 	get_ecological_damage_events: () => { return 0; },
+	get_major_atrocities: () => { return 0; },
 };
 const runtime_tile = {
 	x: 4,

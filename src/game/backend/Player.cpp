@@ -48,6 +48,7 @@ Player::Player( const Player* const other ) {
 	m_research_progress = other->m_research_progress;
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
+	m_major_atrocities = other->m_major_atrocities;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -186,6 +187,17 @@ void Player::SetEcologicalDamageEvents( const int64_t ecological_damage_events )
 		THROW( "player ecological damage event count is out of range" );
 	}
 	m_ecological_damage_events = ecological_damage_events;
+}
+
+int64_t Player::GetMajorAtrocities() const {
+	return m_major_atrocities;
+}
+
+void Player::SetMajorAtrocities( const int64_t major_atrocities ) {
+	if ( major_atrocities < 0 || major_atrocities > MAX_MAJOR_ATROCITIES ) {
+		THROW( "player major atrocity count is out of range" );
+	}
+	m_major_atrocities = major_atrocities;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -476,6 +488,26 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_major_atrocities",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , m_major_atrocities );
+				} )
+			},
+			{
+				"set_major_atrocities",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( major_atrocities, 0, Int );
+					if ( major_atrocities < 0 || major_atrocities > MAX_MAJOR_ATROCITIES ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Player major atrocity count is out of range" );
+					}
+					SetMajorAtrocities( major_atrocities );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -645,6 +677,7 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto player_id : m_infiltrated_players ) {
 		buf.WriteInt( player_id );
 	}
+	buf.WriteInt( m_major_atrocities );
 
 	return buf;
 }
@@ -764,6 +797,10 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	const auto major_atrocities = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
+	if ( major_atrocities < 0 || major_atrocities > MAX_MAJOR_ATROCITIES ) {
+		THROW( "invalid serialized player major atrocity count" );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -784,6 +821,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_relations = std::move( diplomatic_relations );
 	m_diplomatic_offers = std::move( diplomatic_offers );
 	m_infiltrated_players = std::move( infiltrated_players );
+	m_major_atrocities = major_atrocities;
 
 }
 
