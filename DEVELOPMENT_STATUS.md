@@ -36,6 +36,10 @@ The Windows x64 Release build has asset-backed automated coverage for:
   general training bonus;
 - Punishment Spheres eliminate drones and talents, halve base labs, and double
   enemy mind-control cost;
+- Genejack Factories add 50% minerals and one drone while halving enemy
+  mind-control cost;
+- Centauri Preserves and Temples of Planet cumulatively divide mineral-driven
+  ecological damage and each grant bred native life +1 lifecycle;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
   and starting capitals;
@@ -87,7 +91,7 @@ The Windows x64 Release build has asset-backed automated coverage for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 31 of 38 base facilities represented: 21 complete and 10 partial;
+- 31 of 38 base facilities represented: 24 complete and 7 partial;
 - all 33 Secret Projects represented: 23 complete and 10 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.

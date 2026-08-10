@@ -61,11 +61,8 @@ const partial_effects = {
 	HybridForest: true,
 	ResearchHospital: true,
 	Nanohospital: true,
-	GenejackFactory: true,
 	PressureDome: true,
 	AerospaceComplex: true,
-	CentauriPreserve: true,
-	TempleOfPlanet: true,
 };
 
 const project_effects = {

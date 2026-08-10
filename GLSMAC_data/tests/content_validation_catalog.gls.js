@@ -16,6 +16,13 @@ test.assert(catalog.facility_coverage.status.BioenhancementCenter == 'complete')
 test.assert(content.get_facility(catalog, 'PunishmentSphere').data.research_multiplier == -0.5);
 test.assert(content.get_facility(catalog, 'PunishmentSphere').data.suppress_psych);
 test.assert(catalog.facility_coverage.status.PunishmentSphere == 'complete');
+test.assert(content.get_facility(catalog, 'GenejackFactory').data.mineral_multiplier == 0.5);
+test.assert(content.get_facility(catalog, 'GenejackFactory').data.drone_modifier == 1);
+test.assert(catalog.facility_coverage.status.GenejackFactory == 'complete');
+test.assert(content.get_facility(catalog, 'CentauriPreserve').data.native_lifecycle_bonus == 1);
+test.assert(content.get_facility(catalog, 'TempleOfPlanet').data.native_lifecycle_bonus == 1);
+test.assert(catalog.facility_coverage.status.CentauriPreserve == 'complete');
+test.assert(catalog.facility_coverage.status.TempleOfPlanet == 'complete');
 test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native);
 test.assert(content.get_facility(catalog, 'CommandCenter').data.full_repair_land);
 test.assert(content.get_facility(catalog, 'NavalYard').data.full_repair_water);
@@ -29,8 +36,8 @@ test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'partial');
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 31,
-	complete_facilities: 21,
-	partial_facilities: 10,
+	complete_facilities: 24,
+	partial_facilities: 7,
 	implemented_projects: 33,
 	complete_projects: 23,
 	partial_projects: 10,
