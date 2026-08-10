@@ -33,6 +33,7 @@ return (game) => {
 		'liquidate_base_facility',
 		'initialize_player_research',
 		'process_player_research',
+		'process_planetary_datalinks',
 		'settle_player_economy',
 		'process_player_economy',
 		'set_social_engineering',

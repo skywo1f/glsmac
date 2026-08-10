@@ -66,6 +66,12 @@ return {
 				e.data.player.name + ' has discovered ' + name + '.'
 			);
 		}
+		if (#sizeof(completed_names) > 0) {
+			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
+			if (#is_defined(queue_datalinks)) {
+				queue_datalinks();
+			}
+		}
 		return {
 			state: previous,
 			completed: #sizeof(completed_names) > 0,

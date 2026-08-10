@@ -13,6 +13,7 @@ const callbacks = {};
 const values = {};
 let triggers = [];
 let messages = [];
+let datalinks_queues = 0;
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
@@ -51,6 +52,7 @@ values.f_technology_get_next_target = (known, player) => {
 	}
 	return '';
 };
+values.f_project_queue_planetary_datalinks = () => { datalinks_queues++; };
 
 const make_player = (id, name) => {
 	let relations = {};
@@ -269,6 +271,7 @@ test.assert(alpha.get_research_state().target == 'Biogenetics');
 test.assert(alpha.get_research_state().progress == 12);
 test.assert(beta.get_research_state().target == 'Biogenetics');
 test.assert(beta.get_research_state().progress == 7);
+test.assert(datalinks_queues == 2);
 
 respond_trade.rollback(trade_response);
 test.assert(beta.get_diplomatic_trade(alpha).request_technology == 'IndustrialBase');

@@ -37,9 +37,9 @@ test.assert(catalog.project_coverage.status.TheTelepathicMatrix == 'complete');
 test.assert(content.get_facility(catalog, 'TheVoiceOfPlanet').data.global_native_lifecycle_bonus == 1);
 test.assert(catalog.project_coverage.status.TheVoiceOfPlanet == 'complete');
 test.assert(catalog.project_coverage.status.TheHunterSeekerAlgorithm == 'complete');
+test.assert(catalog.project_coverage.status.ThePlanetaryDatalinks == 'complete');
 for (id of [
-	'TheEmpathGuild', 'TheXenoempathyDome', 'ThePlanetaryDatalinks',
-	'ThePholusMutagen', 'TheUniversalTranslator',
+	'TheEmpathGuild', 'TheXenoempathyDome', 'ThePholusMutagen', 'TheUniversalTranslator',
 	'TheNetworkBackbone', 'TheNanoFactory', 'TheSpaceElevator',
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
@@ -62,8 +62,8 @@ test.assert(result.counts == {
 	complete_facilities: 26,
 	partial_facilities: 5,
 	implemented_projects: 33,
-	complete_projects: 25,
-	partial_projects: 8,
+	complete_projects: 26,
+	partial_projects: 7,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

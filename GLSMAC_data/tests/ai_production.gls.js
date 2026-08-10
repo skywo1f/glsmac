@@ -97,6 +97,8 @@ childrens_creche.defender_morale_minimum = 1;
 const command_nexus = facility('TheCommandNexus', 0, 0, 0, 0, 0.0, 0, 200);
 command_nexus.production_kind = 'project';
 command_nexus.granted_facility = 'CommandCenter';
+const planetary_datalinks = facility('ThePlanetaryDatalinks', 0, 0, 0, 0, 0.0, 0, 300);
+planetary_datalinks.production_kind = 'project';
 const all_units = [scout, rover, laser, defender, former, colony];
 const all_facilities = [network, recreation, recycling];
 let locked = {};
@@ -158,6 +160,14 @@ test.assert(production.score_project(command_nexus, context(true, false, false, 
 let project_ready_context = context(false, false, false, false, 10);
 project_ready_context.can_start_project = true;
 test.assert(production.score_project(command_nexus, project_ready_context) != null);
+test.assert(production.score_project(planetary_datalinks, project_ready_context) != null);
+let no_datalinks_candidates_context = context(false, false, false, false, 10);
+no_datalinks_candidates_context.can_start_project = true;
+project_ready_context.planetary_datalinks_technology_count = 2;
+test.assert(
+	production.score_project(planetary_datalinks, project_ready_context) >
+	production.score_project(planetary_datalinks, no_datalinks_candidates_context)
+);
 locked.Recycling = true;
 locked.Recreation = true;
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 0)).id == 'Laser');

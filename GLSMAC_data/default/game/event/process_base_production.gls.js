@@ -194,6 +194,12 @@ return {
 			const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
 			e.game.get('f_base_process_psych')(e.game, base, psych);
 		}
+		if (completed_facility == 'ThePlanetaryDatalinks') {
+			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
+			if (#is_defined(queue_datalinks)) {
+				queue_datalinks();
+			}
+		}
 
 		return {
 			old_minerals: old_minerals,

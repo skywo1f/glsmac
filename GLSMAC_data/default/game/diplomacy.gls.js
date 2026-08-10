@@ -231,6 +231,10 @@ const grant_technology = (game, player, id) => {
 		target: target,
 		progress: progress,
 	});
+	const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
+	if (#is_defined(queue_datalinks)) {
+		queue_datalinks();
+	}
 	return true;
 };
 

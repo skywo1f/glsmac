@@ -77,6 +77,7 @@ const project_effects = {
 		granted_facility: 'NavalYard',
 		global_naval_movement_bonus: 2.0,
 	},
+	ThePlanetaryDatalinks: {},
 	TheSupercollider: {research_multiplier: 1.0},
 	TheAsceticVirtues: {
 		global_population_limit_bonus: 2,

@@ -29,6 +29,10 @@ The Windows x64 Release build has asset-backed automated coverage for:
   grants bred native life +1 lifecycle;
 - the Hunter-Seeker Algorithm blocks all enemy probe operations against the
   owner's bases and units, and AI Probe Teams avoid immune targets;
+- the Planetary Datalinks automatically grants every technology known by three
+  other factions after research, trade, probe theft, project completion, or
+  project capture, with deterministic multiplayer events and rival-aware AI
+  valuation;
 - social ECONOMY, SUPPORT, TALENT, MORALE, POLICE, GROWTH, INDUSTRY, and RESEARCH
   effects across base yields, psych, unit support and combat, production, and
   research, including SUPPORT-based starting minerals for new bases and
@@ -98,7 +102,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 31 of 38 base facilities represented: 26 complete and 5 partial;
-- all 33 Secret Projects represented: 25 complete and 8 partial;
+- all 33 Secret Projects represented: 26 complete and 7 partial;
 - 246 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -132,9 +136,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   Hydroponics Lab, Nessus Mining Station, Orbital Power Transmitter, Orbital
   Defense Pod, and Stockpile Energy; Network Node, both hospitals, Pressure
   Dome, and Aerospace Complex are represented but remain partial;
-- the eight partial Secret Projects are the Empath Guild, Xenoempathy Dome,
-  Planetary Datalinks, Pholus Mutagen, Universal Translator, Network Backbone,
-  Nano Factory, and Space Elevator; their remaining effects and
+- the seven partial Secret Projects are the Empath Guild, Xenoempathy Dome,
+  Pholus Mutagen, Universal Translator, Network Backbone, Nano Factory, and
+  Space Elevator; their remaining effects and
   victory-adjacent rules require individual parity audits;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
@@ -146,12 +150,12 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 85 cases: 67 isolated native/script GSE tests
-and 18 asset-backed runtime scenarios. The previous 74-case matrix completed
+The Release CTest matrix contains 87 cases: 68 isolated native/script GSE tests
+and 19 asset-backed runtime scenarios. The previous 74-case matrix completed
 all cases in one uninterrupted invocation on the tested Windows machine, but
 long runtime timing and process-lifecycle cases remain intermittently unstable.
-The current 67-case Release GSE matrix passed in one bounded invocation in
-117.96 seconds. Before the loan, sanction, and integrity milestones, all 18
+The current 68-case Release GSE matrix passed in one bounded invocation in
+127.67 seconds. Before the loan, sanction, and integrity milestones, all 18
 asset-backed runtime scenarios also passed against an installed Planetary Pack
 in three bounded invocations: the live probe scenario in 7.46 seconds, six
 gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
@@ -159,6 +163,12 @@ content and AI scenarios in 544.16 seconds. The
 previous 58-case GSE set also passes in the MSVC AddressSanitizer configuration.
 Script isolation keeps allocator lifetime bounded and reports the exact script
 that fails.
+
+Planetary Datalinks coverage validates the exact three-other-factions
+threshold, multi-technology grants, research-target rollover, host-only event
+authorship, client application, rollback, duplicate-event suppression, and AI
+valuation. Its four-faction installed-asset runtime smoke passed in 12.75
+seconds.
 
 The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,

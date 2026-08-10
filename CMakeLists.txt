@@ -212,6 +212,32 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( PLANETARY_DATALINKS_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/planetary-datalinks-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${PLANETARY_DATALINKS_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME planetary_datalinks_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${PLANETARY_DATALINKS_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_planetary_datalinks_runtime_smoke"
+			--quickstart
+			--quickstart-ai "3"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( planetary_datalinks_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "PLANETARY_DATALINKS_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "PLANETARY_DATALINKS_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( AIR_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/air-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${AIR_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME air_runtime_smoke COMMAND

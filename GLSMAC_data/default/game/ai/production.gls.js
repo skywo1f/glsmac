@@ -185,7 +185,8 @@ const score_project = (def, context) => {
 	) {
 		return null;
 	}
-	const has_effect =
+	const is_planetary_datalinks = def.id == 'ThePlanetaryDatalinks';
+	const has_effect = is_planetary_datalinks ||
 		def.nutrient_bonus > 0 || def.mineral_bonus > 0 || def.energy_bonus > 0 ||
 		def.psych_bonus > 0 || def.research_multiplier != 0.0 ||
 		def.defense_multiplier > 1.0 || def.economy_multiplier > 0.0 ||
@@ -228,7 +229,16 @@ const score_project = (def, context) => {
 		#round(def.global_naval_movement_bonus * 20000.0) +
 		(def.global_full_repair ? 40000 : 0) +
 		def.global_police_rating_bonus * 30000 +
-		def.global_extra_police_units * 30000;
+		def.global_extra_police_units * 30000 +
+		(
+			is_planetary_datalinks
+				? 40000 + (
+					#is_defined(context.planetary_datalinks_technology_count)
+						? context.planetary_datalinks_technology_count
+						: 0
+				) * 25000
+				: 0
+		);
 };
 
 const score_hurry = (def, context) => {

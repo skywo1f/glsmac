@@ -42,6 +42,52 @@ const get_player_projects = (game, player) => {
 	return result;
 };
 
+const has_project = (game, player, id) => {
+	for (project of get_player_projects(game, player)) {
+		if (project.id == id) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const get_planetary_datalinks_candidates = (game, player) => {
+	const get_order = game.get('f_technology_get_order');
+	if (!#is_defined(get_order)) {
+		return [];
+	}
+	let result = [];
+	for (id of get_order()) {
+		if (player.has_technology(id)) {
+			continue;
+		}
+		let other_factions = 0;
+		for (other of game.get_players()) {
+			if (other.id != player.id && other.has_technology(id)) {
+				other_factions++;
+			}
+		}
+		if (other_factions >= 3) {
+			result :+id;
+		}
+	}
+	return result;
+};
+
+const get_planetary_datalinks_grants = (game) => {
+	let result = [];
+	for (player of game.get_players()) {
+		if (!has_project(game, player, 'ThePlanetaryDatalinks')) {
+			continue;
+		}
+		const technologies = get_planetary_datalinks_candidates(game, player);
+		if (#sizeof(technologies) > 0) {
+			result :+{player: player, technologies: technologies};
+		}
+	}
+	return result;
+};
+
 const get_owned_projects = (game, base) => {
 	return get_player_projects(game, base.get_owner());
 };
@@ -150,6 +196,80 @@ const get_effective_facilities = (game, base) => {
 };
 
 return (game) => {
+	let planetary_datalinks_pending = false;
+	const apply_planetary_datalinks = () => {
+		planetary_datalinks_pending = false;
+		let snapshots = [];
+		let snapshotted = {};
+		let updated = {};
+		while (true) {
+			const grants = get_planetary_datalinks_grants(game);
+			if (#sizeof(grants) == 0) {
+				break;
+			}
+			for (grant of grants) {
+				const player = grant.player;
+				const key = 'p' + #to_string(player.id);
+				const previous = player.get_research_state();
+				if (!#is_defined(snapshotted[key])) {
+					snapshots :+{player: player, state: previous};
+					snapshotted[key] = true;
+				}
+				let technologies = [];
+				for (id of previous.technologies) {
+					technologies :+id;
+				}
+				for (id of grant.technologies) {
+					technologies :+id;
+					const definition = game.get('f_technology_get_definition')(id);
+					game.message(
+						player.name + ' has acquired ' + definition.name +
+						' through The Planetary Datalinks.'
+					);
+				}
+				let target = previous.target;
+				let progress = previous.progress;
+				for (id of grant.technologies) {
+					if (target == id) {
+						target = game.get('f_technology_get_next_target')(technologies, player);
+						if (target == '') {
+							progress = 0;
+						}
+						break;
+					}
+				}
+				player.set_research_state({
+					technologies: technologies,
+					target: target,
+					progress: progress,
+				});
+				updated[key] = player;
+			}
+		}
+		for (key in updated) {
+			game.trigger('research_updated', {player: updated[key]});
+		}
+		return {players: snapshots};
+	};
+	const rollback_planetary_datalinks = (applied) => {
+		planetary_datalinks_pending = false;
+		for (snapshot of applied.players) {
+			snapshot.player.set_research_state(snapshot.state);
+			game.trigger('research_updated', {player: snapshot.player});
+		}
+	};
+	const queue_planetary_datalinks = () => {
+		if (
+			!game.is_master() || planetary_datalinks_pending ||
+			#sizeof(get_planetary_datalinks_grants(game)) == 0
+		) {
+			return false;
+		}
+		planetary_datalinks_pending = true;
+		game.event('process_planetary_datalinks', {});
+		return true;
+	};
+
 	game.set('f_project_get_owned', (base) => { return get_owned_projects(game, base); });
 	game.set('f_project_get_effects', (base) => { return get_effects(game, base); });
 	game.set(
@@ -160,4 +280,14 @@ return (game) => {
 		'f_base_get_effective_facilities',
 		(base) => { return get_effective_facilities(game, base); }
 	);
+	game.set(
+		'f_project_get_planetary_datalinks_candidates',
+		(player) => { return get_planetary_datalinks_candidates(game, player); }
+	);
+	game.set('f_project_queue_planetary_datalinks', queue_planetary_datalinks);
+	game.set('f_project_apply_planetary_datalinks', apply_planetary_datalinks);
+	game.set('f_project_rollback_planetary_datalinks', rollback_planetary_datalinks);
+	if (#is_defined(game.on)) {
+		game.on('turn', queue_planetary_datalinks);
+	}
 };

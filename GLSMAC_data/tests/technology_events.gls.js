@@ -168,6 +168,7 @@ const player = {
 };
 let triggers = [];
 let messages = [];
+let datalinks_queues = 0;
 const game = {
 	trigger: (name, data) => {
 		triggers :+name;
@@ -180,6 +181,9 @@ const game = {
 		}
 		if (key == 'f_technology_get_definition') {
 			return technologies.get_definition;
+		}
+		if (key == 'f_project_queue_planetary_datalinks') {
+			return () => { datalinks_queues++; };
 		}
 		throw Error('Unknown game value: ' + key);
 	},
@@ -228,6 +232,7 @@ research_state.progress = 3;
 
 event.applied = process_research.apply(event);
 test.assert(!event.applied.completed);
+test.assert(datalinks_queues == 0);
 test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 7});
 test.assert(messages == []);
 process_research.rollback(event);
@@ -238,6 +243,7 @@ event.data.labs = 1;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(event.applied.completed_count == 1);
+test.assert(datalinks_queues == 1);
 test.assert(research_state == {
 	technologies: ['Biogenetics'],
 	target: 'IndustrialBase',
@@ -253,6 +259,7 @@ event.data.labs = 51;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
 test.assert(event.applied.completed_count == 2);
+test.assert(datalinks_queues == 2);
 test.assert(research_state == {
 	technologies: ['Biogenetics', 'IndustrialBase'],
 	target: 'InformationNetworks',

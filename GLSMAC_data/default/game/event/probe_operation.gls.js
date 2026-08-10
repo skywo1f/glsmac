@@ -481,6 +481,10 @@ return {
 			}
 			actor.set_research_state({technologies: technologies, target: target, progress: progress});
 			e.game.trigger('research_updated', {player: actor});
+			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
+			if (#is_defined(queue_datalinks)) {
+				queue_datalinks();
+			}
 		} else if (e.resolved.success && operation == 'sabotage') {
 			const base = e.data.target;
 			applied.base_minerals = base.get_accumulated_minerals();

@@ -98,6 +98,7 @@ const make_fixture = () => {
 	let last_message = '';
 	let callbacks = {};
 	let values = {};
+	let datalinks_queues = 0;
 
 	const probe_tile = {x: 1, y: 1};
 	const target_tile = {x: 2, y: 1};
@@ -271,6 +272,7 @@ const make_fixture = () => {
 	};
 	values.f_social_get_ratings = (player) => { return {probe: player.probe_rating}; };
 	values.f_technology_get_next_target = (known, player) => { return ''; };
+	values.f_project_queue_planetary_datalinks = () => { datalinks_queues++; };
 	values.f_economy_get_base_psych = (game_value, base) => { return 0; };
 	values.f_base_process_psych = (game_value, base, psych) => {};
 	values.f_base_reset_nutrients = (game_value, base) => {
@@ -294,6 +296,7 @@ const make_fixture = () => {
 		game: game, actor: actor, target_player: target_player, target_base: target_base,
 		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um, triggers: triggers,
 		read_message: () => { return last_message; },
+		read_datalinks_queues: () => { return datalinks_queues; },
 	};
 };
 
@@ -338,6 +341,7 @@ e.resolved.technology_id = 'PlanetaryNetworks';
 e.applied = probe_operation.apply(e);
 test.assert(f.actor.get_research_state().technologies == ['PlanetaryNetworks']);
 test.assert(f.actor.get_research_state().target == '');
+test.assert(f.read_datalinks_queues() == 1);
 probe_operation.rollback(e);
 test.assert(f.actor.get_research_state().technologies == []);
 test.assert(f.actor.get_research_state().target == 'PlanetaryNetworks');

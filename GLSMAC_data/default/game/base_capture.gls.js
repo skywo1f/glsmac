@@ -61,6 +61,12 @@ const capture_base = (game, base, new_owner) => {
 	}
 
 	base.set_owner(new_owner);
+	if (#is_defined(game.get) && base.has_facility('ThePlanetaryDatalinks')) {
+		const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
+		if (#is_defined(queue_datalinks)) {
+			queue_datalinks();
+		}
+	}
 	let valid_queue = [];
 	for (production of old_queue) {
 		if (base.can_produce(production.kind, production.id)) {

@@ -118,6 +118,13 @@ const human_genome_project = {
 	mineral_cost: 200,
 	unit_morale_bonus: 0,
 };
+const planetary_datalinks = {
+	id: 'ThePlanetaryDatalinks',
+	name: 'The Planetary Datalinks',
+	production_kind: 'project',
+	mineral_cost: 300,
+	unit_morale_bonus: 0,
+};
 const command_center = {
 	id: 'CommandCenter',
 	name: 'Command Center',
@@ -186,6 +193,7 @@ const definitions = [
 	headquarters,
 	recreation_commons,
 	human_genome_project,
+	planetary_datalinks,
 	command_center,
 	naval_yard,
 	aerospace_complex,
@@ -208,6 +216,7 @@ let processed_psych = [];
 let completed_project_base = #undefined;
 let competing_production_queue = [];
 let competing_has_headquarters = false;
+let datalinks_queues = 0;
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
@@ -541,6 +550,9 @@ game = {
 				}
 			};
 		}
+		if (key == 'f_project_queue_planetary_datalinks') {
+			return () => { datalinks_queues++; };
+		}
 		throw Error('Unexpected game callback: ' + key);
 	},
 	um: {
@@ -776,6 +788,16 @@ test.assert(get_queue_state() == ['project:TheHumanGenomeProject', 'unit:SporeLa
 test.assert(competing_production_queue == [land_patrol, human_genome_project, sea_patrol]);
 test.assert(!has_facility('TheHumanGenomeProject'));
 test.assert(!#is_defined(completed_project_base));
+
+production_queue = [planetary_datalinks];
+competing_production_queue = [];
+built_facilities = [];
+accumulated_minerals = 295;
+event.applied = process_base_production.apply(event);
+test.assert(has_facility('ThePlanetaryDatalinks'));
+test.assert(datalinks_queues == 1);
+process_base_production.rollback(event);
+test.assert(!has_facility('ThePlanetaryDatalinks'));
 
 production_queue = [];
 accumulated_minerals = 9;

@@ -570,6 +570,12 @@ const queue_production = (game, player, bases, units) => {
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
+	const get_datalinks_candidates = game.get(
+		'f_project_get_planetary_datalinks_candidates'
+	);
+	const planetary_datalinks_technology_count = #is_defined(get_datalinks_candidates)
+		? #sizeof(get_datalinks_candidates(player))
+		: 0;
 	let hurry_candidates = [];
 	let has_headquarters = false;
 	let headquarters_queue_base = null;
@@ -677,6 +683,7 @@ const queue_production = (game, player, bases, units) => {
 				return game.get('f_base_get_production_cost')(base, def);
 			},
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
+			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
 			available_energy: available_energy,
 			priorities: priorities,
 		};
