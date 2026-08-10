@@ -537,8 +537,10 @@
 					}
 				}
 
+				const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');
 				const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
 				if (
+					voice.global_native_lifecycle_bonus != 1 ||
 					ascent.required_project != 'TheVoiceOfPlanet' ||
 					base.can_set_production('project', ascent.id)
 				) {

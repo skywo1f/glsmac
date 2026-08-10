@@ -244,6 +244,7 @@
 			const temple_of_planet = game.get_bm().get_facility_def('TempleOfPlanet');
 			const tree_farm = game.get_bm().get_facility_def('TreeFarm');
 			const hybrid_forest = game.get_bm().get_facility_def('HybridForest');
+			const voice = game.get_bm().get_facility_def('TheVoiceOfPlanet');
 			const ascent = game.get_bm().get_facility_def('TheAscentToTranscendence');
 			const ascetic_virtues = game.get_bm().get_facility_def('TheAsceticVirtues');
 			const self_aware_colony = game.get_bm().get_facility_def('TheSelfAwareColony');
@@ -323,6 +324,7 @@
 				hybrid_forest.forest_nutrient_bonus != 1 ||
 				hybrid_forest.forest_mineral_bonus != 0 ||
 				hybrid_forest.forest_energy_bonus != 1 ||
+				voice.global_native_lifecycle_bonus != 1 ||
 				ascent.required_project != 'TheVoiceOfPlanet'
 			) {
 				return 'restored facility definition is invalid';

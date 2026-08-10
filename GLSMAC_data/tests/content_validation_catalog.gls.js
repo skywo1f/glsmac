@@ -34,10 +34,12 @@ test.assert(content.get_facility(catalog, 'TheSelfAwareColony').data.global_extr
 test.assert(catalog.project_coverage.status.TheLongevityVaccine == 'complete');
 test.assert(catalog.project_coverage.status.TheCloningVats == 'complete');
 test.assert(catalog.project_coverage.status.TheTelepathicMatrix == 'complete');
+test.assert(content.get_facility(catalog, 'TheVoiceOfPlanet').data.global_native_lifecycle_bonus == 1);
+test.assert(catalog.project_coverage.status.TheVoiceOfPlanet == 'complete');
 for (id of [
 	'TheEmpathGuild', 'TheXenoempathyDome', 'ThePlanetaryDatalinks',
 	'TheHunterSeekerAlgorithm', 'ThePholusMutagen', 'TheUniversalTranslator',
-	'TheNetworkBackbone', 'TheNanoFactory', 'TheSpaceElevator', 'TheVoiceOfPlanet',
+	'TheNetworkBackbone', 'TheNanoFactory', 'TheSpaceElevator',
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
@@ -59,8 +61,8 @@ test.assert(result.counts == {
 	complete_facilities: 26,
 	partial_facilities: 5,
 	implemented_projects: 33,
-	complete_projects: 23,
-	partial_projects: 10,
+	complete_projects: 24,
+	partial_projects: 9,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),
