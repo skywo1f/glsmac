@@ -20,11 +20,16 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		candidate_b_id: -1,
 		vote_id: -2,
 		global_trade_pact: false,
+		unity_core_salvaged: false,
+		un_charter_repealed: false,
 	};
 	let technologies = [];
 	let relations = {};
 	let infiltrated = {};
 	let integrity = 0;
+	let energy_credits = 100;
+	let major_atrocities = 0;
+	let sanction_turns = 0;
 	const faction = {id: faction_id, name: name, is_progenitor: progenitor};
 	return {
 		id: id,
@@ -47,6 +52,12 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		},
 		get_integrity_blemishes: () => { return integrity; },
 		set_integrity_blemishes: (value) => { integrity = value; },
+		get_energy_credits: () => { return energy_credits; },
+		set_energy_credits: (value) => { energy_credits = value; },
+		get_major_atrocities: () => { return major_atrocities; },
+		set_major_atrocities: (value) => { major_atrocities = value; },
+		get_sanction_turns: () => { return sanction_turns; },
+		set_sanction_turns: (value) => { sanction_turns = value; },
 		has_infiltrated: (other) => {
 			return infiltrated['p' + #to_string(other.id)] == true;
 		},
@@ -262,6 +273,101 @@ test.assert(!rules.has_global_trade_pact(game));
 
 
 current_turn = 65;
+peacekeepers.add_technology('OrbitalSpaceflight');
+peacekeepers.set_energy_credits(100);
+empath.set_energy_credits(200);
+clinical.set_energy_credits(999999800);
+progenitor.set_energy_credits(300);
+test.assert(!rules.has_salvaged_unity_core(game));
+test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'salvage_unity_core')));
+test.assert(
+	rules.get_available_policy_proposals(game, peacekeepers) ==
+	['salvage_unity_core', 'trade_pact']
+);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'salvage_unity_core') == rules.vote_yes
+);
+let unity_call = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, proposal: 'salvage_unity_core'},
+};
+unity_call.applied = call_council.apply(unity_call);
+submit_vote(peacekeepers, rules.vote_yes);
+submit_vote(empath, rules.vote_yes);
+submit_vote(clinical, rules.vote_yes);
+let unity_resolution = {caller: 0, game: game, data: {}};
+unity_resolution.applied = resolve_council.apply(unity_resolution);
+test.assert(rules.has_salvaged_unity_core(game));
+test.assert(peacekeepers.get_energy_credits() == 600);
+test.assert(empath.get_energy_credits() == 700);
+test.assert(clinical.get_energy_credits() == 1000000000);
+test.assert(progenitor.get_energy_credits() == 800);
+resolve_council.rollback(unity_resolution);
+test.assert(!rules.has_salvaged_unity_core(game));
+test.assert(peacekeepers.get_energy_credits() == 100);
+test.assert(clinical.get_energy_credits() == 999999800);
+test.assert(rules.get_session(game).proposal == 'salvage_unity_core');
+unity_resolution.applied = resolve_council.apply(unity_resolution);
+test.assert(rules.has_salvaged_unity_core(game));
+test.assert(#is_defined(rules.validate_call(game, peacekeepers, 'salvage_unity_core')));
+
+
+current_turn = 85;
+peacekeepers.add_technology('AdvancedMilitaryAlgorithms');
+test.assert(!rules.is_un_charter_repealed(game));
+test.assert(#is_defined(rules.validate_call(game, peacekeepers, 'reinstate_un_charter')));
+test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'repeal_un_charter')));
+peacekeepers.set_major_atrocities(3);
+peacekeepers.set_sanction_turns(20);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'repeal_un_charter') == rules.vote_yes
+);
+let charter_call = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, proposal: 'repeal_un_charter'},
+};
+charter_call.applied = call_council.apply(charter_call);
+submit_vote(peacekeepers, rules.vote_yes);
+submit_vote(empath, rules.vote_yes);
+submit_vote(clinical, rules.vote_yes);
+let charter_resolution = {caller: 0, game: game, data: {}};
+charter_resolution.applied = resolve_council.apply(charter_resolution);
+test.assert(rules.is_un_charter_repealed(game));
+resolve_council.rollback(charter_resolution);
+test.assert(!rules.is_un_charter_repealed(game));
+test.assert(rules.get_session(game).proposal == 'repeal_un_charter');
+charter_resolution.applied = resolve_council.apply(charter_resolution);
+test.assert(rules.is_un_charter_repealed(game));
+
+
+current_turn = 105;
+charter_call = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, proposal: 'reinstate_un_charter'},
+};
+charter_call.applied = call_council.apply(charter_call);
+submit_vote(peacekeepers, rules.vote_yes);
+submit_vote(empath, rules.vote_yes);
+submit_vote(clinical, rules.vote_yes);
+charter_resolution.applied = resolve_council.apply(charter_resolution);
+test.assert(!rules.is_un_charter_repealed(game));
+peacekeepers.set_major_atrocities(0);
+peacekeepers.set_sanction_turns(0);
+clinical.add_technology('OrbitalSpaceflight');
+peacekeepers.set_relation(clinical, 'vendetta');
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'reinstate_un_charter') == rules.vote_yes
+);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'repeal_un_charter') == rules.vote_no
+);
+peacekeepers.set_relation(clinical, 'neutral');
+
+
+current_turn = 125;
 clinical_base.set_size(20);
 clinical.add_technology('MindMachineInterface');
 test.assert(rules.get_votes(game, clinical) == 40);
@@ -290,6 +396,10 @@ define_council(game);
 callbacks.start({});
 test.assert(values.f_council_is_governor(clinical));
 test.assert(!values.f_council_has_global_trade_pact());
+test.assert(values.f_council_has_salvaged_unity_core());
+test.assert(!values.f_council_is_un_charter_repealed());
+test.assert(values.f_council_is_policy_proposal('repeal_un_charter'));
+test.assert(values.f_council_get_proposal_name('salvage_unity_core') == 'Salvage Unity Fusion Core');
 test.assert(values.f_council_has_intelligence(clinical, peacekeepers));
 test.assert(!values.f_council_has_intelligence(clinical, progenitor));
 clinical.set_infiltrated(progenitor, true);

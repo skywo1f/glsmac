@@ -1,6 +1,6 @@
 const rules = #include('../council_rules');
 
-const clear_session = (game, governor_id, global_trade_pact) => {
+const clear_session = (game, governor_id, policy_state) => {
 	for (player of game.get_players()) {
 		const old = player.get_council_state();
 		player.set_council_state({
@@ -11,11 +11,33 @@ const clear_session = (game, governor_id, global_trade_pact) => {
 			candidate_a_id: -1,
 			candidate_b_id: -1,
 			vote_id: rules.vote_pending,
-			global_trade_pact: #is_defined(global_trade_pact)
-				? global_trade_pact
+			global_trade_pact: #is_defined(policy_state)
+				? policy_state.global_trade_pact
 				: old.global_trade_pact,
+			unity_core_salvaged: #is_defined(policy_state)
+				? policy_state.unity_core_salvaged
+				: old.unity_core_salvaged,
+			un_charter_repealed: #is_defined(policy_state)
+				? policy_state.un_charter_repealed
+				: old.un_charter_repealed,
 		});
 	}
+};
+
+const get_policy_pass_message = (proposal) => {
+	if (proposal == 'trade_pact') {
+		return 'The Global Trade Pact has passed. Commerce rates are now doubled';
+	}
+	if (proposal == 'repeal_trade_pact') {
+		return 'The Global Trade Pact has been repealed. Commerce rates have returned to normal';
+	}
+	if (proposal == 'salvage_unity_core') {
+		return 'The Unity Fusion Core has been salvaged. Every faction receives 500 energy credits';
+	}
+	if (proposal == 'repeal_un_charter') {
+		return 'The U.N. Charter has been repealed. Future atrocities no longer incur Council sanctions';
+	}
+	return 'The U.N. Charter has been reinstated. Council atrocity sanctions are active again';
 };
 
 return {
@@ -39,6 +61,7 @@ return {
 
 	apply: (e) => {
 		const previous = rules.snapshot_states(e.game);
+		const previous_energy = rules.snapshot_energy(e.game);
 		const result = rules.get_result(e.game);
 		if (result.proposal == 'governor') {
 			clear_session(e.game, result.winner_id, #undefined);
@@ -55,25 +78,31 @@ return {
 			e.game.trigger('economy_updated', {});
 		} else if (rules.is_policy_proposal(result.proposal)) {
 			const passed = result.winner_id == rules.vote_yes;
-			const active = rules.has_global_trade_pact(e.game);
-			const updated = passed
-				? result.proposal == 'trade_pact'
-				: active;
+			const updated = #clone(rules.get_policy_state(e.game));
+			if (passed) {
+				if (result.proposal == 'trade_pact') {
+					updated.global_trade_pact = true;
+				} else if (result.proposal == 'repeal_trade_pact') {
+					updated.global_trade_pact = false;
+				} else if (result.proposal == 'salvage_unity_core') {
+					updated.unity_core_salvaged = true;
+					rules.award_unity_core_energy(e.game);
+				} else if (result.proposal == 'repeal_un_charter') {
+					updated.un_charter_repealed = true;
+				} else if (result.proposal == 'reinstate_un_charter') {
+					updated.un_charter_repealed = false;
+				}
+			}
 			clear_session(e.game, (-1), updated);
 			if (passed) {
 				e.game.message(
-					(result.proposal == 'trade_pact'
-						? 'The Global Trade Pact has passed. Commerce rates are now doubled'
-						: 'The Global Trade Pact has been repealed. Commerce rates have returned to normal') +
+					get_policy_pass_message(result.proposal) +
 					' with ' + #to_string(result.winner_votes) + ' of ' +
 					#to_string(result.total_votes) + ' votes.'
 				);
 			} else {
 				e.game.message(
-					(result.proposal == 'trade_pact'
-						? 'The Global Trade Pact proposal'
-						: 'The proposal to repeal the Global Trade Pact') +
-					' failed to win a majority.'
+					rules.get_proposal_name(result.proposal) + ' failed to win a majority.'
 				);
 			}
 			e.game.trigger('economy_updated', {});
@@ -91,12 +120,17 @@ return {
 			}
 		}
 		e.game.trigger('council_updated', {proposal: ''});
-		return {states: previous, terminal: result.proposal == 'supreme' && result.winner_id >= 0};
+		return {
+			states: previous,
+			energy: previous_energy,
+			terminal: result.proposal == 'supreme' && result.winner_id >= 0,
+		};
 	},
 
 	rollback: (e) => {
 		if (!e.applied.terminal) {
 			rules.restore_states(e.applied.states);
+			rules.restore_energy(e.applied.energy);
 			e.game.trigger('council_updated', {});
 		}
 		// Successful Supreme Leader resolutions are host-authored terminal events.

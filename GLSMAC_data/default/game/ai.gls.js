@@ -553,6 +553,11 @@ const has_other_former = (tile, unit) => {
 	return false;
 };
 
+const get_planet_buster_minimum_target_size = (game) => {
+	const is_charter_repealed = game.get('f_council_is_un_charter_repealed');
+	return #is_defined(is_charter_repealed) && is_charter_repealed() ? 4 : 8;
+};
+
 const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 	let available_tiles = [];
 	for (tile of tiles) {
@@ -570,7 +575,8 @@ const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 					return true;
 				}
 				return player.get_diplomatic_relation(game.get_player(owner_id)) != 'vendetta';
-			}
+			},
+			get_planet_buster_minimum_target_size(game)
 		);
 		if (target == null) {
 			return false;
@@ -606,6 +612,7 @@ const queue_production = (game, player, bases, units) => {
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
+	const planet_buster_minimum_target_size = get_planet_buster_minimum_target_size(game);
 	let orbital_defense_threats = 0;
 	let planet_buster_target_value = 0;
 	for (other of game.get_players()) {
@@ -809,7 +816,8 @@ const queue_production = (game, player, bases, units) => {
 			needs_orbital_defense: orbital_defense_committed < orbital_defense_threats,
 			orbital_defense_threats: orbital_defense_threats,
 			needs_planet_buster:
-				planet_busters_committed == 0 && planet_buster_target_value >= 4 &&
+				planet_busters_committed == 0 &&
+				planet_buster_target_value >= planet_buster_minimum_target_size &&
 				metrics.own_combat_power * 1.25 < metrics.strongest_rival_power,
 			planet_buster_target_value: planet_buster_target_value,
 			base_labs: game.get('f_technology_get_base_labs')(base).total,

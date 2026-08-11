@@ -3,7 +3,7 @@ const planet_buster = #include('../default/game/event/planet_buster');
 const key = (id) => { return 'i' + #to_string(id); };
 const tile_key = (x, y) => { return #to_string(x) + ':' + #to_string(y); };
 
-const make_world = (random_roll, pod_count, deployments) => {
+const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 	let units = {};
 	let bases = {};
 	let tile_by_position = {};
@@ -91,7 +91,8 @@ const make_world = (random_roll, pod_count, deployments) => {
 	const actor = make_player(0, 'Attacker');
 	const victim = make_player(1, 'Defender');
 	const bystander = make_player(2, 'Bystander');
-	let players = [actor, victim, bystander];
+	const observer = make_player(3, 'Observer');
+	let players = [actor, victim, bystander, observer];
 	for (player of players) {
 		for (other of players) {
 			if (player.id != other.id) {
@@ -275,6 +276,9 @@ const make_world = (random_roll, pod_count, deployments) => {
 		trigger: (name, data) => { triggers :+name; },
 		message: (message) => { messages :+message; },
 		get: (name) => {
+			if (name == 'f_council_is_un_charter_repealed') {
+				return () => { return charter_repealed == true; };
+			}
 			if (name == 'f_diplomacy_snapshot_pair') {
 				return (player, other) => {
 					const other_key = key(other.id);
@@ -313,6 +317,7 @@ const make_world = (random_roll, pod_count, deployments) => {
 		actor: actor,
 		victim: victim,
 		bystander: bystander,
+		observer: observer,
 		missile: missile,
 		defender: defender,
 		collateral: collateral,
@@ -375,8 +380,10 @@ test.assert(live_actor.get_major_atrocities() == 3);
 test.assert(live_actor.get_sanction_turns() == 23);
 let victim_key = key(world.victim.id);
 let bystander_key = key(world.bystander.id);
+let observer_key = key(world.observer.id);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
+test.assert(live_actor.relations[observer_key] == 'vendetta');
 test.assert(world.get_message_count() == 2);
 test.assert(world.get_crater_apply_count() == 1);
 
@@ -392,8 +399,31 @@ test.assert(live_actor.get_major_atrocities() == 2);
 test.assert(live_actor.get_sanction_turns() == 3);
 test.assert(live_actor.relations[victim_key] == 'neutral');
 test.assert(live_actor.relations[bystander_key] == 'neutral');
+test.assert(live_actor.relations[observer_key] == 'neutral');
 test.assert(world.get_stopped_animation() == 44);
 test.assert(world.get_crater_restore_count() == 1);
+
+world = make_world(1, 0, 0, true);
+event = {caller: world.actor.id, game: world.game, data: {unit: world.missile, tile: world.center}};
+event.resolved = planet_buster.resolve(event);
+event.applied = planet_buster.apply(event);
+live_actor = world.game.get_player(world.actor.id);
+victim_key = key(world.victim.id);
+bystander_key = key(world.bystander.id);
+observer_key = key(world.observer.id);
+test.assert(live_actor.get_major_atrocities() == 3);
+test.assert(live_actor.get_sanction_turns() == 3);
+test.assert(live_actor.relations[victim_key] == 'vendetta');
+test.assert(live_actor.relations[bystander_key] == 'vendetta');
+test.assert(live_actor.relations[observer_key] == 'neutral');
+test.assert(world.get_message_count() == 1);
+planet_buster.rollback(event);
+live_actor = world.game.get_player(world.actor.id);
+test.assert(live_actor.get_major_atrocities() == 2);
+test.assert(live_actor.get_sanction_turns() == 3);
+test.assert(live_actor.relations[victim_key] == 'neutral');
+test.assert(live_actor.relations[bystander_key] == 'neutral');
+test.assert(live_actor.relations[observer_key] == 'neutral');
 
 world = make_world(0, 1, 0);
 event = {caller: world.actor.id, game: world.game, data: {unit: world.missile, tile: world.center}};

@@ -94,12 +94,13 @@ scenarios, for:
   marginal-yield-aware AI production; the Space Elevator waives Aerospace
   restrictions and doubles orbital production, with save/reconnect coverage;
 - generated Planet Buster designs, reactor-scaled blast radii, destruction of
-  affected bases, units, and cargo, surviving-unit rehoming, global vendettas,
-  terrain deformation and crater formation, major-atrocity and sanction
-  consequences, reversible network application, and conservative
-  opponent-aware AI production and targeting; Orbital Defense Pods make one
-  50% interception attempt per undeployed pod each turn and can sacrifice an
-  already deployed pod for a guaranteed interception;
+  affected bases, units, and cargo, surviving-unit rehoming, terrain
+  deformation and crater formation, persistent major-atrocity consequences,
+  Charter-controlled Council sanctions and global vendettas, reversible
+  network application, and conservative opponent-aware AI production and
+  targeting; Orbital Defense Pods make one 50% interception attempt per
+  undeployed pod each turn and can sacrifice an already deployed pod for a
+  guaranteed interception;
 - land and sea Unity Pods resolve during ordinary movement with reversible,
   deterministic events; supported rewards cover energy, rivers, earthquakes,
   production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
@@ -134,10 +135,11 @@ scenarios, for:
   atomic principal transfer, yearly repayment, partial-payment handling,
   wartime balance growth, human controls, and relationship-, reserve-, risk-,
   and liquidity-aware AI valuation;
-- persistent ten-year economic sanctions for successful genetic-warfare
-  atrocities, including extension for repeated offenses, bilateral commerce
-  cutoff, ordinary trade and new-loan embargoes, existing-loan suspension,
-  yearly expiry, player diagnostics, and commerce-aware AI atrocity valuation;
+- persistent ten-year economic sanctions under the U.N. Charter for successful
+  genetic-warfare atrocities, including extension for repeated offenses,
+  bilateral commerce cutoff, ordinary trade and new-loan embargoes,
+  existing-loan suspension, yearly expiry, player diagnostics, and
+  commerce-aware AI atrocity valuation;
 - original-SMAC base-paired commerce income for reciprocal treaties and pacts,
   including imported economic-technology flags, ECONOMY and Morgan bonuses,
   deterministic per-partner base diagnostics, the Global Trade Pact's exact
@@ -145,7 +147,9 @@ scenarios, for:
 - persistent Planetary Council sessions with original population voting,
   Peacekeeper and Secret Project vote modifiers, Progenitor exclusion,
   deterministic candidates, human and strategy-aware AI ballots, Governor and
-  Supreme Leader thresholds, Global Trade Pact enactment and repeal,
+  Supreme Leader thresholds, Global Trade Pact enactment and repeal, one-time
+  Unity Fusion Core salvage with 500 energy credits for every faction, U.N.
+  Charter repeal and reinstatement with live atrocity and AI behavior,
   technology gating, a 20-turn cooldown, save/reconnect restoration, and
   reversible election and policy results;
 - the Planetary Governor receives +1 energy per commerce transaction and
@@ -180,12 +184,13 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map and commlink exchanges, surrender, remaining
-  Council policy proposals or defiance, and richer bundled or counteroffers;
+- deeper diplomacy including map and commlink exchanges, surrender, the
+  sea-level-dependent Council proposals and defiance, and richer bundled or
+  counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
-  vendetta/council consequences for major atrocities;
+  Council expulsion consequences for major atrocities;
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
 - paid emergency Headquarters evacuation before capture and explicit
@@ -236,6 +241,12 @@ After Global Trade Pact enactment and repeal were added, all 86 isolated tests
 passed in 161.59 seconds. Focused native serialization, Council, commerce, and
 installed-asset Council runtime coverage passed together in 29.64 seconds; the
 asset-backed Council scenario itself completed in 25.99 seconds.
+
+After Unity Fusion Core salvage and U.N. Charter repeal/reinstatement were
+added, all 86 isolated tests passed in 159.59 seconds. Focused native, Council,
+probe, and Planet Buster tests passed in 4.82 seconds; the installed-asset
+Council and Planet Buster runtime scenarios passed together in 45.84 seconds.
+The corresponding five-test AddressSanitizer pass completed in 19.63 seconds.
 
 All 24 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,

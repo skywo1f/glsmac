@@ -46,7 +46,9 @@
 			const state = player.get_council_state();
 			if (
 				state.proposal != 'supreme' || state.caller_id != player.id ||
-				state.last_session_turn != game.get_turn() || state.vote_id != -2
+				state.last_session_turn != game.get_turn() || state.vote_id != -2 ||
+				state.global_trade_pact || state.unity_core_salvaged ||
+				state.un_charter_repealed
 			) {
 				fail('native player wrapper exposed invalid active Council state');
 				return;

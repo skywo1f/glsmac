@@ -125,6 +125,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		int64_t candidate_b_id = -1;
 		int64_t vote_id = COUNCIL_VOTE_PENDING;
 		bool global_trade_pact = false;
+		bool unity_core_salvaged = false;
+		bool un_charter_repealed = false;
 
 		bool operator==( const council_state_t& other ) const {
 			return
@@ -135,7 +137,9 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				candidate_a_id == other.candidate_a_id &&
 				candidate_b_id == other.candidate_b_id &&
 				vote_id == other.vote_id &&
-				global_trade_pact == other.global_trade_pact;
+				global_trade_pact == other.global_trade_pact &&
+				unity_core_salvaged == other.unity_core_salvaged &&
+				un_charter_repealed == other.un_charter_repealed;
 		}
 	};
 	const council_state_t& GetCouncilState() const;

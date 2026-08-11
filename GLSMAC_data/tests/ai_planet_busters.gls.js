@@ -58,6 +58,16 @@ test.assert(
 	planet_busters.choose_target(missile, actor, [small, large, neutral_tile], (id) => { return false; }) ==
 	large
 );
+test.assert(
+	planet_busters.choose_target(
+		missile, actor, [large], (id) => { return false; }, 9
+	) == null
+);
+test.assert(
+	planet_busters.choose_target(
+		missile, actor, [large], (id) => { return false; }, 8
+	) == large
+);
 
 friendly_ring.units = [{owner: actor.id}];
 test.assert(planet_busters.has_friendly_collateral(large, 1, actor.id));

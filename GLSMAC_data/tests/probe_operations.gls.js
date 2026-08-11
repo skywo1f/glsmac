@@ -90,7 +90,7 @@ const make_player = (id, energy, technologies, target) => {
 	return player;
 };
 
-const make_fixture = () => {
+const make_fixture = (charter_repealed) => {
 	const actor = make_player(1, 1000, [], 'PlanetaryNetworks');
 	const target_player = make_player(2, 200, ['PlanetaryNetworks'], '');
 	let players = {p1: actor, p2: target_player};
@@ -280,6 +280,7 @@ const make_fixture = () => {
 	};
 	values.f_base_pop_unwork_tile = (base, pop) => { pop.set_worked_tile(#undefined); };
 	values.f_base_pop_work_tile = (base, pop, tile) => { pop.set_worked_tile(tile); };
+	values.f_council_is_un_charter_repealed = () => { return charter_repealed == true; };
 	define_probes(game);
 	define_diplomacy(game);
 	for (callback of callbacks.start) { callback({}); }
@@ -427,6 +428,25 @@ test.assert(f.target_base.get_size() == 4);
 test.assert(f.actor.get_major_atrocities() == 0);
 test.assert(f.actor.get_sanction_turns() == 0);
 test.assert(f.target_base.get('accumulated_nutrients') == 18);
+
+f = make_fixture(true);
+f.actor.set_research_state({
+	technologies: ['RetroviralEngineering'], target: 'PlanetaryNetworks', progress: 9,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'genetic_plague', target: f.target_base,
+}};
+e.resolved = result(true, true, true);
+e.resolved.population_loss = 2;
+e.applied = probe_operation.apply(e);
+test.assert(f.target_base.get_size() == 2);
+test.assert(f.actor.get_major_atrocities() == 1);
+test.assert(f.actor.get_sanction_turns() == 0);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'vendetta');
+probe_operation.rollback(e);
+test.assert(f.target_base.get_size() == 4);
+test.assert(f.actor.get_major_atrocities() == 0);
+test.assert(f.actor.get_sanction_turns() == 0);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'subvert_unit', target: f.defender}};

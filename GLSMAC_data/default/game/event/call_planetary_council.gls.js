@@ -38,15 +38,15 @@ return {
 				candidate_b_id: is_policy ? rules.vote_no : rankings[1].player.id,
 				vote_id: can_vote ? rules.vote_pending : rules.vote_abstain,
 				global_trade_pact: old.global_trade_pact,
+				unity_core_salvaged: old.unity_core_salvaged,
+				un_charter_repealed: old.un_charter_repealed,
 			});
 		}
 		e.game.trigger('council_updated', {proposal: e.data.proposal});
 		if (is_policy) {
 			e.game.message(
-				e.data.player.get_faction().name + ' has convened the Planetary Council to ' +
-				(e.data.proposal == 'trade_pact'
-					? 'establish a Global Trade Pact.'
-					: 'repeal the Global Trade Pact.')
+				e.data.player.get_faction().name + ' has convened the Planetary Council: ' +
+				rules.get_proposal_name(e.data.proposal) + '.'
 			);
 		} else {
 			e.game.message(

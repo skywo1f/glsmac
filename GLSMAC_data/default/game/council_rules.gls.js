@@ -3,9 +3,24 @@ const VOTE_PENDING = -2;
 const VOTE_ABSTAIN = -1;
 const VOTE_NO = 0;
 const VOTE_YES = 1;
+const MAX_ENERGY_CREDITS = 1000000000;
+const UNITY_CORE_ENERGY = 500;
 
 const is_policy_proposal = (proposal) => {
-	return proposal == 'trade_pact' || proposal == 'repeal_trade_pact';
+	return
+		proposal == 'trade_pact' || proposal == 'repeal_trade_pact' ||
+		proposal == 'salvage_unity_core' || proposal == 'repeal_un_charter' ||
+		proposal == 'reinstate_un_charter';
+};
+
+const get_proposal_name = (proposal) => {
+	if (proposal == 'trade_pact') { return 'Global Trade Pact'; }
+	if (proposal == 'repeal_trade_pact') { return 'Repeal Global Trade Pact'; }
+	if (proposal == 'salvage_unity_core') { return 'Salvage Unity Fusion Core'; }
+	if (proposal == 'repeal_un_charter') { return 'Repeal U.N. Charter'; }
+	if (proposal == 'reinstate_un_charter') { return 'Reinstate U.N. Charter'; }
+	if (proposal == 'supreme') { return 'Supreme Leader of Planet'; }
+	return 'Planetary Governor';
 };
 
 const get_population = (game, player) => {
@@ -97,19 +112,52 @@ const same_session = (left, right) => {
 		left.caller_id == right.caller_id &&
 		left.candidate_a_id == right.candidate_a_id &&
 		left.candidate_b_id == right.candidate_b_id &&
-		left.global_trade_pact == right.global_trade_pact;
+		left.global_trade_pact == right.global_trade_pact &&
+		left.unity_core_salvaged == right.unity_core_salvaged &&
+		left.un_charter_repealed == right.un_charter_repealed;
+};
+
+const normalize_policy_state = (state) => {
+	return {
+		global_trade_pact: #is_defined(state.global_trade_pact)
+			? state.global_trade_pact : false,
+		unity_core_salvaged: #is_defined(state.unity_core_salvaged)
+			? state.unity_core_salvaged : false,
+		un_charter_repealed: #is_defined(state.un_charter_repealed)
+			? state.un_charter_repealed : false,
+	};
+};
+
+const get_policy_state = (game) => {
+	let result = null;
+	for (player of game.get_players()) {
+		const state = normalize_policy_state(player.get_council_state());
+		if (result == null) {
+			result = state;
+		} else if (
+			result.global_trade_pact != state.global_trade_pact ||
+			result.unity_core_salvaged != state.unity_core_salvaged ||
+			result.un_charter_repealed != state.un_charter_repealed
+		) {
+			return null;
+		}
+	}
+	return result;
 };
 
 const has_global_trade_pact = (game) => {
-	let found = false;
-	for (player of game.get_players()) {
-		const state = player.get_council_state();
-		if (!#is_defined(state.global_trade_pact) || !state.global_trade_pact) {
-			return false;
-		}
-		found = true;
-	}
-	return found;
+	const state = get_policy_state(game);
+	return state != null && state.global_trade_pact;
+};
+
+const has_salvaged_unity_core = (game) => {
+	const state = get_policy_state(game);
+	return state != null && state.unity_core_salvaged;
+};
+
+const is_un_charter_repealed = (game) => {
+	const state = get_policy_state(game);
+	return state != null && state.un_charter_repealed;
 };
 
 const has_active_session = (game) => {
@@ -176,6 +224,10 @@ const validate_call = (game, player, proposal) => {
 	if (#sizeof(get_rankings(game)) < 2) {
 		return 'At least two eligible factions are required for a Council session';
 	}
+	const policy_state = get_policy_state(game);
+	if (policy_state == null) {
+		return 'Planetary Council policy state is inconsistent';
+	}
 	const last_turn = get_last_session_turn(game);
 	if (last_turn > 0 && game.get_turn() - last_turn < MINIMUM_SESSION_INTERVAL) {
 		return 'The Planetary Council may only meet once every 20 turns';
@@ -187,18 +239,50 @@ const validate_call = (game, player, proposal) => {
 		if (get_votes(game, player) * 2 < get_total_votes(game)) {
 			return 'A Supreme Leader proposal requires at least half of all Council votes';
 		}
-	} else if (is_policy_proposal(proposal)) {
+	} else if (proposal == 'trade_pact' || proposal == 'repeal_trade_pact') {
 		if (!player.has_technology('PlanetaryEconomics')) {
 			return 'Planetary Economics is required for a Global Trade Pact proposal';
 		}
-		const active = has_global_trade_pact(game);
+		const active = policy_state.global_trade_pact;
 		if (proposal == 'trade_pact' && active) {
 			return 'The Global Trade Pact is already in effect';
 		}
 		if (proposal == 'repeal_trade_pact' && !active) {
 			return 'The Global Trade Pact is not in effect';
 		}
+	} else if (proposal == 'salvage_unity_core') {
+		if (!player.has_technology('OrbitalSpaceflight')) {
+			return 'Orbital Spaceflight is required to salvage the Unity Fusion Core';
+		}
+		if (policy_state.unity_core_salvaged) {
+			return 'The Unity Fusion Core has already been salvaged';
+		}
+	} else if (proposal == 'repeal_un_charter' || proposal == 'reinstate_un_charter') {
+		if (!player.has_technology('AdvancedMilitaryAlgorithms')) {
+			return 'Advanced Military Algorithms is required for a U.N. Charter proposal';
+		}
+		if (proposal == 'repeal_un_charter' && policy_state.un_charter_repealed) {
+			return 'The U.N. Charter is already repealed';
+		}
+		if (proposal == 'reinstate_un_charter' && !policy_state.un_charter_repealed) {
+			return 'The U.N. Charter is already in effect';
+		}
 	}
+};
+
+const get_available_policy_proposals = (game, player) => {
+	const state = get_policy_state(game);
+	if (state == null) { return []; }
+	let candidates = ['salvage_unity_core'];
+	candidates :+(state.global_trade_pact ? 'repeal_trade_pact' : 'trade_pact');
+	candidates :+(state.un_charter_repealed ? 'reinstate_un_charter' : 'repeal_un_charter');
+	let result = [];
+	for (proposal of candidates) {
+		if (!#is_defined(validate_call(game, player, proposal))) {
+			result :+proposal;
+		}
+	}
+	return result;
 };
 
 const validate_vote = (game, player, vote_id) => {
@@ -301,28 +385,60 @@ const restore_states = (snapshot) => {
 	}
 };
 
+const snapshot_energy = (game) => {
+	let result = [];
+	for (player of game.get_players()) {
+		result :+{player: player, energy_credits: player.get_energy_credits()};
+	}
+	return result;
+};
+
+const restore_energy = (snapshot) => {
+	for (entry of snapshot) {
+		entry.player.set_energy_credits(entry.energy_credits);
+	}
+};
+
+const award_unity_core_energy = (game) => {
+	for (player of game.get_players()) {
+		player.set_energy_credits(#min(
+			MAX_ENERGY_CREDITS,
+			player.get_energy_credits() + UNITY_CORE_ENERGY
+		));
+	}
+};
+
 return {
 	minimum_session_interval: MINIMUM_SESSION_INTERVAL,
 	vote_pending: VOTE_PENDING,
 	vote_abstain: VOTE_ABSTAIN,
 	vote_no: VOTE_NO,
 	vote_yes: VOTE_YES,
+	unity_core_energy: UNITY_CORE_ENERGY,
 	is_policy_proposal: is_policy_proposal,
+	get_proposal_name: get_proposal_name,
 	get_population: get_population,
 	get_votes: get_votes,
 	get_voters: get_voters,
 	get_rankings: get_rankings,
 	get_total_votes: get_total_votes,
 	get_governor: get_governor,
+	get_policy_state: get_policy_state,
 	has_global_trade_pact: has_global_trade_pact,
+	has_salvaged_unity_core: has_salvaged_unity_core,
+	is_un_charter_repealed: is_un_charter_repealed,
 	has_active_session: has_active_session,
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,
 	validate_call: validate_call,
+	get_available_policy_proposals: get_available_policy_proposals,
 	validate_vote: validate_vote,
 	get_required_votes: get_required_votes,
 	get_tally: get_tally,
 	get_result: get_result,
 	snapshot_states: snapshot_states,
 	restore_states: restore_states,
+	snapshot_energy: snapshot_energy,
+	restore_energy: restore_energy,
+	award_unity_core_energy: award_unity_core_energy,
 };

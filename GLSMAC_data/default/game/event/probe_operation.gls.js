@@ -1,5 +1,10 @@
 const base_capture = #include('../base_capture');
 
+const is_un_charter_active = (game) => {
+	const is_repealed = game.get('f_council_is_un_charter_repealed');
+	return !#is_defined(is_repealed) || !is_repealed();
+};
+
 const get_target_player = (game, operation, target) => {
 	return operation == 'subvert_unit'
 		? game.get_player(target.owner)
@@ -523,12 +528,16 @@ return {
 			applied.pop_types = snapshot_surviving_pop_types(base, e.resolved.population_loss);
 			applied.population = remove_base_population(e.game, base, e.resolved.population_loss);
 			actor.set_major_atrocities(applied.actor_atrocities + 1);
-			actor.set_sanction_turns(#min(1000000, applied.actor_sanction_turns + 10));
-			e.game.trigger('diplomatic_sanctions_updated', {
-				player: actor,
-				turns: actor.get_sanction_turns(),
-			});
-			e.game.message('Economic sanctions imposed against ' + actor.name + ' for 10 years.');
+			if (is_un_charter_active(e.game)) {
+				actor.set_sanction_turns(#min(1000000, applied.actor_sanction_turns + 10));
+				e.game.trigger('diplomatic_sanctions_updated', {
+					player: actor,
+					turns: actor.get_sanction_turns(),
+				});
+				e.game.message(
+					'Economic sanctions imposed against ' + actor.name + ' for 10 years.'
+				);
+			}
 			refresh_base_psych(e.game, base);
 			e.game.trigger('update_base', {base: base});
 		} else if (e.resolved.success && operation == 'subvert_unit') {

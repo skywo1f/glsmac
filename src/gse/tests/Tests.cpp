@@ -271,7 +271,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
-					true, 42, "governor", 1, 1, 2, 1, true,
+					true, 42, "governor", 1, 1, 2, 1, true, true, true,
 				};
 				source.SetCouncilState( council_state );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
@@ -350,14 +350,28 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				types::Buffer bool_field;
 				bool_field.WriteBool( true );
+				const auto bool_field_size = bool_field.ToString().size();
+				auto trade_only_council_data = source.Serialize().ToString();
+				trade_only_council_data.resize(
+					trade_only_council_data.size() - bool_field_size * 2
+				);
+				Player trade_only_council( trade_only_council_data );
+				GT_ASSERT(
+					trade_only_council.GetCouncilState().global_trade_pact &&
+					!trade_only_council.GetCouncilState().unity_core_salvaged &&
+					!trade_only_council.GetCouncilState().un_charter_repealed,
+					"older Planetary Council state did not preserve the Trade Pact defaults"
+				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - bool_field.ToString().size()
+					legacy_council_data.size() - bool_field_size * 3
 				);
 				Player legacy_council( legacy_council_data );
 				GT_ASSERT(
-					!legacy_council.GetCouncilState().global_trade_pact,
-					"legacy Planetary Council state did not default the Global Trade Pact"
+					!legacy_council.GetCouncilState().global_trade_pact &&
+					!legacy_council.GetCouncilState().unity_core_salvaged &&
+					!legacy_council.GetCouncilState().un_charter_repealed,
+					"legacy Planetary Council policies did not default to their initial state"
 				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
@@ -724,6 +738,24 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_council_vote = true;
 				}
 				GT_ASSERT( rejected_invalid_council_vote, "invalid Planetary Council vote accepted" );
+
+				Player valid_policy( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+				valid_policy.SetCouncilState( {
+					false,
+					12,
+					"repeal_un_charter",
+					1,
+					Player::COUNCIL_VOTE_YES,
+					Player::COUNCIL_VOTE_NO,
+					Player::COUNCIL_VOTE_ABSTAIN,
+					false,
+					false,
+					false,
+				} );
+				GT_ASSERT(
+					valid_policy.GetCouncilState().proposal == "repeal_un_charter",
+					"supported Planetary Council policy was rejected"
+				);
 
 				bool rejected_invalid_council_policy = false;
 				try {

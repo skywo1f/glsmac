@@ -47,17 +47,15 @@ return (game) => {
 				}
 			}
 			if (governor != null && governor.type == 'ai') {
-				const proposal = rules.has_global_trade_pact(game)
-					? 'repeal_trade_pact'
-					: 'trade_pact';
-				if (
-					council_ai.choose_policy_vote(game, governor, proposal) == rules.vote_yes &&
-					!#is_defined(rules.validate_call(game, governor, proposal))
-				) {
-					game.event_as(governor.id, 'call_planetary_council', {
-						player: governor, proposal: proposal,
-					});
-					return;
+				for (proposal of rules.get_available_policy_proposals(game, governor)) {
+					if (
+						council_ai.choose_policy_vote(game, governor, proposal) == rules.vote_yes
+					) {
+						game.event_as(governor.id, 'call_planetary_council', {
+							player: governor, proposal: proposal,
+						});
+						return;
+					}
 				}
 			}
 			for (entry of rules.get_rankings(game)) {
@@ -85,6 +83,18 @@ return (game) => {
 		game.set('f_council_get_governor', () => { return rules.get_governor(game); });
 		game.set('f_council_has_global_trade_pact', () => {
 			return rules.has_global_trade_pact(game);
+		});
+		game.set('f_council_has_salvaged_unity_core', () => {
+			return rules.has_salvaged_unity_core(game);
+		});
+		game.set('f_council_is_un_charter_repealed', () => {
+			return rules.is_un_charter_repealed(game);
+		});
+		game.set('f_council_is_policy_proposal', (proposal) => {
+			return rules.is_policy_proposal(proposal);
+		});
+		game.set('f_council_get_proposal_name', (proposal) => {
+			return rules.get_proposal_name(proposal);
 		});
 		game.set('f_council_get_session', () => { return rules.get_session(game); });
 		game.set('f_council_get_tally', () => { return rules.get_tally(game); });

@@ -68,7 +68,7 @@ const get_target_score = (tile, radius, player_id) => {
 	return base_population * 1000 + enemy_units * 100;
 };
 
-const choose_target = (unit, player, tiles, is_protected_partner) => {
+const choose_target = (unit, player, tiles, is_protected_partner, minimum_target_size) => {
 	const definition = unit.get_def();
 	if (
 		definition.weapon != PLANET_BUSTER_WEAPON ||
@@ -76,6 +76,9 @@ const choose_target = (unit, player, tiles, is_protected_partner) => {
 	) {
 		return null;
 	}
+	const minimum_size = #is_defined(minimum_target_size)
+		? minimum_target_size
+		: MIN_TARGET_BASE_SIZE;
 	const protects_owner = (owner_id) => {
 		return owner_id == player.id ||
 			(#is_defined(is_protected_partner) && is_protected_partner(owner_id));
@@ -90,7 +93,7 @@ const choose_target = (unit, player, tiles, is_protected_partner) => {
 		const owner = base.get_owner();
 		if (
 			owner.id == player.id ||
-			base.get_size() < MIN_TARGET_BASE_SIZE ||
+			base.get_size() < minimum_size ||
 			player.get_diplomatic_relation(owner) != 'vendetta' ||
 			protects_owner(owner.id) ||
 			has_protected_collateral(

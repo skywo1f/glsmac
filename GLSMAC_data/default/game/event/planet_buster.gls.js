@@ -4,6 +4,11 @@ const SANCTION_YEARS = 20;
 const MAX_MAJOR_ATROCITIES = 1000000;
 const MAX_REACTOR_POWER = 4;
 
+const is_un_charter_active = (game) => {
+	const is_repealed = game.get('f_council_is_un_charter_repealed');
+	return !#is_defined(is_repealed) || !is_repealed();
+};
+
 const tile_key = (tile) => {
 	return #to_string(tile.x) + ':' + #to_string(tile.y);
 };
@@ -172,6 +177,30 @@ const set_global_vendettas = (game, actor, snapshots) => {
 	}
 };
 
+const set_affected_vendettas = (game, actor, snapshots, applied) => {
+	let affected = {};
+	if (applied.defense.player_id >= 0) {
+		affected['p' + #to_string(applied.defense.player_id)] = true;
+	}
+	for (unit of applied.units) {
+		affected['p' + #to_string(unit.owner)] = true;
+	}
+	for (base of applied.bases) {
+		affected['p' + #to_string(base.owner_id)] = true;
+	}
+	for (snapshot of snapshots) {
+		if (!#is_defined(affected['p' + #to_string(snapshot.player_id)])) { continue; }
+		const other = game.get_player(snapshot.player_id);
+		game.get('f_diplomacy_set_bilateral_relation')(actor, other, 'vendetta');
+		game.get('f_diplomacy_clear_offers')(actor, other);
+		game.trigger('diplomacy_updated', {
+			player: actor,
+			target: other,
+			relation: 'vendetta',
+		});
+	}
+};
+
 const restore_diplomacy = (game, actor, snapshots) => {
 	for (snapshot of snapshots) {
 		const other = game.get_player(snapshot.player_id);
@@ -304,6 +333,7 @@ return {
 					applied.bases :+{
 						id: base.id,
 						name: base.name,
+						owner_id: base.get_owner().id,
 						snapshot: e.game.bm.snapshot_base(base),
 					};
 				}
@@ -327,12 +357,20 @@ return {
 		}
 
 		actor.set_major_atrocities(applied.actor_atrocities + 1);
-		actor.set_sanction_turns(#min(MAX_MAJOR_ATROCITIES, applied.actor_sanction_turns + SANCTION_YEARS));
-		set_global_vendettas(e.game, actor, applied.diplomacy);
-		e.game.trigger('diplomatic_sanctions_updated', {
-			player: actor,
-			turns: actor.get_sanction_turns(),
-		});
+		const charter_active = is_un_charter_active(e.game);
+		if (charter_active) {
+			actor.set_sanction_turns(#min(
+				MAX_MAJOR_ATROCITIES,
+				applied.actor_sanction_turns + SANCTION_YEARS
+			));
+			set_global_vendettas(e.game, actor, applied.diplomacy);
+			e.game.trigger('diplomatic_sanctions_updated', {
+				player: actor,
+				turns: actor.get_sanction_turns(),
+			});
+		} else {
+			set_affected_vendettas(e.game, actor, applied.diplomacy, applied);
+		}
 		e.game.trigger('planet_buster', {
 			player: actor,
 			tile: e.data.tile,
@@ -352,7 +390,9 @@ return {
 		} else {
 			e.game.message(actor.name + ' committed a Planet Buster atrocity.');
 		}
-		e.game.message('Economic sanctions imposed against ' + actor.name + ' for 20 years.');
+		if (charter_active) {
+			e.game.message('Economic sanctions imposed against ' + actor.name + ' for 20 years.');
+		}
 		return applied;
 	},
 

@@ -12,6 +12,8 @@ return {
 		this.governor_button = null;
 		this.supreme_button = null;
 		this.trade_button = null;
+		this.unity_button = null;
+		this.charter_button = null;
 
 		const result = p.create('PLANETARY COUNCIL', 560, 278, (body, cb) => {
 			this.status_text = body.text({
@@ -101,6 +103,32 @@ return {
 				return true;
 			});
 
+			this.unity_button = body.button({
+				class: 'game-popup-button', text: 'Propose Salvage of Unity Fusion Core', top: 200,
+			});
+			this.unity_button.on('click', (e) => {
+				if (this.player != null) {
+					p.game.event('call_planetary_council', {
+						player: this.player, proposal: 'salvage_unity_core',
+					});
+				}
+				return true;
+			});
+
+			this.charter_button = body.button({
+				class: 'game-popup-button', text: '', top: 226,
+			});
+			this.charter_button.on('click', (e) => {
+				if (this.player != null) {
+					const repealed = p.game.get('f_council_is_un_charter_repealed')();
+					p.game.event('call_planetary_council', {
+						player: this.player,
+						proposal: repealed ? 'reinstate_un_charter' : 'repeal_un_charter',
+					});
+				}
+				return true;
+			});
+
 			body.button({
 				class: 'game-popup-button', text: 'Close', top: 250, is_cancel: true,
 			}).on('click', (e) => {
@@ -127,6 +155,8 @@ return {
 		this.governor_button.hide();
 		this.supreme_button.hide();
 		this.trade_button.hide();
+		this.unity_button.hide();
+		this.charter_button.hide();
 		if (this.player == null) { return; }
 
 		const get_session = this.p.game.get('f_council_get_session');
@@ -137,12 +167,12 @@ return {
 		const session = get_session();
 		if (session != null) {
 			const tally = get_tally();
-			const is_policy =
-				session.proposal == 'trade_pact' || session.proposal == 'repeal_trade_pact';
+			const is_policy = this.p.game.get('f_council_is_policy_proposal')(
+				session.proposal
+			);
 			if (is_policy) {
-				this.status_text.text = session.proposal == 'trade_pact'
-					? 'Resolution: Global Trade Pact'
-					: 'Resolution: Repeal Global Trade Pact';
+				this.status_text.text = 'Resolution: ' +
+					this.p.game.get('f_council_get_proposal_name')(session.proposal);
 				this.first_text.text = 'Yes: ' + #to_string(tally.candidate_a_votes) +
 					' committed votes';
 				this.second_text.text = 'No: ' + #to_string(tally.candidate_b_votes) +
@@ -181,10 +211,13 @@ return {
 
 		const governor = get_governor();
 		const has_trade_pact = this.p.game.get('f_council_has_global_trade_pact')();
+		const unity_salvaged = this.p.game.get('f_council_has_salvaged_unity_core')();
+		const charter_repealed = this.p.game.get('f_council_is_un_charter_repealed')();
 		this.status_text.text = (governor == null
 			? 'Planetary Governor: none elected'
 			: 'Planetary Governor: ' + governor.get_faction().name) +
-			(has_trade_pact ? ' | Trade Pact: active' : ' | Trade Pact: inactive');
+			(has_trade_pact ? ' | Trade: active' : ' | Trade: inactive') +
+			(charter_repealed ? ' | Charter: repealed' : ' | Charter: active');
 		const rankings = get_rankings();
 		this.first_text.text = #sizeof(rankings) > 0
 			? rankings[0].player.get_faction().name + ': ' +
@@ -198,29 +231,48 @@ return {
 		const supreme_error = validate_call(this.player, 'supreme');
 		const trade_proposal = has_trade_pact ? 'repeal_trade_pact' : 'trade_pact';
 		const trade_error = validate_call(this.player, trade_proposal);
+		const unity_error = validate_call(this.player, 'salvage_unity_core');
+		const charter_proposal = charter_repealed
+			? 'reinstate_un_charter'
+			: 'repeal_un_charter';
+		const charter_error = validate_call(this.player, charter_proposal);
+		let can_convene = false;
 		if (!#is_defined(governor_error)) {
 			this.governor_button.show();
+			can_convene = true;
 		}
 		if (!#is_defined(supreme_error)) {
 			this.supreme_button.show();
+			can_convene = true;
 		}
 		if (!#is_defined(trade_error)) {
 			this.trade_button.text = has_trade_pact
 				? 'Propose Repeal of Global Trade Pact'
 				: 'Propose Global Trade Pact';
 			this.trade_button.show();
+			can_convene = true;
 		}
-		if (
-			#is_defined(governor_error) && #is_defined(supreme_error) &&
-			#is_defined(trade_error)
-		) {
+		if (!unity_salvaged && !#is_defined(unity_error)) {
+			this.unity_button.show();
+			can_convene = true;
+		}
+		if (!#is_defined(charter_error)) {
+			this.charter_button.text = charter_repealed
+				? 'Propose Reinstatement of U.N. Charter'
+				: 'Propose Repeal of U.N. Charter';
+			this.charter_button.show();
+			can_convene = true;
+		}
+		if (can_convene) {
+			this.detail_text.text = 'The Council is ready to convene.';
+		} else if (#is_defined(governor_error)) {
 			this.detail_text.text = governor_error;
-		} else if (#is_defined(supreme_error) && #is_defined(trade_error)) {
+		} else if (#is_defined(supreme_error)) {
 			this.detail_text.text = supreme_error;
 		} else if (#is_defined(trade_error)) {
 			this.detail_text.text = trade_error;
 		} else {
-			this.detail_text.text = 'The Council is ready to convene.';
+			this.detail_text.text = charter_error;
 		}
 	},
 
