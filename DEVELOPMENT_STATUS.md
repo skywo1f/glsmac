@@ -140,12 +140,14 @@ scenarios, for:
   yearly expiry, player diagnostics, and commerce-aware AI atrocity valuation;
 - original-SMAC base-paired commerce income for reciprocal treaties and pacts,
   including imported economic-technology flags, ECONOMY and Morgan bonuses,
-  deterministic per-partner base diagnostics, and AI research valuation;
+  deterministic per-partner base diagnostics, the Global Trade Pact's exact
+  pre-scaling planetwide doubling, and AI research valuation;
 - persistent Planetary Council sessions with original population voting,
   Peacekeeper and Secret Project vote modifiers, Progenitor exclusion,
   deterministic candidates, human and strategy-aware AI ballots, Governor and
-  Supreme Leader thresholds, a 20-turn cooldown, save/reconnect restoration,
-  and reversible election results;
+  Supreme Leader thresholds, Global Trade Pact enactment and repeal,
+  technology gating, a 20-turn cooldown, save/reconnect restoration, and
+  reversible election and policy results;
 - the Planetary Governor receives +1 energy per commerce transaction and
   effective infiltration against every rival; election as Supreme Leader ends
   the game with a diplomatic victory;
@@ -178,10 +180,8 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map and commlink exchanges, surrender, Global
-  Trade Pact and other policy proposals or defiance, and richer bundled or
-  counteroffers; Council sessions currently cover Governor and Supreme Leader
-  elections only;
+- deeper diplomacy including map and commlink exchanges, surrender, remaining
+  Council policy proposals or defiance, and richer bundled or counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
@@ -231,6 +231,11 @@ After territory and pacifism support was added, all 86 isolated tests passed in
 soak in 134.80, multiplayer in 32.86, and running reconnect in 31.56. Territory
 is derived from synchronized base state, so it requires no additional snapshot
 payload and produced identical behavior after reconnect.
+
+After Global Trade Pact enactment and repeal were added, all 86 isolated tests
+passed in 161.59 seconds. Focused native serialization, Council, commerce, and
+installed-asset Council runtime coverage passed together in 29.64 seconds; the
+asset-backed Council scenario itself completed in 25.99 seconds.
 
 All 24 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,

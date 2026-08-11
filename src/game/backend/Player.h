@@ -112,6 +112,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 
 	static constexpr int64_t COUNCIL_VOTE_PENDING = -2;
 	static constexpr int64_t COUNCIL_VOTE_ABSTAIN = -1;
+	static constexpr int64_t COUNCIL_VOTE_NO = 0;
+	static constexpr int64_t COUNCIL_VOTE_YES = 1;
 	static constexpr int64_t MAX_COUNCIL_TURN = 1000000;
 	static constexpr size_t MAX_COUNCIL_PLAYER_ID = 64;
 	struct council_state_t {
@@ -122,6 +124,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		int64_t candidate_a_id = -1;
 		int64_t candidate_b_id = -1;
 		int64_t vote_id = COUNCIL_VOTE_PENDING;
+		bool global_trade_pact = false;
 
 		bool operator==( const council_state_t& other ) const {
 			return
@@ -131,7 +134,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				caller_id == other.caller_id &&
 				candidate_a_id == other.candidate_a_id &&
 				candidate_b_id == other.candidate_b_id &&
-				vote_id == other.vote_id;
+				vote_id == other.vote_id &&
+				global_trade_pact == other.global_trade_pact;
 		}
 	};
 	const council_state_t& GetCouncilState() const;

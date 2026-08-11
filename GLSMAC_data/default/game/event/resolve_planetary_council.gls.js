@@ -1,6 +1,6 @@
 const rules = #include('../council_rules');
 
-const clear_session = (game, governor_id) => {
+const clear_session = (game, governor_id, global_trade_pact) => {
 	for (player of game.get_players()) {
 		const old = player.get_council_state();
 		player.set_council_state({
@@ -11,6 +11,9 @@ const clear_session = (game, governor_id) => {
 			candidate_a_id: -1,
 			candidate_b_id: -1,
 			vote_id: rules.vote_pending,
+			global_trade_pact: #is_defined(global_trade_pact)
+				? global_trade_pact
+				: old.global_trade_pact,
 		});
 	}
 };
@@ -38,7 +41,7 @@ return {
 		const previous = rules.snapshot_states(e.game);
 		const result = rules.get_result(e.game);
 		if (result.proposal == 'governor') {
-			clear_session(e.game, result.winner_id);
+			clear_session(e.game, result.winner_id, #undefined);
 			if (result.winner_id >= 0) {
 				const winner = e.game.get_player(result.winner_id);
 				e.game.message(
@@ -50,8 +53,32 @@ return {
 				e.game.message('The Planetary Governor proposal failed to win a majority.');
 			}
 			e.game.trigger('economy_updated', {});
+		} else if (rules.is_policy_proposal(result.proposal)) {
+			const passed = result.winner_id == rules.vote_yes;
+			const active = rules.has_global_trade_pact(e.game);
+			const updated = passed
+				? result.proposal == 'trade_pact'
+				: active;
+			clear_session(e.game, (-1), updated);
+			if (passed) {
+				e.game.message(
+					(result.proposal == 'trade_pact'
+						? 'The Global Trade Pact has passed. Commerce rates are now doubled'
+						: 'The Global Trade Pact has been repealed. Commerce rates have returned to normal') +
+					' with ' + #to_string(result.winner_votes) + ' of ' +
+					#to_string(result.total_votes) + ' votes.'
+				);
+			} else {
+				e.game.message(
+					(result.proposal == 'trade_pact'
+						? 'The Global Trade Pact proposal'
+						: 'The proposal to repeal the Global Trade Pact') +
+					' failed to win a majority.'
+				);
+			}
+			e.game.trigger('economy_updated', {});
 		} else {
-			clear_session(e.game, (-1));
+			clear_session(e.game, (-1), #undefined);
 			if (result.winner_id >= 0) {
 				const winner = e.game.get_player(result.winner_id);
 				e.game.declare_victory('diplomatic', result.winner_id);

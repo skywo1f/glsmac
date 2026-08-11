@@ -63,6 +63,7 @@ const bases = [alpha_low, beta_low, alpha_unmatched, beta_high, alpha_high];
 
 let callbacks = {};
 let governor_id = -1;
+let global_trade_pact = false;
 let values = {
 	f_technology_get_base_labs: (base) => {
 		throw Error('commerce ranking must not resolve lab bonuses');
@@ -73,6 +74,7 @@ let values = {
 	f_social_get_ratings: (player) => { return {effic: 0}; },
 	f_social_get_commerce_bonus: (player) => { return player.commerce_bonus; },
 	f_council_is_governor: (player) => { return player.id == governor_id; },
+	f_council_has_global_trade_pact: () => { return global_trade_pact; },
 };
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
@@ -100,6 +102,12 @@ test.assert(alpha_ledger.b1.total == 15);
 test.assert(values.f_economy_get_player_commerce(game, alpha) == 22);
 test.assert(values.f_economy_get_player_commerce(game, beta) == 3);
 test.assert(values.f_economy_get_player(game, alpha) == 124);
+
+global_trade_pact = true;
+test.assert(values.f_economy_get_base_commerce(game, alpha_high).total == 30);
+test.assert(values.f_economy_get_player_commerce(game, alpha) == 44);
+test.assert(values.f_economy_get_player_commerce(game, beta) == 6);
+global_trade_pact = false;
 
 governor_id = alpha.id;
 test.assert(values.f_economy_get_player_commerce(game, alpha) == 24);

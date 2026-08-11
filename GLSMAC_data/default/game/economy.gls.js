@@ -210,9 +210,13 @@ const get_player_commerce_ledger = (game, player) => {
 		while (index < pair_count) {
 			const own = own_bases[index];
 			const other = partner_bases[index];
-			const pair_value = #ceil(
+			let pair_value = #ceil(
 				#to_float(#max(own.economy + other.economy, 0)) / 8.0
 			);
+			const has_trade_pact = game.get('f_council_has_global_trade_pact');
+			if (#is_defined(has_trade_pact) && has_trade_pact()) {
+				pair_value *= 2;
+			}
 			let value = #floor(
 				#to_float(pair_value * (commerce_technology + 1)) /
 				#to_float(total_technology + 1)

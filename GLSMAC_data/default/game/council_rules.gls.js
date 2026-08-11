@@ -1,6 +1,12 @@
 const MINIMUM_SESSION_INTERVAL = 20;
 const VOTE_PENDING = -2;
 const VOTE_ABSTAIN = -1;
+const VOTE_NO = 0;
+const VOTE_YES = 1;
+
+const is_policy_proposal = (proposal) => {
+	return proposal == 'trade_pact' || proposal == 'repeal_trade_pact';
+};
 
 const get_population = (game, player) => {
 	let population = 0;
@@ -90,7 +96,20 @@ const same_session = (left, right) => {
 		left.last_session_turn == right.last_session_turn &&
 		left.caller_id == right.caller_id &&
 		left.candidate_a_id == right.candidate_a_id &&
-		left.candidate_b_id == right.candidate_b_id;
+		left.candidate_b_id == right.candidate_b_id &&
+		left.global_trade_pact == right.global_trade_pact;
+};
+
+const has_global_trade_pact = (game) => {
+	let found = false;
+	for (player of game.get_players()) {
+		const state = player.get_council_state();
+		if (!#is_defined(state.global_trade_pact) || !state.global_trade_pact) {
+			return false;
+		}
+		found = true;
+	}
+	return found;
 };
 
 const has_active_session = (game) => {
@@ -139,7 +158,10 @@ const validate_call = (game, player, proposal) => {
 	if (game.is_game_over()) {
 		return 'Game already has a winner';
 	}
-	if (proposal != 'governor' && proposal != 'supreme') {
+	if (
+		proposal != 'governor' && proposal != 'supreme' &&
+		!is_policy_proposal(proposal)
+	) {
 		return 'Unsupported Planetary Council proposal';
 	}
 	if (!is_voter(game, player)) {
@@ -152,7 +174,7 @@ const validate_call = (game, player, proposal) => {
 		return 'A Planetary Council session is already active';
 	}
 	if (#sizeof(get_rankings(game)) < 2) {
-		return 'At least two eligible factions are required for a Council election';
+		return 'At least two eligible factions are required for a Council session';
 	}
 	const last_turn = get_last_session_turn(game);
 	if (last_turn > 0 && game.get_turn() - last_turn < MINIMUM_SESSION_INTERVAL) {
@@ -164,6 +186,17 @@ const validate_call = (game, player, proposal) => {
 		}
 		if (get_votes(game, player) * 2 < get_total_votes(game)) {
 			return 'A Supreme Leader proposal requires at least half of all Council votes';
+		}
+	} else if (is_policy_proposal(proposal)) {
+		if (!player.has_technology('PlanetaryEconomics')) {
+			return 'Planetary Economics is required for a Global Trade Pact proposal';
+		}
+		const active = has_global_trade_pact(game);
+		if (proposal == 'trade_pact' && active) {
+			return 'The Global Trade Pact is already in effect';
+		}
+		if (proposal == 'repeal_trade_pact' && !active) {
+			return 'The Global Trade Pact is not in effect';
 		}
 	}
 };
@@ -185,7 +218,11 @@ const validate_vote = (game, player, vote_id) => {
 	if (state.vote_id != VOTE_PENDING) {
 		return 'Faction has already cast its Planetary Council vote';
 	}
-	if (
+	if (is_policy_proposal(session.proposal)) {
+		if (vote_id != VOTE_ABSTAIN && vote_id != VOTE_YES && vote_id != VOTE_NO) {
+			return 'Planetary Council policy vote must be Yes, No, or Abstain';
+		}
+	} else if (
 		vote_id != VOTE_ABSTAIN && vote_id != session.candidate_a_id &&
 		vote_id != session.candidate_b_id
 	) {
@@ -268,12 +305,16 @@ return {
 	minimum_session_interval: MINIMUM_SESSION_INTERVAL,
 	vote_pending: VOTE_PENDING,
 	vote_abstain: VOTE_ABSTAIN,
+	vote_no: VOTE_NO,
+	vote_yes: VOTE_YES,
+	is_policy_proposal: is_policy_proposal,
 	get_population: get_population,
 	get_votes: get_votes,
 	get_voters: get_voters,
 	get_rankings: get_rankings,
 	get_total_votes: get_total_votes,
 	get_governor: get_governor,
+	has_global_trade_pact: has_global_trade_pact,
 	has_active_session: has_active_session,
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,

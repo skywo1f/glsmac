@@ -1192,6 +1192,7 @@ WRAPIMPL_BEGIN( Player )
 						{ "candidate_a_id", VALUE( gse::value::Int, , m_council_state.candidate_a_id ) },
 						{ "candidate_b_id", VALUE( gse::value::Int, , m_council_state.candidate_b_id ) },
 						{ "vote_id", VALUE( gse::value::Int, , m_council_state.vote_id ) },
+						{ "global_trade_pact", VALUE( gse::value::Bool, , m_council_state.global_trade_pact ) },
 					} );
 				} )
 			},
@@ -1208,6 +1209,14 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP( candidate_a_id, state, "candidate_a_id", Int );
 					N_GETPROP( candidate_b_id, state, "candidate_b_id", Int );
 					N_GETPROP( vote_id, state, "vote_id", Int );
+					N_GETPROP_OPT(
+						bool,
+						global_trade_pact,
+						state,
+						"global_trade_pact",
+						Bool,
+						m_council_state.global_trade_pact
+					);
 					try {
 						SetCouncilState( {
 							is_governor,
@@ -1217,6 +1226,7 @@ WRAPIMPL_BEGIN( Player )
 							candidate_a_id,
 							candidate_b_id,
 							vote_id,
+							global_trade_pact,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1309,6 +1319,7 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteInt( m_council_state.candidate_a_id );
 	buf.WriteInt( m_council_state.candidate_b_id );
 	buf.WriteInt( m_council_state.vote_id );
+	buf.WriteBool( m_council_state.global_trade_pact );
 
 	return buf;
 }
@@ -1561,7 +1572,11 @@ void Player::Deserialize( types::Buffer buf ) {
 			buf.ReadInt(),
 			buf.ReadInt(),
 			buf.ReadInt(),
+			false,
 		};
+		if ( buf.GetRemaining() > 0 ) {
+			council_state.global_trade_pact = buf.ReadBool();
+		}
 		std::string council_error;
 		if ( !ValidateCouncilState( council_state, council_error ) ) {
 			THROW( "invalid serialized Planetary Council state: " + council_error );
@@ -1671,7 +1686,9 @@ bool Player::ValidateCouncilState( const council_state_t& state, std::string& er
 		}
 		return true;
 	}
-	if ( state.proposal != "governor" && state.proposal != "supreme" ) {
+	const bool is_policy =
+		state.proposal == "trade_pact" || state.proposal == "repeal_trade_pact";
+	if ( state.proposal != "governor" && state.proposal != "supreme" && !is_policy ) {
 		error = "Planetary Council proposal is unsupported";
 		return false;
 	}
@@ -1682,8 +1699,20 @@ bool Player::ValidateCouncilState( const council_state_t& state, std::string& er
 	const auto valid_player_id = []( const int64_t id ) {
 		return id >= 0 && id < static_cast< int64_t >( MAX_COUNCIL_PLAYER_ID );
 	};
-	if (
-		!valid_player_id( state.caller_id ) ||
+	if ( !valid_player_id( state.caller_id ) ) {
+		error = "Planetary Council participant ID is invalid";
+		return false;
+	}
+	if ( is_policy ) {
+		if (
+			state.candidate_a_id != COUNCIL_VOTE_YES ||
+			state.candidate_b_id != COUNCIL_VOTE_NO
+		) {
+			error = "Planetary Council policy choices are invalid";
+			return false;
+		}
+	}
+	else if (
 		!valid_player_id( state.candidate_a_id ) ||
 		!valid_player_id( state.candidate_b_id ) ||
 		state.candidate_a_id == state.candidate_b_id

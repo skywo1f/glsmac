@@ -271,7 +271,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
-					true, 42, "governor", 1, 1, 2, 1,
+					true, 42, "governor", 1, 1, 2, 1, true,
 				};
 				source.SetCouncilState( council_state );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
@@ -347,6 +347,17 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetCouncilState() == council_state,
 					"Planetary Council state was not serialized"
+				);
+				types::Buffer bool_field;
+				bool_field.WriteBool( true );
+				auto legacy_council_data = source.Serialize().ToString();
+				legacy_council_data.resize(
+					legacy_council_data.size() - bool_field.ToString().size()
+				);
+				Player legacy_council( legacy_council_data );
+				GT_ASSERT(
+					!legacy_council.GetCouncilState().global_trade_pact,
+					"legacy Planetary Council state did not default the Global Trade Pact"
 				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
@@ -713,6 +724,28 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_council_vote = true;
 				}
 				GT_ASSERT( rejected_invalid_council_vote, "invalid Planetary Council vote accepted" );
+
+				bool rejected_invalid_council_policy = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( {
+						false,
+						12,
+						"trade_pact",
+						1,
+						2,
+						0,
+						Player::COUNCIL_VOTE_YES,
+						false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_council_policy = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_council_policy,
+					"invalid Planetary Council policy choices accepted"
+				);
 
 				bool rejected_inactive_council_session_data = false;
 				try {

@@ -22,6 +22,7 @@ return {
 		const previous = rules.snapshot_states(e.game);
 		const rankings = rules.get_rankings(e.game);
 		const voters = rules.get_voters(e.game);
+		const is_policy = rules.is_policy_proposal(e.data.proposal);
 		for (player of e.game.get_players()) {
 			let can_vote = false;
 			for (voter of voters) {
@@ -33,16 +34,26 @@ return {
 				last_session_turn: e.game.get_turn(),
 				proposal: e.data.proposal,
 				caller_id: e.data.player.id,
-				candidate_a_id: rankings[0].player.id,
-				candidate_b_id: rankings[1].player.id,
+				candidate_a_id: is_policy ? rules.vote_yes : rankings[0].player.id,
+				candidate_b_id: is_policy ? rules.vote_no : rankings[1].player.id,
 				vote_id: can_vote ? rules.vote_pending : rules.vote_abstain,
+				global_trade_pact: old.global_trade_pact,
 			});
 		}
 		e.game.trigger('council_updated', {proposal: e.data.proposal});
-		e.game.message(
-			e.data.player.get_faction().name + ' has convened the Planetary Council to elect ' +
-			(e.data.proposal == 'supreme' ? 'a Supreme Leader.' : 'a Planetary Governor.')
-		);
+		if (is_policy) {
+			e.game.message(
+				e.data.player.get_faction().name + ' has convened the Planetary Council to ' +
+				(e.data.proposal == 'trade_pact'
+					? 'establish a Global Trade Pact.'
+					: 'repeal the Global Trade Pact.')
+			);
+		} else {
+			e.game.message(
+				e.data.player.get_faction().name + ' has convened the Planetary Council to elect ' +
+				(e.data.proposal == 'supreme' ? 'a Supreme Leader.' : 'a Planetary Governor.')
+			);
+		}
 		return previous;
 	},
 
