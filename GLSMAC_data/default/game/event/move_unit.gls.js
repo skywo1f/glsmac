@@ -1,6 +1,7 @@
 const movement_rules = #include('../movement_rules');
 const base_capture = #include('../base_capture');
 const unity_pods = #include('../unity_pods');
+const unit_abilities = #include('../unit_abilities');
 
 const get_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
@@ -18,6 +19,16 @@ const get_boarding_transport = (unit, tile) => {
 		}
 	}
 	return null;
+};
+
+const is_amphibious_base_crossing = (unit, src_tile, dst_tile) => {
+	if (!unit_abilities.has(unit, 'AmphibiousPods')) {
+		return false;
+	}
+	return (
+		(src_tile.is_water && src_tile.get_base() != null && dst_tile.is_land) ||
+		(src_tile.is_land && dst_tile.is_water && dst_tile.get_base() != null)
+	);
 };
 
 const has_fungus_road = (unit, game) => {
@@ -140,13 +151,23 @@ return {
 		if (!src_tile.is_adjactent_to(dst_tile)) {
 			return 'Destination tile is not adjactent to source tile';
 		}
+		const amphibious_base_crossing = is_amphibious_base_crossing(
+			e.data.unit,
+			src_tile,
+			dst_tile
+		);
 		if (get_transport_id(e.data.unit) > 0) {
 			if (!e.data.unit.is_land || !dst_tile.is_land) {
 				return 'Embarked land units can only disembark onto land';
 			}
 		} else if (
+			e.data.unit.is_land && src_tile.is_water && dst_tile.is_land &&
+			!amphibious_base_crossing && get_boarding_transport(e.data.unit, src_tile) == null
+		) {
+			return 'Land units need Amphibious Pods or a friendly transport to leave a sea base';
+		} else if (
 			e.data.unit.is_land && dst_tile.is_water &&
-			get_boarding_transport(e.data.unit, dst_tile) == null
+			!amphibious_base_crossing && get_boarding_transport(e.data.unit, dst_tile) == null
 		) {
 			return 'Land units need a friendly transport with free capacity to enter water';
 		}
@@ -171,7 +192,8 @@ return {
 
 	resolve: (e) => {
 
-		const movement = e.data.unit.movement;
+		const unit = e.data.unit;
+		const movement = e.data.unit.movement + 0.0;
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
@@ -184,10 +206,16 @@ return {
 			fungus_road
 		);
 
+		const amphibious_base_crossing = is_amphibious_base_crossing(
+			unit,
+			src_tile,
+			dst_tile
+		);
 		const transport =
 			get_transport_id(e.data.unit) == 0 &&
 			#is_defined(e.data.unit.is_land) && e.data.unit.is_land &&
-			#is_defined(dst_tile.is_water) && dst_tile.is_water
+			#is_defined(dst_tile.is_water) && dst_tile.is_water &&
+			!amphibious_base_crossing
 				? get_boarding_transport(e.data.unit, dst_tile)
 				: null;
 
@@ -220,8 +248,8 @@ return {
 			orig: {
 				tile: src_tile,
 				movement: movement,
-				moved_this_turn: unit.moved_this_turn,
-				transport_id: get_transport_id(unit),
+				moved_this_turn: unit.moved_this_turn == true,
+				transport_id: get_transport_id(unit) + 0,
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,

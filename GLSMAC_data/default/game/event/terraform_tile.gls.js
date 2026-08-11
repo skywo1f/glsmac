@@ -58,10 +58,10 @@ return {
 	apply: (e) => {
 		const unit = e.data.unit;
 		const previous = {
-			type: unit.terraforming,
-			turns: unit.terraforming_turns_remaining,
-			movement: unit.movement,
-			moved_this_turn: unit.moved_this_turn,
+			type: '' + unit.terraforming,
+			turns: unit.terraforming_turns_remaining + 0,
+			movement: unit.movement + 0.0,
+			moved_this_turn: unit.moved_this_turn == true,
 		};
 		const order = terraforming.get_order(e.data.type);
 		const get_effects = #is_defined(e.game.get)

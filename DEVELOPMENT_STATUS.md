@@ -115,8 +115,12 @@ scenarios, for:
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
 - persistent faction-wide fungal-bloom counts, host-authored reversible fungus
-  eruptions, persistent major-atrocity counts and ecological penalties, and
-  live Eco Damage values on the base screen;
+  eruptions, independent Planet-controlled native-life outbreaks, persistent
+  major-atrocity counts and ecological penalties, and live Eco Damage values
+  on the base screen;
+- independent native life takes deterministic turns, pursues nearby human
+  factions, attacks legally across land and sea, and can be captured through
+  PLANET affinity, with reversible combat and installed-asset coverage;
 - serialized planetary climate pressure and pending sea-level change, with
   ecological disasters driving the original escalating 1/3/5 warming bands,
   gradual 20-turn altitude steps, deterministic flooding and exposure,
@@ -170,7 +174,9 @@ scenarios, for:
 - land and sea colonization, terraforming, conventional and psi combat, and
   conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
-  cargo, field repair, facility repair, and unit morale;
+  cargo, field repair, facility repair, and unit morale; Amphibious Pods permit
+  transport assaults and sea-base crossings, while Air Superiority provides
+  cross-triad targeting and the original interceptor combat modifiers;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
 - seven-player startup, multiplayer turn/event synchronization, and reconnect
@@ -181,7 +187,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - all 38 base facilities represented: 37 complete and 1 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 252 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 306 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -201,12 +207,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   faction border overlays, and treaty-aware foreign-border visibility;
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
-- native-life outbreaks from fungal blooms, an independent wild Planet faction,
-  volcanoes, several ecology-related Secret Project effects, and the original engine's
-  undocumented post-bloom clean-mineral facility bonus;
-- remaining Unity Pod parity: map-survey and commlink rewards, independent wild
-  native-life encounters, dimensional-gate teleportation, and once-per-unit
-  monolith visit tracking;
+- volcanoes and the original engine's undocumented post-bloom clean-mineral
+  facility bonus;
+- remaining Unity Pod parity: map-survey and commlink rewards,
+  dimensional-gate teleportation, and once-per-unit monolith visit tracking;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
@@ -221,9 +225,16 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 110 cases: 86 isolated native/script GSE tests
-and 24 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 118 cases: 91 isolated native/script GSE tests
+and 27 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After Amphibious Pods, Air Superiority, native-life capture, and shared rollback
+snapshot hardening were added, all 91 isolated tests passed in 176.92 seconds.
+The installed-asset combat-access, probe, Planet Buster, and native-capture
+scenarios passed together in 68.60 seconds. After the final Release rebuild,
+the standard runtime, combat-access runtime, multiplayer, and running reconnect
+scenarios passed together in 166.21 seconds.
 
 The latest uninterrupted full run, before the territory test was added,
 completed 108 of 109 cases in 870.61 seconds. The multiplayer runtime harness

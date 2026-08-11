@@ -6,6 +6,108 @@ const is_artillery = (def) => {
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };
 
+const get_transport_id = (unit) => {
+	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
+};
+
+const is_airbase_tile = (tile) => {
+	return (#is_defined(tile.get_base) && tile.get_base() != null) || (
+		#is_defined(tile.terraforming) &&
+		#is_defined(tile.terraforming.airbase) &&
+		tile.terraforming.airbase
+	);
+};
+
+const is_naval_base_tile = (tile) => {
+	if (!#is_defined(tile.get_base) || tile.get_base() == null) {
+		return false;
+	}
+	if (!#is_defined(tile.get_surrounding_tiles)) {
+		return true;
+	}
+	for (nearby of tile.get_surrounding_tiles()) {
+		if (#is_defined(nearby.is_water) && nearby.is_water) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const is_air_unit_in_flight = (unit) => {
+	if (!#is_defined(unit.is_air) || !unit.is_air) {
+		return false;
+	}
+	const def = unit.get_def();
+	return (
+		(!#is_defined(def.chassis) || def.chassis != 'Copter') &&
+		!is_airbase_tile(unit.get_tile())
+	);
+};
+
+const is_triad_attack_blocked = (attacker, target_tile) => {
+	const attacker_def = attacker.get_def();
+	if (is_artillery(attacker_def)) {
+		return false;
+	}
+	if (#is_defined(attacker.is_land) && attacker.is_land) {
+		const amphibious = has_ability(attacker_def, 'AmphibiousPods');
+		if (get_transport_id(attacker) > 0) {
+			return !amphibious || !target_tile.is_land;
+		}
+		const source_tile = attacker.get_tile();
+		if (#is_defined(source_tile.is_water) && source_tile.is_water) {
+			return !amphibious || (
+				!#is_defined(source_tile.get_base) || source_tile.get_base() == null
+			);
+		}
+		if (#is_defined(target_tile.is_water) && target_tile.is_water) {
+			return !amphibious || (
+				(
+					!#is_defined(source_tile.get_base) || source_tile.get_base() == null
+				) && (
+					!#is_defined(target_tile.get_base) || target_tile.get_base() == null
+				)
+			);
+		}
+	}
+	return (
+		#is_defined(attacker.is_water) && attacker.is_water &&
+		#is_defined(target_tile.is_land) && target_tile.is_land &&
+		!is_naval_base_tile(target_tile)
+	);
+};
+
+const can_attack_target = (attacker, defender) => {
+	if (is_air_unit_in_flight(defender)) {
+		const attacker_def = attacker.get_def();
+		return has_ability(attacker_def, 'AirSuperiority') && !(
+			#is_defined(attacker.is_land) && attacker.is_land &&
+			get_transport_id(attacker) > 0 &&
+			!has_ability(attacker_def, 'AmphibiousPods')
+		);
+	}
+	return !is_triad_attack_blocked(attacker, defender.get_tile());
+};
+
+const can_advance_after_combat = (attacker, target_tile) => {
+	if (target_tile == null) {
+		return false;
+	}
+	if (
+		#is_defined(attacker.is_land) && attacker.is_land &&
+		#is_defined(target_tile.is_water) && target_tile.is_water
+	) {
+		return target_tile.get_base() != null;
+	}
+	if (
+		#is_defined(attacker.is_water) && attacker.is_water &&
+		#is_defined(target_tile.is_land) && target_tile.is_land
+	) {
+		return target_tile.get_base() != null;
+	}
+	return true;
+};
+
 const get_morale_multiplier = (unit, bonus) => {
 	const value_bonus = #is_defined(bonus) ? bonus : 0;
 	return 0.75 + #to_float(unit.morale + value_bonus) * 0.125;
@@ -149,14 +251,29 @@ const get_combat_powers = (attacker, defender, game) => {
 		? defender_def.is_psi_defense
 		: defender_def.is_native;
 	const is_psi_combat = is_psi_attack || is_psi_defense;
+	const is_air_to_air =
+		!is_psi_combat && #is_defined(attacker.is_air) && attacker.is_air &&
+		is_air_unit_in_flight(defender);
 	if (is_psi_combat) {
 		attack_strength = defender.is_land ? 3.0 : 1.0;
 		defence_strength = defender.is_land ? 2.0 : 1.0;
+	} else if (is_air_to_air) {
+		defence_strength = #to_float(defender_def.offense);
 	}
 
 	let attack_modifier = 1.0;
 	let defence_modifier = 1.0;
 	const defender_tile = defender.get_tile();
+	if (
+		has_ability(attacker_def, 'AirSuperiority') &&
+		#is_defined(attacker.is_air) && attacker.is_air
+	) {
+		if (is_air_unit_in_flight(defender)) {
+			attack_modifier *= 2.0;
+		} else {
+			attack_modifier *= 0.5;
+		}
+	}
 	if (defender_tile.rockiness >= 3) {
 		defence_modifier += 0.5;
 	}
@@ -251,7 +368,10 @@ const get_best_defender = (attacker, tile, game) => {
 	let best = null;
 	let best_attack_score = 2.0;
 	for (defender of tile.get_units()) {
-		if (defender.owner == attacker.owner || defender.health <= 0.0) {
+		if (
+			defender.owner == attacker.owner || defender.health <= 0.0 ||
+			!can_attack_target(attacker, defender)
+		) {
 			continue;
 		}
 		const attack_score = get_attack_score(attacker, defender, game);
@@ -270,6 +390,12 @@ const get_best_defender = (attacker, tile, game) => {
 return {
 	is_artillery: is_artillery,
 	has_ability: has_ability,
+	is_airbase_tile: is_airbase_tile,
+	is_naval_base_tile: is_naval_base_tile,
+	is_air_unit_in_flight: is_air_unit_in_flight,
+	is_triad_attack_blocked: is_triad_attack_blocked,
+	can_attack_target: can_attack_target,
+	can_advance_after_combat: can_advance_after_combat,
 	get_morale_multiplier: get_morale_multiplier,
 	get_base_defender_morale_bonus: get_base_defender_morale_bonus,
 	get_base_defender_morale_minimum: get_base_defender_morale_minimum,

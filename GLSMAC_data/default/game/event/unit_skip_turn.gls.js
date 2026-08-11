@@ -26,7 +26,7 @@ return {
 		const unit = e.data.unit;
 
 		const result = {
-			original_movement: unit.movement,
+			original_movement: unit.movement + 0.0,
 		};
 
 		unit.movement = 0.0;

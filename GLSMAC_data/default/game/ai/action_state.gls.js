@@ -30,10 +30,10 @@ const record_action_attempt = (unit, action_attempts) => {
 		pending: true,
 		pending_checks: 0,
 		tile: unit.get_tile(),
-		movement: unit.movement,
-		health: unit.health,
-		moved_this_turn: unit.moved_this_turn,
-		terraforming: unit.terraforming,
+		movement: unit.movement + 0.0,
+		health: unit.health + 0.0,
+		moved_this_turn: unit.moved_this_turn == true,
+		terraforming: '' + unit.terraforming,
 	};
 };
 

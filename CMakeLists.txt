@@ -361,6 +361,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( COMBAT_ACCESS_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/combat-access-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${COMBAT_ACCESS_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME combat_access_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${COMBAT_ACCESS_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_combat_access_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( combat_access_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "COMBAT_ACCESS_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "COMBAT_ACCESS_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( UNITY_POD_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/unity-pod-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${UNITY_POD_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME unity_pod_runtime_smoke COMMAND

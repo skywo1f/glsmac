@@ -28,7 +28,7 @@ const get_unit_support_penalty = (def, context) => {
 	return projected_overage * UNIT_SUPPORT_SCORE_PENALTY;
 };
 
-const get_unit_ability_score = (def) => {
+const get_unit_ability_score = (def, context) => {
 	let score = unit_abilities.get_morale_bonus(def) * 4000;
 	if (def.can_terraform) {
 		const general_rate = unit_abilities.get_terraforming_rate_multiplier(def, 'farm');
@@ -38,6 +38,25 @@ const get_unit_ability_score = (def) => {
 		);
 		score += #round((general_rate - 1.0) * 15000.0);
 		score += #round((fungus_rate - general_rate) * 5000.0);
+	}
+	if (
+		unit_abilities.has(def, 'AirSuperiority') && #is_defined(context) &&
+		#is_defined(context.needs_air_superiority) && context.needs_air_superiority
+	) {
+		const threats = #is_defined(context.hostile_air_unit_count)
+			? context.hostile_air_unit_count
+			: 1;
+		score += 8000 + #min(threats, 4) * 2000;
+	}
+	if (
+		unit_abilities.has(def, 'AmphibiousPods') && #is_defined(context) &&
+		#is_defined(context.needs_amphibious) && context.needs_amphibious &&
+		!context.needs_garrison
+	) {
+		const targets = #is_defined(context.hostile_coastal_base_count)
+			? context.hostile_coastal_base_count
+			: 1;
+		score += 7000 + #min(targets, 4) * 1500;
 	}
 	return score;
 };
@@ -125,7 +144,7 @@ const score_unit = (def, context) => {
 		return context.needs_former
 			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
 				get_mineral_cost(def, context) + #round(def.movement_per_turn * 1000.0) +
-				get_unit_ability_score(def) - get_unit_support_penalty(def, context)
+				get_unit_ability_score(def, context) - get_unit_support_penalty(def, context)
 			: null;
 	}
 	if (#is_defined(def.weapon) && def.weapon == 'ProbeTeam') {
@@ -154,7 +173,7 @@ const score_unit = (def, context) => {
 	}
 	if (context.needs_garrison) {
 		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
-			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def) -
+			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def, context) -
 			get_mineral_cost(def, context) -
 			get_unit_support_penalty(def, context);
 	}
@@ -163,7 +182,7 @@ const score_unit = (def, context) => {
 	}
 	return 20000 + get_priority(context, 'military', 33) * 300 +
 		def.offense * 1000 + def.defense * 250 +
-		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def) -
+		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def, context) -
 		get_mineral_cost(def, context) -
 		get_unit_support_penalty(def, context);
 };

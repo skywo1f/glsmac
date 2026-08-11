@@ -1,4 +1,5 @@
 const base_capture = #include('../base_capture');
+const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
 
 const is_un_charter_active = (game) => {
 	const is_repealed = game.get('f_council_is_un_charter_repealed');
@@ -19,28 +20,6 @@ const get_sabotage_facilities = (base) => {
 		}
 	}
 	return result;
-};
-
-const snapshot_unit = (unit) => {
-	const tile = unit.get_tile();
-	return {
-		id: unit.id,
-		def: unit.def,
-		owner: unit.owner,
-		tile_x: tile.x,
-		tile_y: tile.y,
-		movement: unit.movement,
-		morale: unit.morale,
-		health: unit.health,
-		moved_this_turn: unit.moved_this_turn,
-		terraforming: unit.terraforming,
-		terraforming_turns_remaining: unit.terraforming_turns_remaining,
-		home_base_id: unit.home_base_id,
-		fuel: unit.fuel,
-		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
-		native_capture_attempted: #is_defined(unit.native_capture_attempted)
-			? unit.native_capture_attempted : false,
-	};
 };
 
 const spawn_snapshot = (game, snapshot, owner_id, transferred) => {

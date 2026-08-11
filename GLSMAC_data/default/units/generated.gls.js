@@ -86,6 +86,8 @@ const conventional_payload = find_component(manifest.weapons, 'ConventionalPaylo
 const planet_buster = find_component(manifest.weapons, 'PlanetBuster');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
 const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
+const amphibious_pods = find_component(manifest.abilities, 'AmphibiousPods');
+const air_superiority = find_component(manifest.abilities, 'AirSuperiority');
 
 const get_role_abilities = (known, role) => {
 	let result = [];
@@ -236,6 +238,12 @@ const add_milestone_designs = (technology_id) => {
 		}
 		if (triad != 'air' && is_available(heavy_artillery, known)) {
 			add_design(technology_id, chassis, weapon, armor, 'artillery', [heavy_artillery]);
+		}
+		if (triad == 'land' && is_available(amphibious_pods, known)) {
+			add_design(technology_id, chassis, weapon, armor, 'assault', [amphibious_pods]);
+		}
+		if (is_available(air_superiority, known)) {
+			add_design(technology_id, chassis, weapon, armor, 'assault', [air_superiority]);
 		}
 	}
 	for (chassis of manifest.chassis) {

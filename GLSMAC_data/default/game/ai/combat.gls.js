@@ -12,23 +12,8 @@ const MIN_GROUP_ATTACK_SCORE = 0.55;
 const ATTACK_SUPPORT_DISTANCE = 1;
 const combat_rules = #include('../combat_rules');
 
-const is_naval_base_tile = (tile) => {
-	if (tile.get_base() == null) {
-		return false;
-	}
-	for (nearby of tile.get_surrounding_tiles()) {
-		if (nearby.is_water) {
-			return true;
-		}
-	}
-	return false;
-};
-
 const is_triad_blocked = (unit, tile) => {
-	return (
-		(unit.is_land && tile.is_water) ||
-		(unit.is_water && tile.is_land && !is_naval_base_tile(tile))
-	);
+	return combat_rules.is_triad_attack_blocked(unit, tile);
 };
 
 const find_nearest_friendly_base = (tm, player_id, tile, bases) => {

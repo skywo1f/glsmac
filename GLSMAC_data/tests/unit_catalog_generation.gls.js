@@ -63,6 +63,10 @@ let found_trained_unit = false;
 let found_super_former = false;
 let found_fungicidal_former = false;
 let found_probe_team = false;
+let found_amphibious_unit = false;
+let found_land_sam = false;
+let found_sea_sam = false;
+let found_air_sam = false;
 for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const entry = units.definitions[i];
 	test.assert(!#is_defined(ids[entry.id]));
@@ -104,6 +108,17 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 			found_fungicidal_former = true;
 		} else if (ability == 'CarrierDeck' && data.movement_type == 'water') {
 			found_carrier = true;
+		} else if (ability == 'AmphibiousPods') {
+			test.assert(data.movement_type == 'land');
+			found_amphibious_unit = true;
+		} else if (ability == 'AirSuperiority') {
+			if (data.movement_type == 'land') {
+				found_land_sam = true;
+			} else if (data.movement_type == 'water') {
+				found_sea_sam = true;
+			} else if (data.movement_type == 'air') {
+				found_air_sam = true;
+			}
 		}
 	}
 	if (data.can_terraform) {
@@ -166,3 +181,7 @@ test.assert(found_trained_unit);
 test.assert(found_super_former);
 test.assert(found_fungicidal_former);
 test.assert(found_probe_team);
+test.assert(found_amphibious_unit);
+test.assert(found_land_sam);
+test.assert(found_sea_sam);
+test.assert(found_air_sam);

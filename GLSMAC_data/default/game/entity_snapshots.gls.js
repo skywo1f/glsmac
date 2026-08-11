@@ -1,22 +1,23 @@
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
 	return {
-		id: unit.id,
-		def: unit.def,
-		owner: unit.owner,
-		tile_x: tile.x,
-		tile_y: tile.y,
-		movement: unit.movement,
-		morale: unit.morale,
-		health: unit.health,
-		moved_this_turn: unit.moved_this_turn,
-		terraforming: unit.terraforming,
-		terraforming_turns_remaining: unit.terraforming_turns_remaining,
-		home_base_id: unit.home_base_id,
-		fuel: unit.fuel,
-		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
+		id: unit.id + 0,
+		def: '' + unit.def,
+		owner: unit.owner + 0,
+		tile_x: tile.x + 0,
+		tile_y: tile.y + 0,
+		movement: unit.movement + 0.0,
+		morale: unit.morale + 0,
+		health: unit.health + 0.0,
+		moved_this_turn: unit.moved_this_turn == true,
+		terraforming: #is_defined(unit.terraforming) ? '' + unit.terraforming : 'none',
+		terraforming_turns_remaining: #is_defined(unit.terraforming_turns_remaining)
+			? unit.terraforming_turns_remaining + 0 : 0,
+		home_base_id: #is_defined(unit.home_base_id) ? unit.home_base_id + 0 : 0,
+		fuel: #is_defined(unit.fuel) ? unit.fuel + 0 : 0,
+		transport_id: #is_defined(unit.transport_id) ? unit.transport_id + 0 : 0,
 		native_capture_attempted: #is_defined(unit.native_capture_attempted)
-			? unit.native_capture_attempted : false,
+			? unit.native_capture_attempted == true : false,
 	};
 };
 

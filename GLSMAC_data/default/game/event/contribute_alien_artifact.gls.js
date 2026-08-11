@@ -1,26 +1,5 @@
 const artifact_rules = #include('../artifact_rules');
-
-const snapshot_unit = (unit) => {
-	const tile = unit.get_tile();
-	return {
-		id: unit.id,
-		def: unit.def,
-		owner: unit.owner,
-		tile_x: tile.x,
-		tile_y: tile.y,
-		movement: unit.movement,
-		morale: unit.morale,
-		health: unit.health,
-		moved_this_turn: unit.moved_this_turn,
-		terraforming: unit.terraforming,
-		terraforming_turns_remaining: unit.terraforming_turns_remaining,
-		home_base_id: unit.home_base_id,
-		fuel: unit.fuel,
-		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
-		native_capture_attempted: #is_defined(unit.native_capture_attempted)
-			? unit.native_capture_attempted : false,
-	};
-};
+const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
 
 const restore_unit = (game, snapshot) => {
 	const unit = game.um.spawn_unit({

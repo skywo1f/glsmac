@@ -305,6 +305,33 @@ test.assert(
 	production.score_unit(trained_laser, context(false, false, false, false, 0)) >
 	production.score_unit(laser, context(false, false, false, false, 0))
 );
+const sam_laser = unit('SAMLaser', 2, 1, 1.0, 25, false, false);
+sam_laser.abilities = ['AirSuperiority'];
+let air_threat_context = context(false, false, false, false, 0);
+air_threat_context.needs_air_superiority = true;
+air_threat_context.hostile_air_unit_count = 3;
+test.assert(
+	production.score_unit(sam_laser, air_threat_context) >
+	production.score_unit(laser, air_threat_context)
+);
+air_threat_context.needs_air_superiority = false;
+test.assert(
+	production.score_unit(sam_laser, air_threat_context) <
+	production.score_unit(laser, air_threat_context)
+);
+const amphibious_laser = unit('AmphibiousLaser', 2, 1, 1.0, 25, false, false);
+amphibious_laser.abilities = ['AmphibiousPods'];
+let coastal_assault_context = context(false, false, false, false, 0);
+coastal_assault_context.needs_amphibious = true;
+coastal_assault_context.hostile_coastal_base_count = 2;
+test.assert(
+	production.score_unit(amphibious_laser, coastal_assault_context) >
+	production.score_unit(laser, coastal_assault_context)
+);
+coastal_assault_context.needs_garrison = true;
+test.assert(
+	production.get_unit_ability_score(amphibious_laser, coastal_assault_context) == 0
+);
 const super_former = unit('SuperFormer', 0, 1, 1.0, 25, false, true);
 super_former.abilities = ['SuperFormer'];
 const fungicidal_former = unit('FungicidalFormer', 0, 1, 1.0, 25, false, true);

@@ -612,6 +612,52 @@ const queue_production = (game, player, bases, units) => {
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
+	let air_superiority_count = 0;
+	let amphibious_count = 0;
+	for (unit of units) {
+		if (unit_abilities.has(unit, 'AirSuperiority')) {
+			air_superiority_count++;
+		}
+		if (unit_abilities.has(unit, 'AmphibiousPods')) {
+			amphibious_count++;
+		}
+	}
+	let hostile_air_unit_count = 0;
+	let hostile_coastal_base_count = 0;
+	for (other of game.get_players()) {
+		if (other.id == player.id || is_protected_partner(game, player, other.id)) {
+			continue;
+		}
+		for (unit of all_units) {
+			if (unit.owner == other.id && unit.is_air) {
+				hostile_air_unit_count++;
+			}
+		}
+		for (candidate of game.get_bm().get_bases()) {
+			if (candidate.get_owner().id != other.id) {
+				continue;
+			}
+			const target_tile = candidate.get_tile();
+			let coastal = target_tile.is_water;
+			if (!coastal) {
+				for (nearby of target_tile.get_surrounding_tiles()) {
+					if (nearby.is_water) {
+						coastal = true;
+						break;
+					}
+				}
+			}
+			if (coastal) {
+				hostile_coastal_base_count++;
+			}
+		}
+	}
+	const desired_air_superiority_count = hostile_air_unit_count == 0
+		? 0
+		: #max(1, #ceil(#to_float(hostile_air_unit_count) / 2.0));
+	const desired_amphibious_count = hostile_coastal_base_count == 0
+		? 0
+		: #max(1, #ceil(#to_float(hostile_coastal_base_count) / 3.0));
 	const planet_buster_minimum_target_size = get_planet_buster_minimum_target_size(game);
 	let orbital_defense_threats = 0;
 	let planet_buster_target_value = 0;
@@ -784,6 +830,12 @@ const queue_production = (game, player, bases, units) => {
 				combat_count < #sizeof(bases) * 2 ||
 				priorities.rival_pressure > 0 ||
 				priorities.mobility > 0,
+			needs_air_superiority:
+				air_superiority_count < desired_air_superiority_count,
+			hostile_air_unit_count: hostile_air_unit_count,
+			needs_amphibious:
+				base_is_coastal && amphibious_count < desired_amphibious_count,
+			hostile_coastal_base_count: hostile_coastal_base_count,
 			needs_probe:
 				#sizeof(game.get_players()) > 1 &&
 				probe_count < #max(1, #floor(#to_float(#sizeof(bases)) / 4.0)),
@@ -844,6 +896,12 @@ const queue_production = (game, player, bases, units) => {
 			headquarters_queue_base = base;
 		}
 		if (selected != null && selected.kind == 'unit') {
+			if (unit_abilities.has(selected.def, 'AirSuperiority')) {
+				air_superiority_count++;
+			}
+			if (unit_abilities.has(selected.def, 'AmphibiousPods')) {
+				amphibious_count++;
+			}
 			if (selected.def.can_terraform) {
 				former_count++;
 			}

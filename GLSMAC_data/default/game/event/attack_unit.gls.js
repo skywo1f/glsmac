@@ -3,28 +3,7 @@ const MAX_DAMAGE_VALUE = 0.3;
 const MIN_BOMBARDMENT_HEALTH = 0.1;
 const combat_rules = #include('../combat_rules');
 const native_capture = #include('../native_capture');
-
-const snapshot_unit = (unit) => {
-	const tile = unit.get_tile();
-	return {
-		id: unit.id,
-		def: unit.def,
-		owner: unit.owner,
-		tile_x: tile.x,
-		tile_y: tile.y,
-		movement: unit.movement,
-		morale: unit.morale,
-		health: unit.health,
-		moved_this_turn: unit.moved_this_turn,
-		terraforming: unit.terraforming,
-		terraforming_turns_remaining: unit.terraforming_turns_remaining,
-		home_base_id: unit.home_base_id,
-		fuel: unit.fuel,
-		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
-		native_capture_attempted: #is_defined(unit.native_capture_attempted)
-			? unit.native_capture_attempted : false,
-	};
-};
+const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
 
 const restore_unit = (e, backup) => {
 	let unit = null;
@@ -74,9 +53,6 @@ return {
 		if (e.data.attacker.health <= 0.0) {
 			return 'Dead unit cannot attack';
 		}
-		if (#is_defined(e.data.attacker.transport_id) && e.data.attacker.transport_id > 0) {
-			return 'Embarked unit must disembark before attacking';
-		}
 		if (e.data.defender.health <= 0.0) {
 			return 'Dead unit cannot be attacked';
 		}
@@ -116,15 +92,22 @@ return {
 					: 'Defender tile is not adjacent to attacker tile';
 			}
 		}
-		if (!attacker_is_artillery && e.data.attacker.is_land && defender_tile.is_water) {
-			// TODO: marine
-			return 'Land units can\'t attack water tiles';
-		}
-		if (
-			!attacker_is_artillery && e.data.attacker.is_water &&
-			defender_tile.is_land && defender_tile.get_base() == null
-		) {
-			// TODO: marine
+		if (!combat_rules.can_attack_target(e.data.attacker, e.data.defender)) {
+			if (
+				combat_rules.is_air_unit_in_flight(e.data.defender) &&
+				!combat_rules.has_ability(attacker_def, 'AirSuperiority')
+			) {
+				return 'Only units with Air Superiority can attack air units in flight';
+			}
+			if (
+				#is_defined(e.data.attacker.transport_id) &&
+				e.data.attacker.transport_id > 0
+			) {
+				return 'Only units with Amphibious Pods can attack from a transport';
+			}
+			if (e.data.attacker.is_land) {
+				return 'Only units with Amphibious Pods can attack across a coastline';
+			}
 			return 'Water units can only attack land tiles containing a base';
 		}
 
@@ -153,7 +136,10 @@ return {
 				sequence: [],
 				attacker_dead: false,
 				defender_dead: false,
-				advance_after_combat: true,
+				advance_after_combat: combat_rules.can_advance_after_combat(
+					attacker,
+					target_tile
+				),
 				native_capture: capture,
 			};
 		}
@@ -207,6 +193,7 @@ return {
 			defender_dead: defender_health <= 0.0,
 			advance_after_combat:
 				!attacker_is_artillery &&
+				combat_rules.can_advance_after_combat(attacker, target_tile) &&
 				(
 					target_tile == null || target_tile.get_base() == null ||
 					#typeof(attacker.get_owner) != 'Callable' ||
