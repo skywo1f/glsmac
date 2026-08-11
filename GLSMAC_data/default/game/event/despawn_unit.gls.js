@@ -15,6 +15,8 @@ const snapshot_unit = (unit) => {
 		home_base_id: unit.home_base_id,
 		fuel: unit.fuel,
 		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
+		native_capture_attempted: #is_defined(unit.native_capture_attempted)
+			? unit.native_capture_attempted : false,
 	};
 };
 
@@ -66,6 +68,7 @@ return {
 			});
 			unit.movement = u.movement;
 			unit.moved_this_turn = u.moved_this_turn;
+			unit.native_capture_attempted = u.native_capture_attempted;
 		}
 	},
 

@@ -146,6 +146,12 @@ const get_faction_id = (player) => {
 	return #is_defined(faction) ? faction.id : '';
 };
 
+const get_faction_modifier = (player, name) => {
+	const faction_id = get_faction_id(player);
+	const modifiers = faction_modifiers[faction_id];
+	return #is_defined(modifiers) && #is_defined(modifiers[name]) ? modifiers[name] : 0;
+};
+
 const add_ratings = (ratings, modifiers, ignore_negative) => {
 	for (name in modifiers) {
 		if (
@@ -387,6 +393,7 @@ return (game) => {
 		game.set('f_social_get_categories', () => { return categories; });
 		game.set('f_social_get_ratings', get_game_ratings);
 		game.set('f_social_get_ratings_for_choices', get_game_ratings_for_choices);
+		game.set('f_social_get_faction_modifier', get_faction_modifier);
 		game.set('f_social_validate_choices', validate_choices);
 		game.set('f_social_get_available_choices', get_available_choices);
 		game.set('f_social_get_adoption_cost', get_adoption_cost);

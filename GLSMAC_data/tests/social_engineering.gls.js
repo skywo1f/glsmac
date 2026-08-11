@@ -47,6 +47,8 @@ test.assert(ratings.effic == 2);
 test.assert(ratings.planet == 1);
 test.assert(ratings.morale == 0 - 1);
 test.assert(ratings.police == 0 - 1);
+test.assert(values.f_social_get_faction_modifier(player, 'planet') == 1);
+test.assert(values.f_social_get_faction_modifier(player, 'economy') == 0);
 
 let error = values.f_social_validate_choices(player, {
 	politics: 'Democratic',

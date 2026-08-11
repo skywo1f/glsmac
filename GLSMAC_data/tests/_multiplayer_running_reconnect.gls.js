@@ -471,7 +471,7 @@
 		const get_snapshot_production_ids = (base) => {
 			return base.get_tile().is_water
 				? ['SeaLurk', 'SeaLurk']
-				: ['SporeLauncher', 'MindWorms'];
+				: ['SporeLauncher', 'ScoutPatrol'];
 		};
 
 		const get_production_state_error = (base) => {

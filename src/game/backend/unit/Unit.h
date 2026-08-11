@@ -46,7 +46,8 @@ public:
 		const uint16_t terraforming_turns_remaining,
 		const size_t home_base_id,
 		const uint16_t fuel,
-		const size_t transport_id
+		const size_t transport_id,
+		const bool native_capture_attempted = false
 	);
 	virtual ~Unit();
 
@@ -63,6 +64,7 @@ public:
 	size_t m_home_base_id;
 	uint16_t m_fuel;
 	size_t m_transport_id;
+	bool m_native_capture_attempted;
 	bool m_is_registered = false;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 

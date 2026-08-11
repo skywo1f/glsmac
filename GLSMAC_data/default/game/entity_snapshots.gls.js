@@ -15,26 +15,33 @@ const snapshot_unit = (unit) => {
 		home_base_id: unit.home_base_id,
 		fuel: unit.fuel,
 		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
+		native_capture_attempted: #is_defined(unit.native_capture_attempted)
+			? unit.native_capture_attempted : false,
 	};
 };
 
-const spawn_unit_snapshot = (game, snapshot) => {
+const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 	const unit = game.um.spawn_unit({
 		id: snapshot.id,
 		def: snapshot.def,
-		owner: game.get_player(snapshot.owner),
+		owner: owner,
 		tile: game.tm.get_tile(snapshot.tile_x, snapshot.tile_y),
 		morale: snapshot.morale,
 		health: snapshot.health,
-		terraforming: snapshot.terraforming,
-		terraforming_turns_remaining: snapshot.terraforming_turns_remaining,
-		home_base_id: snapshot.home_base_id,
+		terraforming: transferred ? 'none' : snapshot.terraforming,
+		terraforming_turns_remaining: transferred ? 0 : snapshot.terraforming_turns_remaining,
+		home_base_id: transferred ? 0 : snapshot.home_base_id,
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
 	});
-	unit.movement = snapshot.movement;
-	unit.moved_this_turn = snapshot.moved_this_turn;
+	unit.movement = transferred ? 0.0 : snapshot.movement;
+	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
+	unit.native_capture_attempted = transferred ? false : snapshot.native_capture_attempted;
 	return unit;
+};
+
+const spawn_unit_snapshot = (game, snapshot) => {
+	return spawn_unit_snapshot_as(game, snapshot, game.get_player(snapshot.owner), false);
 };
 
 const despawn_unit_snapshots = (game, snapshots) => {
@@ -60,6 +67,19 @@ const spawn_unit_snapshots = (game, snapshots) => {
 	for (snapshot of snapshots) {
 		if (snapshot.transport_id != 0) {
 			spawn_unit_snapshot(game, snapshot);
+		}
+	}
+};
+
+const spawn_unit_snapshots_as = (game, snapshots, owner, transferred) => {
+	for (snapshot of snapshots) {
+		if (snapshot.transport_id == 0) {
+			spawn_unit_snapshot_as(game, snapshot, owner, transferred);
+		}
+	}
+	for (snapshot of snapshots) {
+		if (snapshot.transport_id != 0) {
+			spawn_unit_snapshot_as(game, snapshot, owner, transferred);
 		}
 	}
 };
@@ -124,8 +144,10 @@ const restore_rehomed_units = (game, snapshots) => {
 return {
 	snapshot_unit: snapshot_unit,
 	spawn_unit_snapshot: spawn_unit_snapshot,
+	spawn_unit_snapshot_as: spawn_unit_snapshot_as,
 	despawn_unit_snapshots: despawn_unit_snapshots,
 	spawn_unit_snapshots: spawn_unit_snapshots,
+	spawn_unit_snapshots_as: spawn_unit_snapshots_as,
 	rehome_surviving_units: rehome_surviving_units,
 	restore_rehomed_units: restore_rehomed_units,
 };

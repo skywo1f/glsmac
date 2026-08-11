@@ -2,6 +2,7 @@ const MIN_DAMAGE_VALUE = 0.1;
 const MAX_DAMAGE_VALUE = 0.3;
 const MIN_BOMBARDMENT_HEALTH = 0.1;
 const combat_rules = #include('../combat_rules');
+const native_capture = #include('../native_capture');
 
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
@@ -20,6 +21,8 @@ const snapshot_unit = (unit) => {
 		home_base_id: unit.home_base_id,
 		fuel: unit.fuel,
 		transport_id: #is_defined(unit.transport_id) ? unit.transport_id : 0,
+		native_capture_attempted: #is_defined(unit.native_capture_attempted)
+			? unit.native_capture_attempted : false,
 	};
 };
 
@@ -48,6 +51,7 @@ const restore_unit = (e, backup) => {
 	unit.morale = backup.morale;
 	unit.health = backup.health;
 	unit.moved_this_turn = backup.moved_this_turn;
+	unit.native_capture_attempted = backup.native_capture_attempted;
 };
 
 const promote_unit = (um, unit) => {
@@ -141,6 +145,18 @@ return {
 		const defender = selected_defender == null ? e.data.defender : selected_defender;
 		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
 		const defender_is_artillery = combat_rules.is_artillery(defender.get_def());
+		const capture = native_capture.resolve(e.game, attacker, defender);
+
+		if (capture.captured) {
+			return {
+				defender_id: defender.id,
+				sequence: [],
+				attacker_dead: false,
+				defender_dead: false,
+				advance_after_combat: true,
+				native_capture: capture,
+			};
+		}
 
 		if (attacker_is_artillery && !defender_is_artillery) {
 			const powers = combat_rules.get_artillery_powers(attacker, defender);
@@ -157,6 +173,7 @@ return {
 				attacker_dead: false,
 				defender_dead: false,
 				advance_after_combat: false,
+				native_capture: capture,
 			};
 		}
 
@@ -195,6 +212,7 @@ return {
 					#typeof(attacker.get_owner) != 'Callable' ||
 					attacker.get_owner().type != 'native'
 				),
+			native_capture: capture,
 		};
 	},
 
@@ -210,6 +228,8 @@ return {
 		const attacker_is_missile =
 			#is_defined(attacker_def.is_missile) && attacker_def.is_missile;
 		const attacker_destroyed = e.resolved.attacker_dead || attacker_is_missile;
+		const capture = #is_defined(e.resolved.native_capture)
+			? e.resolved.native_capture : null;
 
 		let applied = {
 			backup: {
@@ -221,6 +241,7 @@ return {
 		const defender_owner = e.game.get_player(defender.owner);
 		if (
 			attacker_owner.id != defender_owner.id &&
+			attacker_owner.type != 'native' && defender_owner.type != 'native' &&
 			#typeof(attacker_owner.get_diplomatic_relation) == 'Callable'
 		) {
 			applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(attacker_owner, defender_owner);
@@ -235,6 +256,49 @@ return {
 
 		attacker.movement = #max(0.0, attacker.movement - 1.0);
 		attacker.moved_this_turn = true;
+
+		if (capture != null && capture.captured) {
+			const captured_name = #is_defined(defender.get_def().name)
+				? defender.get_def().name : defender.get_def().id;
+			applied.native_capture = native_capture.apply(
+				e.game,
+				attacker_owner,
+				defender_tile,
+				capture
+			);
+			const advance = () => {
+				if (e.game.is_master() && e.game.um.has_unit(attacker.id)) {
+					e.game.event('advance_unit_after_combat', {
+						unit: e.game.um.get_unit(attacker.id),
+						tile: defender_tile,
+						animations_id: applied.animations_id,
+					});
+				}
+			};
+			applied.animations_id = e.game.am.show_animations([{
+				id: 'ATTACK_PSI',
+				tile: defender_tile,
+				oncomplete: advance,
+			}]);
+			e.game.trigger('native_life_captured', {
+				player: attacker_owner,
+				unit_ids: capture.unit_ids,
+			});
+			e.game.message(
+				attacker_owner.name + ' captured ' + captured_name +
+					' through its affinity with Planet.'
+			);
+			return applied;
+		}
+
+		if (capture != null && capture.mark_attempted) {
+			defender.native_capture_attempted = true;
+		}
+		if (capture != null && capture.attempted) {
+			e.game.message(capture.reason == 'agitated'
+				? 'The native life is too agitated by ecological damage to be captured.'
+				: 'The attempt to capture the native life failed.');
+		}
 
 		let animations = [];
 		for (step of e.resolved.sequence) {
@@ -323,6 +387,11 @@ return {
 	rollback: (e) => {
 		const a = e.applied;
 		e.game.am.stop_animations(a.animations_id);
+		if (#is_defined(a.native_capture)) {
+			native_capture.rollback(e.game, a.native_capture);
+			restore_unit(e, a.backup.attacker);
+			return;
+		}
 		restore_unit(e, a.backup.attacker);
 		restore_unit(e, a.backup.defender);
 		if (#is_defined(a.diplomacy)) {

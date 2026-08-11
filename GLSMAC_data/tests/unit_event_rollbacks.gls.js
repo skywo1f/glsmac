@@ -1128,6 +1128,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			};
 		},
 		trigger: (name, data) => {},
+		message: (text) => {},
 		tm: {
 			get_tile: (x, y) => {
 				if (x == attacker_tile.x && y == attacker_tile.y) {
@@ -1292,4 +1293,31 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_attacker.def == 'TestMissile');
 	test.assert(active_attacker.fuel == 1);
 	test.assert(active_attacker.health == 0.8);
+
+	attacker_player.type = 'human';
+	defender_player.type = 'native';
+	active_attacker.def = 'MindWorms';
+	active_attacker.get_def = () => { return native_def; };
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.resolved = {
+		sequence: [[true, 0.1]],
+		attacker_dead: false,
+		defender_dead: false,
+		native_capture: {
+			attempted: true,
+			captured: false,
+			mark_attempted: true,
+			reason: 'roll_failed',
+			unit_ids: [active_defender.id],
+		},
+	};
+	combat_relation = 'treaty';
+	event.applied = attack_unit.apply(event);
+	test.assert(combat_relation == 'treaty');
+	test.assert(active_defender.native_capture_attempted);
+	attack_unit.rollback(event);
+	test.assert(combat_relation == 'treaty');
+	test.assert(!active_defender.native_capture_attempted);
+	defender_player.type = 'ai';
 }
