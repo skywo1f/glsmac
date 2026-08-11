@@ -5,6 +5,7 @@ const values = {};
 let psych_energy = 2;
 let police_rating = 0;
 let base_units = [];
+let supported_units = [];
 const owner = {id: 1};
 values.f_economy_get_base_psych = (game, base) => { return psych_energy; };
 values.f_social_get_ratings = (player) => {
@@ -24,6 +25,7 @@ const game = {
 			get_map_height: () => { return 10; },
 		};
 	},
+	get_um: () => { return {get_units: (include_embarked) => { return supported_units; }}; },
 	event: (name, data) => {},
 	on: (name, callback) => {
 		callbacks[name] = callback;
@@ -71,6 +73,7 @@ const base_tile = {
 	get_units: () => { return base_units; },
 };
 const base = {
+	id: 1,
 	get_owner: () => { return owner; },
 	get_tile: () => { return base_tile; },
 	get_pops: () => { return pops; },
@@ -217,6 +220,7 @@ test.assert(state.drones == 3);
 test.assert(state.police == {
 	rating: 0 - 2, unit_limit: 0, unit_multiplier: 1,
 	present_units: 1, used_units: 0, extra_units: 0, suppression: 0,
+	away_units: 0, pacifism_drones: 0,
 });
 
 police_rating = 0 - 1;
@@ -273,3 +277,48 @@ test.assert(state.police.suppression == 2);
 values.f_project_get_effects = #undefined;
 police_rating = 0 - 1;
 test.assert(values.f_base_get_stable_worker_count(base, 0) == 5);
+
+const home_tile = {get_base: () => { return null; }};
+const foreign_tile = {get_base: () => { return null; }};
+const home_base_tile = {get_base: () => { return base; }};
+values.f_territory_get_owner = (tile) => {
+	return tile == home_tile || tile == home_base_tile ? owner : {id: 2};
+};
+const make_supported_unit = (tile, is_air, abilities, offense) => {
+	const unit = make_unit(owner.id, 1.0, offense, abilities);
+	unit.home_base_id = base.id;
+	unit.is_air = is_air;
+	unit.get_tile = () => { return tile; };
+	return unit;
+};
+const away_unit = make_supported_unit(foreign_tile, false, [], 1);
+const home_unit = make_supported_unit(home_tile, false, [], 1);
+const ground_attack_air = make_supported_unit(home_base_tile, true, [], 1);
+const interceptor = make_supported_unit(
+	home_base_tile,
+	true,
+	['AirSuperiority'],
+	1
+);
+const away_civilian = make_supported_unit(foreign_tile, false, [], 0);
+supported_units = [away_unit, home_unit, ground_attack_air, interceptor, away_civilian];
+base_units = [];
+reset_laborers();
+
+police_rating = 0 - 3;
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.police.away_units == 2 && state.police.pacifism_drones == 1);
+test.assert(state.drones == 4 && state.workers == 2);
+
+police_rating = 0 - 4;
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.police.pacifism_drones == 2);
+test.assert(state.drones == 5 && state.workers == 1);
+
+police_rating = 0 - 5;
+values.f_base_process_psych(game, base, 10);
+state = values.f_base_get_psych(base);
+test.assert(state.police.pacifism_drones == 4);
+test.assert(state.talents == 2 && state.drones == 4 && state.workers == 0);

@@ -29,6 +29,11 @@ return {
 			['SPECIALISTS', state.specialists],
 			['PSYCH ENERGY', state.psych],
 			['POLICE CONTROL', state.police.suppression],
+			[
+				'PACIFISM',
+				#to_string(state.police.pacifism_drones) +
+				' (' + #to_string(state.police.away_units) + ' away)',
+			],
 		];
 		let top = 62;
 		for (row of rows) {

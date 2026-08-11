@@ -91,6 +91,45 @@ const get_police_rules = (game, player, rating_bonus) => {
 	};
 };
 
+const get_pacifism_state = (game, base, owner, rating) => {
+	let result = {away_units: 0, drones: 0};
+	if (
+		owner == null || rating > 0 - 3 || !#is_defined(base.id) ||
+		!#is_defined(game.get_um) || !#is_defined(game.get)
+	) {
+		return result;
+	}
+	const get_territory_owner = game.get('f_territory_get_owner');
+	if (!#is_defined(get_territory_owner)) {
+		return result;
+	}
+	for (unit of game.get_um().get_units(true)) {
+		const def = unit.get_def();
+		if (
+			unit.owner != owner.id || unit.health <= 0.0 || def.offense <= 0 ||
+			unit.home_base_id != base.id
+		) {
+			continue;
+		}
+		const tile = unit.get_tile();
+		const tile_base = #is_defined(tile.get_base) ? tile.get_base() : null;
+		const territory_owner = get_territory_owner(tile);
+		const outside_territory = territory_owner == null || territory_owner.id != owner.id;
+		const air_pacifism = unit.is_air && !unit_abilities.has(unit, 'AirSuperiority');
+		if ((tile_base == null && outside_territory) || air_pacifism) {
+			result.away_units = result.away_units + 1;
+		}
+	}
+	if (rating == 0 - 3) {
+		result.drones = #max(result.away_units - 1, 0);
+	} else if (rating == 0 - 4) {
+		result.drones = result.away_units;
+	} else {
+		result.drones = result.away_units * 2;
+	}
+	return result;
+};
+
 const get_police_state = (game, base) => {
 	const project_effects = get_project_effects(game, base);
 	const owner = #is_defined(base.get_owner) ? base.get_owner() : null;
@@ -127,6 +166,7 @@ const get_police_state = (game, base) => {
 	const extra_units = rules.unit_limit > 0 && #is_defined(project_effects.extra_police_units)
 		? project_effects.extra_police_units
 		: 0;
+	const pacifism = get_pacifism_state(game, base, owner, rules.rating);
 	return {
 		rating: rules.rating,
 		unit_limit: rules.unit_limit,
@@ -137,6 +177,8 @@ const get_police_state = (game, base) => {
 		suppression: (
 			used_enhanced_units * 2 + used_normal_units + extra_units
 		) * rules.unit_multiplier,
+		away_units: pacifism.away_units,
+		pacifism_drones: pacifism.drones,
 	};
 };
 
@@ -258,6 +300,27 @@ const suppress_drones = (base, suppression) => {
 	}
 };
 
+const apply_pacifism_drones = (base, drones) => {
+	for (pop of base.get_pops()) {
+		if (drones <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
+			pop.set_type('DRONE');
+			drones--;
+		}
+	}
+	for (pop of base.get_pops()) {
+		if (drones <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'TALENT') {
+			pop.set_type('WORKER');
+			drones--;
+		}
+	}
+};
+
 const process_psych = (game, base, allocated_psych) => {
 	let laborer_count = 0;
 	let psych = allocated_psych;
@@ -286,6 +349,7 @@ const process_psych = (game, base, allocated_psych) => {
 		base,
 		#floor(#to_float(psych) / #to_float(PSYCH_PER_IMPROVEMENT))
 	);
+	apply_pacifism_drones(base, get_police_state(game, base).pacifism_drones);
 };
 
 const get_nutrients_for_growth = (game, base) => {
@@ -465,7 +529,8 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 	if (effects.suppress_psych) {
 		return population;
 	}
-	const police_suppression = get_police_state(game, base).suppression;
+	const police = get_police_state(game, base);
+	const police_suppression = police.suppression;
 	let result = 0;
 	for (let workers = population; workers >= 0; workers--) {
 		const doctors = population - workers;
@@ -479,7 +544,13 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 		const pacified = #min(drones, improvements);
 		drones -= pacified;
 		improvements -= pacified;
-		const talents = #min(workers - drones, improvements);
+		let talents = #min(workers - drones, improvements);
+		let pacifism_drones = police.pacifism_drones;
+		const neutral_workers = workers - drones - talents;
+		const converted_workers = #min(neutral_workers, pacifism_drones);
+		drones += converted_workers;
+		pacifism_drones -= converted_workers;
+		talents -= #min(talents, pacifism_drones);
 		if (drones <= talents) {
 			result = workers;
 			break;

@@ -177,6 +177,13 @@ return {
 			}
 
 		}
+		if (#is_defined(this.p.game)) {
+			const get_owner = this.p.game.get('f_territory_get_owner');
+			if (#is_defined(get_owner)) {
+				const owner = get_owner(tile);
+				this.line('Territory: ' + (owner == null ? 'Unclaimed' : owner.name));
+			}
+		}
 
 		this.line(''); // tmp workaround for 'cut-off' bottom in listview
 
@@ -196,6 +203,7 @@ return {
 
 	init: (p) => {
 
+		this.p = p;
 		this.show_resources = false;
 
 		p.ui.class('tile-preview-line').set({

@@ -116,6 +116,11 @@ scenarios, for:
 - persistent faction-wide fungal-bloom counts, host-authored reversible fungus
   eruptions, persistent major-atrocity counts and ecological penalties, and
   live Eco Damage values on the base screen;
+- deterministic physical territory claims use the original eight-tile maximum,
+  nearest-base ownership, oldest-base tie resolution, and coastal workable
+  water claims; supported combat units outside friendly territory now apply
+  the original POLICE -3, -4, and -5 pacifism-drone rules, including the air
+  superiority exception and base-screen diagnostics;
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
   vendettas, and a player diplomacy screen;
@@ -181,9 +186,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
   vendetta/council consequences for major atrocities;
-- remaining social effects: POLICE penalties for military units away from
-  friendly territory; exact away-unit accounting remains dependent on the
-  absent territorial-ownership/border system;
+- remaining territory parity: connected-region claim boundaries, rendered
+  faction border overlays, and treaty-aware foreign-border visibility;
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
@@ -210,17 +214,23 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 109 cases: 85 isolated native/script GSE tests
+The Release CTest matrix contains 110 cases: 86 isolated native/script GSE tests
 and 24 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
-The latest uninterrupted full run completed 108 of 109 cases in 870.61
-seconds. The multiplayer runtime harness reached its internal 90-second
-deadline after both peers had already passed most gameplay stages. The same
-scenario passed immediately afterward in isolation in 33.82 seconds, as it had
-before the full run. All cases therefore pass independently, but the
-load-sensitive multiplayer full-matrix timeout remains a release-readiness
-flake to diagnose rather than a clean-matrix result.
+The latest uninterrupted full run, before the territory test was added,
+completed 108 of 109 cases in 870.61 seconds. The multiplayer runtime harness
+reached its internal 90-second deadline after both peers had already passed
+most gameplay stages. The same scenario passed immediately afterward in
+isolation in 33.82 seconds, as it had before the full run. All cases therefore
+pass independently, but the load-sensitive multiplayer full-matrix timeout
+remains a release-readiness flake to diagnose rather than a clean-matrix result.
+
+After territory and pacifism support was added, all 86 isolated tests passed in
+149.63 seconds. The standard runtime passed in 27.28 seconds, the long economy
+soak in 134.80, multiplayer in 32.86, and running reconnect in 31.56. Territory
+is derived from synchronized base state, so it requires no additional snapshot
+payload and produced identical behavior after reconnect.
 
 All 24 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
