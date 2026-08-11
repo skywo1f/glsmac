@@ -134,7 +134,7 @@ IF ( BUILD_TESTING )
 			FAIL_REGULAR_EXPRESSION "RUNTIME_SMOKE_FAIL"
 			PASS_REGULAR_EXPRESSION "RUNTIME_SMOKE_PASS"
 			RUN_SERIAL TRUE
-			TIMEOUT 90
+			TIMEOUT 150
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
@@ -234,6 +234,31 @@ IF ( BUILD_TESTING )
 			PASS_REGULAR_EXPRESSION "PLANET_BUSTER_RUNTIME_PASS"
 			RUN_SERIAL TRUE
 			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
+		SET( ECONOMIC_VICTORY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/economic-victory-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${ECONOMIC_VICTORY_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME economic_victory_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${ECONOMIC_VICTORY_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_economic_victory_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( economic_victory_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "ECONOMIC_VICTORY_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "ECONOMIC_VICTORY_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 150
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 

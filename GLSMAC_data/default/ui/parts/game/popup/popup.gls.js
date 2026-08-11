@@ -4,6 +4,7 @@ return {
 		'turn_confirmation',
 		'please_dont_go',
 		'social_engineering',
+		'economic_victory',
 		'diplomacy',
 		'probe_operations',
 		'unit_upgrade',

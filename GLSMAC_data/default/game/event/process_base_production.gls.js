@@ -1,5 +1,6 @@
 const unit_abilities = #include('../unit_abilities');
 const prototype_rules = #include('../prototype_rules');
+const economic_victory = #include('../economic_victory_rules');
 
 const get_queue_specs = (base) => {
 	let result = [];
@@ -46,6 +47,19 @@ const relocate_headquarters = (game, completing_base) => {
 		}
 	}
 	return previous;
+};
+
+const relocate_economic_victory = (game, previous_headquarters, completing_base) => {
+	for (base of previous_headquarters) {
+		const state = economic_victory.get_base_state(base);
+		if (state != null) {
+			economic_victory.clear_base_state(base);
+			economic_victory.set_base_state(completing_base, state.turn, state.cost);
+			game.trigger('economic_victory_updated', {player: completing_base.get_owner()});
+			return {base: base, turn: state.turn, cost: state.cost};
+		}
+	}
+	return #undefined;
 };
 
 const get_production_morale = (game, base, production, is_prototype) => {
@@ -110,6 +124,7 @@ return {
 		let produced_unit = #undefined;
 		let completed_facility = #undefined;
 		let previous_headquarters = [];
+		let economic_victory_relocation = #undefined;
 		let cancelled_project_queues = [];
 		let project_completion_effects = #undefined;
 		let consumed_pops = [];
@@ -225,6 +240,11 @@ return {
 						}
 						if (production.id == 'Headquarters') {
 							previous_headquarters = relocate_headquarters(e.game, base);
+							economic_victory_relocation = relocate_economic_victory(
+								e.game,
+								previous_headquarters,
+								base
+							);
 						}
 						if (production.production_kind == 'project') {
 							cancelled_project_queues = cancel_project_queues(
@@ -272,6 +292,7 @@ return {
 			produced_unit: produced_unit,
 			completed_facility: completed_facility,
 			previous_headquarters: previous_headquarters,
+			economic_victory_relocation: economic_victory_relocation,
 			cancelled_project_queues: cancelled_project_queues,
 			project_completion_effects: project_completion_effects,
 			consumed_pops: consumed_pops,
@@ -315,6 +336,15 @@ return {
 			for (previous_headquarters of e.applied.previous_headquarters) {
 				previous_headquarters.add_facility('Headquarters');
 			}
+		}
+		if (#is_defined(e.applied.economic_victory_relocation)) {
+			economic_victory.clear_base_state(e.data.base);
+			economic_victory.set_base_state(
+				e.applied.economic_victory_relocation.base,
+				e.applied.economic_victory_relocation.turn,
+				e.applied.economic_victory_relocation.cost
+			);
+			e.game.trigger('economic_victory_updated', {player: e.data.base.get_owner()});
 		}
 		for (snapshot of e.applied.cancelled_project_queues) {
 			snapshot.base.set_production_queue(snapshot.queue);

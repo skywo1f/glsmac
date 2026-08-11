@@ -27,11 +27,14 @@ const make_tile = (x, y) => {
 
 const make_base = (owner_id, tile, size) => {
 	const base_size = #is_defined(size) ? size : 1;
+	let custom = {};
 	const base = {
 		id: next_base_id++,
 		get_owner: () => { return {id: owner_id}; },
 		get_tile: () => { return tile; },
 		get_size: () => { return base_size; },
+		has: (key) => { return #is_defined(custom[key]); },
+		set: (key, value) => { custom[key] = value; },
 	};
 	tile.set_base(base);
 	return base;
@@ -223,6 +226,17 @@ test.assert(
 		[distant_open_base, close_open_base],
 		[assault_attacker]
 	) == close_open_base
+);
+distant_open_base.set('economic_victory_turn', 40);
+distant_open_base.set('economic_victory_cost', 1000);
+test.assert(
+	combat.choose_assault_target(
+		tm,
+		assault_attacker,
+		player_id,
+		[distant_open_base, close_open_base],
+		[assault_attacker]
+	) == distant_open_base
 );
 
 const water_base_tile = make_tile(30, 31);

@@ -9,6 +9,12 @@ return {
 				},
 			},
 			{
+				label: 'Global Market',
+				open: () => {
+					p.modules.popup.show('economic_victory');
+				},
+			},
+			{
 				label: 'Quit',
 				open: () => {
 					p.maybe_quit(true);

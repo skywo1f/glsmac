@@ -38,6 +38,7 @@ return (game) => {
 		'settle_player_economy',
 		'process_player_economy',
 		'set_social_engineering',
+		'corner_global_energy_market',
 		'declare_vendetta',
 		'propose_diplomatic_relation',
 		'respond_diplomatic_proposal',

@@ -6,6 +6,7 @@ const ASSAULT_DEFENSE_WEIGHT = 2.0;
 const ASSAULT_SUPPORT_DISTANCE = 3;
 const ASSAULT_SUPPORT_WEIGHT = 0.5;
 const ASSAULT_BASE_SIZE_WEIGHT = 0.25;
+const ECONOMIC_VICTORY_TARGET_BONUS = 100000.0;
 const MIN_DIRECT_ATTACK_SCORE = 0.5;
 const MIN_GROUP_ATTACK_SCORE = 0.55;
 const ATTACK_SUPPORT_DISTANCE = 1;
@@ -267,11 +268,17 @@ const get_assault_score = (tm, attacker, base, player_id, units) => {
 			support += #to_float(def.offense) * combat_rules.get_morale_multiplier(unit) * unit.health;
 		}
 	}
+	const market_target_bonus =
+		#typeof(base.has) == 'Callable' &&
+		base.has('economic_victory_turn') && base.has('economic_victory_cost')
+			? ECONOMIC_VICTORY_TARGET_BONUS
+			: 0.0;
 	return (
 		0.0 - #to_float(tm.get_distance(attacker.get_tile(), base_tile)) -
 		defense * ASSAULT_DEFENSE_WEIGHT +
 		support * ASSAULT_SUPPORT_WEIGHT +
-		#to_float(base.get_size()) * ASSAULT_BASE_SIZE_WEIGHT
+		#to_float(base.get_size()) * ASSAULT_BASE_SIZE_WEIGHT +
+		market_target_bonus
 	);
 };
 

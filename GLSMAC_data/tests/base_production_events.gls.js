@@ -288,6 +288,8 @@ let competing_has_headquarters = false;
 let datalinks_queues = 0;
 let project_completion_applications = [];
 let project_completion_rollbacks = [];
+let base_custom = {};
+let competing_custom = {};
 
 const make_pop = (type, worked_tile) => {
 	let tile = worked_tile;
@@ -525,6 +527,10 @@ const base = {
 		base_pops :+pop;
 		return pop;
 	},
+	has: (key) => { return #is_defined(base_custom[key]); },
+	get: (key) => { return base_custom[key]; },
+	set: (key, value) => { base_custom[key] = value; },
+	unset: (key) => { base_custom[key] = #undefined; },
 };
 
 const competing_base = {
@@ -556,11 +562,16 @@ const competing_base = {
 		}
 		competing_production_queue = restored;
 	},
+	has: (key) => { return #is_defined(competing_custom[key]); },
+	get: (key) => { return competing_custom[key]; },
+	set: (key, value) => { competing_custom[key] = value; },
+	unset: (key) => { competing_custom[key] = #undefined; },
 };
 
 let turn_complete = false;
 let game = null;
 game = {
+	trigger: (name, data) => {},
 	get_bm: () => {
 		return {
 			get_bases: () => { return [base, competing_base]; },
@@ -1164,6 +1175,11 @@ test.assert(base_pops[3].get_type() == 'DRONE');
 production_queue = [headquarters];
 built_facilities = [];
 competing_has_headquarters = true;
+competing_custom = {
+	economic_victory_turn: 42,
+	economic_victory_cost: 1800,
+};
+base_custom = {};
 accumulated_minerals = 45;
 pending_production = 7;
 processed_psych = [];
@@ -1172,6 +1188,13 @@ test.assert(has_facility('Headquarters'));
 test.assert(!competing_has_headquarters);
 test.assert(#sizeof(event.applied.previous_headquarters) == 1);
 test.assert(event.applied.previous_headquarters[0] == competing_base);
+test.assert(base_custom.economic_victory_turn == 42);
+test.assert(base_custom.economic_victory_cost == 1800);
+test.assert(!#is_defined(competing_custom.economic_victory_turn));
 process_base_production.rollback(event);
 test.assert(!has_facility('Headquarters'));
 test.assert(competing_has_headquarters);
+test.assert(!#is_defined(base_custom.economic_victory_turn));
+test.assert(competing_custom.economic_victory_turn == 42);
+test.assert(competing_custom.economic_victory_cost == 1800);
+competing_custom = {};

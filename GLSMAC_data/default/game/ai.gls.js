@@ -3,6 +3,7 @@ const action_state = #include('ai/action_state');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
+const economic_victory = #include('ai/economic_victory');
 const pathfinding = #include('ai/pathfinding');
 const probes = #include('ai/probes');
 const planet_busters = #include('ai/planet_busters');
@@ -1332,6 +1333,7 @@ const play_turn = (game, player, done) => {
 	const units = owned_units(game, player);
 	update_diplomacy(game, player);
 	update_social_engineering(game, player, bases, units);
+	economic_victory.update(game, player);
 	queue_production(game, player, bases, units);
 
 	let steps = 0;

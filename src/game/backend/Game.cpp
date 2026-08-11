@@ -1357,7 +1357,7 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	if ( IsGameOver() ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game already has a winner" );
 	}
-	if ( type != VT_CONQUEST && type != VT_TRANSCENDENCE ) {
+	if ( type != VT_CONQUEST && type != VT_TRANSCENDENCE && type != VT_ECONOMIC ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Unsupported victory type" );
 	}
 	if ( !m_state || winner_slot >= m_state->m_slots->GetCount() ) {
@@ -1388,6 +1388,8 @@ const std::string Game::GetVictoryTypeString( const victory_type_t type ) {
 			return "conquest";
 		case VT_TRANSCENDENCE:
 			return "transcendence";
+		case VT_ECONOMIC:
+			return "economic";
 		default:
 			THROW( "Unknown victory type: " + std::to_string( type ) );
 	}
@@ -1400,6 +1402,10 @@ const bool Game::ParseVictoryType( const std::string& value, victory_type_t& res
 	}
 	if ( value == "transcendence" ) {
 		result = VT_TRANSCENDENCE;
+		return true;
+	}
+	if ( value == "economic" ) {
+		result = VT_ECONOMIC;
 		return true;
 	}
 	result = VT_NONE;

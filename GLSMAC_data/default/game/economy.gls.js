@@ -348,6 +348,9 @@ return (game) => {
 		game.set('f_economy_get_base_psych', get_base_psych);
 		game.set('f_economy_get_base_stockpile_energy', get_base_stockpile_energy);
 		game.set('f_economy_get_player_commerce', get_player_commerce);
+		game.set('f_economy_get_commerce_technology', (player) => {
+			return get_commerce_technology(game, player);
+		});
 		game.set('f_economy_get_player', get_player_economy);
 		game.set('f_economy_get_hurry_cost', (base) => { return get_hurry_cost(game, base); });
 		game.set('f_economy_get_liquidation_candidate', get_liquidation_candidate);

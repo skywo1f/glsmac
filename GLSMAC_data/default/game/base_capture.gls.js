@@ -1,4 +1,6 @@
 const project_acquisition = #include('./project_acquisition');
+const economic_victory = #include('./economic_victory_rules');
+const MAX_ENERGY_CREDITS = 1000000000;
 
 const get_rehome_base = (game, unit, owner_id, lost_base) => {
 	let best = null;
@@ -58,11 +60,42 @@ const capture_base = (game, base, new_owner) => {
 	const old_queue = get_queue_specs(base);
 	const rehomed_units = rehome_units(game, base, old_owner.id);
 	const captured_headquarters = base.has_facility('Headquarters');
+	const economic_victory_state = captured_headquarters
+		? economic_victory.get_base_state(base)
+		: null;
+	let economic_victory_capture = #undefined;
 	if (captured_headquarters) {
 		base.remove_facility('Headquarters');
 	}
+	if (economic_victory_state != null) {
+		economic_victory_capture = {
+			state: economic_victory_state,
+			old_owner_energy: old_owner.get_energy_credits(),
+			new_owner_energy: new_owner.get_energy_credits(),
+			new_owner: new_owner,
+		};
+		economic_victory.clear_base_state(base);
+		const captured_energy = #floor(#to_float(economic_victory_state.cost) / 2.0);
+		old_owner.set_energy_credits(#min(
+			MAX_ENERGY_CREDITS,
+			old_owner.get_energy_credits() + economic_victory_state.cost - captured_energy
+		));
+		new_owner.set_energy_credits(#min(
+			MAX_ENERGY_CREDITS,
+			new_owner.get_energy_credits() + captured_energy
+		));
+	}
 
 	base.set_owner(new_owner);
+	if (#is_defined(economic_victory_capture)) {
+		game.message(
+			new_owner.get_faction().name + ' has captured ' + old_owner.get_faction().name +
+			'\'s Headquarters and foiled its Global Energy Market bid.'
+		);
+		game.trigger('economic_victory_updated', {player: old_owner});
+		game.trigger('economy_updated', {player: old_owner});
+		game.trigger('economy_updated', {player: new_owner});
+	}
 	const empath_guild_infiltration = base.has_facility('TheEmpathGuild')
 		? project_acquisition.apply_empath_guild(game, base)
 		: #undefined;
@@ -86,6 +119,7 @@ const capture_base = (game, base, new_owner) => {
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
 		empath_guild_infiltration: empath_guild_infiltration,
+		economic_victory_capture: economic_victory_capture,
 	};
 };
 
@@ -98,6 +132,16 @@ const restore_base = (base, snapshot) => {
 	}
 	if (snapshot.captured_headquarters && !base.has_facility('Headquarters')) {
 		base.add_facility('Headquarters');
+	}
+	if (#is_defined(snapshot.economic_victory_capture)) {
+		const capture = snapshot.economic_victory_capture;
+		snapshot.old_owner.set_energy_credits(capture.old_owner_energy);
+		capture.new_owner.set_energy_credits(capture.new_owner_energy);
+		economic_victory.set_base_state(
+			base,
+			capture.state.turn,
+			capture.state.cost
+		);
 	}
 	base.set_production_queue(snapshot.old_queue);
 	restore_units(snapshot.rehomed_units);

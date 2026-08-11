@@ -492,6 +492,24 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		network_node_artifact_linked &&
 		( (gse::value::Bool*)network_node_artifact_linked )->value
 	);
+	auto get_economic_victory_value = [base]( const std::string& key ) {
+		auto* const value = const_cast< Base* >( base )->CustomGet( key );
+		if ( value && value->type != gse::VT_INT ) {
+			THROW( "base economic victory state must contain integers" );
+		}
+		return value ? ( (gse::value::Int*)value )->value : int64_t{ 0 };
+	};
+	const auto economic_victory_turn = get_economic_victory_value( "economic_victory_turn" );
+	const auto economic_victory_cost = get_economic_victory_value( "economic_victory_cost" );
+	if (
+		economic_victory_turn < 0 || economic_victory_cost < 0 ||
+		economic_victory_cost > Player::MAX_ENERGY_CREDITS ||
+		( economic_victory_turn == 0 ) != ( economic_victory_cost == 0 )
+	) {
+		THROW( "invalid base economic victory state" );
+	}
+	buf.WriteInt( economic_victory_turn );
+	buf.WriteInt( economic_victory_cost );
 	return buf;
 }
 
@@ -616,6 +634,19 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	const bool network_node_artifact_linked = buf.GetRemaining() > 0
 		? buf.ReadBool()
 		: false;
+	int64_t economic_victory_turn = 0;
+	int64_t economic_victory_cost = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		economic_victory_turn = buf.ReadInt< int64_t >( "economic victory turn" );
+		economic_victory_cost = buf.ReadInt< int64_t >( "economic victory cost" );
+		if (
+			economic_victory_turn < 0 || economic_victory_cost < 0 ||
+			economic_victory_cost > Player::MAX_ENERGY_CREDITS ||
+			( economic_victory_turn == 0 ) != ( economic_victory_cost == 0 )
+		) {
+			THROW( "invalid serialized base economic victory state" );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
@@ -642,6 +673,16 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		base->CustomSet(
 			"network_node_artifact_linked",
 			VALUE( gse::value::Bool, , true )
+		);
+	}
+	if ( economic_victory_turn > 0 ) {
+		base->CustomSet(
+			"economic_victory_turn",
+			VALUE( gse::value::Int, , economic_victory_turn )
+		);
+		base->CustomSet(
+			"economic_victory_cost",
+			VALUE( gse::value::Int, , economic_victory_cost )
 		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );

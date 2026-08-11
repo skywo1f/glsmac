@@ -2,6 +2,7 @@
 
 #include "common/Mutex.h"
 #include "gse/value/Bool.h"
+#include "gse/context/Context.h"
 #include "gc/Space.h"
 
 #if defined( DEBUG ) || defined( FASTDEBUG )
@@ -196,6 +197,7 @@ void Wrappable::GetReachableObjects( std::unordered_set< gc::Object* >& reachabl
 		for ( const auto& it1 : m_callbacks ) {
 			for ( const auto& it2 : it1.second ) {
 				GC_REACHABLE( it2.second.callable );
+				GC_REACHABLE( it2.second.ctx );
 			}
 		}
 	}

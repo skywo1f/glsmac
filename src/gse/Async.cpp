@@ -145,7 +145,7 @@ void Async::GetReachableObjects( std::unordered_set< gc::Object* >& reachable_ob
 	for ( const auto& timers : m_timers ) {
 		for ( const auto& timer : timers.second ) {
 			GC_REACHABLE( timer.second.callable );
-			ASSERT( reachable_objects.find( timer.second.ctx ) != reachable_objects.end(), "callable context not reachable" );
+			GC_REACHABLE( timer.second.ctx );
 		}
 	}
 	GC_DEBUG_END();
