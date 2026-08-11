@@ -136,17 +136,19 @@ return {
 
 		} else {
 
+			const sea_level = #is_defined(tile.sea_level) ? tile.sea_level : this.SEA_LEVEL;
+			const relative_elevation = tile.elevation - sea_level;
 			if (tile.is_water) {
-				if (tile.elevation < this.TRENCH_LEVEL) {
+				if (relative_elevation < this.TRENCH_LEVEL) {
 					this.line('Ocean Trench');
-				} else if (tile.elevation < this.OCEAN_LEVEL) {
+				} else if (relative_elevation < this.OCEAN_LEVEL) {
 					this.line('Ocean');
 				} else {
 					this.line('Ocean Shelf');
 				}
-				this.line('Depth: ' + #to_string(this.SEA_LEVEL - tile.elevation));
+				this.line('Depth: ' + #to_string(0 - relative_elevation));
 			} else {
-				this.line('Elev:' + #to_string(tile.elevation - this.SEA_LEVEL));
+				this.line('Elev:' + #to_string(relative_elevation));
 				let tilestr = '';
 				if (tile.rockiness < #sizeof(this.ROCKINESS_LEVELS)) {
 					tilestr += this.ROCKINESS_LEVELS[tile.rockiness];

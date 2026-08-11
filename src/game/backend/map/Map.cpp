@@ -223,6 +223,10 @@ const types::Buffer Map::Serialize() const {
 		buf.WriteInt( it.first );
 	}
 	buf.WriteInt( m_next_sprite_instance_id );
+	buf.WriteInt( m_sea_level );
+	buf.WriteInt( m_climate_state.level );
+	buf.WriteInt( m_climate_state.future_change );
+	buf.WriteInt( m_climate_state.progress );
 
 	return buf;
 }
@@ -285,8 +289,25 @@ void Map::Deserialize( types::Buffer buf ) {
 	if ( next_sprite_instance_id == 0 || ( !m_sprite_instances.empty() && next_sprite_instance_id <= max_sprite_instance_id ) ) {
 		THROW( "invalid next map sprite instance id" );
 	}
+	const auto serialized_sea_level = buf.GetRemaining() > 0
+		? buf.ReadInt()
+		: static_cast< int64_t >( tile::ELEVATION_LEVEL_COAST );
+	if ( serialized_sea_level < tile::ELEVATION_MIN || serialized_sea_level > tile::ELEVATION_MAX ) {
+		THROW( "invalid serialized map sea level" );
+	}
+	climate_state_t serialized_climate_state = {};
+	if ( buf.GetRemaining() > 0 ) {
+		serialized_climate_state.level = buf.ReadInt();
+		serialized_climate_state.future_change = buf.ReadInt();
+		serialized_climate_state.progress = buf.ReadInt();
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized map" );
+	}
+	m_sea_level = static_cast< tile::elevation_t >( serialized_sea_level );
+	SetClimateState( serialized_climate_state );
+	for ( auto* const map_tile : GetAllTiles() ) {
+		map_tile->Update();
 	}
 
 	const auto terrain_vertex_count = m_meshes.terrain->GetVertexCount();
@@ -636,6 +657,31 @@ const size_t Map::GetHeight() const {
 	return m_tiles->GetHeight();
 }
 
+const tile::elevation_t Map::GetSeaLevel() const {
+	return m_sea_level;
+}
+
+const Map::climate_state_t& Map::GetClimateState() const {
+	return m_climate_state;
+}
+
+void Map::SetClimateState( const climate_state_t& state ) {
+	if ( state.level < 0 || state.level > 1000000 ) {
+		THROW( "climate level is outside the supported range" );
+	}
+	if (
+		state.future_change < tile::ELEVATION_MIN ||
+		state.future_change > tile::ELEVATION_MAX ||
+		state.future_change % 100 != 0
+	) {
+		THROW( "future climate change is outside the supported range" );
+	}
+	if ( state.progress < 0 || state.progress > 1000000 ) {
+		THROW( "climate progress is outside the supported range" );
+	}
+	m_climate_state = state;
+}
+
 void Map::RefreshTile( tile::Tile* tile ) {
 	ASSERT( tile, "cannot refresh a null tile" );
 	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
@@ -876,6 +922,109 @@ void Map::RestoreTerrain( const std::string& snapshot ) {
 		}
 	}
 	RefreshTerrain( changed_tiles );
+}
+
+std::string Map::ApplySeaLevelChange( const tile::elevation_t amount ) {
+	if ( amount == 0 ) {
+		THROW( "sea-level change must be non-zero" );
+	}
+	const auto next_sea_level = m_sea_level + amount;
+	if ( next_sea_level < tile::ELEVATION_MIN || next_sea_level > tile::ELEVATION_MAX ) {
+		THROW( "sea level would exceed the supported elevation range" );
+	}
+
+	const auto tiles_snapshot = m_tiles->Serialize().ToString();
+	if ( tiles_snapshot.empty() || tiles_snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+	types::Buffer snapshot;
+	snapshot.WriteInt( m_sea_level );
+	snapshot.WriteString( tiles_snapshot );
+
+	const auto previous_sea_level = m_sea_level;
+	const auto all_tiles = GetAllTiles();
+	m_sea_level = next_sea_level;
+	static constexpr tile::terraforming_t DOMAIN_CHANGE_TERRAFORMING =
+		tile::TERRAFORMING_ROAD |
+		tile::TERRAFORMING_MAG_TUBE |
+		tile::TERRAFORMING_FOREST |
+		tile::TERRAFORMING_FARM |
+		tile::TERRAFORMING_SOIL_ENRICHER |
+		tile::TERRAFORMING_SOLAR |
+		tile::TERRAFORMING_MINE |
+		tile::TERRAFORMING_CONDENSER |
+		tile::TERRAFORMING_MIRROR |
+		tile::TERRAFORMING_BOREHOLE |
+		tile::TERRAFORMING_SENSOR |
+		tile::TERRAFORMING_BUNKER |
+		tile::TERRAFORMING_AIRBASE;
+	for ( auto* const map_tile : all_tiles ) {
+		const bool was_water = map_tile->is_water_tile;
+		map_tile->Update();
+		if ( map_tile->is_water_tile != was_water ) {
+			map_tile->terraforming &= static_cast< tile::terraforming_t >( ~DOMAIN_CHANGE_TERRAFORMING );
+		}
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( tile_set_t( all_tiles.begin(), all_tiles.end() ) );
+	}
+	catch ( ... ) {
+		m_sea_level = previous_sea_level;
+		m_tiles->Restore( types::Buffer( tiles_snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot.ToString();
+}
+
+void Map::RestoreSeaLevel( const std::string& snapshot ) {
+	if ( snapshot.empty() || snapshot.size() > MAX_SEA_LEVEL_SNAPSHOT_SIZE ) {
+		THROW( "serialized sea-level snapshot size is invalid" );
+	}
+	types::Buffer snapshot_buffer( snapshot );
+	const auto restored_sea_level = snapshot_buffer.ReadInt();
+	const auto restored_tiles = snapshot_buffer.ReadString();
+	if (
+		restored_sea_level < tile::ELEVATION_MIN ||
+		restored_sea_level > tile::ELEVATION_MAX ||
+		restored_tiles.empty() ||
+		restored_tiles.size() > MAX_TERRAIN_SNAPSHOT_SIZE ||
+		snapshot_buffer.GetRemaining() != 0
+	) {
+		THROW( "serialized sea-level snapshot is invalid" );
+	}
+
+	tile::Tiles validated_tiles( this );
+	validated_tiles.Deserialize( types::Buffer( restored_tiles ) );
+	if ( validated_tiles.GetWidth() != GetWidth() || validated_tiles.GetHeight() != GetHeight() ) {
+		THROW( "serialized sea-level snapshot dimensions do not match the active map" );
+	}
+
+	const auto previous_sea_level = m_sea_level;
+	const auto previous_tiles = m_tiles->Serialize().ToString();
+	const auto all_tiles = GetAllTiles();
+	m_sea_level = static_cast< tile::elevation_t >( restored_sea_level );
+	m_tiles->Restore( types::Buffer( restored_tiles ) );
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( tile_set_t( all_tiles.begin(), all_tiles.end() ) );
+	}
+	catch ( ... ) {
+		m_sea_level = previous_sea_level;
+		m_tiles->Restore( types::Buffer( previous_tiles ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
 }
 
 void Map::RefreshTerrain( const tile_set_t& changed_tiles ) {

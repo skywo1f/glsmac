@@ -17,7 +17,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'PLANET_BUSTER_RUNTIME_PASS: live base snapshot, launch, blast, sanctions, diplomacy, and support reassignment verified'
+				'PLANET_BUSTER_RUNTIME_PASS: live sea-level rollback, base snapshot, launch, blast, sanctions, diplomacy, and support reassignment verified'
 			);
 			#async(2500, () => { glsmac.exit(); });
 		}
@@ -126,6 +126,108 @@
 			defender.set_orbital_defense_deployments(0);
 
 			const tm = game.get_tm();
+			if (tm.get_sea_level() != 0) {
+				fail('generated map did not start at the coast datum');
+				return;
+			}
+			const initial_climate = tm.get_climate_state();
+			tm.set_climate_state(11, 300, 19);
+			const test_climate = tm.get_climate_state();
+			if (
+				test_climate.level != 11 || test_climate.future_change != 300 ||
+				test_climate.progress != 19
+			) {
+				fail('live climate-state wrappers did not preserve values');
+				return;
+			}
+			tm.set_climate_state(
+				initial_climate.level,
+				initial_climate.future_change,
+				initial_climate.progress
+			);
+			let minimum_land_elevation = 100000;
+			let maximum_water_elevation = -100000;
+			let minimum_land_tile = null;
+			let maximum_water_tile = null;
+			for (let sea_y = 0; sea_y < tm.get_map_height(); sea_y++) {
+				for (let sea_x = 0; sea_x < tm.get_map_width(); sea_x++) {
+					if (sea_x % 2 == sea_y % 2) {
+						const sea_tile = tm.get_tile(sea_x, sea_y);
+						if (sea_tile.is_land) {
+							if (sea_tile.elevation < minimum_land_elevation) {
+								minimum_land_elevation = sea_tile.elevation;
+								minimum_land_tile = sea_tile;
+							}
+						} else if (sea_tile.elevation > maximum_water_elevation) {
+							maximum_water_elevation = sea_tile.elevation;
+							maximum_water_tile = sea_tile;
+						}
+					}
+				}
+			}
+			const raised_sea_snapshot = tm.apply_sea_level_change(3000);
+			const flooded_tile = minimum_land_tile;
+			if (tm.get_sea_level() != 3000) {
+				fail('native sea-level value did not change');
+				return;
+			}
+			if (flooded_tile == null) {
+				fail(
+					'raising sea level did not flood a live map tile; land floor=' +
+					#to_string(minimum_land_elevation) + ', water ceiling=' +
+					#to_string(maximum_water_elevation) + ', tile sea=' +
+					#to_string(minimum_land_tile.sea_level) + ', tile water=' +
+					#to_string(minimum_land_tile.is_water)
+				);
+				return;
+			}
+			if (flooded_tile.sea_level != 3000) {
+				fail('flooded tile wrapper did not receive the new sea level');
+				return;
+			}
+			tm.restore_sea_level(raised_sea_snapshot);
+			if (tm.get_sea_level() != 0 || !flooded_tile.is_land || flooded_tile.sea_level != 0) {
+				fail('sea-level rollback did not restore the flooded coastline');
+				return;
+			}
+			const flooded_old_road = flooded_tile.terraforming.road;
+			const flooded_old_farm = flooded_tile.terraforming.farm;
+			flooded_tile.update_terraforming({road: true, farm: true});
+			const cleanup_sea_snapshot = tm.apply_sea_level_change(3000);
+			if (
+				!flooded_tile.is_water || flooded_tile.terraforming.road ||
+				flooded_tile.terraforming.farm
+			) {
+				fail('flooding did not clear incompatible land terraforming');
+				return;
+			}
+			tm.restore_sea_level(cleanup_sea_snapshot);
+			if (
+				!flooded_tile.is_land || !flooded_tile.terraforming.road ||
+				!flooded_tile.terraforming.farm
+			) {
+				fail('sea-level rollback did not restore terraforming');
+				return;
+			}
+			flooded_tile.update_terraforming({
+				road: flooded_old_road,
+				farm: flooded_old_farm,
+			});
+			const lowered_sea_snapshot = tm.apply_sea_level_change(-3000);
+			const exposed_tile = maximum_water_tile;
+			if (
+				tm.get_sea_level() != -3000 || exposed_tile == null ||
+				exposed_tile.sea_level != -3000
+			) {
+				fail('lowering sea level did not expose a live map tile');
+				return;
+			}
+			tm.restore_sea_level(lowered_sea_snapshot);
+			if (tm.get_sea_level() != 0 || !exposed_tile.is_water || exposed_tile.sea_level != 0) {
+				fail('sea-level rollback did not restore the exposed coastline');
+				return;
+			}
+
 			let target_tile = null;
 			let launch_tile = null;
 			for (let y = 0; y < tm.get_map_height(); y++) {

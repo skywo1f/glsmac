@@ -2,6 +2,9 @@ const ECOLOGICAL_IMPROVEMENTS = [
 	'road', 'mag_tube', 'farm', 'soil_enricher', 'mine', 'solar',
 	'condenser', 'mirror', 'borehole',
 ];
+const CLIMATE_BASE_TRIGGER = 12;
+const CLIMATE_PROGRESS_TARGET = 20;
+const CLIMATE_SEA_LEVEL_STEP = 100;
 
 const has_facility = (facilities, id) => {
 	return #is_defined(facilities[id]) && facilities[id];
@@ -169,16 +172,94 @@ const select_bloom_tile = (game, base, reserved_tiles) => {
 	return candidates[index];
 };
 
+const get_climate_trigger = (sea_level) => {
+	return CLIMATE_BASE_TRIGGER + #floor(
+		#to_float(#max(sea_level, 0)) * 0.012
+	);
+};
+
+const advance_climate_damage = (game, owner) => {
+	const tm = game.get_tm();
+	const previous = tm.get_climate_state();
+	let level = previous.level + 1;
+	let future_change = previous.future_change;
+	let warming_triggered = false;
+	let pending_change = 0;
+	if (level >= get_climate_trigger(tm.get_sea_level())) {
+		level = 0;
+		warming_triggered = true;
+		const rise_level = #max(
+			1,
+			#min(3, owner.get_ecological_damage_events() / 6 - 1)
+		);
+		pending_change = [100, 300, 500][rise_level - 1];
+		future_change = #min(3500, future_change + pending_change);
+	}
+	tm.set_climate_state(level, future_change, previous.progress);
+	return {
+		previous: previous,
+		current: {
+			level: level,
+			future_change: future_change,
+			progress: previous.progress,
+		},
+		warming_triggered: warming_triggered,
+		pending_change: pending_change,
+	};
+};
+
+const advance_pending_climate = (game) => {
+	const tm = game.get_tm();
+	const state = tm.get_climate_state();
+	if (state.future_change == 0) {
+		return 0;
+	}
+	const pending_steps = #max(
+		1,
+		#abs(state.future_change) / CLIMATE_SEA_LEVEL_STEP
+	);
+	const progress = state.progress + pending_steps;
+	if (progress < CLIMATE_PROGRESS_TARGET) {
+		tm.set_climate_state(state.level, state.future_change, progress);
+		return 0;
+	}
+	const amount = state.future_change > 0
+		? CLIMATE_SEA_LEVEL_STEP
+		: 0 - CLIMATE_SEA_LEVEL_STEP;
+	const next_sea_level = tm.get_sea_level() + amount;
+	if (next_sea_level < -3500 || next_sea_level > 3500) {
+		tm.set_climate_state(state.level, 0, 0);
+		return 0;
+	}
+	tm.set_climate_state(
+		state.level,
+		state.future_change - amount,
+		progress - CLIMATE_PROGRESS_TARGET
+	);
+	return amount;
+};
+
 return (game) => {
 	game.on('start', (e) => {
 		game.set('f_ecology_calculate', calculate);
 		game.set('f_ecology_get_base_damage', (base) => { return get_base_damage(game, base); });
 		game.set('f_ecology_get_life_level', get_life_level);
 		game.set('f_ecology_is_perihelion', is_perihelion);
+		game.set('f_ecology_get_climate_trigger', get_climate_trigger);
+		game.set('f_ecology_advance_climate_damage', (owner) => {
+			return advance_climate_damage(game, owner);
+		});
+		game.set('f_ecology_advance_pending_climate', () => {
+			return advance_pending_climate(game);
+		});
 
 		game.on('turn', (e) => {
+			const sea_level_change = advance_pending_climate(game);
 			if (!game.is_master()) {
 				return;
+			}
+			if (sea_level_change != 0) {
+				game.event('change_sea_level', {amount: sea_level_change});
 			}
 			let reserved_tiles = {};
 			for (base of game.get_bm().get_bases()) {

@@ -117,6 +117,12 @@ scenarios, for:
 - persistent faction-wide fungal-bloom counts, host-authored reversible fungus
   eruptions, persistent major-atrocity counts and ecological penalties, and
   live Eco Damage values on the base screen;
+- serialized planetary climate pressure and pending sea-level change, with
+  ecological disasters driving the original escalating 1/3/5 warming bands,
+  gradual 20-turn altitude steps, deterministic flooding and exposure,
+  Pressure Dome protection and emergency construction, population losses,
+  unit and transport-cargo destruction, surviving-unit rehoming, live terrain
+  rendering, save/reconnect state, and complete event rollback;
 - deterministic physical territory claims use the original eight-tile maximum,
   nearest-base ownership, oldest-base tie resolution, and coastal workable
   water claims; supported combat units outside friendly territory now apply
@@ -150,8 +156,9 @@ scenarios, for:
   Supreme Leader thresholds, Global Trade Pact enactment and repeal, one-time
   Unity Fusion Core salvage with 500 energy credits for every faction, U.N.
   Charter repeal and reinstatement with live atrocity and AI behavior,
-  technology gating, a 20-turn cooldown, save/reconnect restoration, and
-  reversible election and policy results;
+  repeatable Solar Shade and Melt Polar Caps climate motions with exposure- and
+  relationship-aware AI voting, technology gating, a 20-turn cooldown,
+  save/reconnect restoration, and reversible election and policy results;
 - the Planetary Governor receives +1 energy per commerce transaction and
   effective infiltration against every rival; election as Supreme Leader ends
   the game with a diplomatic victory;
@@ -172,7 +179,7 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- all 38 base facilities represented: 36 complete and 2 partial;
+- all 38 base facilities represented: 37 complete and 1 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
 - 252 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -185,8 +192,7 @@ not mean that the game is feature-complete or balanced.
 The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy including map and commlink exchanges, surrender, the
-  sea-level-dependent Council proposals and defiance, and richer bundled or
-  counteroffers;
+  Council defiance path, and richer bundled or counteroffers;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
@@ -196,17 +202,13 @@ The following original-SMAC systems remain absent or materially incomplete:
 - paid emergency Headquarters evacuation before capture and explicit
   player-facing inefficiency diagnostics;
 - native-life outbreaks from fungal blooms, an independent wild Planet faction,
-  global warming, sea-level changes, volcanoes, several ecology-related Secret
-  Project effects, and the original engine's
+  volcanoes, several ecology-related Secret Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
 - remaining Unity Pod parity: map-survey and commlink rewards, independent wild
   native-life encounters, dimensional-gate teleportation, and once-per-unit
   monolith visit tracking;
-- direct Orbital Defense Pod attacks against rival satellites are not
-  available;
-- Pressure Dome remains partial because sea-level rise and base submersion are
-  not implemented; Orbital Defense Pod remains partial because direct
-  satellite warfare is absent;
+- Orbital Defense Pod remains partial because direct attacks against rival
+  satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
 - complete UI workflows, player-facing diagnostics, accessibility review,
@@ -247,6 +249,11 @@ added, all 86 isolated tests passed in 159.59 seconds. Focused native, Council,
 probe, and Planet Buster tests passed in 4.82 seconds; the installed-asset
 Council and Planet Buster runtime scenarios passed together in 45.84 seconds.
 The corresponding five-test AddressSanitizer pass completed in 19.63 seconds.
+
+After global warming, dynamic sea levels, Pressure Dome submersion protection,
+and both climate Council motions were added, all 86 isolated tests passed in
+160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
+installed-asset runtime coverage passed together in 54.92 seconds.
 
 All 24 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,

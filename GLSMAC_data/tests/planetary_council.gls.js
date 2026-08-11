@@ -67,13 +67,22 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 	};
 };
 
-const make_base = (id, owner, initial_size) => {
+const make_base = (id, owner, initial_size, initial_elevation) => {
 	let size = initial_size;
+	let facilities = {};
+	const tile = {
+		is_water: false,
+		elevation: #is_defined(initial_elevation) ? initial_elevation : 1000,
+		sea_level: 0,
+	};
 	return {
 		id: id,
 		get_owner: () => { return owner; },
 		get_size: () => { return size; },
 		set_size: (value) => { size = value; },
+		get_tile: () => { return tile; },
+		has_facility: (facility_id) => { return facilities[facility_id] == true; },
+		add_facility: (facility_id) => { facilities[facility_id] = true; },
 	};
 };
 
@@ -82,10 +91,10 @@ const empath = make_player(2, 'Gaians', 'GAIANS', 'ai', false);
 const clinical = make_player(3, 'University', 'UNIVERSITY', 'ai', false);
 const progenitor = make_player(4, 'Caretakers', 'CARETAKERS', 'ai', true);
 const players = [peacekeepers, empath, clinical, progenitor];
-const peace_base = make_base(1, peacekeepers, 4);
-const empath_base = make_base(2, empath, 6);
-const clinical_base = make_base(3, clinical, 5);
-const progenitor_base = make_base(4, progenitor, 20);
+const peace_base = make_base(1, peacekeepers, 4, 100);
+const empath_base = make_base(2, empath, 6, 100);
+const clinical_base = make_base(3, clinical, 5, 900);
+const progenitor_base = make_base(4, progenitor, 20, 100);
 const bases = [peace_base, empath_base, clinical_base, progenitor_base];
 let projects = {
 	TheEmpathGuild: empath_base,
@@ -99,10 +108,12 @@ let triggers = [];
 let callbacks = {};
 let values = {};
 let master = true;
+let climate_state = {level: 0, future_change: 0, progress: 0};
 
 let game = null;
 game = {
 	get_bm: () => { return game.bm; },
+	get_tm: () => { return game.tm; },
 	get_players: () => { return players; },
 	get_player: (id) => {
 		for (player of players) { if (player.id == id) { return player; } }
@@ -128,6 +139,14 @@ game = {
 		get_bases: () => { return bases; },
 		get_project_base: (id) => {
 			return #is_defined(projects[id]) ? projects[id] : null;
+		},
+	},
+	tm: {
+		get_climate_state: () => { return #clone(climate_state); },
+		set_climate_state: (level, future_change, progress) => {
+			climate_state = {
+				level: level, future_change: future_change, progress: progress,
+			};
 		},
 	},
 };
@@ -282,7 +301,7 @@ test.assert(!rules.has_salvaged_unity_core(game));
 test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'salvage_unity_core')));
 test.assert(
 	rules.get_available_policy_proposals(game, peacekeepers) ==
-	['salvage_unity_core', 'trade_pact']
+	['salvage_unity_core', 'trade_pact', 'launch_solar_shade']
 );
 test.assert(
 	council_ai.choose_policy_vote(game, peacekeepers, 'salvage_unity_core') == rules.vote_yes
@@ -368,6 +387,74 @@ peacekeepers.set_relation(clinical, 'neutral');
 
 
 current_turn = 125;
+peacekeepers.add_technology('AdvancedEcologicalEngineering');
+test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'launch_solar_shade')));
+test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'melt_polar_caps')));
+test.assert(
+	rules.get_available_policy_proposals(game, peacekeepers) ==
+	['trade_pact', 'repeal_un_charter', 'launch_solar_shade', 'melt_polar_caps']
+);
+game.tm.set_climate_state(4, 3500, 7);
+test.assert(#is_defined(rules.validate_call(game, peacekeepers, 'melt_polar_caps')));
+game.tm.set_climate_state(4, 0 - 3500, 7);
+test.assert(#is_defined(rules.validate_call(game, peacekeepers, 'launch_solar_shade')));
+game.tm.set_climate_state(4, 0, 7);
+
+let melt_call = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, proposal: 'melt_polar_caps'},
+};
+melt_call.applied = call_council.apply(melt_call);
+submit_vote(peacekeepers, rules.vote_yes);
+submit_vote(empath, rules.vote_yes);
+submit_vote(clinical, rules.vote_yes);
+let melt_resolution = {caller: 0, game: game, data: {}};
+melt_resolution.applied = resolve_council.apply(melt_resolution);
+test.assert(game.tm.get_climate_state() == {level: 4, future_change: 300, progress: 7});
+resolve_council.rollback(melt_resolution);
+test.assert(game.tm.get_climate_state() == {level: 4, future_change: 0, progress: 7});
+test.assert(rules.get_session(game).proposal == 'melt_polar_caps');
+melt_resolution.applied = resolve_council.apply(melt_resolution);
+test.assert(game.tm.get_climate_state().future_change == 300);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'launch_solar_shade') == rules.vote_yes
+);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'melt_polar_caps') == rules.vote_no
+);
+
+current_turn = 145;
+let shade_call = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, proposal: 'launch_solar_shade'},
+};
+shade_call.applied = call_council.apply(shade_call);
+submit_vote(peacekeepers, rules.vote_yes);
+submit_vote(empath, rules.vote_yes);
+submit_vote(clinical, rules.vote_yes);
+let shade_resolution = {caller: 0, game: game, data: {}};
+shade_resolution.applied = resolve_council.apply(shade_resolution);
+test.assert(game.tm.get_climate_state() == {level: 4, future_change: 0, progress: 7});
+resolve_council.rollback(shade_resolution);
+test.assert(game.tm.get_climate_state().future_change == 300);
+shade_resolution.applied = resolve_council.apply(shade_resolution);
+test.assert(game.tm.get_climate_state().future_change == 0);
+
+peace_base.add_facility('PressureDome');
+peacekeepers.set_relation(empath, 'vendetta');
+test.assert(council_ai.get_climate_policy_value(game, peacekeepers) < 0);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'melt_polar_caps') == rules.vote_yes
+);
+test.assert(
+	council_ai.choose_policy_vote(game, peacekeepers, 'launch_solar_shade') == rules.vote_no
+);
+peacekeepers.set_relation(empath, 'neutral');
+
+
+current_turn = 165;
 clinical_base.set_size(20);
 clinical.add_technology('MindMachineInterface');
 test.assert(rules.get_votes(game, clinical) == 40);

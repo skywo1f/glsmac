@@ -18,6 +18,7 @@ return (game) => {
 		'unit_skip_turn',
 		'terraform_tile',
 		'cancel_terraform',
+		'change_sea_level',
 		'define_base_pop',
 		'define_base_facility',
 		'spawn_base',

@@ -37,6 +37,15 @@ const get_policy_pass_message = (proposal) => {
 	if (proposal == 'repeal_un_charter') {
 		return 'The U.N. Charter has been repealed. Future atrocities no longer incur Council sanctions';
 	}
+	if (proposal == 'reinstate_un_charter') {
+		return 'The U.N. Charter has been reinstated. Council atrocity sanctions are active again';
+	}
+	if (proposal == 'launch_solar_shade') {
+		return 'A Solar Shade has been launched. Planetary sea levels will gradually fall';
+	}
+	if (proposal == 'melt_polar_caps') {
+		return 'The polar caps will be melted. Planetary sea levels will gradually rise';
+	}
 	return 'The U.N. Charter has been reinstated. Council atrocity sanctions are active again';
 };
 
@@ -62,6 +71,7 @@ return {
 	apply: (e) => {
 		const previous = rules.snapshot_states(e.game);
 		const previous_energy = rules.snapshot_energy(e.game);
+		let previous_climate = null;
 		const result = rules.get_result(e.game);
 		if (result.proposal == 'governor') {
 			clear_session(e.game, result.winner_id, #undefined);
@@ -91,6 +101,14 @@ return {
 					updated.un_charter_repealed = true;
 				} else if (result.proposal == 'reinstate_un_charter') {
 					updated.un_charter_repealed = false;
+				} else if (result.proposal == 'launch_solar_shade') {
+					previous_climate = rules.queue_climate_change(
+						e.game, 0 - rules.council_sea_change
+					);
+				} else if (result.proposal == 'melt_polar_caps') {
+					previous_climate = rules.queue_climate_change(
+						e.game, rules.council_sea_change
+					);
 				}
 			}
 			clear_session(e.game, (-1), updated);
@@ -123,6 +141,7 @@ return {
 		return {
 			states: previous,
 			energy: previous_energy,
+			climate: previous_climate,
 			terminal: result.proposal == 'supreme' && result.winner_id >= 0,
 		};
 	},
@@ -131,6 +150,9 @@ return {
 		if (!e.applied.terminal) {
 			rules.restore_states(e.applied.states);
 			rules.restore_energy(e.applied.energy);
+			if (e.applied.climate != null) {
+				rules.restore_climate_state(e.game, e.applied.climate);
+			}
 			e.game.trigger('council_updated', {});
 		}
 		// Successful Supreme Leader resolutions are host-authored terminal events.

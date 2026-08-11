@@ -118,19 +118,79 @@ const get_un_charter_value = (game, voter) => {
 	return value;
 };
 
+const get_base_climate_risk = (base) => {
+	if (
+		#typeof(base.get_tile) != 'Callable' ||
+		#typeof(base.get_size) != 'Callable'
+	) {
+		return 0;
+	}
+	const tile = base.get_tile();
+	if (
+		tile == null || tile.is_water || !#is_defined(tile.elevation) ||
+		!#is_defined(tile.sea_level)
+	) {
+		return 0;
+	}
+	if (#typeof(base.has_facility) == 'Callable' && base.has_facility('PressureDome')) {
+		return 0;
+	}
+	const margin = tile.elevation - tile.sea_level;
+	if (margin > 600) { return 0; }
+	const danger_bands = #max(
+		1,
+		7 - #floor(#to_float(#max(0, margin)) / 100.0)
+	);
+	return danger_bands * #max(1, base.get_size()) * 40;
+};
+
+// Positive values favor lower seas; negative values favor higher seas.
+const get_climate_policy_value = (game, voter) => {
+	let value = 0;
+	if (#typeof(game.get_tm) == 'Callable') {
+		const tm = game.get_tm();
+		if (#typeof(tm.get_climate_state) == 'Callable') {
+			value += tm.get_climate_state().future_change * 2;
+		}
+	}
+	for (base of game.get_bm().get_bases()) {
+		const risk = get_base_climate_risk(base);
+		if (risk <= 0) { continue; }
+		const owner = base.get_owner();
+		if (owner.id == voter.id) {
+			value += risk * 2;
+			continue;
+		}
+		if (owner.get_faction().is_progenitor) { continue; }
+		const relation = voter.get_diplomatic_relation(owner);
+		if (relation == 'pact') {
+			value += risk;
+		} else if (relation == 'treaty') {
+			value += #floor(#to_float(risk) / 2.0);
+		} else if (relation == 'vendetta') {
+			value -= risk * 2;
+		} else {
+			value -= risk;
+		}
+	}
+	return value;
+};
+
 const choose_policy_vote = (game, voter, proposal) => {
 	let value = 0;
 	if (proposal == 'salvage_unity_core') {
 		value = get_unity_core_value(game, voter);
 	} else if (proposal == 'repeal_un_charter' || proposal == 'reinstate_un_charter') {
 		value = get_un_charter_value(game, voter);
+	} else if (proposal == 'launch_solar_shade' || proposal == 'melt_polar_caps') {
+		value = get_climate_policy_value(game, voter);
 	} else {
 		value = get_policy_value(game, voter);
 	}
 	if (value == 0) { return -1; }
 	if (
 		proposal == 'trade_pact' || proposal == 'salvage_unity_core' ||
-		proposal == 'reinstate_un_charter'
+		proposal == 'reinstate_un_charter' || proposal == 'launch_solar_shade'
 	) {
 		return value > 0 ? 1 : 0;
 	}
@@ -142,7 +202,9 @@ const choose_vote = (game, voter, session) => {
 		session.proposal == 'trade_pact' || session.proposal == 'repeal_trade_pact' ||
 		session.proposal == 'salvage_unity_core' ||
 		session.proposal == 'repeal_un_charter' ||
-		session.proposal == 'reinstate_un_charter'
+		session.proposal == 'reinstate_un_charter' ||
+		session.proposal == 'launch_solar_shade' ||
+		session.proposal == 'melt_polar_caps'
 	) {
 		return choose_policy_vote(game, voter, session.proposal);
 	}
@@ -165,6 +227,8 @@ return {
 	get_policy_value: get_policy_value,
 	get_unity_core_value: get_unity_core_value,
 	get_un_charter_value: get_un_charter_value,
+	get_base_climate_risk: get_base_climate_risk,
+	get_climate_policy_value: get_climate_policy_value,
 	choose_policy_vote: choose_policy_vote,
 	choose_vote: choose_vote,
 };

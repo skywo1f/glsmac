@@ -110,8 +110,9 @@ const get_land_yields = (tile) => {
 		result.NUTRIENTS = #max(result.NUTRIENTS - 1, 0);
 	}
 	if (tile.terraforming.solar || tile.terraforming.mirror) {
+		const sea_level = #is_defined(tile.sea_level) ? tile.sea_level : 0;
 		result.ENERGY = result.ENERGY +
-			#max(#floor(#to_float(tile.elevation) / 1000.0), 0) + 1;
+			#max(#floor(#to_float(tile.elevation - sea_level) / 1000.0), 0) + 1;
 		if (tile.terraforming.solar) {
 			result.ENERGY = result.ENERGY + get_adjacent_mirror_bonus(tile);
 		}

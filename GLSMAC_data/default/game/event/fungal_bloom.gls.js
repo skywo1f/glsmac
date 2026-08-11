@@ -75,19 +75,33 @@ return {
 		const old_xenofungus = e.data.tile.features.xenofungus;
 		e.data.tile.update_features(order.feature_changes);
 		owner.set_ecological_damage_events(previous_events + 1);
+		let climate = null;
+		if (#is_defined(e.game.get)) {
+			const advance_climate = e.game.get('f_ecology_advance_climate_damage');
+			if (#is_defined(advance_climate)) {
+				climate = advance_climate(owner);
+			}
+		}
 		e.game.trigger('ecological_damage', {
 			base: e.data.base,
 			tile: e.data.tile,
 			damage: e.data.damage,
+			warming_triggered: climate != null && climate.warming_triggered,
 		});
 		e.game.trigger('update_base', {base: e.data.base});
 		e.game.message(
 			'Uncontrolled xenofungus has erupted near ' + e.data.base.name + '.'
 		);
+		if (climate != null && climate.warming_triggered) {
+			e.game.message(
+				'Planetary warming has destabilized the polar ice caps.'
+			);
+		}
 		return {
 			xenofungus: old_xenofungus,
 			terraforming: old_terraforming,
 			ecological_damage_events: previous_events,
+			climate: climate,
 		};
 	},
 
@@ -97,6 +111,14 @@ return {
 		e.data.base.get_owner().set_ecological_damage_events(
 			e.applied.ecological_damage_events
 		);
+		if (e.applied.climate != null) {
+			const previous = e.applied.climate.previous;
+			e.game.get_tm().set_climate_state(
+				previous.level,
+				previous.future_change,
+				previous.progress
+			);
+		}
 		e.game.trigger('update_base', {base: e.data.base});
 	},
 

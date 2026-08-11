@@ -102,6 +102,36 @@ test.assert(values.f_ecology_is_perihelion(2209));
 test.assert(!values.f_ecology_is_perihelion(2210));
 test.assert(values.f_ecology_is_perihelion(2270));
 
+let climate_state = {level: 0, future_change: 0, progress: 0};
+let sea_level = 0;
+game.get_tm = () => {
+	return {
+		get_sea_level: () => { return sea_level; },
+		get_climate_state: () => { return #clone(climate_state); },
+		set_climate_state: (level, future_change, progress) => {
+			climate_state = {
+				level: level,
+				future_change: future_change,
+				progress: progress,
+			};
+		},
+	};
+};
+test.assert(values.f_ecology_get_climate_trigger(0) == 12);
+test.assert(values.f_ecology_get_climate_trigger(500) == 18);
+climate_state.level = 11;
+const warming = values.f_ecology_advance_climate_damage({
+	get_ecological_damage_events: () => { return 12; },
+});
+test.assert(warming.warming_triggered);
+test.assert(warming.pending_change == 100);
+test.assert(climate_state.level == 0);
+test.assert(climate_state.future_change == 100);
+climate_state.progress = 19;
+test.assert(values.f_ecology_advance_pending_climate() == 100);
+test.assert(climate_state.future_change == 0);
+test.assert(climate_state.progress == 0);
+
 let is_master = true;
 let submitted_events = [];
 const runtime_owner = {

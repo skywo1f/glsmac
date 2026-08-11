@@ -82,21 +82,19 @@ for (id of [
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
-for (id of [
-	'PressureDome', 'OrbitalDefensePod',
-]) {
+for (id of ['OrbitalDefensePod']) {
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
 for (id of [
-	'ResearchHospital', 'Nanohospital', 'PsiGate',
+	'ResearchHospital', 'Nanohospital', 'PsiGate', 'PressureDome',
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'complete');
 }
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 38,
-	complete_facilities: 36,
-	partial_facilities: 2,
+	complete_facilities: 37,
+	partial_facilities: 1,
 	implemented_projects: 33,
 	complete_projects: 32,
 	partial_projects: 1,

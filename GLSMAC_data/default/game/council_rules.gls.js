@@ -5,12 +5,16 @@ const VOTE_NO = 0;
 const VOTE_YES = 1;
 const MAX_ENERGY_CREDITS = 1000000000;
 const UNITY_CORE_ENERGY = 500;
+const COUNCIL_SEA_CHANGE = 300;
+const MIN_CLIMATE_CHANGE = -3500;
+const MAX_CLIMATE_CHANGE = 3500;
 
 const is_policy_proposal = (proposal) => {
 	return
 		proposal == 'trade_pact' || proposal == 'repeal_trade_pact' ||
 		proposal == 'salvage_unity_core' || proposal == 'repeal_un_charter' ||
-		proposal == 'reinstate_un_charter';
+		proposal == 'reinstate_un_charter' || proposal == 'launch_solar_shade' ||
+		proposal == 'melt_polar_caps';
 };
 
 const get_proposal_name = (proposal) => {
@@ -19,8 +23,32 @@ const get_proposal_name = (proposal) => {
 	if (proposal == 'salvage_unity_core') { return 'Salvage Unity Fusion Core'; }
 	if (proposal == 'repeal_un_charter') { return 'Repeal U.N. Charter'; }
 	if (proposal == 'reinstate_un_charter') { return 'Reinstate U.N. Charter'; }
+	if (proposal == 'launch_solar_shade') { return 'Launch Solar Shade'; }
+	if (proposal == 'melt_polar_caps') { return 'Melt Polar Caps'; }
 	if (proposal == 'supreme') { return 'Supreme Leader of Planet'; }
 	return 'Planetary Governor';
+};
+
+const get_climate_state = (game) => {
+	if (#typeof(game.get_tm) != 'Callable') { return null; }
+	const tm = game.get_tm();
+	if (#typeof(tm.get_climate_state) != 'Callable') { return null; }
+	return tm.get_climate_state();
+};
+
+const queue_climate_change = (game, amount) => {
+	const tm = game.get_tm();
+	const previous = tm.get_climate_state();
+	tm.set_climate_state(
+		previous.level,
+		#min(MAX_CLIMATE_CHANGE, #max(MIN_CLIMATE_CHANGE, previous.future_change + amount)),
+		previous.progress
+	);
+	return previous;
+};
+
+const restore_climate_state = (game, state) => {
+	game.get_tm().set_climate_state(state.level, state.future_change, state.progress);
 };
 
 const get_population = (game, player) => {
@@ -267,6 +295,25 @@ const validate_call = (game, player, proposal) => {
 		if (proposal == 'reinstate_un_charter' && !policy_state.un_charter_repealed) {
 			return 'The U.N. Charter is already in effect';
 		}
+	} else if (proposal == 'launch_solar_shade' || proposal == 'melt_polar_caps') {
+		const required_technology = proposal == 'launch_solar_shade'
+			? 'OrbitalSpaceflight'
+			: 'AdvancedEcologicalEngineering';
+		if (!player.has_technology(required_technology)) {
+			return proposal == 'launch_solar_shade'
+				? 'Orbital Spaceflight is required to launch a Solar Shade'
+				: 'Advanced Ecological Engineering is required to melt the polar caps';
+		}
+		const climate = get_climate_state(game);
+		if (climate == null) {
+			return 'Planetary climate controls are unavailable';
+		}
+		if (proposal == 'launch_solar_shade' && climate.future_change <= MIN_CLIMATE_CHANGE) {
+			return 'The Solar Shade is already operating at maximum effect';
+		}
+		if (proposal == 'melt_polar_caps' && climate.future_change >= MAX_CLIMATE_CHANGE) {
+			return 'The polar caps cannot be destabilized further';
+		}
 	}
 };
 
@@ -276,6 +323,8 @@ const get_available_policy_proposals = (game, player) => {
 	let candidates = ['salvage_unity_core'];
 	candidates :+(state.global_trade_pact ? 'repeal_trade_pact' : 'trade_pact');
 	candidates :+(state.un_charter_repealed ? 'reinstate_un_charter' : 'repeal_un_charter');
+	candidates :+'launch_solar_shade';
+	candidates :+'melt_polar_caps';
 	let result = [];
 	for (proposal of candidates) {
 		if (!#is_defined(validate_call(game, player, proposal))) {
@@ -415,6 +464,7 @@ return {
 	vote_no: VOTE_NO,
 	vote_yes: VOTE_YES,
 	unity_core_energy: UNITY_CORE_ENERGY,
+	council_sea_change: COUNCIL_SEA_CHANGE,
 	is_policy_proposal: is_policy_proposal,
 	get_proposal_name: get_proposal_name,
 	get_population: get_population,
@@ -441,4 +491,7 @@ return {
 	snapshot_energy: snapshot_energy,
 	restore_energy: restore_energy,
 	award_unity_core_energy: award_unity_core_energy,
+	get_climate_state: get_climate_state,
+	queue_climate_change: queue_climate_change,
+	restore_climate_state: restore_climate_state,
 };

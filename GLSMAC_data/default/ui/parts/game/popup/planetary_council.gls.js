@@ -14,8 +14,10 @@ return {
 		this.trade_button = null;
 		this.unity_button = null;
 		this.charter_button = null;
+		this.solar_button = null;
+		this.polar_button = null;
 
-		const result = p.create('PLANETARY COUNCIL', 560, 278, (body, cb) => {
+		const result = p.create('PLANETARY COUNCIL', 560, 332, (body, cb) => {
 			this.status_text = body.text({
 				class: 'game-popup-text', text: '', left: 10, right: 10, top: 12,
 			});
@@ -129,8 +131,32 @@ return {
 				return true;
 			});
 
+			this.solar_button = body.button({
+				class: 'game-popup-button', text: 'Propose Launch of Solar Shade', top: 252,
+			});
+			this.solar_button.on('click', (e) => {
+				if (this.player != null) {
+					p.game.event('call_planetary_council', {
+						player: this.player, proposal: 'launch_solar_shade',
+					});
+				}
+				return true;
+			});
+
+			this.polar_button = body.button({
+				class: 'game-popup-button', text: 'Propose Melting of Polar Caps', top: 278,
+			});
+			this.polar_button.on('click', (e) => {
+				if (this.player != null) {
+					p.game.event('call_planetary_council', {
+						player: this.player, proposal: 'melt_polar_caps',
+					});
+				}
+				return true;
+			});
+
 			body.button({
-				class: 'game-popup-button', text: 'Close', top: 250, is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 304, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -157,6 +183,8 @@ return {
 		this.trade_button.hide();
 		this.unity_button.hide();
 		this.charter_button.hide();
+		this.solar_button.hide();
+		this.polar_button.hide();
 		if (this.player == null) { return; }
 
 		const get_session = this.p.game.get('f_council_get_session');
@@ -236,6 +264,8 @@ return {
 			? 'reinstate_un_charter'
 			: 'repeal_un_charter';
 		const charter_error = validate_call(this.player, charter_proposal);
+		const solar_error = validate_call(this.player, 'launch_solar_shade');
+		const polar_error = validate_call(this.player, 'melt_polar_caps');
 		let can_convene = false;
 		if (!#is_defined(governor_error)) {
 			this.governor_button.show();
@@ -261,6 +291,14 @@ return {
 				? 'Propose Reinstatement of U.N. Charter'
 				: 'Propose Repeal of U.N. Charter';
 			this.charter_button.show();
+			can_convene = true;
+		}
+		if (!#is_defined(solar_error)) {
+			this.solar_button.show();
+			can_convene = true;
+		}
+		if (!#is_defined(polar_error)) {
+			this.polar_button.show();
 			can_convene = true;
 		}
 		if (can_convene) {

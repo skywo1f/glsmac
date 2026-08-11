@@ -75,7 +75,6 @@ const effects = {
 };
 
 const partial_effects = {
-	PressureDome: true,
 	OrbitalDefensePod: true,
 };
 
