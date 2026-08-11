@@ -151,6 +151,16 @@ const score_unit = (def, context) => {
 				get_unit_ability_score(def, context) - get_unit_support_penalty(def, context)
 			: null;
 	}
+	if (#is_defined(def.weapon) && def.weapon == 'SupplyTransport') {
+		return
+			#is_defined(context.needs_supply) && context.needs_supply &&
+			!context.needs_garrison && !context.needs_former &&
+			!(context.needs_colony && context.can_expand)
+				? 32000 + get_priority(context, 'development', 50) * 350 +
+					#max(context.mineral_surplus, 0) * 500 -
+					get_mineral_cost(def, context) - get_unit_support_penalty(def, context)
+				: null;
+	}
 	if (#is_defined(def.weapon) && def.weapon == 'ProbeTeam') {
 		return #is_defined(context.needs_probe) && context.needs_probe && !context.needs_garrison
 			? 30000 + get_priority(context, 'development', 50) * 400 +

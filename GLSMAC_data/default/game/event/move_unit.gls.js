@@ -271,6 +271,8 @@ return {
 				movement: movement,
 				moved_this_turn: unit.moved_this_turn == true,
 				transport_id: get_transport_id(unit) + 0,
+				convoy_resource: #is_defined(unit.convoy_resource)
+					? '' + unit.convoy_resource : 'none',
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
 			movement_started: e.resolved.is_movement_successful,
@@ -278,6 +280,9 @@ return {
 			rehomed_units: [],
 			unity_pod: null,
 		};
+		if (#is_defined(unit.set_convoy_resource) && unit.convoy_resource != 'none') {
+			unit.set_convoy_resource('none');
+		}
 
 		const fungus_road = has_fungus_road(unit, e.game);
 		let movement_cost = get_movement_cost(unit, src_tile, dst_tile, fungus_road) +
@@ -350,6 +355,9 @@ return {
 		}
 		unit.movement = orig.movement;
 		unit.moved_this_turn = orig.moved_this_turn;
+		if (#is_defined(unit.set_convoy_resource)) {
+			unit.set_convoy_resource(orig.convoy_resource);
+		}
 	},
 
 };

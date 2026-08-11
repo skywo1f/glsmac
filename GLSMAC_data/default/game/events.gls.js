@@ -55,6 +55,8 @@ return (game) => {
 		'probe_operation',
 		'study_alien_artifact',
 		'contribute_alien_artifact',
+		'set_supply_convoy',
+		'contribute_supply_transport',
 		'teleport_unit',
 		'upgrade_unit',
 		'fungal_bloom',

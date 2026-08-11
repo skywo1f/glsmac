@@ -737,6 +737,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( size_t, home_base_id, obj, "home_base_id", Int, 0 );
 				N_GETPROP_OPT( int64_t, fuel, obj, "fuel", Int, 0 - 1 );
 				N_GETPROP_OPT( size_t, transport_id, obj, "transport_id", Int, 0 );
+				N_GETPROP_OPT( std::string, convoy_resource_name, obj, "convoy_resource", String, "none" );
 				if ( home_base_id > 0 && m_game->IsRunning() ) {
 					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
 					if ( !home_base ) {
@@ -770,6 +771,12 @@ WRAPIMPL_BEGIN( UnitManager )
 				if ( fuel > staticdef->m_operational_range ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Unit fuel exceeds its operational range" );
 				}
+				const auto convoy_resource = unit::Unit::GetConvoyResourceFromString(
+					convoy_resource_name
+				);
+				if ( convoy_resource == unit::CR_INVALID ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit convoy resource" );
+				}
 				auto unit = std::make_unique< unit::Unit >(
 					GSE_CALL,
 					this,
@@ -785,7 +792,9 @@ WRAPIMPL_BEGIN( UnitManager )
 					static_cast< uint16_t >( terraforming_turns_remaining ),
 					home_base_id,
 					static_cast< uint16_t >( fuel ),
-					0
+					0,
+					false,
+					convoy_resource
 				);
 				if ( transport_id > 0 ) {
 					auto* const transport = GetUnit( transport_id );

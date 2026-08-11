@@ -47,7 +47,8 @@ public:
 		const size_t home_base_id,
 		const uint16_t fuel,
 		const size_t transport_id,
-		const bool native_capture_attempted = false
+		const bool native_capture_attempted = false,
+		const convoy_resource_t convoy_resource = CR_NONE
 	);
 	virtual ~Unit();
 
@@ -65,6 +66,7 @@ public:
 	uint16_t m_fuel;
 	size_t m_transport_id;
 	bool m_native_capture_attempted;
+	convoy_resource_t m_convoy_resource;
 	bool m_is_registered = false;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
@@ -84,6 +86,10 @@ public:
 	);
 	void SetFuel( GSE_CALLABLE, const uint16_t fuel );
 	void SetTransportId( const size_t transport_id );
+	void SetConvoyResource( GSE_CALLABLE, const convoy_resource_t resource );
+
+	static const std::string& GetConvoyResourceString( const convoy_resource_t resource );
+	static const convoy_resource_t GetConvoyResourceFromString( const std::string& resource );
 
 	static const types::Buffer Serialize( const Unit* unit );
 	static Unit* Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um );

@@ -17,6 +17,7 @@ const unity_pods = #include('ai/unity_pods');
 const movement_rules = #include('movement_rules');
 const unit_abilities = #include('unit_abilities');
 const artifact_rules = #include('artifact_rules');
+const supply_rules = #include('supply_rules');
 const technology_acquisition = #include('technology_acquisition');
 const air = #include('../units/air');
 
@@ -607,6 +608,7 @@ const queue_production = (game, player, bases, units) => {
 	let combat_count = metrics.combat_count;
 	let mobile_combat_count = metrics.mobile_combat_count;
 	let probe_count = metrics.probe_count;
+	let supply_count = 0;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
 	let available_energy = #max(metrics.energy_income, 0);
@@ -615,6 +617,9 @@ const queue_production = (game, player, bases, units) => {
 	let air_superiority_count = 0;
 	let amphibious_count = 0;
 	for (unit of units) {
+		if (supply_rules.is_supply_transport(unit)) {
+			supply_count++;
+		}
 		if (unit_abilities.has(unit, 'AirSuperiority')) {
 			air_superiority_count++;
 		}
@@ -839,6 +844,9 @@ const queue_production = (game, player, bases, units) => {
 			needs_probe:
 				#sizeof(game.get_players()) > 1 &&
 				probe_count < #max(1, #floor(#to_float(#sizeof(bases)) / 4.0)),
+			needs_supply:
+				#sizeof(bases) >= 2 &&
+				supply_count < #max(1, #floor(#to_float(#sizeof(bases)) / 3.0)),
 			needs_infrastructure: #sizeof(base.get_facilities()) == 0 && former_count >= #sizeof(bases),
 			needs_headquarters:
 				!has_headquarters &&
@@ -896,6 +904,9 @@ const queue_production = (game, player, bases, units) => {
 			headquarters_queue_base = base;
 		}
 		if (selected != null && selected.kind == 'unit') {
+			if (supply_rules.is_supply_transport(selected.def)) {
+				supply_count++;
+			}
 			if (unit_abilities.has(selected.def, 'AirSuperiority')) {
 				air_superiority_count++;
 			}
@@ -1112,6 +1123,116 @@ const move_artifact = (game, player, unit) => {
 			game.event_as(player.id, 'contribute_alien_artifact', {unit: unit});
 		}
 		return true;
+	}
+	if (destination.step != null && can_enter(unit, destination.step, tile)) {
+		game.event_as(player.id, 'move_unit', {unit: unit, tile: destination.step});
+		return true;
+	}
+	return false;
+};
+
+const get_supply_choice = (home_base, tile, player) => {
+	const resources = tile.get_resources(player);
+	const intake = home_base.get_intake();
+	const consumption = home_base.get_consumption();
+	const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
+	const mineral_surplus = intake.MINERALS - consumption.MINERALS;
+	const weights = {
+		NUTRIENTS: nutrient_surplus <= 1 ? 7 : 2,
+		MINERALS: mineral_surplus <= 2 ? 6 : 4,
+		ENERGY: 3,
+	};
+	let best = null;
+	for (resource of supply_rules.resource_types) {
+		const value = resources[resource];
+		const score = value * weights[resource];
+		if (
+			value > 0 &&
+			(best == null || score > best.score ||
+				(score == best.score && resource < best.resource))
+		) {
+			best = {resource: resource, value: value, score: score};
+		}
+	}
+	return best;
+};
+
+const has_other_supply_convoy = (tile, unit) => {
+	for (candidate of tile.get_units()) {
+		if (
+			candidate.id != unit.id && supply_rules.is_supply_transport(candidate) &&
+			candidate.convoy_resource != 'none'
+		) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const move_supply = (game, player, unit) => {
+	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return false;
+	}
+	const home_base = supply_rules.get_home_base(game, unit);
+	if (unit.convoy_resource != 'none') {
+		if (home_base == null) {
+			game.event_as(player.id, 'set_supply_convoy', {
+				unit: unit,
+				resource: 'none',
+			});
+			return true;
+		}
+		return false;
+	}
+	if (home_base == null) {
+		return false;
+	}
+
+	if (!#is_defined(supply_rules.get_contribution_error(game, unit, player.id))) {
+		const target = supply_rules.get_contribution_target(unit);
+		const base = tile.get_base();
+		const missing = #max(
+			target.production.mineral_cost - base.get_accumulated_minerals(),
+			0
+		);
+		if (missing <= unit.get_def().mineral_cost * 2) {
+			game.event_as(player.id, 'contribute_supply_transport', {unit: unit});
+			return true;
+		}
+	}
+
+	const territory_owner = game.get('f_territory_get_owner');
+	const destination = pathfinding.find_best_reachable(
+		game.get_tm(),
+		unit,
+		(source, candidate) => { return can_enter(unit, candidate, source); },
+		(candidate, distance) => {
+			if (candidate.get_base() != null || has_other_supply_convoy(candidate, unit)) {
+				return null;
+			}
+			if (#is_defined(territory_owner)) {
+				const owner = territory_owner(candidate);
+				if (owner != null && owner.id != player.id) {
+					return null;
+				}
+			}
+			const choice = get_supply_choice(home_base, candidate, player);
+			return choice == null ? null : choice.score * 10000 - distance * 100;
+		}
+	);
+	if (destination == null) {
+		return false;
+	}
+	if (destination.target == tile) {
+		const choice = get_supply_choice(home_base, tile, player);
+		if (choice != null) {
+			game.event_as(player.id, 'set_supply_convoy', {
+				unit: unit,
+				resource: choice.resource,
+			});
+			return true;
+		}
 	}
 	if (destination.step != null && can_enter(unit, destination.step, tile)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: destination.step});
@@ -1494,6 +1615,20 @@ const play_turn = (game, player, done) => {
 				}
 				if (unit.get_def().weapon == 'AlienArtifact') {
 					action_started = move_artifact(game, player, unit);
+				}
+				if (action_started) {
+					action_state.record_action_attempt(unit, action_attempts);
+					break;
+				}
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+			for (unit of current_units) {
+				if (!action_state.can_attempt_action(unit, action_attempts)) {
+					continue;
+				}
+				if (supply_rules.is_supply_transport(unit)) {
+					action_started = move_supply(game, player, unit);
 				}
 				if (action_started) {
 					action_state.record_action_attempt(unit, action_attempts);

@@ -16,7 +16,10 @@ const has = (unit_or_def, id) => {
 };
 
 const get_support_cost = (unit_or_def) => {
-	return has(unit_or_def, 'CleanReactor') ? 0 : 1;
+	const def = get_def(unit_or_def);
+	return has(def, 'CleanReactor') || (
+		#is_defined(def.weapon) && def.weapon == 'SupplyTransport'
+	) ? 0 : 1;
 };
 
 const get_morale_bonus = (unit_or_def) => {

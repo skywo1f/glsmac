@@ -14,6 +14,7 @@ const restore_unit = (game, snapshot) => {
 		home_base_id: snapshot.home_base_id,
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
+		convoy_resource: snapshot.convoy_resource,
 	});
 	unit.movement = snapshot.movement;
 	unit.moved_this_turn = snapshot.moved_this_turn;
@@ -52,6 +53,7 @@ return {
 			morale: snapshot.morale,
 			health: snapshot.health,
 			home_base_id: snapshot.home_base_id,
+			convoy_resource: snapshot.convoy_resource,
 			fuel: #min(
 				snapshot.fuel,
 				#is_defined(target.operational_range) ? target.operational_range : 0

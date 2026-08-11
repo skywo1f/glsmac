@@ -25,6 +25,7 @@
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
 	const air_snapshot_unit_id = 6;
+	const supply_snapshot_unit_id = 7;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
@@ -90,6 +91,64 @@
 			},
 			rollback: (e) => {
 				e.game.get_player(e.caller).set_energy_credits(e.applied.energy_credits);
+			},
+		});
+
+		game.register_event('running_reconnect_spawn_supply', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can create the reconnect Supply Crawler';
+				}
+			},
+			apply: (e) => {
+				let definition = null;
+				for (candidate of e.game.get_um().get_unit_defs()) {
+					if (
+						candidate.weapon == 'SupplyTransport' && candidate.is_land &&
+						candidate.reactor_power == 1 &&
+						(
+							definition == null ||
+							candidate.mineral_cost < definition.mineral_cost ||
+							(
+								candidate.mineral_cost == definition.mineral_cost &&
+								candidate.id < definition.id
+							)
+						)
+					) {
+						definition = candidate;
+					}
+				}
+				if (definition == null) {
+					throw Error('Reconnect Supply Crawler definition is missing');
+				}
+				const yields = e.data.tile.get_resources(e.data.owner);
+				let resource = '';
+				for (candidate of ['ENERGY', 'NUTRIENTS', 'MINERALS']) {
+					if (yields[candidate] == 0) {
+						resource = candidate;
+						break;
+					}
+				}
+				if (resource == '') {
+					throw Error('Reconnect Supply Crawler needs a zero-yield resource');
+				}
+				const unit = e.game.um.spawn_unit({
+					def: definition.id,
+					owner: e.data.owner,
+					tile: e.data.tile,
+					morale: 2,
+					health: 1.0,
+					home_base_id: e.data.home_base_id,
+				});
+				unit.set_convoy_resource(resource);
+				unit.movement = 0.0;
+				unit.moved_this_turn = true;
+				return {unit_id: unit.id, resource: resource};
+			},
+			rollback: (e) => {
+				if (e.game.um.has_unit(e.applied.unit_id)) {
+					e.game.um.despawn_unit(e.game.um.get_unit(e.applied.unit_id));
+				}
 			},
 		});
 
@@ -790,6 +849,14 @@
 						health: 1.0,
 						morale: 2,
 						fuel: 1,
+					});
+					game.event('running_reconnect_spawn_supply', {
+						owner: client_base.get_owner(),
+						tile: game.get_tm().get_tile(
+							terraform_site_coords.x,
+							terraform_site_coords.y
+						),
+						home_base_id: client_base.id,
 					});
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});

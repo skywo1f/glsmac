@@ -1,6 +1,7 @@
 const pops = #include('pops');
 const unit_abilities = #include('unit_abilities');
 const prototype_rules = #include('prototype_rules');
+const supply_rules = #include('supply_rules');
 
 const globals = {};
 const CONTENT_CITIZENS = 3;
@@ -835,16 +836,21 @@ return (game) => {
 				? facility.forest_energy_bonus
 				: 0;
 		}
-		const f_add_tile = (tile) => {
+		const f_get_tile = (tile) => {
 			const r = tile.get_resources(e.base.get_owner());
 			const is_forest = tile.is_land && tile.terraforming.forest;
-			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS +
-				(is_forest ? forest_nutrient_bonus : 0);
-			result.MINERALS = result.MINERALS + r.MINERALS +
-				(is_forest ? forest_mineral_bonus : 0);
-			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus +
-				social_tile_energy_bonus +
-				(is_forest ? forest_energy_bonus : 0);
+			return {
+				NUTRIENTS: r.NUTRIENTS + (is_forest ? forest_nutrient_bonus : 0),
+				MINERALS: r.MINERALS + (is_forest ? forest_mineral_bonus : 0),
+				ENERGY: r.ENERGY + worked_tile_energy_bonus + social_tile_energy_bonus +
+					(is_forest ? forest_energy_bonus : 0),
+			};
+		};
+		const f_add_tile = (tile) => {
+			const r = f_get_tile(tile);
+			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS;
+			result.MINERALS = result.MINERALS + r.MINERALS;
+			result.ENERGY = result.ENERGY + r.ENERGY;
 		};
 
 		f_add_tile(e.base.get_tile());
@@ -880,6 +886,16 @@ return (game) => {
 		result.MINERALS = result.MINERALS + #ceil(
 			#to_float(result.MINERALS) * mineral_multiplier
 		);
+		const convoy = supply_rules.get_base_convoy_adjustment(game, e.base, {
+			worked_tile_energy_bonus: worked_tile_energy_bonus,
+			social_tile_energy_bonus: social_tile_energy_bonus,
+			forest_nutrient_bonus: forest_nutrient_bonus,
+			forest_mineral_bonus: forest_mineral_bonus,
+			forest_energy_bonus: forest_energy_bonus,
+		});
+		result.NUTRIENTS = result.NUTRIENTS + convoy.NUTRIENTS;
+		result.MINERALS = result.MINERALS + convoy.MINERALS;
+		result.ENERGY = result.ENERGY + convoy.ENERGY;
 
 		return result;
 	});
@@ -916,6 +932,10 @@ return (game) => {
 		result.ENERGY = #ceil(
 			#to_float(result.ENERGY) * project_effects.maintenance_multiplier
 		);
+		const convoy = supply_rules.get_base_convoy_consumption(game, e.base);
+		result.NUTRIENTS = result.NUTRIENTS + convoy.NUTRIENTS;
+		result.MINERALS = result.MINERALS + convoy.MINERALS;
+		result.ENERGY = result.ENERGY + convoy.ENERGY;
 
 		return result;
 	});

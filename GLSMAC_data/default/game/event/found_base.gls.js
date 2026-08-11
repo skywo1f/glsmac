@@ -14,6 +14,7 @@ const restore_unit = (e, backup) => {
 		home_base_id: backup.home_base_id,
 		fuel: backup.fuel,
 		transport_id: backup.transport_id,
+		convoy_resource: backup.convoy_resource,
 	});
 	unit.movement = backup.movement;
 	unit.moved_this_turn = backup.moved_this_turn;

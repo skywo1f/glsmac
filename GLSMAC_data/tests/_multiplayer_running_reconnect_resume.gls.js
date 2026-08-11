@@ -23,6 +23,7 @@
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
 	const air_snapshot_unit_id = 6;
+	const supply_snapshot_unit_id = 7;
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
@@ -121,6 +122,31 @@
 			return #undefined;
 		};
 
+		const get_supply_state_error = (moved_this_turn) => {
+			if (!game.get_um().has_unit(supply_snapshot_unit_id)) {
+				return 'active Supply Crawler was not restored from the snapshot';
+			}
+			const unit = game.get_um().get_unit(supply_snapshot_unit_id);
+			const def = unit.get_def();
+			const tile = unit.get_tile();
+			const resources = tile.get_resources(game.get_player());
+			if (
+				unit.owner != game.get_player().id || def.weapon != 'SupplyTransport' ||
+				!def.is_land || unit.home_base_id == 0 || tile.get_base() != null ||
+				unit.convoy_resource == 'none' ||
+				resources[unit.convoy_resource] != 0
+			) {
+				return 'Supply Crawler definition, home base, tile, or convoy order is invalid';
+			}
+			if (
+				unit.moved_this_turn != moved_this_turn ||
+				(moved_this_turn ? unit.movement != 0.0 : unit.movement != def.movement_per_turn)
+			) {
+				return 'Supply Crawler movement state is invalid';
+			}
+			return #undefined;
+		};
+
 		const get_base_state_error = () => {
 			if (game.get_player().energy_credits != initial_energy_stamp) {
 				return
@@ -182,6 +208,10 @@
 				air_def.is_missile || !air_def.is_air
 			) {
 				return 'Needlejet fuel or definition metadata was not restored';
+			}
+			const supply_state_error = get_supply_state_error(true);
+			if (#is_defined(supply_state_error)) {
+				return supply_state_error;
 			}
 			const restored_unit = game.get_um().get_unit(1);
 			if (restored_unit.get_def().id != restored_unit.def) {
@@ -488,6 +518,7 @@
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_PRODUCTION_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_TERRAFORM_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_SUPPLY_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_RESEARCH_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_ENERGY_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_LOAN_RESUMED_CLIENT');
@@ -500,6 +531,12 @@
 				const terraform_state_error = get_terraform_state_error(3, false);
 				if (#is_defined(terraform_state_error)) {
 					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + terraform_state_error);
+					glsmac.exit();
+					return;
+				}
+				const supply_state_error = get_supply_state_error(false);
+				if (#is_defined(supply_state_error)) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + supply_state_error);
 					glsmac.exit();
 					return;
 				}

@@ -35,6 +35,7 @@ const spawn_snapshot = (game, snapshot, owner_id, transferred) => {
 		home_base_id: transferred ? 0 : snapshot.home_base_id,
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
+		convoy_resource: transferred ? 'none' : snapshot.convoy_resource,
 	});
 	unit.movement = transferred ? 0.0 : snapshot.movement;
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;

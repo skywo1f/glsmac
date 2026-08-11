@@ -66,6 +66,13 @@ scenarios, for:
   sea-transport capacity scaling, and reactor-aware AI production, combat, and
   upgrade valuation; advanced reactor upgrades cannot be reversed into weaker
   reactors;
+- original-SMAC Supply Crawlers have generated land designs across available
+  chassis and all four reactors, require no mineral support, convoy improved
+  off-base tile yields or one resource between owned bases with post-multiplier
+  accounting, cancel their orders on movement, and contribute their full
+  mineral value to Secret Projects or prototypes; player controls, bounded AI
+  production/routing, event rollback, save serialization, and running-game
+  reconnect restoration are covered;
 - individual unit upgrades preserve identity, morale, health, and home base,
   enforce original chassis/equipment/component rules, consume the unit's turn,
   use the original energy-cost formula, receive the Nano Factory discount, and
@@ -194,7 +201,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - all 38 base facilities represented: 37 complete and 1 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 411 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 419 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -236,9 +243,17 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 121 cases: 93 isolated native/script GSE tests
-and 28 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 123 cases: 94 isolated native/script GSE tests
+and 29 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After original-SMAC Supply Crawlers were added, the Windows x64 Release build
+completed successfully and the complete matrix passed in bounded batches: all
+94 GSE tests in 196.13 seconds, all 27 local asset-backed runtime scenarios in
+1,026.12 seconds, and both multiplayer harnesses in 92.93 seconds. The crawler
+runtime verifies generated definitions, delegated orders, movement use, live
+base intake, and cancellation; running reconnect verifies serialized convoy,
+home-base, and turn state before and after movement refresh.
 
 After four-tier reactor generation, original unit-cost calculation, reactor
 durability and transport scaling, and functional Carrier Deck aircraft cargo
@@ -255,13 +270,13 @@ scenarios passed together in 68.60 seconds. After the final Release rebuild,
 the standard runtime, combat-access runtime, multiplayer, and running reconnect
 scenarios passed together in 166.21 seconds.
 
-The latest uninterrupted full run, before the territory test was added,
+An earlier uninterrupted full run, before the territory test was added,
 completed 108 of 109 cases in 870.61 seconds. The multiplayer runtime harness
 reached its internal 90-second deadline after both peers had already passed
 most gameplay stages. The same scenario passed immediately afterward in
-isolation in 33.82 seconds, as it had before the full run. All cases therefore
-pass independently, but the load-sensitive multiplayer full-matrix timeout
-remains a release-readiness flake to diagnose rather than a clean-matrix result.
+isolation in 33.82 seconds, as it had before the full run. The current complete
+matrix is green in bounded batches, including both network harnesses after all
+local runtime scenarios.
 
 After territory and pacifism support was added, all 86 isolated tests passed in
 149.63 seconds. The standard runtime passed in 27.28 seconds, the long economy
@@ -285,12 +300,13 @@ and both climate Council motions were added, all 86 isolated tests passed in
 160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
 installed-asset runtime coverage passed together in 54.92 seconds.
 
-All 28 runtime scenarios are green against an installed Planetary Pack,
+All 29 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
-Planetary Council, Datalinks, air units, transports, sea colonies, and the
-standard AI runtime. The rendered Unity Pod scenario verifies live land and sea
-sprite refresh, bonus mutation, earthquake apply/rollback with terrain mesh
-synchronization, reward-unit serialization, and movement-triggered resolution.
+Planetary Council, Datalinks, air units, transports, Supply Crawlers, sea
+colonies, and the standard AI runtime. The rendered Unity Pod scenario verifies
+live land and sea sprite refresh, bonus mutation, earthquake apply/rollback
+with terrain mesh synchronization, reward-unit serialization, and
+movement-triggered resolution.
 The rendered facility-actions scenario verifies the serialized Psi Gate and
 Alien Artifact capabilities, non-buildable Artifact definition, 50-mineral
 contribution, transport/cargo teleport, and per-turn endpoint limits.
@@ -303,10 +319,10 @@ passed three consecutive clean Release runs in 45.87, 40.67, and 40.08 seconds.
 AI movement now waits for animation locks on adjacent combat tiles, and runtime
 smokes defer process exit until scheduled callbacks have drained.
 
-The two multiplayer scenarios passed independently: ordinary multiplayer in
-32.92 seconds and running-game reconnect in 31.55 seconds. Reconnect coverage
-restores Council state along with the previously covered diplomacy, economy,
-project, and orbital state.
+The two multiplayer scenarios passed together after the local runtime matrix:
+ordinary multiplayer in 49.19 seconds and running-game reconnect in 43.73
+seconds. Reconnect coverage restores active Supply Crawler orders and movement
+state along with Council, diplomacy, economy, project, and orbital state.
 
 Fresh-profile startup is covered by a native filesystem regression test.
 Missing write targets now use an absolute lexical fallback when platform path

@@ -7,6 +7,7 @@
 #include "gse/value/Int.h"
 #include "gse/value/Float.h"
 #include "gse/value/Bool.h"
+#include "gse/value/String.h"
 #include "gse/value/Array.h"
 #include "gse/value/Null.h"
 #include "gse/value/Ptr.h"
@@ -54,6 +55,23 @@ static const bool IsValidTerraformingOrder(
 		);
 }
 
+static const bool IsValidConvoyOrder(
+	const Def* const def,
+	const map::tile::terraforming_t terraforming,
+	const size_t transport_id,
+	const convoy_resource_t resource
+) {
+	if ( resource == CR_NONE ) {
+		return true;
+	}
+	return
+		resource >= CR_NUTRIENTS && resource <= CR_ENERGY &&
+		def->m_type == DT_STATIC &&
+		static_cast< const StaticDef* >( def )->m_weapon_id == "SupplyTransport" &&
+		terraforming == map::tile::TERRAFORMING_NONE &&
+		transport_id == 0;
+}
+
 static size_t next_id = 1;
 const size_t Unit::GetNextId() {
 	return next_id;
@@ -78,7 +96,8 @@ Unit::Unit(
 	const size_t home_base_id,
 	const uint16_t fuel,
 	const size_t transport_id,
-	const bool native_capture_attempted
+	const bool native_capture_attempted,
+	const convoy_resource_t convoy_resource
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -94,7 +113,8 @@ Unit::Unit(
 	, m_home_base_id( home_base_id )
 	, m_fuel( fuel )
 	, m_transport_id( transport_id )
-	, m_native_capture_attempted( native_capture_attempted ) {
+	, m_native_capture_attempted( native_capture_attempted )
+	, m_convoy_resource( convoy_resource ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -107,10 +127,45 @@ Unit::Unit(
 	if ( transport_id == id ) {
 		THROW( "unit cannot transport itself" );
 	}
+	if ( !IsValidConvoyOrder( def, terraforming, transport_id, convoy_resource ) ) {
+		THROW( "invalid unit convoy order" );
+	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
 	}
 	SetTile( GSE_CALL, tile );
+}
+
+const std::string& Unit::GetConvoyResourceString( const convoy_resource_t resource ) {
+	static const std::string invalid = "invalid";
+	static const std::string none = "none";
+	static const std::string nutrients = "NUTRIENTS";
+	static const std::string minerals = "MINERALS";
+	static const std::string energy = "ENERGY";
+	switch ( resource ) {
+		case CR_NONE: return none;
+		case CR_NUTRIENTS: return nutrients;
+		case CR_MINERALS: return minerals;
+		case CR_ENERGY: return energy;
+		default: return invalid;
+	}
+}
+
+const convoy_resource_t Unit::GetConvoyResourceFromString( const std::string& resource ) {
+	const auto normalized = util::String::GetLowerCase( resource );
+	if ( normalized == "none" ) {
+		return CR_NONE;
+	}
+	if ( normalized == "nutrients" ) {
+		return CR_NUTRIENTS;
+	}
+	if ( normalized == "minerals" ) {
+		return CR_MINERALS;
+	}
+	if ( normalized == "energy" ) {
+		return CR_ENERGY;
+	}
+	return CR_INVALID;
 }
 
 Unit::~Unit() {
@@ -156,6 +211,9 @@ void Unit::SetTerraformingOrder(
 	if ( !IsValidTerraformingOrder( m_def, m_tile, terraforming, turns_remaining ) ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit terraforming order" );
 	}
+	if ( !IsValidConvoyOrder( m_def, terraforming, m_transport_id, m_convoy_resource ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Terraforming would conflict with the unit convoy order" );
+	}
 	if ( m_terraforming != terraforming || m_terraforming_turns_remaining != turns_remaining ) {
 		m_terraforming = terraforming;
 		m_terraforming_turns_remaining = turns_remaining;
@@ -178,6 +236,9 @@ void Unit::SetFuel( GSE_CALLABLE, const uint16_t fuel ) {
 
 void Unit::SetTransportId( const size_t transport_id ) {
 	m_transport_id = transport_id;
+	if ( transport_id != 0 ) {
+		m_convoy_resource = CR_NONE;
+	}
 	std::lock_guard guard( m_wrapobjs_mutex );
 	for ( auto* const wrapobj : m_wrapobjs ) {
 		const auto transport_it = wrapobj->value.find( "transport_id" );
@@ -189,6 +250,22 @@ void Unit::SetTransportId( const size_t transport_id ) {
 		ASSERT( embarked_it != wrapobj->value.end(), "unit wrapper has no is_embarked property" );
 		ASSERT( embarked_it->second->type == gse::VT_BOOL, "unit is_embarked property is not a bool" );
 		( (gse::value::Bool*)embarked_it->second )->value = m_transport_id != 0;
+
+		const auto convoy_it = wrapobj->value.find( "convoy_resource" );
+		ASSERT( convoy_it != wrapobj->value.end(), "unit wrapper has no convoy_resource property" );
+		ASSERT( convoy_it->second->type == gse::VT_STRING, "unit convoy_resource property is not a string" );
+		( (gse::value::String*)convoy_it->second )->value = GetConvoyResourceString( m_convoy_resource );
+	}
+}
+
+void Unit::SetConvoyResource( GSE_CALLABLE, const convoy_resource_t resource ) {
+	m_um->m_game->CheckRW( GSE_CALL );
+	if ( !IsValidConvoyOrder( m_def, m_terraforming, m_transport_id, resource ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit convoy order" );
+	}
+	if ( m_convoy_resource != resource ) {
+		m_convoy_resource = resource;
+		m_um->RefreshUnit( GSE_CALL, this );
 	}
 }
 
@@ -209,6 +286,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_fuel );
 	buf.WriteInt( unit->m_transport_id );
 	buf.WriteBool( unit->m_native_capture_attempted );
+	buf.WriteInt( unit->m_convoy_resource );
 	return buf;
 }
 
@@ -266,6 +344,10 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto native_capture_attempted = buf.GetRemaining() > 0
 		? buf.ReadBool()
 		: false;
+	const auto convoy_resource_value = buf.GetRemaining() > 0
+		? buf.ReadInt< int64_t >( "unit convoy resource" )
+		: static_cast< int64_t >( CR_NONE );
+	const auto convoy_resource = static_cast< convoy_resource_t >( convoy_resource_value );
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -291,6 +373,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	if ( transport_id == id ) {
 		THROW( "serialized unit cannot transport itself" );
 	}
+	if ( !IsValidConvoyOrder( def, terraforming, transport_id, convoy_resource ) ) {
+		THROW( "invalid serialized unit convoy order" );
+	}
 	return new Unit(
 		GSE_CALL,
 		um,
@@ -307,7 +392,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		home_base_id,
 		fuel,
 		transport_id,
-		native_capture_attempted
+		native_capture_attempted,
+		convoy_resource
 	);
 }
 
@@ -342,6 +428,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "fuel", Int, m_fuel )
 	WRAPIMPL_GET_CUSTOM( "transport_id", Int, m_transport_id )
 	WRAPIMPL_GET_PTR( "native_capture_attempted", m_native_capture_attempted )
+	WRAPIMPL_GET_CUSTOM( "convoy_resource", String, GetConvoyResourceString( m_convoy_resource ) )
 	WRAPIMPL_GET_CUSTOM( "is_embarked", Bool, m_transport_id != 0 )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
@@ -389,6 +476,19 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 		NATIVE_CALL( this ) {
 			N_EXPECT_ARGS( 0 );
 			m_um->DisembarkUnit( GSE_CALL, this );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"set_convoy_resource",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( resource_name, 0, String );
+			const auto resource = GetConvoyResourceFromString( resource_name );
+			if ( resource == CR_INVALID ) {
+				GSE_ERROR( gse::EC.INVALID_CALL, "Invalid convoy resource" );
+			}
+			SetConvoyResource( GSE_CALL, resource );
 			return VALUE( gse::value::Undefined );
 		} )
 	},

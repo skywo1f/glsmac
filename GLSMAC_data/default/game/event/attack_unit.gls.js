@@ -22,10 +22,14 @@ const restore_unit = (e, backup) => {
 			home_base_id: backup.home_base_id,
 			fuel: backup.fuel,
 			transport_id: backup.transport_id,
+			convoy_resource: backup.convoy_resource,
 		});
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
 	unit.set_fuel(backup.fuel);
+	if (#is_defined(unit.set_convoy_resource)) {
+		unit.set_convoy_resource(backup.convoy_resource);
+	}
 	unit.movement = backup.movement;
 	unit.morale = backup.morale;
 	unit.health = backup.health;

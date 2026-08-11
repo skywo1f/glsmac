@@ -16,6 +16,7 @@ const snapshot_unit = (unit) => {
 		home_base_id: #is_defined(unit.home_base_id) ? unit.home_base_id + 0 : 0,
 		fuel: #is_defined(unit.fuel) ? unit.fuel + 0 : 0,
 		transport_id: #is_defined(unit.transport_id) ? unit.transport_id + 0 : 0,
+		convoy_resource: #is_defined(unit.convoy_resource) ? '' + unit.convoy_resource : 'none',
 		native_capture_attempted: #is_defined(unit.native_capture_attempted)
 			? unit.native_capture_attempted == true : false,
 	};
@@ -34,6 +35,8 @@ const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 		home_base_id: transferred ? 0 : snapshot.home_base_id,
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
+		convoy_resource: transferred || !#is_defined(snapshot.convoy_resource)
+			? 'none' : snapshot.convoy_resource,
 	});
 	unit.movement = transferred ? 0.0 : snapshot.movement;
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;

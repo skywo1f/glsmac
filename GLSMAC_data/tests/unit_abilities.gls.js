@@ -12,6 +12,8 @@ test.assert(abilities.has(unit(['CleanReactor']), 'CleanReactor'));
 
 test.assert(abilities.get_support_cost(unit_def([])) == 1);
 test.assert(abilities.get_support_cost(unit(['CleanReactor'])) == 0);
+const supply_def = {abilities: [], weapon: 'SupplyTransport'};
+test.assert(abilities.get_support_cost(supply_def) == 0);
 test.assert(abilities.get_morale_bonus(unit_def([])) == 0);
 test.assert(abilities.get_morale_bonus(unit_def(['HighMorale'])) == 1);
 test.assert(abilities.get_police_effect(unit_def([])) == 1);

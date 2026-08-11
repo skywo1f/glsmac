@@ -9,6 +9,7 @@ return {
 		'diplomacy',
 		'probe_operations',
 		'alien_artifact',
+		'supply_transport',
 		'psi_gate',
 		'unit_upgrade',
 		'base_screen',

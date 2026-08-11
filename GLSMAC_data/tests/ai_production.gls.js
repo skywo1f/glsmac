@@ -82,6 +82,8 @@ const former = unit('Former', 0, 1, 1.0, 20, false, true);
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
 const probe_team = unit('ProbeTeam', 0, 1, 2.0, 40, false, false);
 probe_team.weapon = 'ProbeTeam';
+const supply_crawler = unit('SupplyCrawler', 0, 1, 1.0, 30, false, false);
+supply_crawler.weapon = 'SupplyTransport';
 const planet_buster_unit = unit('PlanetBuster', 99, 1, 12.0, 225, false, false);
 planet_buster_unit.weapon = 'PlanetBuster';
 const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
@@ -185,6 +187,16 @@ test.assert(production.score_unit(probe_team, probe_context) == null);
 probe_context.needs_probe = true;
 probe_context.needs_garrison = true;
 test.assert(production.score_unit(probe_team, probe_context) == null);
+
+let supply_context = context(false, false, false, false, 10);
+supply_context.needs_military = false;
+supply_context.needs_supply = true;
+test.assert(production.score_unit(supply_crawler, supply_context) != null);
+supply_context.needs_supply = false;
+test.assert(production.score_unit(supply_crawler, supply_context) == null);
+supply_context.needs_supply = true;
+supply_context.needs_garrison = true;
+test.assert(production.score_unit(supply_crawler, supply_context) == null);
 
 test.assert(production.score_project(command_nexus, context(false, true, false, false, 10)) == null);
 test.assert(production.score_project(command_nexus, context(false, false, true, false, 10)) == null);

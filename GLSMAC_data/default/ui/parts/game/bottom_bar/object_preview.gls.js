@@ -1,6 +1,7 @@
 const terraforming = #include('../../../../units/terraforming');
 const artifact_rules = #include('../../../../game/artifact_rules');
 const psi_gate_rules = #include('../../../../game/psi_gate_rules');
+const supply_rules = #include('../../../../game/supply_rules');
 
 return {
 
@@ -32,6 +33,29 @@ return {
 			unit,
 			this.p.game.get_player().id
 		);
+	},
+
+	has_supply_action: (unit) => {
+		if (!supply_rules.is_supply_transport(unit)) {
+			return false;
+		}
+		const player_id = this.p.game.get_player().id;
+		if (unit.convoy_resource != 'none' || !#is_defined(
+			supply_rules.get_contribution_error(this.p.game, unit, player_id)
+		)) {
+			return true;
+		}
+		for (resource of supply_rules.resource_types) {
+			if (!#is_defined(supply_rules.get_order_error(
+				this.p.game,
+				unit,
+				player_id,
+				resource
+			))) {
+				return true;
+			}
+		}
+		return false;
 	},
 
 	open_upgrade_popup: () => {
@@ -214,6 +238,9 @@ return {
 						'left'
 					);
 				}
+				if (#is_defined(object.convoy_resource) && object.convoy_resource != 'none') {
+					f_line('Convoy: ' + object.convoy_resource, 14, 'left');
+				}
 
 				if (
 					is_owned && object.transport_id == 0 &&
@@ -234,6 +261,14 @@ return {
 					this.action_unit = object;
 					this.action_mode = 'alien_artifact';
 					this.action_button.text = 'USE ARTIFACT';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (
+					is_owned && object.transport_id == 0 && this.has_supply_action(object)
+				) {
+					this.action_unit = object;
+					this.action_mode = 'supply_transport';
+					this.action_button.text = 'SUPPLY';
 					this.close_terraform_menu();
 					this.action_button.show();
 				} else if (
@@ -387,6 +422,9 @@ return {
 			} else if (this.action_mode == 'alien_artifact') {
 				p.modules.popup.set('alien_artifact', {unit: this.action_unit});
 				p.modules.popup.show('alien_artifact');
+			} else if (this.action_mode == 'supply_transport') {
+				p.modules.popup.set('supply_transport', {unit: this.action_unit});
+				p.modules.popup.show('supply_transport');
 			} else if (this.action_mode == 'psi_gate') {
 				p.modules.popup.set('psi_gate', {unit: this.action_unit});
 				p.modules.popup.show('psi_gate');
@@ -411,6 +449,11 @@ return {
 				return true;
 			}
 			if (e.code == 'U' && this.open_upgrade_popup()) {
+				return true;
+			}
+			if (this.action_mode == 'supply_transport' && e.code == 'O') {
+				p.modules.popup.set('supply_transport', {unit: this.action_unit});
+				p.modules.popup.show('supply_transport');
 				return true;
 			}
 			if (this.action_mode == 'terraform') {

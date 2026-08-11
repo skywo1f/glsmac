@@ -74,6 +74,7 @@ let found_quantum = false;
 let found_singularity = false;
 let found_fusion_transport = false;
 let found_singularity_planet_buster = false;
+let found_supply_crawler = false;
 for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const entry = units.definitions[i];
 	test.assert(!#is_defined(ids[entry.id]));
@@ -114,7 +115,8 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	test.assert(data.mineral_cost >= 10);
 	test.assert(
 		data.offense > 0 || data.can_found_base ||
-		data.can_terraform || data.cargo_capacity > 0
+		data.can_terraform || data.cargo_capacity > 0 ||
+		data.weapon == 'SupplyTransport'
 	);
 	test.assert(technologies.get_definition(data.required_technology) != null);
 	for (ability of data.abilities) {
@@ -154,6 +156,11 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		} else if (data.movement_per_turn > 1) {
 			found_fast_land_colony = true;
 		}
+	}
+	if (data.weapon == 'SupplyTransport') {
+		test.assert(data.movement_type == 'land');
+		test.assert(data.required_technology != '');
+		found_supply_crawler = true;
 	}
 	if (data.movement_type == 'water') {
 		found_sea_unit = true;
@@ -224,3 +231,4 @@ test.assert(found_quantum);
 test.assert(found_singularity);
 test.assert(found_fusion_transport);
 test.assert(found_singularity_planet_buster);
+test.assert(found_supply_crawler);

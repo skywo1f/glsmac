@@ -96,6 +96,7 @@ const no_armor = find_component(manifest.armors, 'NoArmor');
 const colony_module = find_component(manifest.weapons, 'ColonyModule');
 const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
 const troop_transport = find_component(manifest.weapons, 'TroopTransport');
+const supply_transport = find_component(manifest.weapons, 'SupplyTransport');
 const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
 const planet_buster = find_component(manifest.weapons, 'PlanetBuster');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
@@ -183,6 +184,10 @@ const make_definition = (
 			(chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
 	} else if (role == 'transport') {
 		name = reactor_name + ability_name + chassis.name + ' Transport';
+	} else if (role == 'supply') {
+		name = reactor_name + (
+			chassis.id == 'Infantry' ? 'Supply Crawler' : 'Supply ' + chassis.name
+		);
 	} else if (role == 'colony') {
 		name = reactor_name + (
 			chassis.id == 'Infantry' ? 'Colony Pod' : chassis.name + ' Colony Pod'
@@ -324,6 +329,21 @@ const add_milestone_designs = (technology_id) => {
 				continue;
 			}
 			add(chassis, troop_transport, no_armor, 'transport', []);
+		}
+	}
+	if (is_available(supply_transport, known)) {
+		for (chassis of manifest.chassis) {
+			if (
+				chassis.triad != 'land' || !is_available(chassis, known) ||
+				(
+					chassis.required_technology != technology_id &&
+					supply_transport.required_technology != technology_id &&
+					!reactor_changed
+				)
+			) {
+				continue;
+			}
+			add(chassis, supply_transport, no_armor, 'supply', []);
 		}
 	}
 	const missile = find_component(manifest.chassis, 'Missile');
