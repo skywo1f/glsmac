@@ -197,8 +197,8 @@ const get_error = (player, selection) => {
 	) {
 		return 'This equipment cannot use an air chassis';
 	}
-	if (weapon.id == 'TerraformingUnit' && chassis.triad != 'land') {
-		return 'Sea and air terraformers are not supported yet';
+	if (weapon.id == 'TerraformingUnit' && chassis.triad == 'air') {
+		return 'Terraforming equipment requires a land or sea chassis';
 	}
 	if (weapon.id == 'SupplyTransport' && chassis.triad != 'land') {
 		return 'Supply transports require a land chassis';

@@ -63,6 +63,7 @@ let found_clean_unit = false;
 let found_trained_unit = false;
 let found_super_former = false;
 let found_fungicidal_former = false;
+let found_sea_former = false;
 let found_probe_team = false;
 let found_amphibious_unit = false;
 let found_land_sam = false;
@@ -145,8 +146,11 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		}
 	}
 	if (data.can_terraform) {
-		test.assert(data.movement_type == 'land');
+		test.assert(data.movement_type == 'land' || data.movement_type == 'water');
 		test.assert(data.weapon == 'TerraformingUnit');
+		if (data.movement_type == 'water') {
+			found_sea_former = true;
+		}
 	}
 	if (data.can_found_base) {
 		test.assert(data.movement_type == 'land' || data.movement_type == 'water');
@@ -220,6 +224,7 @@ test.assert(found_clean_unit);
 test.assert(found_trained_unit);
 test.assert(found_super_former);
 test.assert(found_fungicidal_former);
+test.assert(found_sea_former);
 test.assert(found_probe_team);
 test.assert(found_amphibious_unit);
 test.assert(found_land_sam);

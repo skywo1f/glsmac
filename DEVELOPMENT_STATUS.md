@@ -77,6 +77,10 @@ scenarios, for:
   sea-transport capacity scaling, and reactor-aware AI production, combat, and
   upgrade valuation; advanced reactor upgrades cannot be reversed into weaker
   reactors;
+- generated land and sea Former families support original water terraforming:
+  Kelp Farms, Mining Platforms, Tidal Harnesses, and sea fungus; Workshop
+  designs, contextual player controls, terrain-aware AI production and routing,
+  save serialization, and installed-asset runtime orders share the same rules;
 - original-SMAC Supply Crawlers have generated land designs across available
   chassis and all four reactors, require no mineral support, convoy improved
   off-base tile yields or one resource between owned bases with post-multiplier
@@ -242,8 +246,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
-- remaining Unit Workshop parity: permanent design retirement, sea Formers,
-  and original behaviors for currently unavailable
+- remaining Unit Workshop parity: permanent design retirement and original
+  behaviors for currently unavailable
   abilities such as Drop Pods, Cloaking, Deep Pressure Hull, and Nerve Gas;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;

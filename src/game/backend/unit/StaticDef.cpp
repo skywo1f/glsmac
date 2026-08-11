@@ -122,7 +122,10 @@ StaticDef::StaticDef(
 			m_can_found_base &&
 			m_movement_type != MT_LAND && m_movement_type != MT_WATER
 		) ||
-		( m_can_terraform && m_movement_type != MT_LAND )
+		(
+			m_can_terraform &&
+			m_movement_type != MT_LAND && m_movement_type != MT_WATER
+		)
 	) {
 		THROW( "invalid static unit definition: " + m_id );
 	}
@@ -222,7 +225,10 @@ StaticDef* StaticDef::Deserialize(
 	}
 	if (
 		( can_found_base && serialized_movement_type != MT_LAND && serialized_movement_type != MT_WATER ) ||
-		( can_terraform && serialized_movement_type != MT_LAND )
+		(
+			can_terraform &&
+			serialized_movement_type != MT_LAND && serialized_movement_type != MT_WATER
+		)
 	) {
 		THROW( "invalid serialized movement type for founding or terraforming unit" );
 	}

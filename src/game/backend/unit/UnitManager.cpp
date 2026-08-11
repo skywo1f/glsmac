@@ -540,7 +540,10 @@ WRAPIMPL_BEGIN( UnitManager )
 					}
 					if (
 						( can_found_base && movement_type != unit::MT_LAND && movement_type != unit::MT_WATER ) ||
-						( can_terraform && movement_type != unit::MT_LAND )
+						(
+							can_terraform &&
+							movement_type != unit::MT_LAND && movement_type != unit::MT_WATER
+						)
 					) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid movement type for founding or terraforming unit: " + id );
 					}

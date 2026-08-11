@@ -19,7 +19,7 @@
 		if (ui_started && runtime_complete && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'SEA_COLONY_RUNTIME_PASS: validated coastal production, naval docking, sea founding, and initial naval production'
+				'SEA_COLONY_RUNTIME_PASS: validated coastal production, naval docking, sea founding, and sea Former orders'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -72,6 +72,7 @@
 
 			let sea_colony_def = null;
 			let naval_def = null;
+			let sea_former_def = null;
 			for (def of game.get_um().get_unit_defs()) {
 				if (
 					def.is_water && def.can_found_base && def.chassis == 'Foil' &&
@@ -87,9 +88,15 @@
 				) {
 					naval_def = def;
 				}
+				if (
+					def.is_water && def.can_terraform &&
+					(sea_former_def == null || def.mineral_cost < sea_former_def.mineral_cost)
+				) {
+					sea_former_def = def;
+				}
 			}
-			if (sea_colony_def == null || naval_def == null) {
-				fail('generated sea colony or conventional naval definition is missing');
+			if (sea_colony_def == null || naval_def == null || sea_former_def == null) {
+				fail('generated sea colony, naval, or sea Former definition is missing');
 				return;
 			}
 
@@ -131,7 +138,8 @@
 			});
 			if (
 				!port.can_set_production('unit', sea_colony_def.id) ||
-				!port.can_set_production('unit', naval_def.id)
+				!port.can_set_production('unit', naval_def.id) ||
+				!port.can_set_production('unit', sea_former_def.id)
 			) {
 				fail('coastal land base cannot produce naval units');
 				return;
@@ -167,6 +175,28 @@
 				return;
 			}
 
+			let former_site = null;
+			for (let former_y = 0; former_y < tm.get_map_height() && former_site == null; former_y++) {
+				for (let former_x = 0; former_x < tm.get_map_width() && former_site == null; former_x++) {
+					if (former_x % 2 != former_y % 2) {
+						continue;
+					}
+					const candidate = tm.get_tile(former_x, former_y);
+					if (
+						candidate != sea_site && candidate.is_water &&
+						candidate.get_base() == null && #sizeof(candidate.get_units()) == 0 &&
+						!candidate.features.monolith && !candidate.features.xenofungus &&
+						!candidate.terraforming.farm
+					) {
+						former_site = candidate;
+					}
+				}
+			}
+			if (former_site == null) {
+				fail('could not find an open sea Former work site');
+				return;
+			}
+
 			const naval_unit = game.get_um().spawn_unit({
 				def: naval_def.id,
 				owner: player,
@@ -178,6 +208,13 @@
 				def: sea_colony_def.id,
 				owner: player,
 				tile: sea_site,
+				morale: 2,
+				health: 1.0,
+			});
+			const sea_former = game.get_um().spawn_unit({
+				def: sea_former_def.id,
+				owner: player,
+				tile: former_site,
 				morale: 2,
 				health: 1.0,
 			});
@@ -201,13 +238,37 @@
 								game.get_um().has_unit(colony_id) || production == null ||
 								!production.is_water || production.is_native ||
 								production.can_found_base ||
-								!sea_base.can_set_production('unit', sea_colony_def.id)
+								!sea_base.can_set_production('unit', sea_colony_def.id) ||
+								!sea_base.can_set_production('unit', sea_former_def.id)
 							) {
 								fail('live sea-base state or initial production is invalid');
 								return;
 							}
-							runtime_complete = true;
-							finish_if_ready();
+							game.event('terraform_tile', {unit: sea_former, type: 'farm'});
+							#async(500, () => {
+								const order_active =
+									sea_former.terraforming == 'farm' &&
+									sea_former.terraforming_turns_remaining > 0 &&
+									sea_former.terraforming_turns_remaining <= 4;
+								const order_complete =
+									sea_former.terraforming == 'none' &&
+									sea_former.terraforming_turns_remaining == 0 &&
+									former_site.terraforming.farm;
+								if (
+									(!order_active && !order_complete) ||
+									sea_former.movement != 0.0
+								) {
+									fail(
+										'sea Former state is order=' + sea_former.terraforming +
+										', turns=' + #to_string(sea_former.terraforming_turns_remaining) +
+										', movement=' + #to_string(sea_former.movement) +
+										', kelp=' + #to_string(former_site.terraforming.farm)
+									);
+									return;
+								}
+								runtime_complete = true;
+								finish_if_ready();
+							});
 						});
 					}, 0);
 				}, 0);

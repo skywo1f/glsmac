@@ -40,6 +40,10 @@ static const bool IsValidTerraformingOrder(
 		terraforming != map::tile::TERRAFORMING_NONE &&
 		( terraforming & static_cast< map::tile::terraforming_t >( ~map::tile::TERRAFORMING_ALL ) ) == 0 &&
 		( terraforming & ( terraforming - 1 ) ) == 0;
+	const bool terrain_matches = tile && (
+		( def->GetMovementType() == MT_LAND && !tile->is_water_tile ) ||
+		( def->GetMovementType() == MT_WATER && tile->is_water_tile )
+	);
 	return
 		(
 			terraforming == map::tile::TERRAFORMING_NONE &&
@@ -50,8 +54,7 @@ static const bool IsValidTerraformingOrder(
 			turns_remaining > 0 &&
 			turns_remaining <= Unit::MAX_TERRAFORMING_TURNS &&
 			def->m_can_terraform &&
-			tile &&
-			!tile->is_water_tile
+			terrain_matches
 		);
 }
 
@@ -217,6 +220,20 @@ void Unit::SetTerraformingOrder(
 	if ( m_terraforming != terraforming || m_terraforming_turns_remaining != turns_remaining ) {
 		m_terraforming = terraforming;
 		m_terraforming_turns_remaining = turns_remaining;
+		{
+			std::lock_guard guard( m_wrapobjs_mutex );
+			for ( auto* const wrapobj : m_wrapobjs ) {
+				const auto terraforming_it = wrapobj->value.find( "terraforming" );
+				ASSERT( terraforming_it != wrapobj->value.end(), "unit wrapper has no terraforming property" );
+				ASSERT( terraforming_it->second->type == gse::VT_STRING, "unit terraforming property is not a string" );
+				( (gse::value::String*)terraforming_it->second )->value = map::tile::Tile::GetTerraformingString( m_terraforming );
+
+				const auto turns_it = wrapobj->value.find( "terraforming_turns_remaining" );
+				ASSERT( turns_it != wrapobj->value.end(), "unit wrapper has no terraforming_turns_remaining property" );
+				ASSERT( turns_it->second->type == gse::VT_INT, "unit terraforming_turns_remaining property is not an int" );
+				( (gse::value::Int*)turns_it->second )->value = m_terraforming_turns_remaining;
+			}
+		}
 		m_um->RefreshUnit( GSE_CALL, this );
 	}
 }

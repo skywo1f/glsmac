@@ -145,6 +145,10 @@ const score_unit = (def, context) => {
 			: null;
 	}
 	if (def.can_terraform) {
+		const is_water = #is_defined(def.is_water) && def.is_water;
+		if (#is_defined(context.base_is_water) && is_water != context.base_is_water) {
+			return null;
+		}
 		return context.needs_former
 			? 45000 + get_priority(context, 'terraforming', 70) * 500 -
 				get_mineral_cost(def, context) + #round(def.movement_per_turn * 1000.0) +

@@ -10,6 +10,7 @@ const unit = (id, offense, defense, movement, cost, can_found_base, can_terrafor
 		mineral_cost: cost,
 		can_found_base: can_found_base,
 		can_terraform: can_terraform,
+		is_water: false,
 		weapon: '',
 		abilities: [],
 	};
@@ -79,6 +80,8 @@ fusion_laser.reactor = 'FusionReactor';
 fusion_laser.reactor_power = 2;
 const defender = unit('Defender', 1, 2, 1.0, 20, false, false);
 const former = unit('Former', 0, 1, 1.0, 20, false, true);
+const sea_former = unit('SeaFormer', 0, 1, 4.0, 60, false, true);
+sea_former.is_water = true;
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
 const probe_team = unit('ProbeTeam', 0, 1, 2.0, 40, false, false);
 probe_team.weapon = 'ProbeTeam';
@@ -138,6 +141,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 	return {
 		needs_garrison: garrison,
 		needs_former: needs_former,
+		base_is_water: false,
 		needs_colony: needs_colony,
 		needs_probe: false,
 		needs_military: true,
@@ -159,6 +163,11 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 
 test.assert(production.choose(base, all_units, all_facilities, context(true, true, true, true, 10)).id == 'Defender');
 test.assert(production.choose(base, all_units, all_facilities, context(false, true, true, true, 10)).id == 'Former');
+let sea_former_context = context(false, true, false, false, 10);
+sea_former_context.base_is_water = true;
+test.assert(production.choose(base, [former, sea_former], [], sea_former_context).id == 'SeaFormer');
+test.assert(production.score_unit(former, sea_former_context) == null);
+test.assert(production.score_unit(sea_former, context(false, true, false, false, 10)) == null);
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, true, true, 10)).id == 'Colony');
 let sea_expansion_context = context(false, false, true, false, 10);
 sea_expansion_context.needs_sea_colony = true;

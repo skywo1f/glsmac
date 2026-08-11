@@ -75,6 +75,29 @@ return {
 		this.action_button.active = false;
 	},
 
+	refresh_terraform_menu: () => {
+		if (this.action_unit == null) {
+			return;
+		}
+		const tile = this.action_unit.get_tile();
+		const player = this.p.game.get_player();
+		let top = 0;
+		for (type of terraforming.order_ids) {
+			const button = this.terraform_buttons[type];
+			const order = terraforming.get_order(type);
+			if (terraforming.get_unavailable_reason(tile, player, type) != null) {
+				button.hide();
+				continue;
+			}
+			button.text = terraforming.get_order_name(type, tile.is_water) +
+				' (' + #to_string(order.turns) + ')';
+			button.top = top;
+			button.show();
+			top += 18;
+		}
+		this.terraform_menu.height = top > 0 ? top : 18;
+	},
+
 	on_terraform_click: (e) => {
 		if (this.action_unit != null && this.action_mode == 'terraform') {
 			this.p.game.event('terraform_tile', {
@@ -107,6 +130,7 @@ return {
 				value: type,
 			});
 			button.on('click', this.on_terraform_click);
+			this.terraform_buttons[type] = button;
 			top += 18;
 		}
 		this.terraform_menu.height = top > 0 ? top : 18;
@@ -367,6 +391,7 @@ return {
 		this.action_mode = null;
 		this.terraform_menu_open = false;
 		this.terraform_menu = null;
+		this.terraform_buttons = {};
 
 		this.p = p;
 		this.um = p.game.get_um();
@@ -412,6 +437,7 @@ return {
 				if (this.terraform_menu_open) {
 					this.close_terraform_menu();
 				} else {
+					this.refresh_terraform_menu();
 					this.terraform_menu.show();
 					this.terraform_menu_open = true;
 					this.action_button.active = true;

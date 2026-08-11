@@ -28,6 +28,7 @@ const orders = {
 	},
 	farm: {
 		name: 'Farm',
+		sea_name: 'Kelp Farm',
 		turns: 4,
 		required_technology: '',
 		changes: {forest: false, borehole: false, farm: true},
@@ -40,12 +41,14 @@ const orders = {
 	},
 	mine: {
 		name: 'Mine',
+		sea_name: 'Mining Platform',
 		turns: 8,
 		required_technology: '',
 		changes: {forest: false, solar: false, mirror: false, borehole: false, mine: true},
 	},
 	solar: {
 		name: 'Solar Collector',
+		sea_name: 'Tidal Harness',
 		turns: 4,
 		required_technology: '',
 		changes: {forest: false, mine: false, mirror: false, borehole: false, solar: true},
@@ -97,12 +100,14 @@ const orders = {
 	},
 	remove_fungus: {
 		name: 'Remove Fungus',
+		sea_name: 'Remove Sea Fungus',
 		turns: 6,
 		required_technology: '',
 		feature_changes: {xenofungus: false},
 	},
 	plant_fungus: {
 		name: 'Plant Fungus',
+		sea_name: 'Plant Sea Fungus',
 		turns: 6,
 		required_technology: 'EcologicalEngineering',
 		changes: {
@@ -137,11 +142,27 @@ const order_ids = [
 	'plant_fungus',
 ];
 
+const sea_order_ids = {
+	farm: true,
+	mine: true,
+	solar: true,
+	remove_fungus: true,
+	plant_fungus: true,
+};
+
 const get_order = (type) => {
 	if (!#is_defined(orders[type])) {
 		return null;
 	}
 	return orders[type];
+};
+
+const get_order_name = (type, is_water) => {
+	const order = get_order(type);
+	if (order == null) {
+		return '';
+	}
+	return is_water && #is_defined(order.sea_name) ? order.sea_name : order.name;
 };
 
 const has_technology = (player, technology_id) => {
@@ -157,8 +178,8 @@ const get_unavailable_reason = (tile, player, type) => {
 	if (order == null) {
 		return 'Unknown terraforming order';
 	}
-	if (tile.is_water) {
-		return 'Land Formers cannot terraform sea squares';
+	if (tile.is_water && !#is_defined(sea_order_ids[type])) {
+		return 'This improvement cannot be built at sea';
 	}
 	if (tile.get_base() != null) {
 		return 'This improvement cannot be built at a base';
@@ -185,7 +206,10 @@ const get_unavailable_reason = (tile, player, type) => {
 	if (type != 'remove_fungus' && type != 'plant_fungus' && tile.terraforming[type]) {
 		return 'Tile already has this improvement';
 	}
-	if ((type == 'farm' || type == 'soil_enricher') && tile.rockiness == 3) {
+	if (
+		!tile.is_water &&
+		(type == 'farm' || type == 'soil_enricher') && tile.rockiness == 3
+	) {
 		return 'Farms cannot be built in rocky squares';
 	}
 	if (type == 'soil_enricher' && !tile.terraforming.farm) {
@@ -231,6 +255,7 @@ return {
 	orders: orders,
 	order_ids: order_ids,
 	get_order: get_order,
+	get_order_name: get_order_name,
 	get_unavailable_reason: get_unavailable_reason,
 	advance_order: advance_order,
 };

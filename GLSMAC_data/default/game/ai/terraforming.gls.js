@@ -9,6 +9,21 @@ const get_order = (tile, prioritize_nutrients, player) => {
 	if (tile.features.xenofungus) {
 		return is_available('remove_fungus') ? 'remove_fungus' : null;
 	}
+	if (tile.is_water) {
+		if (!tile.terraforming.farm) {
+			return is_available('farm') ? 'farm' : null;
+		}
+		if (tile.terraforming.mine || tile.terraforming.solar) {
+			return null;
+		}
+		const prefer_solar = #is_defined(tile.bonuses) && tile.bonuses.energy;
+		if (prefer_solar && is_available('solar')) {
+			return 'solar';
+		}
+		return is_available('mine')
+			? 'mine'
+			: (is_available('solar') ? 'solar' : null);
+	}
 	if (tile.rockiness == 3) {
 		if (is_available('mine')) {
 			return 'mine';

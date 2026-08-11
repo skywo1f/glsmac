@@ -343,6 +343,8 @@ const update_diplomacy = (game, player) => {
 
 const get_strategy_metrics = (game, player, bases, units) => {
 	let former_count = 0;
+	let land_former_count = 0;
+	let sea_former_count = 0;
 	let colony_count = 0;
 	let sea_colony_count = 0;
 	let combat_count = 0;
@@ -352,6 +354,11 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		const def = unit.get_def();
 		if (def.can_terraform) {
 			former_count++;
+			if (def.is_water) {
+				sea_former_count++;
+			} else {
+				land_former_count++;
+			}
 		}
 		if (def.can_found_base) {
 			colony_count++;
@@ -412,6 +419,8 @@ const get_strategy_metrics = (game, player, bases, units) => {
 			#sizeof(game.get_players())
 		),
 		former_count: former_count,
+		land_former_count: land_former_count,
+		sea_former_count: sea_former_count,
 		colony_count: colony_count,
 		sea_colony_count: sea_colony_count,
 		sea_base_count: sea_base_count,
@@ -603,6 +612,8 @@ const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 const queue_production = (game, player, bases, units) => {
 	const metrics = get_strategy_metrics(game, player, bases, units);
 	let former_count = metrics.former_count;
+	let land_former_count = metrics.land_former_count;
+	let sea_former_count = metrics.sea_former_count;
 	let colony_count = metrics.colony_count;
 	let sea_colony_count = metrics.sea_colony_count;
 	let combat_count = metrics.combat_count;
@@ -825,7 +836,10 @@ const queue_production = (game, player, bases, units) => {
 		}
 		const context = {
 			needs_garrison: garrison_count < required_garrison,
-			needs_former: former_count < #sizeof(bases),
+			needs_former: base_tile.is_water
+				? sea_former_count < metrics.sea_base_count
+				: land_former_count < #sizeof(bases) - metrics.sea_base_count,
+			base_is_water: base_tile.is_water,
 			needs_colony: needs_colony,
 			needs_sea_colony:
 				needs_colony && !base_tile.is_water && base_is_coastal &&
@@ -915,6 +929,11 @@ const queue_production = (game, player, bases, units) => {
 			}
 			if (selected.def.can_terraform) {
 				former_count++;
+				if (selected.def.is_water) {
+					sea_former_count++;
+				} else {
+					land_former_count++;
+				}
 			}
 			if (selected.def.can_found_base) {
 				colony_count++;

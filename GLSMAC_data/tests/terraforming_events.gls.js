@@ -72,6 +72,7 @@ tile = {
 };
 
 let can_terraform = true;
+let former_is_water = false;
 let former_abilities = [];
 let unit = null;
 unit = {
@@ -82,8 +83,13 @@ unit = {
 	moved_this_turn: false,
 	terraforming: 'none',
 	terraforming_turns_remaining: 0,
+	transport_id: 0,
 	get_def: () => {
-		return {can_terraform: can_terraform, abilities: former_abilities};
+		return {
+			can_terraform: can_terraform,
+			is_water: former_is_water,
+			abilities: former_abilities,
+		};
 	},
 	get_tile: () => {
 		return tile;
@@ -139,9 +145,24 @@ turn_complete = false;
 can_terraform = false;
 test.assert(#is_defined(terraform_tile.validate(event)));
 can_terraform = true;
+event.data.unit.transport_id = 12;
+test.assert(#is_defined(terraform_tile.validate(event)));
+event.data.unit.transport_id = 0;
 tile.is_water = true;
 test.assert(#is_defined(terraform_tile.validate(event)));
+former_is_water = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+test.assert(terraforming.get_order_name('farm', true) == 'Kelp Farm');
+event.data.type = 'mine';
+test.assert(!#is_defined(terraform_tile.validate(event)));
+event.data.type = 'solar';
+test.assert(!#is_defined(terraform_tile.validate(event)));
+event.data.type = 'road';
+test.assert(#is_defined(terraform_tile.validate(event)));
 tile.is_water = false;
+test.assert(#is_defined(terraform_tile.validate(event)));
+former_is_water = false;
+event.data.type = 'farm';
 tile.features.xenofungus = true;
 test.assert(#is_defined(terraform_tile.validate(event)));
 tile.features.xenofungus = false;

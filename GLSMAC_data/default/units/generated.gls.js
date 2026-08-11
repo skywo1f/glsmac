@@ -401,8 +401,11 @@ const add_milestone_designs = (technology_id) => {
 		}
 	}
 
-	const former_chassis = chassis_by_triad['land'];
-	if (#is_defined(former_chassis) && is_available(terraforming_unit, known)) {
+	for (former_triad of ['land', 'sea']) {
+		const former_chassis = chassis_by_triad[former_triad];
+		if (!#is_defined(former_chassis) || !is_available(terraforming_unit, known)) {
+			continue;
+		}
 		add(former_chassis, terraforming_unit, no_armor, 'former', []);
 		let former_abilities = [];
 		for (ability_id of ['SuperFormer', 'FungicideTanks']) {

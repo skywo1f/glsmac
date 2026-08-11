@@ -50,6 +50,21 @@ test.assert(preview.name == 'Super Former');
 test.assert(preview.data.can_terraform);
 test.assert(preview.data.abilities == ['SuperFormer']);
 
+known.DoctrineFlexibility = true;
+const sea_former = selection(
+	'Foil', 'TerraformingUnit', 'NoArmor', 'FissionPlant', []
+);
+preview = rules.get_preview(game, player, sea_former);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.name == 'Foil Former');
+test.assert(preview.data.can_terraform && preview.data.movement_type == 'water');
+
+known.DoctrineAirPower = true;
+const air_former = selection(
+	'Needlejet', 'TerraformingUnit', 'NoArmor', 'FissionPlant', []
+);
+test.assert(#is_defined(rules.get_error(player, air_former)));
+
 const illegal_super_scout = selection(
 	'Infantry', 'HandWeapons', 'NoArmor', 'FissionPlant', ['SuperFormer']
 );

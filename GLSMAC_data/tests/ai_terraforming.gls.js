@@ -13,6 +13,7 @@ const make_tile = (moisture, rockiness, nutrients, minerals, energy) => {
 		is_water: false,
 		moisture: moisture,
 		rockiness: rockiness,
+		bonuses: {nutrient: false, minerals: false, energy: false},
 		features: {monolith: false, xenofungus: false},
 		terraforming: {
 			road: false,
@@ -77,6 +78,25 @@ connected.terraforming.road = true;
 known_technologies = {MonopoleMagnets: true};
 test.assert(terraforming.get_order(connected, false, owner) == 'mag_tube');
 known_technologies = {};
+
+const sea = make_tile(0, 0, 1, 0, 1);
+sea.is_water = true;
+test.assert(terraforming.get_order(sea, true, owner) == 'farm');
+sea.terraforming.farm = true;
+test.assert(terraforming.get_order(sea, false, owner) == 'mine');
+sea.terraforming.mine = true;
+test.assert(terraforming.get_order(sea, false, owner) == null);
+
+const energy_sea = make_tile(0, 0, 1, 0, 3);
+energy_sea.is_water = true;
+energy_sea.terraforming.farm = true;
+energy_sea.bonuses.energy = true;
+test.assert(terraforming.get_order(energy_sea, false, owner) == 'solar');
+
+const sea_fungus = make_tile(0, 0, 1, 0, 1);
+sea_fungus.is_water = true;
+sea_fungus.features.xenofungus = true;
+test.assert(terraforming.get_order(sea_fungus, false, owner) == 'remove_fungus');
 
 const food = make_tile(2, 1, 3, 0, 0);
 const minerals = make_tile(1, 2, 0, 3, 0);

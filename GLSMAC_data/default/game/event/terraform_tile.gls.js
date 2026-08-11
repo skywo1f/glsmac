@@ -21,8 +21,12 @@ return {
 		if (unit.health <= 0.0) {
 			return 'Dead unit cannot terraform';
 		}
-		if (!unit.get_def().can_terraform) {
+		const def = unit.get_def();
+		if (!def.can_terraform) {
 			return 'Only Formers can terraform terrain';
+		}
+		if (unit.transport_id != 0) {
+			return 'An embarked Former cannot terraform terrain';
 		}
 		if (unit.terraforming != 'none') {
 			return 'Former already has a terraforming order';
@@ -32,6 +36,12 @@ return {
 		}
 
 		const tile = unit.get_tile();
+		if (tile.is_water && !def.is_water) {
+			return 'Land Formers cannot terraform sea squares';
+		}
+		if (!tile.is_water && def.is_water) {
+			return 'Sea Formers cannot terraform land squares';
+		}
 		if (tile.is_locked()) {
 			return 'Terraforming site is locked';
 		}
