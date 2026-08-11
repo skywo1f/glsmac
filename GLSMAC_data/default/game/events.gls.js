@@ -61,6 +61,7 @@ return (game) => {
 		'contribute_supply_transport',
 		'teleport_unit',
 		'upgrade_unit',
+		'upgrade_unit_design',
 		'fungal_bloom',
 		'declare_victory',
 		'complete_turn',

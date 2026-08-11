@@ -17,7 +17,7 @@
 			exit_scheduled = true;
 			#print(
 				'UNIT_WORKSHOP_RUNTIME_PASS: faction design synchronized, remained private, ' +
-				'entered production, and completed an obsolescence cycle'
+				'entered production, completed an obsolescence cycle, and bulk-upgraded units'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -52,6 +52,20 @@
 				fail('two land bases are required');
 				return;
 			}
+			let bulk_units = [];
+			let bulk_energy = 0;
+			let bulk_cost = 0;
+			const first = game.get_um().spawn_unit({
+				def: 'ScoutPatrol', owner: player, tile: own_base.get_tile(),
+				morale: 4, health: 0.7, home_base_id: own_base.id,
+			});
+			first.movement = 0.25;
+			first.moved_this_turn = true;
+			game.get_um().spawn_unit({
+				def: 'ScoutPatrol', owner: player, tile: own_base.get_tile(),
+				morale: 2, health: 1.0, home_base_id: own_base.id,
+			});
+			player.set_energy_credits(10000);
 
 			const selection = {
 				chassis: 'Infantry',
@@ -146,10 +160,63 @@
 				if (phase == 4) {
 					const production = own_base.get_production();
 					if (#is_defined(production) && production.id == preview.id) {
-						runtime_complete = true;
-						finish_if_ready();
+						bulk_units = [];
+						for (unit of game.get_um().get_units(true)) {
+							if (unit.owner == player.id && unit.def == 'ScoutPatrol') {
+								bulk_units :+{
+									id: unit.id,
+									movement: unit.movement,
+									moved_this_turn: unit.moved_this_turn,
+									morale: unit.morale,
+									health: unit.health,
+								};
+							}
+						}
+						bulk_energy = player.get_energy_credits();
+						const bulk = game.get('f_unit_upgrade_get_bulk_preview')(
+							player,
+							game.get_um().get_unit(bulk_units[0].id).get_def(),
+							definition
+						);
+						if (#is_defined(bulk.error) || bulk.count != #sizeof(bulk_units)) {
+							fail(
+								#is_defined(bulk.error)
+									? 'bulk-upgrade preview is invalid: ' + bulk.error
+									: 'bulk-upgrade count is ' + #to_string(bulk.count) +
+										', expected ' + #to_string(#sizeof(bulk_units))
+							);
+							return false;
+						}
+						bulk_cost = bulk.total_cost;
+						phase = 5;
+						game.event('upgrade_unit_design', {
+							source_def_id: 'ScoutPatrol',
+							target_def_id: preview.id,
+						});
+						return true;
+					}
+				}
+				if (phase == 5) {
+					for (snapshot of bulk_units) {
+						if (!game.get_um().has_unit(snapshot.id)) { return true; }
+						const unit = game.get_um().get_unit(snapshot.id);
+						if (unit.def == 'ScoutPatrol') { return true; }
+						if (
+							unit.def != preview.id || unit.movement != snapshot.movement ||
+							unit.moved_this_turn != snapshot.moved_this_turn ||
+							unit.morale != snapshot.morale || unit.health != snapshot.health
+						) {
+							fail('bulk upgrade did not preserve unit state');
+							return false;
+						}
+					}
+					if (player.get_energy_credits() != bulk_energy - bulk_cost) {
+						fail('bulk upgrade energy charge is invalid');
 						return false;
 					}
+					runtime_complete = true;
+					finish_if_ready();
+					return false;
 				}
 				if (wait_ticks >= 100) {
 					fail('Workshop event or production update timed out');

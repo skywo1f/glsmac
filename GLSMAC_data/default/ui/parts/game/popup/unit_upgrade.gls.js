@@ -7,8 +7,9 @@ return {
 		this.target_select = null;
 		this.status_text = null;
 		this.upgrade_button = null;
+		this.bulk_upgrade_button = null;
 
-		return p.create('UNIT UPGRADE', 500, 148, (body, cb) => {
+		return p.create('UNIT UPGRADE', 500, 172, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Design:', left: 10, top: 12});
 			this.target_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -43,6 +44,20 @@ return {
 				}
 				return true;
 			});
+
+			this.bulk_upgrade_button = body.button({
+				class: 'game-popup-button', text: '', top: 148,
+			});
+			this.bulk_upgrade_button.on('click', (e) => {
+				if (this.unit != null && this.target != null) {
+					p.game.event('upgrade_unit_design', {
+						source_def_id: this.unit.def,
+						target_def_id: this.target.id,
+					});
+					cb(true);
+				}
+				return true;
+			});
 		});
 	},
 
@@ -59,6 +74,7 @@ return {
 
 	refresh_status: () => {
 		this.upgrade_button.hide();
+		this.bulk_upgrade_button.hide();
 		if (this.unit == null || this.target == null) {
 			this.status_text.text = 'No compatible prototyped design is available.';
 			return;
@@ -69,18 +85,29 @@ return {
 			player.id,
 			this.target.id
 		);
-		if (#is_defined(error)) {
-			this.status_text.text = error;
-			return;
-		}
 		const cost = this.p.game.get('f_unit_upgrade_get_cost')(
 			player,
 			this.unit.get_def(),
 			this.target
 		);
-		this.status_text.text = 'Cost: ' + #to_string(cost) + ' energy credits. ' +
-			#to_string(player.get_energy_credits()) + ' available.';
-		this.upgrade_button.show();
+		this.status_text.text = #is_defined(error)
+			? error
+			: 'Cost: ' + #to_string(cost) + ' energy credits. ' +
+				#to_string(player.get_energy_credits()) + ' available.';
+		if (!#is_defined(error)) {
+			this.upgrade_button.show();
+		}
+		const bulk = this.p.game.get('f_unit_upgrade_get_bulk_preview')(
+			player,
+			this.unit.get_def(),
+			this.target
+		);
+		if (!#is_defined(bulk.error)) {
+			this.bulk_upgrade_button.text = 'Upgrade All ' +
+				#to_string(bulk.count) + (bulk.count == 1 ? ' Unit' : ' Units') +
+				' (' + #to_string(bulk.total_cost) + ' EC)';
+			this.bulk_upgrade_button.show();
+		}
 	},
 
 	on_show: () => {

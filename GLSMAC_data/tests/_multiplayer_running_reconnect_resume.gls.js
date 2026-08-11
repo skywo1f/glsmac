@@ -155,6 +155,7 @@
 			let def = null;
 			let own_base = null;
 			let other_base = null;
+			let upgraded_unit_found = false;
 			for (candidate of game.get_um().get_unit_defs()) {
 				if (candidate.id == id) {
 					def = candidate;
@@ -169,6 +170,12 @@
 					other_base = candidate;
 				}
 			}
+			for (unit of game.get_um().get_units(true)) {
+				if (unit.owner == player.id && unit.def == id) {
+					upgraded_unit_found = true;
+					break;
+				}
+			}
 			if (
 				def == null || def.name != workshop_design_name ||
 				def.owner_player_id != player.id || def.chassis != 'Infantry' ||
@@ -176,6 +183,7 @@
 				def.reactor != 'FissionPlant' || def.reactor_power != 1 ||
 				def.offense != 1 || def.defense != 1 ||
 				own_base == null || other_base == null ||
+				!upgraded_unit_found ||
 				!player.is_unit_design_obsolete(id) ||
 				own_base.can_set_production('unit', id) ||
 				other_base.can_set_production('unit', id)

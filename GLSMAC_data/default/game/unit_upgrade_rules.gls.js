@@ -146,6 +146,88 @@ const get_cost = (game, player, source, target) => {
 	return cost;
 };
 
+const get_bulk_units = (game, player, source) => {
+	let result = [];
+	for (unit of game.get_um().get_units(true)) {
+		if (unit.owner == player.id && unit.def == source.id) {
+			result :+unit;
+		}
+	}
+	return result;
+};
+
+const get_bulk_plan = (game, player, source, target) => {
+	if (source == null || target == null) {
+		return {error: 'Bulk upgrade requires source and target designs'};
+	}
+	if (!is_compatible(source, target)) {
+		return {error: 'Target design is not a legal upgrade for this unit type'};
+	}
+	if (!is_available(player, target)) {
+		return {
+			error: prototype_rules.is_prototype(player, target)
+				? 'Target design must be prototyped before units can upgrade to it'
+				: 'Target design technology is not available',
+		};
+	}
+	const units = get_bulk_units(game, player, source);
+	if (#sizeof(units) == 0) {
+		return {error: 'Faction has no units of the source design'};
+	}
+	for (unit of units) {
+		const cargo = #typeof(unit.get_cargo) == 'Callable' ? unit.get_cargo() : [];
+		const cargo_capacity = #is_defined(target.cargo_capacity)
+			? target.cargo_capacity
+			: 0;
+		if (#sizeof(cargo) > cargo_capacity) {
+			return {error: 'Target design lacks capacity for embarked units'};
+		}
+		if (!has_ability(target, 'CarrierDeck')) {
+			for (passenger of cargo) {
+				if (passenger.is_air) {
+					return {error: 'Carrier Deck is required by embarked aircraft'};
+				}
+			}
+		}
+	}
+	const cost_per_unit = get_cost(game, player, source, target);
+	const total_cost = cost_per_unit * #sizeof(units);
+	if (get_energy_credits(player) < total_cost) {
+		return {error: 'Not enough energy credits to upgrade all units of this design'};
+	}
+	return {
+		units: units,
+		count: #sizeof(units),
+		cost_per_unit: cost_per_unit,
+		total_cost: total_cost,
+	};
+};
+
+const get_bulk_error = (game, caller, source_id, target_id) => {
+	if (
+		#typeof(source_id) != 'String' || source_id == '' ||
+		#typeof(target_id) != 'String' || target_id == ''
+	) {
+		return 'Bulk upgrade requires source and target design IDs';
+	}
+	const player = game.get_player(caller);
+	if (player == null || player.type == 'native') {
+		return 'Bulk upgrades require a playable faction';
+	}
+	if (game.is_turn_complete(caller)) {
+		return 'Player has already completed this turn';
+	}
+	const source = find_definition(game, source_id);
+	const target = find_definition(game, target_id);
+	if (source == null) {
+		return 'Unknown bulk upgrade source';
+	}
+	if (target == null) {
+		return 'Unknown unit upgrade target';
+	}
+	return get_bulk_plan(game, player, source, target).error;
+};
+
 const get_unit_error = (game, unit, caller) => {
 	if (#typeof(unit) != 'Object' || #typeof(unit.get_def) != 'Callable') {
 		return 'Unit upgrade requires a unit';
@@ -253,6 +335,9 @@ return {
 	find_definition: find_definition,
 	get_targets: get_targets,
 	get_cost: get_cost,
+	get_bulk_units: get_bulk_units,
+	get_bulk_plan: get_bulk_plan,
+	get_bulk_error: get_bulk_error,
 	get_unit_error: get_unit_error,
 	get_error: get_error,
 	get_combat_value: get_combat_value,

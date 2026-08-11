@@ -400,6 +400,7 @@
 			let energy_requested = false;
 			let loan_requested = false;
 			let workshop_requested = false;
+			let workshop_bulk_requested = false;
 			let workshop_obsolete_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
@@ -494,6 +495,7 @@
 							}
 							return true;
 						}
+						energy_requested = false;
 						const lender = game.get_player(get_remote_player_id());
 						const loan = game.get_player().get_diplomatic_loan(lender);
 						if (loan == null) {
@@ -557,6 +559,34 @@
 								glsmac.exit();
 								return false;
 							}
+							let source_count = 0;
+							let upgraded_count = 0;
+							for (unit of game.get_um().get_units(true)) {
+								if (unit.owner != game.get_player().id) {
+									continue;
+								}
+								if (unit.def == 'ScoutPatrol') { source_count++; }
+								if (unit.def == workshop_id) { upgraded_count++; }
+							}
+							if (!workshop_bulk_requested) {
+								if (source_count == 0) {
+									#print('RUNNING_RECONNECT_FAIL_CLIENT: no Workshop bulk-upgrade sources');
+									glsmac.exit();
+									return false;
+								}
+								workshop_bulk_requested = true;
+								game.event('upgrade_unit_design', {
+									source_def_id: 'ScoutPatrol',
+									target_def_id: workshop_id,
+								});
+								return true;
+							}
+							if (source_count > 0) { return true; }
+							if (upgraded_count == 0) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: Workshop bulk upgrade is missing');
+								glsmac.exit();
+								return false;
+							}
 							if (!workshop_obsolete_requested) {
 								workshop_obsolete_requested = true;
 								game.event('set_unit_design_obsolete', {
@@ -577,6 +607,7 @@
 						#print('RUNNING_RECONNECT_INTEGRITY_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_DEF_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_UNIT_BULK_UPGRADE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_OBSOLETE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;

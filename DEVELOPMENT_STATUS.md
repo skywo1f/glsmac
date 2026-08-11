@@ -69,6 +69,9 @@ scenarios, for:
   running-game reconnect; faction-specific obsolescence is persistent and
   reversible, removes obsolete designs from owned production queues without
   losing stored minerals, and is enforced by production and upgrade rules;
+  player-authored bulk upgrades atomically convert every owned unit of a design
+  at the original per-unit price while preserving movement, damage, morale,
+  orders, home bases, embarked state, and transport cargo;
 - generated Fission, Fusion, Quantum, and Singularity unit families use the
   original integer cost formula, reactor minimum-cost rows, durability scaling,
   sea-transport capacity scaling, and reactor-aware AI production, combat, and
@@ -239,8 +242,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
-- remaining Unit Workshop parity: permanent design retirement, bulk upgrades,
-  sea Formers, and original behaviors for currently unavailable
+- remaining Unit Workshop parity: permanent design retirement, sea Formers,
+  and original behaviors for currently unavailable
   abilities such as Drop Pods, Cloaking, Deep Pressure Hull, and Nerve Gas;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
@@ -252,21 +255,22 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 126 cases: 96 isolated native/script GSE tests
+The Release CTest matrix contains 127 cases: 97 isolated native/script GSE tests
 and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
-After persistent Unit Workshop obsolescence and shutdown hardening were added,
-the Windows x64 Release build completed successfully. All 96 isolated tests
-passed in 217.10 seconds. The focused Workshop runtime and running-reconnect
-scenarios passed together in 64.74 seconds. The 28 local asset-backed scenarios
-previously passed in two bounded batches after an animation-timing failure led
-to a real AI completion retry fix; the native-life case then passed five
-consecutive runs. Workshop runtime coverage verifies trimmed names,
-server-authored stats, faction-private build access, production selection,
-queued-design cleanup, and reversible obsolescence. Running reconnect restores
-the dynamic definition, owner metadata, and obsolete state, while the general
-multiplayer stress harness
+After persistent Unit Workshop obsolescence, bulk upgrades, and shutdown
+hardening were added, the Windows x64 Release build completed successfully. All
+97 isolated tests passed in 197.38 seconds. The focused Workshop runtime passed
+in 19.77 seconds and running reconnect passed in 44.07 seconds. The 28 local
+asset-backed scenarios previously passed in two bounded batches after an
+animation-timing failure led to a real AI completion retry fix; the native-life
+case then passed five consecutive runs. Workshop runtime coverage verifies
+trimmed names, server-authored stats, faction-private build access, production
+selection, queued-design cleanup, reversible obsolescence, and
+movement-preserving bulk upgrades. Running reconnect restores the dynamic
+definition, owner metadata, fielded upgraded units, and obsolete state, while
+the general multiplayer stress harness
 passed four consecutive runs after one earlier intermittent Windows heap
 corruption exit. That isolated crash remains a soak-testing risk rather than a
 resolved defect. The Workshop shutdown path also completed under AddressSanitizer
