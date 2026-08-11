@@ -27,6 +27,7 @@ public:
 
 	static constexpr int64_t MAX_MINERAL_COST = 1000000;
 	static constexpr int64_t MAX_COMBAT_STRENGTH = 1000000;
+	static constexpr int64_t MAX_OWNER_PLAYER_ID = 63;
 
 	Def(
 		const std::string& id,
@@ -40,7 +41,8 @@ public:
 		const int64_t defense,
 		const bool can_found_base,
 		const bool can_terraform,
-		const bool buildable
+		const bool buildable,
+		const int64_t owner_player_id
 	);
 	virtual ~Def() = default;
 
@@ -56,6 +58,7 @@ public:
 	const bool m_can_found_base;
 	const bool m_can_terraform;
 	const bool m_buildable;
+	const int64_t m_owner_player_id;
 
 	virtual const movement_type_t GetMovementType() const = 0;
 

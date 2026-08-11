@@ -25,7 +25,8 @@ Def::Def(
 	const int64_t defense,
 	const bool can_found_base,
 	const bool can_terraform,
-	const bool buildable
+	const bool buildable,
+	const int64_t owner_player_id
 )
 	: m_id( id )
 	, m_moraleset( moraleset )
@@ -38,7 +39,8 @@ Def::Def(
 	, m_defense( defense )
 	, m_can_found_base( can_found_base )
 	, m_can_terraform( can_terraform )
-	, m_buildable( buildable ) {
+	, m_buildable( buildable )
+	, m_owner_player_id( owner_player_id ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -49,7 +51,9 @@ Def::Def(
 		m_offense > MAX_COMBAT_STRENGTH ||
 		m_defense <= 0 ||
 		m_defense > MAX_COMBAT_STRENGTH ||
-		( m_can_found_base && m_can_terraform )
+		( m_can_found_base && m_can_terraform ) ||
+		m_owner_player_id < -1 ||
+		m_owner_player_id > MAX_OWNER_PLAYER_ID
 	) {
 		THROW( "invalid unit definition: " + m_id );
 	}
@@ -183,6 +187,10 @@ WRAPIMPL_BEGIN( Def )
 			{
 				"buildable",
 				VALUE( gse::value::Bool, , m_buildable )
+			},
+			{
+				"owner_player_id",
+				VALUE( gse::value::Int, , m_owner_player_id )
 			},
 		};
 WRAPIMPL_END_PTR()

@@ -4,7 +4,7 @@ return {
 
 	validate: (e) => {
 		if (e.game.is_turn_complete(e.caller)) {
-			return 'Turn already completed by this player';
+			return;
 		}
 		if (turn_rules.has_pending_owned_animation(e.game, e.caller)) {
 			return 'Player has a unit animation still in progress';
@@ -12,6 +12,9 @@ return {
 	},
 
 	apply: (e) => {
+		if (e.game.is_turn_complete(e.caller)) {
+			return {changed: false};
+		}
 		e.game.complete_turn(e.caller);
 		if (e.game.is_master()) {
 			let everybody_completed_turn = true;
@@ -33,11 +36,13 @@ return {
 				});
 			}
 		}
-
+		return {changed: true};
 	},
 
 	rollback: (e) => {
-		e.game.uncomplete_turn(e.caller);
+		if (e.applied.changed) {
+			e.game.uncomplete_turn(e.caller);
+		}
 	},
 
 };

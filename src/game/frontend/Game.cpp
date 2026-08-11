@@ -944,7 +944,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 					config->HasLaunchFlag( config::Config::LF_HOST ) ||
 					config->HasLaunchFlag( config::Config::LF_JOIN )
 				) {
-					g_engine->ShutDown();
+					GLSMAC::ShutDown();
 				}
 				else {
 					m_glsmac->Reset();

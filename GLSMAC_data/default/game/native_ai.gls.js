@@ -15,10 +15,14 @@ const get_native_units = (game, player) => {
 
 const play_turn = (game, player, done) => {
 	strategy.queue_ambient_spawn(game);
+	const turn_id = game.get_turn();
 	let steps = 0;
 	let action_attempts = {};
 	const play_next_action = () => {
-		if (!game.is_master() || game.is_game_over() || game.is_turn_complete(player.id)) {
+		if (
+			!game.is_master() || game.is_game_over() || game.get_turn() != turn_id ||
+			game.is_turn_complete(player.id)
+		) {
 			done();
 			return;
 		}
@@ -72,7 +76,7 @@ const play_turn = (game, player, done) => {
 			return;
 		}
 		game.event_as(player.id, 'complete_turn', {});
-		#async(100, done);
+		#async(ACTION_DELAY, play_next_action);
 	};
 	#async(100, play_next_action);
 };

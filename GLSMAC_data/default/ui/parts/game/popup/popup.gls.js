@@ -12,6 +12,7 @@ return {
 		'supply_transport',
 		'psi_gate',
 		'unit_upgrade',
+		'unit_workshop',
 		'base_screen',
 	],
 

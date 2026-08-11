@@ -29,6 +29,14 @@
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
+	const workshop_design_name = 'Reconnect Workshop Patrol';
+	const workshop_selection = {
+		chassis: 'Infantry',
+		weapon: 'HandWeapons',
+		armor: 'NoArmor',
+		reactor: 'FissionPlant',
+		abilities: [],
+	};
 
 	glsmac.on('configure_state', (e) => {
 		#async(100, () => {
@@ -391,6 +399,7 @@
 			let terraform_requested = false;
 			let energy_requested = false;
 			let loan_requested = false;
+			let workshop_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -509,11 +518,45 @@
 							glsmac.exit();
 							return false;
 						}
+						const workshop_id =
+							'WorkshopP' + #to_string(game.get_player().id) +
+							'_Infantry_HandWeapons_NoArmor_FissionPlant';
+						let workshop_def = null;
+						for (candidate of game.get_um().get_unit_defs()) {
+							if (candidate.id == workshop_id) {
+								workshop_def = candidate;
+								break;
+							}
+						}
+						if (workshop_def == null) {
+							if (!workshop_requested) {
+								workshop_requested = true;
+								game.event('create_unit_design', {
+									name: workshop_design_name,
+									selection: workshop_selection,
+								});
+							}
+							return true;
+						}
+						const local_base = find_base_for_player(game.get_player().id);
+						const remote_base = find_base_for_player(get_remote_player_id());
+						if (
+							workshop_def.name != workshop_design_name ||
+							workshop_def.owner_player_id != game.get_player().id ||
+							local_base == null || remote_base == null ||
+							!local_base.can_set_production('unit', workshop_id) ||
+							remote_base.can_set_production('unit', workshop_id)
+						) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial Workshop design is invalid');
+							glsmac.exit();
+							return false;
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_INTEGRITY_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_UNIT_DEF_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;
 					}
@@ -730,6 +773,25 @@
 			return #undefined;
 		};
 
+		const wait_for_initial_base_state = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				const error = get_base_state_error(game.get_player().id);
+				if (!#is_defined(error)) {
+					#print('RUNNING_RECONNECT_BASE_STATE_INITIAL_CLIENT');
+					run_initial_founding_probe();
+					return false;
+				}
+				if (wait_ticks >= 200) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: base synchronization timed out: ' + error);
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
 		let handle_turn = (turn_id) => {
 			const turn_key = #to_string(turn_id);
 			if (#is_defined(handled_turns[turn_key])) {
@@ -862,14 +924,7 @@
 					game.event('complete_turn', {});
 				}
 				else {
-					const base_state_error = get_base_state_error(game.get_player().id);
-					if (#is_defined(base_state_error)) {
-						#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + base_state_error);
-						glsmac.exit();
-						return;
-					}
-					#print('RUNNING_RECONNECT_BASE_STATE_INITIAL_CLIENT');
-					run_initial_founding_probe();
+					wait_for_initial_base_state();
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {

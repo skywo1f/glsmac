@@ -27,6 +27,7 @@
 	const conquered_snapshot_base_name = 'Reconnect Conquest Probe';
 	const expansion_snapshot_base_name = 'Reconnect Expansion Probe';
 	const terraform_order = 'forest';
+	const workshop_design_name = 'Reconnect Workshop Patrol';
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
@@ -147,6 +148,42 @@
 			return #undefined;
 		};
 
+		const get_workshop_state_error = () => {
+			const player = game.get_player();
+			const id = 'WorkshopP' + #to_string(player.id) +
+				'_Infantry_HandWeapons_NoArmor_FissionPlant';
+			let def = null;
+			let own_base = null;
+			let other_base = null;
+			for (candidate of game.get_um().get_unit_defs()) {
+				if (candidate.id == id) {
+					def = candidate;
+					break;
+				}
+			}
+			for (candidate of game.get_bm().get_bases()) {
+				if (candidate.get_owner().id == player.id && own_base == null) {
+					own_base = candidate;
+				}
+				else if (candidate.get_owner().id != player.id && other_base == null) {
+					other_base = candidate;
+				}
+			}
+			if (
+				def == null || def.name != workshop_design_name ||
+				def.owner_player_id != player.id || def.chassis != 'Infantry' ||
+				def.weapon != 'HandWeapons' || def.armor != 'NoArmor' ||
+				def.reactor != 'FissionPlant' || def.reactor_power != 1 ||
+				def.offense != 1 || def.defense != 1 ||
+				own_base == null || other_base == null ||
+				!own_base.can_set_production('unit', id) ||
+				other_base.can_set_production('unit', id)
+			) {
+				return 'faction Workshop definition or ownership was not restored';
+			}
+			return #undefined;
+		};
+
 		const get_base_state_error = () => {
 			if (game.get_player().energy_credits != initial_energy_stamp) {
 				return
@@ -212,6 +249,10 @@
 			const supply_state_error = get_supply_state_error(true);
 			if (#is_defined(supply_state_error)) {
 				return supply_state_error;
+			}
+			const workshop_state_error = get_workshop_state_error();
+			if (#is_defined(workshop_state_error)) {
+				return workshop_state_error;
 			}
 			const restored_unit = game.get_um().get_unit(1);
 			if (restored_unit.get_def().id != restored_unit.def) {

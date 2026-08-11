@@ -50,6 +50,7 @@ CLASS( GSE, gc::Object )
 	static const char PATH_SEPARATOR;
 
 	void Iterate();
+	void BeginShutdown();
 	void Finish();
 
 	parser::Parser* CreateParser( const std::string& filename, const std::string& source, const size_t initial_line_num = 1 );
@@ -116,6 +117,7 @@ private:
 	std::unordered_map< std::string, include_cache_t > m_include_cache = {};
 
 	Async* m_async = nullptr;
+	bool m_is_shutting_down = false;
 };
 
 }

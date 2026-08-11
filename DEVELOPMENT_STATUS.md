@@ -61,6 +61,12 @@ scenarios, for:
 - persistent faction-wide chassis, weapon, and armor prototype history across
   saves and reconnects, with the exact first-production surcharge, Skunkworks
   and Spartan waivers, and the first prototype's morale bonus;
+- a player-facing Unit Workshop creates deterministic, faction-owned designs
+  from researched original-SMAC chassis, weapons, armor, reactors, and
+  behavior-backed special abilities; the server recomputes legality and cost,
+  production and upgrades enforce ownership, AI production can value its own
+  custom designs, prototype rules apply normally, and definitions survive a
+  running-game reconnect;
 - generated Fission, Fusion, Quantum, and Singularity unit families use the
   original integer cost formula, reactor minimum-cost rows, durability scaling,
   sea-transport capacity scaling, and reactor-aware AI production, combat, and
@@ -193,6 +199,8 @@ scenarios, for:
   troop transports reject them;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
+  AI and native-life controllers retry animation-blocked turn completion and
+  stop cleanly when the turn advances;
 - seven-player startup, multiplayer turn/event synchronization, and reconnect
   restoration of a running game.
 
@@ -229,10 +237,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
-- a player-facing Unit Workshop for arbitrary legal chassis, weapon, armor,
-  reactor, and ability combinations; the current catalog provides generated
-  role families across all four reactors rather than unrestricted custom
-  designs;
+- remaining Unit Workshop parity: design retirement and obsolescence, bulk
+  upgrades, sea Formers, and original behaviors for currently unavailable
+  abilities such as Drop Pods, Cloaking, Deep Pressure Hull, and Nerve Gas;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -243,9 +250,22 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 123 cases: 94 isolated native/script GSE tests
-and 29 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 125 cases: 95 isolated native/script GSE tests
+and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After the faction Unit Workshop and shutdown hardening were added, the Windows
+x64 Release build completed successfully. All 95 isolated tests passed in
+189.83 seconds. The 28 local asset-backed scenarios passed in two bounded
+batches after an animation-timing failure led to a real AI completion retry
+fix; the native-life case then passed five consecutive runs. Workshop runtime
+coverage verifies trimmed names, server-authored stats, faction-private build
+access, and production selection. Running reconnect restores the dynamic
+definition and its owner metadata, while the general multiplayer stress harness
+passed four consecutive runs after one earlier intermittent Windows heap
+corruption exit. That isolated crash remains a soak-testing risk rather than a
+resolved defect. The Workshop shutdown path also completed under AddressSanitizer
+with no diagnostic output.
 
 After original-SMAC Supply Crawlers were added, the Windows x64 Release build
 completed successfully and the complete matrix passed in bounded batches: all
@@ -300,10 +320,10 @@ and both climate Council motions were added, all 86 isolated tests passed in
 160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
 installed-asset runtime coverage passed together in 54.92 seconds.
 
-All 29 runtime scenarios are green against an installed Planetary Pack,
+All 30 runtime scenarios have green runs against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
-Planetary Council, Datalinks, air units, transports, Supply Crawlers, sea
-colonies, and the standard AI runtime. The rendered Unity Pod scenario verifies
+Planetary Council, Datalinks, air units, transports, Supply Crawlers, the Unit
+Workshop, sea colonies, and the standard AI runtime. The rendered Unity Pod scenario verifies
 live land and sea sprite refresh, bonus mutation, earthquake apply/rollback
 with terrain mesh synchronization, reward-unit serialization, and
 movement-triggered resolution.

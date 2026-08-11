@@ -209,6 +209,12 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 	}
 	const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
 	if (
+		def->m_owner_player_id >= 0 &&
+		( !m_owner || static_cast< int64_t >( m_owner->GetIndex() ) != def->m_owner_player_id )
+	) {
+		return false;
+	}
+	if (
 		!def->m_required_technology.empty() &&
 		( !owner || !owner->HasTechnology( def->m_required_technology ) )
 	) {

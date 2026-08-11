@@ -19,7 +19,7 @@ namespace game {
 namespace backend {
 namespace unit {
 
-static constexpr int64_t COMPONENT_METADATA_VERSION = 4;
+static constexpr int64_t COMPONENT_METADATA_VERSION = 5;
 
 // TODO: per-def values?
 const health_t StaticDef::HEALTH_MAX = 1.0f;
@@ -72,7 +72,8 @@ StaticDef::StaticDef(
 	const int64_t operational_range,
 	const bool is_missile,
 	const int64_t cargo_capacity,
-	const bool buildable
+	const bool buildable,
+	const int64_t owner_player_id
 )
 	: Def(
 		id,
@@ -86,7 +87,8 @@ StaticDef::StaticDef(
 		defense,
 		can_found_base,
 		can_terraform,
-		buildable
+		buildable,
+		owner_player_id
 	)
 	, m_movement_type( movement_type )
 	, m_movement_per_turn( movement_per_turn )
@@ -171,6 +173,7 @@ const std::string StaticDef::ToString( const std::string& prefix ) const {
 		TS_OBJ_PROP_NUM( "movement_per_turn", m_movement_per_turn ) +
 		TS_OBJ_PROP_NUM( "operational_range", m_operational_range ) +
 		TS_OBJ_PROP_NUM( "cargo_capacity", m_cargo_capacity ) +
+		TS_OBJ_PROP_NUM( "owner_player_id", m_owner_player_id ) +
 		TS_OBJ_PROP( "render", m_render->ToString( TS_PREFIX_NEXT ) ) +
 		TS_OBJ_END();
 }
@@ -193,6 +196,7 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	buf.WriteBool( def->m_is_missile );
 	buf.WriteInt( def->m_cargo_capacity );
 	buf.WriteBool( def->m_buildable );
+	buf.WriteInt( def->m_owner_player_id );
 }
 
 StaticDef* StaticDef::Deserialize(
@@ -237,6 +241,7 @@ StaticDef* StaticDef::Deserialize(
 	bool is_missile = false;
 	int64_t cargo_capacity = 0;
 	bool buildable = true;
+	int64_t owner_player_id = -1;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto version = buf.ReadInt();
 		if ( version < 1 || version > COMPONENT_METADATA_VERSION ) {
@@ -288,6 +293,12 @@ StaticDef* StaticDef::Deserialize(
 		if ( version >= 4 ) {
 			buildable = buf.ReadBool();
 		}
+		if ( version >= 5 ) {
+			owner_player_id = buf.ReadInt();
+			if ( owner_player_id < -1 || owner_player_id > MAX_OWNER_PLAYER_ID ) {
+				THROW( "invalid serialized unit definition owner" );
+			}
+		}
 	}
 	return new StaticDef(
 		id,
@@ -312,7 +323,8 @@ StaticDef* StaticDef::Deserialize(
 		operational_range,
 		is_missile,
 		cargo_capacity,
-		buildable
+		buildable,
+		owner_player_id
 	);
 }
 

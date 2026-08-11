@@ -41,9 +41,14 @@ const has_ability = (def, id) => {
 
 const is_available = (player, def) => {
 	return (
-		!#is_defined(def.required_technology) ||
-		def.required_technology == '' ||
-		player.has_technology(def.required_technology)
+		(
+			!#is_defined(def.owner_player_id) || def.owner_player_id < 0 ||
+			def.owner_player_id == player.id
+		) && (
+			!#is_defined(def.required_technology) ||
+			def.required_technology == '' ||
+			player.has_technology(def.required_technology)
+		)
 	) && !prototype_rules.is_prototype(player, def);
 };
 

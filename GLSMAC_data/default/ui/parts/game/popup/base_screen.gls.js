@@ -156,6 +156,8 @@ return {
 			ecodamage: game.get('f_ecology_get_base_damage')(base).percent,
 		});
 
+		this.sections.top_buttons.set({base: base});
+
 		let facility_names = [];
 		for (facility of base.get_facilities()) {
 			facility_names :+(facility.is_project ? 'PROJECT: ' : '') + facility.name;

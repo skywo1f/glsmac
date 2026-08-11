@@ -480,6 +480,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT_BOOL( is_missile, unit_def, "is_missile" );
 				N_GETPROP_OPT( int64_t, cargo_capacity, unit_def, "cargo_capacity", Int, 0 );
 				N_GETPROP_OPT( bool, buildable, unit_def, "buildable", Bool, true );
+				N_GETPROP_OPT( int64_t, owner_player_id, unit_def, "owner_player_id", Int, -1 );
 				N_GETPROP_OPT(
 					gse::value::array_elements_t,
 					ability_values,
@@ -508,7 +509,9 @@ WRAPIMPL_BEGIN( UnitManager )
 					defense > unit::Def::MAX_COMBAT_STRENGTH ||
 					reactor_power < 1 ||
 					reactor_power > 4 ||
-					( can_found_base && can_terraform )
+					( can_found_base && can_terraform ) ||
+					owner_player_id < -1 ||
+					owner_player_id > unit::Def::MAX_OWNER_PLAYER_ID
 				) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit combat or capability values: " + id );
 				}
@@ -603,7 +606,8 @@ WRAPIMPL_BEGIN( UnitManager )
 								operational_range,
 								is_missile,
 								cargo_capacity,
-								buildable
+								buildable,
+								owner_player_id
 							);
 
 						DefineUnit( def );

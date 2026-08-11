@@ -45,7 +45,8 @@ public:
 		const int64_t operational_range = 0,
 		const bool is_missile = false,
 		const int64_t cargo_capacity = 0,
-		const bool buildable = true
+		const bool buildable = true,
+		const int64_t owner_player_id = -1
 	);
 	~StaticDef();
 

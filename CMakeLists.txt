@@ -138,6 +138,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( UNIT_WORKSHOP_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/unit-workshop-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${UNIT_WORKSHOP_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME unit_workshop_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${UNIT_WORKSHOP_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_unit_workshop_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( unit_workshop_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "UNIT_WORKSHOP_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "UNIT_WORKSHOP_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 120
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( DIPLOMACY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/diplomacy-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${DIPLOMACY_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME diplomacy_runtime_smoke COMMAND

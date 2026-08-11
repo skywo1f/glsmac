@@ -2,6 +2,7 @@
 
 #include "engine/Engine.h"
 #include "graphics/Graphics.h"
+#include "GLSMAC.h"
 
 #if ( !SDL_VERSION_ATLEAST( 2, 0, 18 ) )
 #define KMOD_SCROLL 0x8000 // workaround for ancient systems
@@ -55,7 +56,7 @@ void SDL2::Iterate() {
 		e.SetType( EV_NONE );
 		switch ( event.type ) {
 			case SDL_QUIT: {
-				g_engine->ShutDown();
+				GLSMAC::ShutDown();
 				break;
 			}
 			case SDL_WINDOWEVENT: {

@@ -101,12 +101,12 @@ GLSMAC::~GLSMAC() {
 
 	Log( "Destroying global state" );
 
+	m_gse->BeginShutdown();
+
 	if ( m_game ) {
 		m_game->Stop();
 		delete m_game;
 	}
-
-	m_gse->GetAsync()->StopTimers();
 
 	if ( m_console ) {
 		m_console->Stop();
@@ -121,6 +121,13 @@ GLSMAC::~GLSMAC() {
 	DELETE( m_gse );
 
 	s_glsmac = nullptr;
+}
+
+void GLSMAC::ShutDown( const int result ) {
+	if ( s_glsmac && s_glsmac->m_gse ) {
+		s_glsmac->m_gse->BeginShutdown();
+	}
+	g_engine->ShutDown( result );
 }
 
 void GLSMAC::Iterate() {
@@ -205,7 +212,7 @@ WRAPIMPL_BEGIN( GLSMAC )
 			"exit",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				g_engine->ShutDown();
+				ShutDown();
 				return VALUE( gse::value::Undefined );
 			} )
 		},
@@ -566,7 +573,7 @@ void GLSMAC::Reset( GSE_CALLABLE ) {
 					}
 				}
 				ShowError( errmsg, []() {
-					g_engine->ShutDown();
+					ShutDown();
 				} );
 				return;
 			}
@@ -736,7 +743,7 @@ void GLSMAC::StartGame( GSE_CALLABLE ) {
 				config->HasLaunchFlag( config::Config::LF_HOST ) ||
 				config->HasLaunchFlag( config::Config::LF_JOIN )
 			) {
-				g_engine->ShutDown();
+				ShutDown();
 			}
 			else {
 				Reset();

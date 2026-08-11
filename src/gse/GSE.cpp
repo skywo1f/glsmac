@@ -10,6 +10,7 @@
 #include "gc/Space.h"
 #include "Async.h"
 #include "ExecutionPointer.h"
+#include "engine/Engine.h"
 
 namespace gse {
 
@@ -49,11 +50,24 @@ GSE::~GSE() {
 }
 
 void GSE::Iterate() {
+	if ( m_is_shutting_down || ( g_engine && g_engine->IsShuttingDown() ) ) {
+		return;
+	}
 	ExecutionPointer ep;
 	if ( m_async ) {
 		m_async->Iterate( ep );
 	}
+	if ( m_is_shutting_down || ( g_engine && g_engine->IsShuttingDown() ) ) {
+		return;
+	}
 	m_gc_space->ProcessAccumulations();
+}
+
+void GSE::BeginShutdown() {
+	m_is_shutting_down = true;
+	if ( m_async ) {
+		m_async->StopTimers();
+	}
 }
 
 void GSE::Finish() {

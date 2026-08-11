@@ -34,6 +34,7 @@ Space::~Space() {
 				it.second.cleanup();
 			}
 		}
+		m_pending_accumulations.clear();
 	}
 
 	// collect until there's nothing to collect

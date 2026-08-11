@@ -6,6 +6,7 @@ return (game) => {
 		'define_animation',
 		'define_moraleset',
 		'define_unit',
+		'create_unit_design',
 		'game_settings',
 		'select_faction',
 		'ready_or_not',
