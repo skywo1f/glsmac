@@ -660,8 +660,14 @@ const queue_production = (game, player, bases, units) => {
 		? #sizeof(get_datalinks_candidates(player))
 		: 0;
 	let empath_guild_infiltration_count = 0;
+	const has_intelligence = game.get('f_council_has_intelligence');
 	for (other of game.get_players()) {
-		if (other.id != player.id && !player.has_infiltrated(other)) {
+		if (
+			other.id != player.id &&
+			!(#is_defined(has_intelligence)
+				? has_intelligence(player, other)
+				: player.has_infiltrated(other))
+		) {
 			empath_guild_infiltration_count++;
 		}
 	}
@@ -1352,7 +1358,7 @@ const play_turn = (game, player, done) => {
 		let action_delay = MOVEMENT_ACTION_DELAY;
 		let waiting_for_animation = false;
 		for (unit of current_units) {
-			if (unit.get_tile().is_locked()) {
+			if (action_state.has_nearby_animation(unit)) {
 				waiting_for_animation = true;
 				break;
 			}

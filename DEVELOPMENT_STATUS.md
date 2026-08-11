@@ -33,9 +33,10 @@ scenarios, for:
 - the Hunter-Seeker Algorithm blocks all enemy probe operations against the
   owner's bases and units, and AI Probe Teams avoid immune targets;
 - the Empath Guild grants persistent infiltration of every rival on completion
-  or capture, preserves existing intelligence through rollback, and receives
-  rival-aware AI production value; unrestricted diplomacy already permits
-  contact with every faction;
+  or capture, preserves existing intelligence through rollback, adds the exact
+  +50% rounded-down Planetary Council vote bonus, and receives rival-aware AI
+  production value; unrestricted diplomacy already permits contact with every
+  faction;
 - the Planetary Datalinks automatically grants every technology known by three
   other factions after research, trade, probe theft, project completion, or
   project capture, with deterministic multiplayer events and rival-aware AI
@@ -88,10 +89,11 @@ scenarios, for:
   restrictions and doubles orbital production, with save/reconnect coverage;
 - generated Planet Buster designs, reactor-scaled blast radii, destruction of
   affected bases, units, and cargo, surviving-unit rehoming, global vendettas,
-  major-atrocity and sanction consequences, reversible network application,
-  and conservative opponent-aware AI production and targeting; Orbital Defense
-  Pods make one 50% interception attempt per undeployed pod each turn and can
-  sacrifice an already deployed pod for a guaranteed interception;
+  terrain deformation and crater formation, major-atrocity and sanction
+  consequences, reversible network application, and conservative
+  opponent-aware AI production and targeting; Orbital Defense Pods make one
+  50% interception attempt per undeployed pod each turn and can sacrifice an
+  already deployed pod for a guaranteed interception;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -123,13 +125,21 @@ scenarios, for:
 - original-SMAC base-paired commerce income for reciprocal treaties and pacts,
   including imported economic-technology flags, ECONOMY and Morgan bonuses,
   deterministic per-partner base diagnostics, and AI research valuation;
+- persistent Planetary Council sessions with original population voting,
+  Peacekeeper and Secret Project vote modifiers, Progenitor exclusion,
+  deterministic candidates, human and strategy-aware AI ballots, Governor and
+  Supreme Leader thresholds, a 20-turn cooldown, save/reconnect restoration,
+  and reversible election results;
+- the Planetary Governor receives +1 energy per commerce transaction and
+  effective infiltration against every rival; election as Supreme Leader ends
+  the game with a diplomatic victory;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
   energy drain, drone riots, researcher assassination, genetic plague, unit
   subversion, base mind control, resident Probe Team defense, player controls,
   and a relationship-, value-, affordability-, and distance-aware AI policy;
-- land and sea colonization, terraforming, conventional and psi combat,
-  conquest, and transcendence victory;
+- land and sea colonization, terraforming, conventional and psi combat, and
+  conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
   cargo, field repair, facility repair, and unit morale;
 - AI expansion, research, production, terraforming, economy, opponent-aware
@@ -141,7 +151,7 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - 37 of 38 base facilities represented: 33 complete and 4 partial;
-- all 33 Secret Projects represented: 31 complete and 2 partial;
+- all 33 Secret Projects represented: 32 complete and 1 partial;
 - 247 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
@@ -152,9 +162,10 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map and commlink exchanges, surrender, council
-  elections, diplomatic victory, Global Trade Pact/Governor commerce
-  modifiers, and richer bundled or counteroffers;
+- deeper diplomacy including map and commlink exchanges, surrender, Global
+  Trade Pact and other policy proposals or defiance, and richer bundled or
+  counteroffers; Council sessions currently cover Governor and Supreme Leader
+  elections only;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
@@ -168,8 +179,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   global warming, sea-level changes, volcanoes, several ecology-related Secret
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
-- Planet Buster blasts do not yet deform terrain or leave craters, and direct
-  Orbital Defense Pod attacks against rival satellites are not available;
+- direct Orbital Defense Pod attacks against rival satellites are not
+  available;
 - several remaining facility effects, including submersion, Psi Gates, disease
   protection, and Alien Artifact production contributions to Secret Projects
   and prototypes;
@@ -177,10 +188,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   partial because disease protection is absent, Pressure Dome still lacks
   submersion protection, and Orbital Defense Pod remains partial only because
   direct satellite warfare is absent;
-- the two partial Secret Projects are the Empath Guild and Space Elevator; the
-  Empath Guild still lacks its +50% council-election vote bonus, and the Space
-  Elevator still lacks global orbital insertion and its remaining Drop Pod
-  interactions;
+- the Space Elevator is the only partial Secret Project; it still lacks global
+  orbital insertion and its remaining Drop Pod interactions;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -191,122 +200,37 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 96 cases: 76 isolated native/script GSE tests
-and 20 asset-backed runtime scenarios. The current 76-case isolated Release GSE
-matrix (75 scripts and one native test) passed in one bounded invocation in
-158.81 seconds. All 20 runtime scenarios are also green across bounded focused
-invocations against an installed Planetary Pack; they are intentionally split
-so every command remains below the 15-minute development limit. Script
-isolation keeps allocator lifetime bounded and reports the exact script that
-fails.
+The Release CTest matrix contains 101 cases: 79 isolated native/script GSE tests
+and 22 asset-backed runtime scenarios. The complete isolated Release matrix
+passed 79/79 in 141.43 seconds. The same 79 cases passed under AddressSanitizer
+in two bounded invocations: 40/40 in 717.14 seconds and 39/39 in 75.63 seconds.
+Script isolation keeps allocator lifetime bounded and reports the exact script
+that fails.
 
-The focused Planet Buster ownership set passed 7/7 in 8.34 seconds, and its
-installed-asset runtime smoke passed in 15.92 seconds. The current AI economy
-soak runs at least 20 unassisted turns, continues to a turn-30 failure deadline
-only while a required milestone is missing, and passed cleanly in 200.09
-seconds. The focused AI expansion, growth, and terraforming runtime passed in
-68.31 seconds with ordinary unit-movement ordering.
+All 22 runtime scenarios are green in bounded groups against an installed
+Planetary Pack. The 12 general gameplay scenarios passed 12/12 in 205.93
+seconds, including diplomacy, probes, research, Planet Busters, economic
+victory, Planetary Council, Datalinks, air units, transports, sea colonies, and
+the standard AI runtime. The Council scenario completed a live Governor
+election and Supreme Leader diplomatic victory in 17.63 seconds.
 
-Planetary Datalinks coverage validates the exact three-other-factions
-threshold, multi-technology grants, research-target rollover, host-only event
-authorship, client application, rollback, duplicate-event suppression, and AI
-valuation. Its four-faction installed-asset runtime smoke passed in 12.75
-seconds in its original milestone and 23.87 seconds in the current runtime
-regression group.
+The eight specialized AI scenarios are green after two asynchronous lifecycle
+defects were fixed. The economy soak passed in 130.97 seconds; opponent
+strategy in 15.52; conquest in 13.79; repair in 42.49; air operations in 16.81;
+reinforcement in 53.40; and seven-player operation in 24.39. The hurry scenario
+passed three consecutive clean Release runs in 45.87, 40.67, and 40.08 seconds.
+AI movement now waits for animation locks on adjacent combat tiles, and runtime
+smokes defer process exit until scheduled callbacks have drained.
 
-Empath Guild coverage validates construction and capture acquisition, exact
-rollback, preservation of pre-existing infiltration, and rival-aware AI
-valuation. The installed-asset AI production smoke passed with the live
-infiltration context in 146.70 seconds.
+The two multiplayer scenarios passed independently: ordinary multiplayer in
+32.92 seconds and running-game reconnect in 31.55 seconds. Reconnect coverage
+restores Council state along with the previously covered diplomacy, economy,
+project, and orbital state.
 
-Pholus Mutagen coverage validates the faction-wide ecology divisor, native
-fungus combat behavior for conventional units, bred-native lifecycle bonus,
-AI valuation, and complete catalog status.
-
-Xenoempathy Dome coverage validates one-third-point land-fungus movement,
-movement rollback, doubled fungus planting and removal, independent Former
-ability stacking, bred-native lifecycle bonus, AI valuation, and complete
-catalog status.
-
-Orbital coverage validates resource-satellite access, half and full yields,
-population caps, repeat launches, marginal faction-wide AI valuation, Space
-Elevator access and production bonuses, rollback, save serialization, and
-definition metadata. The current installed-asset research runtime passed in
-17.78 seconds with live launches before and after Space Elevator construction.
-
-The diplomacy cases have passed focused Release validation: native trade and
-loan clone/serialization/backward-compatibility checks; isolated atomic energy,
-technology, principal, repayment, partial-payment, wartime-penalty, vendetta,
-and rollback tests; stale-wrapper multi-lender accounting; and AI-policy and
-UI-parser tests. The current asset-backed diplomacy quickstart passed in 17.97
-seconds with a treaty, commerce, reciprocal technology trade, loan acceptance,
-peaceful repayment, treaty-betrayal integrity loss, vendetta, and wartime debt
-growth. The current running multiplayer reconnect passed in 33.65 seconds and
-restored exact active-loan, sanction-duration, diplomatic-integrity, orbital
-facility counts and Orbital Defense Pod deployment state, orbital definition
-metadata, and Children's Creche local-rating definition state.
-Probe coverage includes persistent infiltration and
-major-atrocity state, isolated rules, reversible operations for all implemented
-missions, resident defense, AI policy, UI loading, and an asset-backed
-quickstart covering the live production gate and unit subversion. The preceding
-96-case matrix is green across bounded invocations, but the runtime cases have
-not been run as one long aggregate invocation.
-
-Commerce coverage validates the original base-ranking and pairing formula,
-asymmetric technology benefits, treaty/pact scaling, social and faction
-bonuses, unmatched bases, reciprocal-relation requirements, Progenitor
-exclusion, player-income aggregation, AI research valuation, and base-screen
-loading.
-The installed-asset diplomacy quickstart also verifies that treaty commerce is
-created and a later vendetta removes it without erasing an outstanding debt.
-Sanction coverage verifies symmetric commerce cutoff, ordinary trade and loan
-embargoes, suspended peaceful repayments, atrocity imposition and rollback,
-post-economy yearly expiry, AI commerce-cost awareness, UI status loading, and
-network snapshot restoration. The sanction-aware asset-backed Probe Team smoke
-passed in its original milestone, and the current expanded live Probe Team smoke
-passed in 15.55 seconds.
-
-POLICE coverage validates the full -5 through +3 garrison table, disabled and
-one/two/three-unit limits, the +3 doubled effect, Non-Lethal Methods priority,
-dead/foreign/noncombat exclusion, drone-only suppression, AI stable-worker
-selection, Ascetic Virtues, and Self-Aware Colony. The native definition and
-legacy-serialization suite, seven focused Release tests, and the installed-asset
-research/project runtime are green for this milestone. Away-unit drones are not
-claimed because GLSMAC does not yet model faction territory outside bases.
-Social-adoption coverage validates free Citizen changes and the original
-Specialist-through-Transcend costs for one through four simultaneous model
-changes, insufficient-funds rejection, exact reversible energy accounting,
-economy notifications, UI cost and reserve display, and cost-aware AI staging.
-The installed-asset research runtime passed in 8.44 seconds and charged a live
-three-model Transcend adoption exactly 320 energy credits.
-Project-policy coverage validates both Cloning Vats penalty immunities,
-Network Backbone Cybernetic immunity and exact commerce/Network Node lab bonus,
-global Longevity Vaccine drone relief for Planned and Simple/Green economics,
-and its local +50% Free Market economy bonus. The five direct
-project/social/psych/economy/catalog tests, six dependent
-AI/production/support/commerce/research tests, and the 9.32-second installed-
-asset project runtime are green.
-Children's Creche coverage validates its exact local GROWTH and EFFIC ratings,
-the conventional-defender MORALE floor for weak social models, no stacking over
-stronger social morale, native and enemy-occupier exclusions, doubled enemy
-mind-control cost, AI valuation, legacy definition defaults, and live network
-snapshot restoration.
-Integrity coverage verifies the original eight status labels, treaty and pact
-penalties, aggressor-only changes, saturation, reversible declaration and
-detected-probe paths, AI agreement and loan trust, UI status loading, native
-serialization, and live network snapshot restoration.
-
-After the Headquarters relocation and capture rules were added, all 64 GSE
-cases passed again, and the installed-asset general gameplay and AI runtime
-smokes passed in 8.27 and 109.90 seconds. The current expanded versions pass in
-32.06 and 68.31 seconds. The general smoke directly completes and rolls back a
-Headquarters relocation between two live bases.
-
-The current Release validation includes a 76/76 isolated pass, all 20 runtime
-scenarios green across bounded invocations, multiplayer in 39.11 seconds, and
-running reconnect in 33.65 seconds. The last sanitizer baseline passed 58/58 in
-two bounded invocations; sanitizer coverage has not yet been rerun for every
-system added since that baseline.
+Fresh-profile startup is covered by a native filesystem regression test.
+Missing write targets now use an absolute lexical fallback when platform path
+canonicalization fails, preventing startup failures while creating config and
+debug files in new profile directories.
 
 Most logic-heavy runtime scenarios use the test-only `--headless` mode. It
 retains the real asset loaders, UI scripts, frontend/backend game modules,

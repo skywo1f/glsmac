@@ -55,6 +55,7 @@ Player::Player( const Player* const other ) {
 	m_prototyped_components = other->m_prototyped_components;
 	m_orbital_facilities = other->m_orbital_facilities;
 	m_orbital_defense_deployments = other->m_orbital_defense_deployments;
+	m_council_state = other->m_council_state;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -512,6 +513,18 @@ void Player::SetInfiltrated( const size_t player_id, const bool infiltrated ) {
 	else {
 		m_infiltrated_players.erase( player_id );
 	}
+}
+
+const Player::council_state_t& Player::GetCouncilState() const {
+	return m_council_state;
+}
+
+void Player::SetCouncilState( const council_state_t& state ) {
+	std::string error;
+	if ( !ValidateCouncilState( state, error ) ) {
+		THROW( error );
+	}
+	m_council_state = state;
 }
 
 WRAPIMPL_BEGIN( Player )
@@ -1167,6 +1180,51 @@ WRAPIMPL_BEGIN( Player )
 					return VALUE( gse::value::Undefined );
 				} )
 			},
+			{
+				"get_council_state",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "is_governor", VALUE( gse::value::Bool, , m_council_state.is_governor ) },
+						{ "last_session_turn", VALUE( gse::value::Int, , m_council_state.last_session_turn ) },
+						{ "proposal", VALUE( gse::value::String, , m_council_state.proposal ) },
+						{ "caller_id", VALUE( gse::value::Int, , m_council_state.caller_id ) },
+						{ "candidate_a_id", VALUE( gse::value::Int, , m_council_state.candidate_a_id ) },
+						{ "candidate_b_id", VALUE( gse::value::Int, , m_council_state.candidate_b_id ) },
+						{ "vote_id", VALUE( gse::value::Int, , m_council_state.vote_id ) },
+					} );
+				} )
+			},
+			{
+				"set_council_state",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( state, 0, Object );
+					N_GETPROP( is_governor, state, "is_governor", Bool );
+					N_GETPROP( last_session_turn, state, "last_session_turn", Int );
+					N_GETPROP( proposal, state, "proposal", String );
+					N_GETPROP( caller_id, state, "caller_id", Int );
+					N_GETPROP( candidate_a_id, state, "candidate_a_id", Int );
+					N_GETPROP( candidate_b_id, state, "candidate_b_id", Int );
+					N_GETPROP( vote_id, state, "vote_id", Int );
+					try {
+						SetCouncilState( {
+							is_governor,
+							last_session_turn,
+							proposal,
+							caller_id,
+							candidate_a_id,
+							candidate_b_id,
+							vote_id,
+						} );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
 		};
 WRAPIMPL_END_PTR()
 
@@ -1244,6 +1302,13 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( count );
 	}
 	buf.WriteInt( m_orbital_defense_deployments );
+	buf.WriteBool( m_council_state.is_governor );
+	buf.WriteInt( m_council_state.last_session_turn );
+	buf.WriteString( m_council_state.proposal );
+	buf.WriteInt( m_council_state.caller_id );
+	buf.WriteInt( m_council_state.candidate_a_id );
+	buf.WriteInt( m_council_state.candidate_b_id );
+	buf.WriteInt( m_council_state.vote_id );
 
 	return buf;
 }
@@ -1486,6 +1551,22 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized orbital defense deployment count" );
 		}
 	}
+	council_state_t council_state = {};
+	if ( buf.GetRemaining() > 0 ) {
+		council_state = {
+			buf.ReadBool(),
+			buf.ReadInt(),
+			buf.ReadString(),
+			buf.ReadInt(),
+			buf.ReadInt(),
+			buf.ReadInt(),
+			buf.ReadInt(),
+		};
+		std::string council_error;
+		if ( !ValidateCouncilState( council_state, council_error ) ) {
+			THROW( "invalid serialized Planetary Council state: " + council_error );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1515,6 +1596,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_prototyped_components = std::move( prototyped_components );
 	m_orbital_facilities = std::move( orbital_facilities );
 	m_orbital_defense_deployments = orbital_defense_deployments;
+	m_council_state = std::move( council_state );
 
 }
 
@@ -1570,6 +1652,51 @@ bool Player::ValidateSocialEngineering(
 			error = "Social engineering choice ID is too long";
 			return false;
 		}
+	}
+	return true;
+}
+
+bool Player::ValidateCouncilState( const council_state_t& state, std::string& error ) {
+	if ( state.last_session_turn < 0 || state.last_session_turn > MAX_COUNCIL_TURN ) {
+		error = "Planetary Council session turn is out of range";
+		return false;
+	}
+	if ( state.proposal.empty() ) {
+		if (
+			state.caller_id != -1 || state.candidate_a_id != -1 ||
+			state.candidate_b_id != -1 || state.vote_id != COUNCIL_VOTE_PENDING
+		) {
+			error = "Inactive Planetary Council state contains session data";
+			return false;
+		}
+		return true;
+	}
+	if ( state.proposal != "governor" && state.proposal != "supreme" ) {
+		error = "Planetary Council proposal is unsupported";
+		return false;
+	}
+	if ( state.last_session_turn <= 0 ) {
+		error = "Active Planetary Council session requires a positive turn";
+		return false;
+	}
+	const auto valid_player_id = []( const int64_t id ) {
+		return id >= 0 && id < static_cast< int64_t >( MAX_COUNCIL_PLAYER_ID );
+	};
+	if (
+		!valid_player_id( state.caller_id ) ||
+		!valid_player_id( state.candidate_a_id ) ||
+		!valid_player_id( state.candidate_b_id ) ||
+		state.candidate_a_id == state.candidate_b_id
+	) {
+		error = "Planetary Council participant ID is invalid";
+		return false;
+	}
+	if (
+		state.vote_id != COUNCIL_VOTE_PENDING && state.vote_id != COUNCIL_VOTE_ABSTAIN &&
+		state.vote_id != state.candidate_a_id && state.vote_id != state.candidate_b_id
+	) {
+		error = "Planetary Council vote is invalid";
+		return false;
 	}
 	return true;
 }

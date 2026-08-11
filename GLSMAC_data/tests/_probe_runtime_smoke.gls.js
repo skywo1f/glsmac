@@ -208,7 +208,7 @@
 					#print(
 						'PROBE_RUNTIME_PASS: validated probe catalog, atrocity state, build gate, cost, subversion, promotion, movement, diplomacy, and notification'
 					);
-					glsmac.exit();
+					#async(2500, () => { glsmac.exit(); });
 					return false;
 				});
 			};

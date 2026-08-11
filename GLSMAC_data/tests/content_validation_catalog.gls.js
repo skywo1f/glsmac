@@ -72,8 +72,9 @@ test.assert(catalog.project_coverage.status.TheNetworkBackbone == 'complete');
 test.assert(catalog.facility_coverage.status.NetworkNode == 'complete');
 test.assert(catalog.project_coverage.status.TheUniversalTranslator == 'complete');
 test.assert(catalog.project_coverage.status.TheNanoFactory == 'complete');
+test.assert(catalog.project_coverage.status.TheEmpathGuild == 'complete');
 for (id of [
-	'TheEmpathGuild', 'TheSpaceElevator',
+	'TheSpaceElevator',
 ]) {
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
@@ -93,8 +94,8 @@ test.assert(result.counts == {
 	complete_facilities: 33,
 	partial_facilities: 4,
 	implemented_projects: 33,
-	complete_projects: 31,
-	partial_projects: 2,
+	complete_projects: 32,
+	partial_projects: 1,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

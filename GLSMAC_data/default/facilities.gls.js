@@ -126,7 +126,6 @@ const project_effects = {
 };
 
 const partial_project_effects = {
-	TheEmpathGuild: true,
 	TheSpaceElevator: true,
 };
 

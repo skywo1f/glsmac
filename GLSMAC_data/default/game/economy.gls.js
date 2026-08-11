@@ -220,6 +220,10 @@ const get_player_commerce_ledger = (game, player) => {
 			if (relation == 'treaty') {
 				value = #floor(#to_float(value) / 2.0);
 			}
+			const is_governor = game.get('f_council_is_governor');
+			if (#is_defined(is_governor) && is_governor(player)) {
+				value++;
+			}
 			const result = ledger['b' + #to_string(own.base.id)];
 			result.total = result.total + value;
 			let partners = result.partners;

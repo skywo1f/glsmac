@@ -223,7 +223,13 @@ const validate_base_operation = (e, actor, target_player) => {
 	) {
 		return 'Probe operation target must be a base';
 	}
-	if (operation == 'infiltrate' && actor.has_infiltrated(target_player)) {
+	const has_intelligence = e.game.get('f_council_has_intelligence');
+	if (
+		operation == 'infiltrate' &&
+		(#is_defined(has_intelligence)
+			? has_intelligence(actor, target_player)
+			: actor.has_infiltrated(target_player))
+	) {
 		return 'Target faction datalinks are already infiltrated';
 	}
 	if (

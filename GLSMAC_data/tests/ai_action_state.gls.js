@@ -43,3 +43,18 @@ unit.is_immovable = true;
 test.assert(!action_state.can_attempt_action(unit, attempts));
 
 test.assert(!action_state.refresh_pending_actions([], attempts));
+
+let current_locked = false;
+let adjacent_locked = false;
+const adjacent_tile = {is_locked: () => { return adjacent_locked; }};
+const animation_tile = {
+	is_locked: () => { return current_locked; },
+	get_surrounding_tiles: () => { return [adjacent_tile]; },
+};
+const animation_unit = {get_tile: () => { return animation_tile; }};
+test.assert(!action_state.has_nearby_animation(animation_unit));
+adjacent_locked = true;
+test.assert(action_state.has_nearby_animation(animation_unit));
+adjacent_locked = false;
+current_locked = true;
+test.assert(action_state.has_nearby_animation(animation_unit));

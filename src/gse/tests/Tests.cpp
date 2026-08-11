@@ -37,6 +37,7 @@
 #include "gse/value/Range.h"
 #include "game/backend/faction/Faction.h"
 #include "game/backend/Player.h"
+#include "game/backend/Game.h"
 #include "game/backend/animation/Def.h"
 #include "game/backend/base/FacilityDef.h"
 #include "game/backend/base/PopDef.h"
@@ -53,6 +54,7 @@
 #include "types/mesh/Mesh.h"
 #include "types/Packet.h"
 #include "types/texture/Texture.h"
+#include "util/FS.h"
 
 namespace gse {
 namespace tests {
@@ -63,6 +65,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 		task->AddTest(
 			"test if tests work",
 			GT() {
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"filesystem normalization tolerates missing write targets",
+			GT() {
+				const auto path = g_engine->GetConfig()->GetPrefix() + "debug/path-normalization-regression/missing.txt";
+				const auto normalized = util::FS::NormalizePath( path );
+				GT_ASSERT( !normalized.empty(), "missing path normalized to an empty string" );
+				GT_ASSERT( normalized.find( "missing.txt" ) != std::string::npos, "missing path lost its filename while normalizing" );
 				GT_OK();
 			}
 		);
@@ -246,6 +258,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 		task->AddTest(
 			"player research serialization validation",
 			GT() {
+				using game::backend::Game;
 				using game::backend::Player;
 
 				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
@@ -257,6 +270,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetIntegrityBlemishes( 4 );
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
+				const Player::council_state_t council_state = {
+					true, 42, "governor", 1, 1, 2, 1,
+				};
+				source.SetCouncilState( council_state );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -286,6 +303,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					cloned.GetOrbitalDefenseDeployments() == 2,
 					"player orbital defense deployments were not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetCouncilState() == council_state,
+					"Planetary Council state was not cloned"
 				);
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
@@ -322,6 +343,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetOrbitalDefenseDeployments() == 2,
 					"player orbital defense deployments were not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetCouncilState() == council_state,
+					"Planetary Council state was not serialized"
 				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
@@ -515,6 +540,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetOrbitalDefenseDeployments() == 0,
 					"legacy player orbital defense deployments did not default to zero"
 				);
+				GT_ASSERT(
+					legacy.GetCouncilState() == Player::council_state_t{},
+					"legacy Planetary Council state did not default to inactive"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -673,6 +702,36 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					rejected_invalid_orbital_deployments,
 					"invalid orbital defense deployment count accepted"
+				);
+
+				bool rejected_invalid_council_vote = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( { false, 12, "governor", 1, 1, 2, 3 } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_council_vote = true;
+				}
+				GT_ASSERT( rejected_invalid_council_vote, "invalid Planetary Council vote accepted" );
+
+				bool rejected_inactive_council_session_data = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( { false, 12, "", 1, -1, -1, Player::COUNCIL_VOTE_PENDING } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inactive_council_session_data = true;
+				}
+				GT_ASSERT(
+					rejected_inactive_council_session_data,
+					"inactive Planetary Council session data accepted"
+				);
+				Game::victory_type_t victory_type = Game::VT_NONE;
+				GT_ASSERT(
+					Game::ParseVictoryType( "diplomatic", victory_type ) &&
+						victory_type == Game::VT_DIPLOMATIC &&
+						Game::GetVictoryTypeString( victory_type ) == "diplomatic",
+					"diplomatic victory type did not round-trip"
 				);
 				GT_OK();
 			}

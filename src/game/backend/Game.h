@@ -338,6 +338,7 @@ public:
 		VT_CONQUEST,
 		VT_TRANSCENDENCE,
 		VT_ECONOMIC,
+		VT_DIPLOMATIC,
 	};
 	struct victory_state_t {
 		victory_type_t type = VT_NONE;

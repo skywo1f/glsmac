@@ -1014,7 +1014,6 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			for ( const auto& addition : *request->data.update_tiles.sprite_additions ) {
 				auto* actor = m_ism->GetInstancedSpriteByKey( addition.second.first )->actor;
 				ASSERT( actor, "tile sprite actor not found" );
-				ASSERT( !actor->HasInstance( addition.first ), "tile sprite instance already exists" );
 				actor->SetInstance( addition.first, addition.second.second );
 			}
 			const auto& tiles_data = *request->data.update_tiles.tile_updates;

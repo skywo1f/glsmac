@@ -23,7 +23,10 @@ const get_base_action = (game, player, probe, base) => {
 	) {
 		return null;
 	}
-	if (!player.has_infiltrated(target_player)) {
+	const has_intelligence = game.get('f_council_has_intelligence');
+	if (!(#is_defined(has_intelligence)
+		? has_intelligence(player, target_player)
+		: player.has_infiltrated(target_player))) {
 		return {operation: 'infiltrate', target: base, score: 130000};
 	}
 	if (relation != 'vendetta') {

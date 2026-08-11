@@ -101,7 +101,10 @@ return {
 			}
 			return items;
 		}
-		if (!actor.has_infiltrated(target_player)) {
+		const has_intelligence = this.p.game.get('f_council_has_intelligence');
+		if (!(#is_defined(has_intelligence)
+			? has_intelligence(actor, target_player)
+			: actor.has_infiltrated(target_player))) {
 			items :+['infiltrate', definitions.infiltrate.name];
 		}
 		if (#sizeof(this.p.game.get('f_probe_get_unknown_technologies')(

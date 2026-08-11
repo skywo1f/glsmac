@@ -9,6 +9,12 @@ return {
 				},
 			},
 			{
+				label: 'Planetary Council',
+				open: () => {
+					p.modules.popup.show('planetary_council');
+				},
+			},
+			{
 				label: 'Global Market',
 				open: () => {
 					p.modules.popup.show('economic_victory');

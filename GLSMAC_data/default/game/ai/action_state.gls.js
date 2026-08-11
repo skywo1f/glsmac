@@ -60,8 +60,22 @@ const refresh_pending_actions = (units, action_attempts) => {
 	return waiting;
 };
 
+const has_nearby_animation = (unit) => {
+	const tile = unit.get_tile();
+	if (tile.is_locked()) {
+		return true;
+	}
+	for (candidate of tile.get_surrounding_tiles()) {
+		if (candidate.is_locked()) {
+			return true;
+		}
+	}
+	return false;
+};
+
 return {
 	can_attempt_action: can_attempt_action,
 	record_action_attempt: record_action_attempt,
 	refresh_pending_actions: refresh_pending_actions,
+	has_nearby_animation: has_nearby_animation,
 };

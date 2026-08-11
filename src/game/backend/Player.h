@@ -110,6 +110,33 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	int64_t GetOrbitalDefenseDeployments() const;
 	void SetOrbitalDefenseDeployments( const int64_t deployments );
 
+	static constexpr int64_t COUNCIL_VOTE_PENDING = -2;
+	static constexpr int64_t COUNCIL_VOTE_ABSTAIN = -1;
+	static constexpr int64_t MAX_COUNCIL_TURN = 1000000;
+	static constexpr size_t MAX_COUNCIL_PLAYER_ID = 64;
+	struct council_state_t {
+		bool is_governor = false;
+		int64_t last_session_turn = 0;
+		std::string proposal = "";
+		int64_t caller_id = -1;
+		int64_t candidate_a_id = -1;
+		int64_t candidate_b_id = -1;
+		int64_t vote_id = COUNCIL_VOTE_PENDING;
+
+		bool operator==( const council_state_t& other ) const {
+			return
+				is_governor == other.is_governor &&
+				last_session_turn == other.last_session_turn &&
+				proposal == other.proposal &&
+				caller_id == other.caller_id &&
+				candidate_a_id == other.candidate_a_id &&
+				candidate_b_id == other.candidate_b_id &&
+				vote_id == other.vote_id;
+		}
+	};
+	const council_state_t& GetCouncilState() const;
+	void SetCouncilState( const council_state_t& state );
+
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
 	static constexpr size_t MAX_SOCIAL_ENGINEERING_ID_LENGTH = 64;
@@ -233,6 +260,7 @@ private:
 	};
 	orbital_facilities_t m_orbital_facilities = {};
 	int64_t m_orbital_defense_deployments = 0;
+	council_state_t m_council_state = {};
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
@@ -252,6 +280,7 @@ private:
 		const social_engineering_t& social_engineering,
 		std::string& error
 	);
+	static bool ValidateCouncilState( const council_state_t& state, std::string& error );
 };
 
 }
