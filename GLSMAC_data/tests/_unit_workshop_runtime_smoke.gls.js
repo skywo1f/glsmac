@@ -17,7 +17,7 @@
 			exit_scheduled = true;
 			#print(
 				'UNIT_WORKSHOP_RUNTIME_PASS: faction design synchronized, remained private, ' +
-				'and entered production'
+				'entered production, and completed an obsolescence cycle'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -100,6 +100,50 @@
 					return true;
 				}
 				if (phase == 1) {
+					const production = own_base.get_production();
+					if (#is_defined(production) && production.id == preview.id) {
+						phase = 2;
+						game.event('set_unit_design_obsolete', {
+							id: preview.id,
+							obsolete: true,
+						});
+						return true;
+					}
+				}
+				if (phase == 2 && player.is_unit_design_obsolete(preview.id)) {
+					const production = own_base.get_production();
+					if (
+						own_base.can_set_production('unit', preview.id) ||
+						other_base.can_set_production('unit', preview.id) ||
+						(#is_defined(production) && production.id == preview.id)
+					) {
+						fail('obsolete design remains available or queued');
+						return false;
+					}
+					phase = 3;
+					game.event('set_unit_design_obsolete', {
+						id: preview.id,
+						obsolete: false,
+					});
+					return true;
+				}
+				if (phase == 3 && !player.is_unit_design_obsolete(preview.id)) {
+					if (
+						!own_base.can_set_production('unit', preview.id) ||
+						other_base.can_set_production('unit', preview.id)
+					) {
+						fail('reactivated design production access is invalid');
+						return false;
+					}
+					game.event('set_base_production', {
+						base: own_base,
+						kind: 'unit',
+						id: preview.id,
+					});
+					phase = 4;
+					return true;
+				}
+				if (phase == 4) {
 					const production = own_base.get_production();
 					if (#is_defined(production) && production.id == preview.id) {
 						runtime_complete = true;

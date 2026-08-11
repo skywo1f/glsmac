@@ -53,6 +53,7 @@ Player::Player( const Player* const other ) {
 	m_sanction_turns = other->m_sanction_turns;
 	m_integrity_blemishes = other->m_integrity_blemishes;
 	m_prototyped_components = other->m_prototyped_components;
+	m_obsolete_unit_designs = other->m_obsolete_unit_designs;
 	m_orbital_facilities = other->m_orbital_facilities;
 	m_orbital_defense_deployments = other->m_orbital_defense_deployments;
 	m_council_state = other->m_council_state;
@@ -254,6 +255,26 @@ void Player::SetPrototypedComponents( const prototyped_components_t& components 
 		}
 	}
 	m_prototyped_components = components;
+}
+
+const Player::obsolete_unit_designs_t& Player::GetObsoleteUnitDesigns() const {
+	return m_obsolete_unit_designs;
+}
+
+bool Player::IsUnitDesignObsolete( const std::string& id ) const {
+	return !id.empty() && m_obsolete_unit_designs.find( id ) != m_obsolete_unit_designs.end();
+}
+
+void Player::SetObsoleteUnitDesigns( const obsolete_unit_designs_t& designs ) {
+	if ( designs.size() > MAX_OBSOLETE_UNIT_DESIGNS ) {
+		THROW( "too many obsolete unit designs" );
+	}
+	for ( const auto& id : designs ) {
+		if ( id.empty() || id.size() > MAX_UNIT_DESIGN_ID_LENGTH ) {
+			THROW( "obsolete unit design ID is invalid" );
+		}
+	}
+	m_obsolete_unit_designs = designs;
 }
 
 const Player::orbital_facilities_t& Player::GetOrbitalFacilities() const {
@@ -826,6 +847,51 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_obsolete_unit_designs",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t result = {};
+					result.reserve( m_obsolete_unit_designs.size() );
+					for ( const auto& id : m_obsolete_unit_designs ) {
+						result.push_back( VALUE( gse::value::String, , id ) );
+					}
+					return VALUE( gse::value::Array, , result );
+				} )
+			},
+			{
+				"is_unit_design_obsolete",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( id, 0, String );
+					return VALUE( gse::value::Bool, , IsUnitDesignObsolete( id ) );
+				} )
+			},
+			{
+				"set_obsolete_unit_designs",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( values, 0, Array );
+					obsolete_unit_designs_t designs = {};
+					for ( size_t i = 0 ; i < values.size() ; i++ ) {
+						N_GETELEMENT( id, values, i, String );
+						if ( !designs.insert( id ).second ) {
+							GSE_ERROR(
+								gse::EC.INVALID_CALL,
+								"Obsolete unit design IDs must be unique"
+							);
+						}
+					}
+					try {
+						SetObsoleteUnitDesigns( designs );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_orbital_facilities",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1346,6 +1412,10 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteBool( m_council_state.global_trade_pact );
 	buf.WriteBool( m_council_state.unity_core_salvaged );
 	buf.WriteBool( m_council_state.un_charter_repealed );
+	buf.WriteInt( m_obsolete_unit_designs.size() );
+	for ( const auto& id : m_obsolete_unit_designs ) {
+		buf.WriteString( id );
+	}
 
 	return buf;
 }
@@ -1616,6 +1686,22 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized Planetary Council state: " + council_error );
 		}
 	}
+	obsolete_unit_designs_t obsolete_unit_designs = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto obsolete_count = buf.ReadCollectionSize( "obsolete unit design" );
+		if ( obsolete_count > MAX_OBSOLETE_UNIT_DESIGNS ) {
+			THROW( "invalid serialized obsolete unit design count" );
+		}
+		for ( size_t i = 0 ; i < obsolete_count ; i++ ) {
+			const auto id = buf.ReadString();
+			if (
+				id.empty() || id.size() > MAX_UNIT_DESIGN_ID_LENGTH ||
+				!obsolete_unit_designs.insert( id ).second
+			) {
+				THROW( "invalid or duplicate serialized obsolete unit design" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1643,6 +1729,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_sanction_turns = sanction_turns;
 	m_integrity_blemishes = integrity_blemishes;
 	m_prototyped_components = std::move( prototyped_components );
+	m_obsolete_unit_designs = std::move( obsolete_unit_designs );
 	m_orbital_facilities = std::move( orbital_facilities );
 	m_orbital_defense_deployments = orbital_defense_deployments;
 	m_council_state = std::move( council_state );

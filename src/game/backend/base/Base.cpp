@@ -208,6 +208,9 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 		return false;
 	}
 	const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
+	if ( owner && owner->IsUnitDesignObsolete( def->m_id ) ) {
+		return false;
+	}
 	if (
 		def->m_owner_player_id >= 0 &&
 		( !m_owner || static_cast< int64_t >( m_owner->GetIndex() ) != def->m_owner_player_id )

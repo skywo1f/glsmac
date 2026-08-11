@@ -90,6 +90,7 @@ let components = [
 	'SynthmetalArmor', 'TerraformingUnit',
 ];
 let nano_factory = false;
+let obsolete_designs = {};
 let player = {
 	id: 1,
 	name: 'Test Faction',
@@ -106,6 +107,7 @@ let player = {
 		}
 		return false;
 	},
+	is_unit_design_obsolete: (id) => { return #is_defined(obsolete_designs[id]); },
 };
 player.set_energy_credits = (value) => { player.energy_credits = value; };
 
@@ -171,6 +173,9 @@ test.assert(!rules.is_compatible(former, scout));
 test.assert(!rules.is_compatible(artillery, laser));
 test.assert(!rules.is_compatible(needlejet, needlejet_without_superiority));
 test.assert(rules.get_targets(game, player, scout) == [laser, synth, laser_synth]);
+obsolete_designs[laser_synth.id] = true;
+test.assert(rules.get_targets(game, player, scout) == [laser, synth]);
+obsolete_designs = {};
 test.assert(!rules.is_available(player, locked));
 test.assert(!rules.is_available(player, unprototyped));
 

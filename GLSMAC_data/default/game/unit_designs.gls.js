@@ -18,4 +18,17 @@ return (game) => {
 	game.set('f_unit_design_get_preview', (player, selection) => {
 		return rules.get_preview(game, player, selection);
 	});
+	game.set('f_unit_design_get_existing', (player) => {
+		let result = [];
+		for (definition of game.get_um().get_unit_defs()) {
+			if (definition.owner_player_id == player.id) {
+				result :+{
+					id: definition.id,
+					name: definition.name,
+					obsolete: player.is_unit_design_obsolete(definition.id),
+				};
+			}
+		}
+		return result;
+	});
 };

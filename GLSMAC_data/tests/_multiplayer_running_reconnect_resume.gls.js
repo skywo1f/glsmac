@@ -176,7 +176,8 @@
 				def.reactor != 'FissionPlant' || def.reactor_power != 1 ||
 				def.offense != 1 || def.defense != 1 ||
 				own_base == null || other_base == null ||
-				!own_base.can_set_production('unit', id) ||
+				!player.is_unit_design_obsolete(id) ||
+				own_base.can_set_production('unit', id) ||
 				other_base.can_set_production('unit', id)
 			) {
 				return 'faction Workshop definition or ownership was not restored';

@@ -400,6 +400,7 @@
 			let energy_requested = false;
 			let loan_requested = false;
 			let workshop_requested = false;
+			let workshop_obsolete_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -544,10 +545,29 @@
 							workshop_def.name != workshop_design_name ||
 							workshop_def.owner_player_id != game.get_player().id ||
 							local_base == null || remote_base == null ||
-							!local_base.can_set_production('unit', workshop_id) ||
 							remote_base.can_set_production('unit', workshop_id)
 						) {
 							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial Workshop design is invalid');
+							glsmac.exit();
+							return false;
+						}
+						if (!game.get_player().is_unit_design_obsolete(workshop_id)) {
+							if (!local_base.can_set_production('unit', workshop_id)) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: Workshop design is not initially available');
+								glsmac.exit();
+								return false;
+							}
+							if (!workshop_obsolete_requested) {
+								workshop_obsolete_requested = true;
+								game.event('set_unit_design_obsolete', {
+									id: workshop_id,
+									obsolete: true,
+								});
+							}
+							return true;
+						}
+						if (local_base.can_set_production('unit', workshop_id)) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: obsolete Workshop design remains available');
 							glsmac.exit();
 							return false;
 						}
@@ -557,6 +577,7 @@
 						#print('RUNNING_RECONNECT_INTEGRITY_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_TERRAFORM_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_DEF_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_UNIT_OBSOLETE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;
 					}

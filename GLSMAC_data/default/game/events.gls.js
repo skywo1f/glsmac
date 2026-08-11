@@ -7,6 +7,7 @@ return (game) => {
 		'define_moraleset',
 		'define_unit',
 		'create_unit_design',
+		'set_unit_design_obsolete',
 		'game_settings',
 		'select_faction',
 		'ready_or_not',

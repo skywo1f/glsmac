@@ -78,6 +78,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENTS = 1024;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENT_ID_LENGTH = 128;
+	static constexpr size_t MAX_OBSOLETE_UNIT_DESIGNS = 4096;
+	static constexpr size_t MAX_UNIT_DESIGN_ID_LENGTH = 256;
 	static constexpr size_t MAX_ORBITAL_FACILITY_TYPES = 64;
 	static constexpr size_t MAX_ORBITAL_FACILITY_ID_LENGTH = 128;
 	static constexpr int64_t MAX_ORBITAL_FACILITY_COUNT = 1000000;
@@ -105,6 +107,10 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const prototyped_components_t& GetPrototypedComponents() const;
 	bool HasPrototypedComponent( const std::string& id ) const;
 	void SetPrototypedComponents( const prototyped_components_t& components );
+	using obsolete_unit_designs_t = std::set< std::string >;
+	const obsolete_unit_designs_t& GetObsoleteUnitDesigns() const;
+	bool IsUnitDesignObsolete( const std::string& id ) const;
+	void SetObsoleteUnitDesigns( const obsolete_unit_designs_t& designs );
 	using orbital_facilities_t = std::map< std::string, int64_t >;
 	const orbital_facilities_t& GetOrbitalFacilities() const;
 	int64_t GetOrbitalFacilityCount( const std::string& id ) const;
@@ -268,6 +274,7 @@ private:
 	prototyped_components_t m_prototyped_components = {
 		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
 	};
+	obsolete_unit_designs_t m_obsolete_unit_designs = {};
 	orbital_facilities_t m_orbital_facilities = {};
 	int64_t m_orbital_defense_deployments = 0;
 	council_state_t m_council_state = {};

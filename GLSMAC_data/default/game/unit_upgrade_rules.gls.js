@@ -42,6 +42,10 @@ const has_ability = (def, id) => {
 const is_available = (player, def) => {
 	return (
 		(
+			#typeof(player.is_unit_design_obsolete) != 'Callable' ||
+			!player.is_unit_design_obsolete(def.id)
+		) &&
+		(
 			!#is_defined(def.owner_player_id) || def.owner_player_id < 0 ||
 			def.owner_player_id == player.id
 		) && (

@@ -36,6 +36,37 @@ return {
 		select.value = #sizeof(select.items) > 0 ? select.items[0][0] : '';
 	},
 
+	_refresh_existing: (selected_id) => {
+		const designs = this.p.game.get('f_unit_design_get_existing')(this.player);
+		this.existing_designs = {};
+		let items = [];
+		for (design of designs) {
+			this.existing_designs[design.id] = design;
+			items :+[
+				design.id,
+				(design.obsolete ? '[OBSOLETE] ' : '') + design.name,
+			];
+		}
+		this.existing_design.items = #sizeof(items) > 0
+			? items
+			: [['', 'No Workshop designs']];
+		this.existing_design.readonly = #sizeof(items) == 0;
+		this._set_default(this.existing_design, selected_id);
+		this._refresh_existing_action();
+	},
+
+	_refresh_existing_action: () => {
+		const id = this.existing_design.value;
+		if (id == '' || !#is_defined(this.existing_designs[id])) {
+			this.obsolete_button.hide();
+			return;
+		}
+		this.obsolete_button.text = this.existing_designs[id].obsolete
+			? 'Reactivate Selected Design'
+			: 'Make Selected Design Obsolete';
+		this.obsolete_button.show();
+	},
+
 	_refresh_abilities: () => {
 		let compatible = [];
 		const base_selection = this._selection();
@@ -118,7 +149,9 @@ return {
 			? (waiver ? 'Prototype cost waived at this base.' : 'New prototype components included.')
 			: 'Components already prototyped.';
 		if (preview.exists) {
-			this.status.text = 'This component combination already exists for your faction.';
+			this.status.text = this.player.is_unit_design_obsolete(preview.id)
+				? 'This design is obsolete. Reactivate it below to resume production.'
+				: 'This component combination already exists for your faction.';
 			this.prototype_status.text = '';
 			return;
 		}
@@ -131,8 +164,16 @@ return {
 		this.options = null;
 		this.preview = null;
 		this.base = null;
+		this.existing_designs = {};
 
-		return p.create('UNIT WORKSHOP', 620, 390, (body, cb) => {
+		p.game.on('unit_design_obsolescence_changed', (e) => {
+			if (this.player != null && e.player.id == this.player.id) {
+				this._refresh_existing(e.id);
+				this._refresh(false);
+			}
+		});
+
+		return p.create('UNIT WORKSHOP', 620, 470, (body, cb) => {
 			const add_label = (text, top) => {
 				body.text({class: 'game-popup-text', text: text, left: 12, top: top + 4});
 			};
@@ -166,6 +207,25 @@ return {
 			this.prototype_status = body.text({
 				class: 'game-popup-text', text: '', left: 12, right: 12, top: 310,
 			});
+			add_label('Existing Design:', 338);
+			this.existing_design = add_select(338);
+			this.existing_design.on('select', (e) => {
+				this._refresh_existing_action();
+				return true;
+			});
+			this.obsolete_button = body.button({
+				class: 'game-popup-button', text: '', top: 378,
+			});
+			this.obsolete_button.on('click', (e) => {
+				const id = this.existing_design.value;
+				if (id != '' && #is_defined(this.existing_designs[id])) {
+					this.p.game.event('set_unit_design_obsolete', {
+						id: id,
+						obsolete: !this.existing_designs[id].obsolete,
+					});
+				}
+				return true;
+			});
 
 			this.chassis.on('select', (e) => {
 				this._refresh(true);
@@ -194,13 +254,13 @@ return {
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Cancel', top: 340, is_cancel: true,
+				class: 'game-popup-button', text: 'Cancel', top: 418, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
 			});
 			this.create_button = body.button({
-				class: 'game-popup-button', text: 'Create Design', top: 364, is_ok: true,
+				class: 'game-popup-button', text: 'Create Design', top: 442, is_ok: true,
 			});
 			this.create_button.on('click', (e) => {
 				if (this.preview == null || #is_defined(this.preview.error) || this.preview.exists) {
@@ -236,11 +296,15 @@ return {
 		this.ability_one.value = '';
 		this.ability_two.items = [['', 'None']];
 		this.ability_two.value = '';
+		this._refresh_existing('');
 		this._refresh(true);
 	},
 
 	on_hide: () => {
 		this.preview = null;
 		this.base = null;
+		this.player = null;
+		this.options = null;
+		this.existing_designs = {};
 	},
 };

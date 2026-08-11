@@ -268,6 +268,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetMajorAtrocities( 2 );
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
+				source.SetObsoleteUnitDesigns( {
+					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+				} );
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
@@ -295,6 +298,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					cloned.GetIntegrityBlemishes() == 4,
 					"player diplomatic integrity was not cloned"
+				);
+				GT_ASSERT(
+					cloned.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"obsolete unit design state was not cloned"
 				);
 				GT_ASSERT(
 					cloned.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
@@ -337,6 +346,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player diplomatic integrity was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"obsolete unit design state was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
 					"player orbital facilities were not serialized"
 				);
@@ -351,9 +366,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 				types::Buffer bool_field;
 				bool_field.WriteBool( true );
 				const auto bool_field_size = bool_field.ToString().size();
+				types::Buffer obsolete_designs_field;
+				obsolete_designs_field.WriteInt( source.GetObsoleteUnitDesigns().size() );
+				for ( const auto& id : source.GetObsoleteUnitDesigns() ) {
+					obsolete_designs_field.WriteString( id );
+				}
+				const auto obsolete_designs_field_size = obsolete_designs_field.ToString().size();
 				auto trade_only_council_data = source.Serialize().ToString();
 				trade_only_council_data.resize(
-					trade_only_council_data.size() - bool_field_size * 2
+					trade_only_council_data.size() - obsolete_designs_field_size -
+						bool_field_size * 2
 				);
 				Player trade_only_council( trade_only_council_data );
 				GT_ASSERT(
@@ -364,7 +386,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - bool_field_size * 3
+					legacy_council_data.size() - obsolete_designs_field_size -
+						bool_field_size * 3
 				);
 				Player legacy_council( legacy_council_data );
 				GT_ASSERT(
