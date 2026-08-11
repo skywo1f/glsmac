@@ -13,6 +13,7 @@ return (game) => {
 		'despawn_unit',
 		'move_unit',
 		'attack_unit',
+		'planet_buster',
 		'advance_unit_after_combat',
 		'unit_skip_turn',
 		'terraform_tile',

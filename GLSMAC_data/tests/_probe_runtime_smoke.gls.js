@@ -8,6 +8,9 @@
 	let start_runtime = null;
 	let runtime_started = false;
 	let operation_notified = false;
+	let runtime_probe_id = 0;
+	let probe_morale_before_operation = 0;
+	let probe_morale_at_notification = 0;
 
 	const fail = (message) => {
 		if (!finished) {
@@ -29,6 +32,9 @@
 
 		game.on('probe_operation', (e) => {
 			operation_notified = e.operation == 'subvert_unit' && e.success && e.detected;
+			if (runtime_probe_id != 0 && game.get_um().has_unit(runtime_probe_id)) {
+				probe_morale_at_notification = game.get_um().get_unit(runtime_probe_id).morale;
+			}
 		});
 
 		game.on('start_ui', (e) => {
@@ -88,7 +94,7 @@
 			for (tile of target_base.get_tile().get_surrounding_tiles()) {
 				if (
 					tile != target_base.get_tile() && tile.is_land &&
-					tile.get_base() == null && !tile.is_locked()
+					tile.get_base() == null && #sizeof(tile.get_units()) == 0 && !tile.is_locked()
 				) {
 					probe_tile = tile;
 					break;
@@ -130,7 +136,9 @@
 				def: 'ScoutPatrol', owner: target_player, tile: target_base.get_tile(),
 				morale: 2, health: 1.0, home_base_id: target_base.id,
 			});
+			runtime_probe_id = probe.id;
 			const target_id = target.id;
+			let probe_morale_expected = 0;
 			actor.set_energy_credits(10000);
 			target_player.set_energy_credits(200);
 			const energy_before = game.get_player(actor.id).energy_credits;
@@ -150,6 +158,11 @@
 			}
 
 			start_runtime = () => {
+				probe_morale_before_operation = probe.morale;
+				probe_morale_expected = #min(
+					probe_morale_before_operation + 1,
+					#sizeof(game.get_um().get_moraleset(probe.get_def().morale_set)) - 1
+				);
 				game.event('probe_operation', {
 					unit: probe,
 					operation: 'subvert_unit',
@@ -170,12 +183,25 @@
 					}
 					if (
 						game.get_player(actor.id).energy_credits != energy_before - expected_cost ||
-						probe.movement != 0.0 || probe.morale != 3 ||
+						probe.movement != 0.0 ||
+						probe_morale_at_notification != probe_morale_expected ||
 						actor.get_diplomatic_relation(target_player) != 'vendetta' ||
 						target_player.get_diplomatic_relation(actor) != 'vendetta' ||
 						!operation_notified
 					) {
-						fail('live subversion side effects are invalid');
+						fail(
+							'live subversion side effects are invalid: energy=' +
+								#to_string(game.get_player(actor.id).energy_credits) +
+							' expected=' + #to_string(energy_before - expected_cost) +
+							' movement=' + #to_string(probe.movement) +
+							' morale=' + #to_string(probe.morale) +
+							' expected_morale=' + #to_string(probe_morale_expected) +
+							' morale_before=' + #to_string(probe_morale_before_operation) +
+							' morale_at_notification=' + #to_string(probe_morale_at_notification) +
+							' actor_relation=' + actor.get_diplomatic_relation(target_player) +
+							' target_relation=' + target_player.get_diplomatic_relation(actor) +
+							' notified=' + #to_string(operation_notified)
+						);
 						return false;
 					}
 					finished = true;

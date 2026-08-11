@@ -12,6 +12,7 @@ let found_needlejet = false;
 let found_copter = false;
 let found_gravship = false;
 let found_missile = false;
+let found_planet_buster = false;
 let found_carrier = false;
 let found_sea_colony = false;
 let found_fast_land_colony = false;
@@ -91,13 +92,20 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 			found_gravship = true;
 		} else if (data.chassis == 'Missile') {
 			test.assert(data.operational_range == 1 && data.is_missile);
-			test.assert(data.weapon == 'ConventionalPayload');
-			found_missile = true;
+			if (data.weapon == 'ConventionalPayload') {
+				found_missile = true;
+			} else {
+				test.assert(data.weapon == 'PlanetBuster');
+				test.assert(data.offense == 99);
+				test.assert(data.mineral_cost == 225);
+				test.assert(data.required_technology == 'OrbitalSpaceflight');
+				found_planet_buster = true;
+			}
 		}
 	} else if (data.offense >= 20) {
 		found_late_land_assault = true;
 	}
-	test.assert(data.offense < 99);
+	test.assert(data.offense < 99 || data.weapon == 'PlanetBuster');
 }
 
 test.assert(found_late_land_assault);
@@ -107,6 +115,7 @@ test.assert(found_needlejet);
 test.assert(found_copter);
 test.assert(found_gravship);
 test.assert(found_missile);
+test.assert(found_planet_buster);
 test.assert(found_carrier);
 test.assert(found_sea_colony);
 test.assert(found_fast_land_colony);

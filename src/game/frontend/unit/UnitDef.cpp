@@ -24,6 +24,7 @@ UnitDef::UnitDef( sprite::InstancedSpriteManager* ism, const backend::unit::Def*
 		case backend::unit::DT_STATIC: {
 			const auto* def = (backend::unit::StaticDef*)unitdef;
 			m_is_artillery = def->IsArtillery();
+			m_is_planet_buster = def->m_is_missile && def->m_weapon_id == "PlanetBuster";
 
 			switch ( def->m_render->m_type ) {
 
@@ -58,6 +59,10 @@ UnitDef::~UnitDef() {
 
 const bool UnitDef::IsArtillery() const {
 	return m_is_artillery;
+}
+
+const bool UnitDef::IsPlanetBuster() const {
+	return m_is_planet_buster;
 }
 
 sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {

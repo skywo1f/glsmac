@@ -86,6 +86,12 @@ scenarios, for:
   base yields, the original halved output without an Aerospace Complex, and
   marginal-yield-aware AI production; the Space Elevator waives Aerospace
   restrictions and doubles orbital production, with save/reconnect coverage;
+- generated Planet Buster designs, reactor-scaled blast radii, destruction of
+  affected bases, units, and cargo, surviving-unit rehoming, global vendettas,
+  major-atrocity and sanction consequences, reversible network application,
+  and conservative opponent-aware AI production and targeting; Orbital Defense
+  Pods make one 50% interception attempt per undeployed pod each turn and can
+  sacrifice an already deployed pod for a guaranteed interception;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -136,7 +142,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - 37 of 38 base facilities represented: 33 complete and 4 partial;
 - all 33 Secret Projects represented: 31 complete and 2 partial;
-- 246 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 247 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -162,14 +168,15 @@ The following original-SMAC systems remain absent or materially incomplete:
   global warming, sea-level changes, volcanoes, several ecology-related Secret
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
-- Planet Busters and Orbital Defense Pod interception; defensive pods are
-  represented as repeatable persistent launches, but cannot have their original
-  combat effect until Planet Busters exist;
+- Planet Buster blasts do not yet deform terrain or leave craters, and direct
+  Orbital Defense Pod attacks against rival satellites are not available;
 - several remaining facility effects, including submersion, Psi Gates, disease
   protection, and Alien Artifact production contributions to Secret Projects
   and prototypes;
-- Psi Gate is the only absent base-facility definition; both hospitals,
-  Pressure Dome, and Orbital Defense Pod are represented but remain partial;
+- Psi Gate is the only absent base-facility definition; both hospitals remain
+  partial because disease protection is absent, Pressure Dome still lacks
+  submersion protection, and Orbital Defense Pod remains partial only because
+  direct satellite warfare is absent;
 - the two partial Secret Projects are the Empath Guild and Space Elevator; the
   Empath Guild still lacks its +50% council-election vote bonus, and the Space
   Elevator still lacks global orbital insertion and its remaining Drop Pod
@@ -184,25 +191,28 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 93 cases: 74 isolated native/script GSE tests
-and 19 asset-backed runtime scenarios. The current 74-case isolated Release GSE
-matrix (73 scripts and one native test) passed in one bounded invocation in
-141.54 seconds. Long runtime timing and process-lifecycle cases remain
-intermittently unstable.
-Before the loan, sanction, and integrity milestones, all 18
-asset-backed runtime scenarios also passed against an installed Planetary Pack
-in three bounded invocations: the live probe scenario in 7.46 seconds, six
-gameplay and snapshot scenarios in 92.70 seconds, and the remaining eleven
-content and AI scenarios in 544.16 seconds. The
-previous 58-case GSE set also passes in the MSVC AddressSanitizer configuration.
-Script isolation keeps allocator lifetime bounded and reports the exact script
-that fails.
+The Release CTest matrix contains 96 cases: 76 isolated native/script GSE tests
+and 20 asset-backed runtime scenarios. The current 76-case isolated Release GSE
+matrix (75 scripts and one native test) passed in one bounded invocation in
+158.81 seconds. All 20 runtime scenarios are also green across bounded focused
+invocations against an installed Planetary Pack; they are intentionally split
+so every command remains below the 15-minute development limit. Script
+isolation keeps allocator lifetime bounded and reports the exact script that
+fails.
+
+The focused Planet Buster ownership set passed 7/7 in 8.34 seconds, and its
+installed-asset runtime smoke passed in 15.92 seconds. The current AI economy
+soak runs at least 20 unassisted turns, continues to a turn-30 failure deadline
+only while a required milestone is missing, and passed cleanly in 200.09
+seconds. The focused AI expansion, growth, and terraforming runtime passed in
+68.31 seconds with ordinary unit-movement ordering.
 
 Planetary Datalinks coverage validates the exact three-other-factions
 threshold, multi-technology grants, research-target rollover, host-only event
 authorship, client application, rollback, duplicate-event suppression, and AI
 valuation. Its four-faction installed-asset runtime smoke passed in 12.75
-seconds.
+seconds in its original milestone and 23.87 seconds in the current runtime
+regression group.
 
 Empath Guild coverage validates construction and capture acquisition, exact
 rollback, preservation of pre-existing infiltration, and rival-aware AI
@@ -228,19 +238,19 @@ The diplomacy cases have passed focused Release validation: native trade and
 loan clone/serialization/backward-compatibility checks; isolated atomic energy,
 technology, principal, repayment, partial-payment, wartime-penalty, vendetta,
 and rollback tests; stale-wrapper multi-lender accounting; and AI-policy and
-UI-parser tests. The current asset-backed diplomacy quickstart passed in 8.01
+UI-parser tests. The current asset-backed diplomacy quickstart passed in 17.97
 seconds with a treaty, commerce, reciprocal technology trade, loan acceptance,
 peaceful repayment, treaty-betrayal integrity loss, vendetta, and wartime debt
-growth. The current running multiplayer reconnect passed in 36.74 seconds and
+growth. The current running multiplayer reconnect passed in 33.65 seconds and
 restored exact active-loan, sanction-duration, diplomatic-integrity, orbital
-facility counts, orbital definition metadata, and Children's Creche
-local-rating definition state.
+facility counts and Orbital Defense Pod deployment state, orbital definition
+metadata, and Children's Creche local-rating definition state.
 Probe coverage includes persistent infiltration and
 major-atrocity state, isolated rules, reversible operations for all implemented
 missions, resident defense, AI policy, UI loading, and an asset-backed
 quickstart covering the live production gate and unit subversion. The preceding
-84-case matrix is green across bounded invocations, but has not been run as one
-invocation.
+96-case matrix is green across bounded invocations, but the runtime cases have
+not been run as one long aggregate invocation.
 
 Commerce coverage validates the original base-ranking and pairing formula,
 asymmetric technology benefits, treaty/pact scaling, social and faction
@@ -253,7 +263,8 @@ Sanction coverage verifies symmetric commerce cutoff, ordinary trade and loan
 embargoes, suspended peaceful repayments, atrocity imposition and rollback,
 post-economy yearly expiry, AI commerce-cost awareness, UI status loading, and
 network snapshot restoration. The sanction-aware asset-backed Probe Team smoke
-passed in 7.03 seconds.
+passed in its original milestone, and the current expanded live Probe Team smoke
+passed in 15.55 seconds.
 
 POLICE coverage validates the full -5 through +3 garrison table, disabled and
 one/two/three-unit limits, the +3 doubled effect, Non-Lethal Methods priority,
@@ -287,28 +298,23 @@ serialization, and live network snapshot restoration.
 
 After the Headquarters relocation and capture rules were added, all 64 GSE
 cases passed again, and the installed-asset general gameplay and AI runtime
-smokes passed in 8.27 and 109.90 seconds. The general smoke directly completes
-and rolls back a Headquarters relocation between two live bases.
+smokes passed in 8.27 and 109.90 seconds. The current expanded versions pass in
+32.06 and 68.31 seconds. The general smoke directly completes and rolls back a
+Headquarters relocation between two live bases.
 
-The last all-green Release matrix passed 74/74 in one uninterrupted
-688.11-second invocation. A later full validation passed 72/74 in 768.06
-seconds: the economy soak reached turn 60 before its 300-second ceiling, and
-the running-reconnect client's process exited normally before its colony marker.
-The current sanitizer matrix passed 58/58 in two bounded
-invocations: tests 1-29 passed in 752.26 seconds and tests 30-58 passed in 58.47
-seconds. The split keeps every command below the 15-minute development limit;
-six asset-catalog validation cases account for most of the first half's time.
+The current Release validation includes a 76/76 isolated pass, all 20 runtime
+scenarios green across bounded invocations, multiplayer in 39.11 seconds, and
+running reconnect in 33.65 seconds. The last sanitizer baseline passed 58/58 in
+two bounded invocations; sanitizer coverage has not yet been rerun for every
+system added since that baseline.
 
-The general gameplay, AI conquest, AI air, AI hurry, and multiplayer runtime
-scenarios use the test-only `--headless` mode. It retains the real asset loaders,
-UI scripts, frontend/backend game modules, scheduler, and networking while
-replacing graphics, input, and audio with null modules and immediately
-acknowledging animation requests. Other runtime scenarios remain rendered:
-applying headless mode globally slowed the long economy soak until it timed out,
-so the faster path is deliberately selective. The AI hurry test now exits
-immediately after its pass condition instead of allowing another AI turn to
-start during delayed shutdown. AI hurry and multiplayer each passed five
-consecutive fresh-process repeats after these changes.
+Most logic-heavy runtime scenarios use the test-only `--headless` mode. It
+retains the real asset loaders, UI scripts, frontend/backend game modules,
+scheduler, networking, and ordinary unit-movement ordering while replacing
+graphics, input, and audio with null modules and immediately acknowledging
+animation requests. Research, air, transport, and sea-colony scenarios remain
+rendered to cover the graphics-coupled paths. Headless mode does not bypass game
+logic or force synchronous movement.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

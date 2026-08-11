@@ -83,6 +83,7 @@ const colony_module = find_component(manifest.weapons, 'ColonyModule');
 const terraforming_unit = find_component(manifest.weapons, 'TerraformingUnit');
 const troop_transport = find_component(manifest.weapons, 'TroopTransport');
 const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
+const planet_buster = find_component(manifest.weapons, 'PlanetBuster');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
 const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
 
@@ -273,6 +274,19 @@ const add_milestone_designs = (technology_id) => {
 			technology_id,
 			missile,
 			conventional_payload,
+			no_armor,
+			'assault',
+			[]
+		);
+	}
+	if (
+		technology_id == planet_buster.required_technology &&
+		is_available(missile, known) && is_available(planet_buster, known)
+	) {
+		add_design(
+			technology_id,
+			missile,
+			planet_buster,
 			no_armor,
 			'assault',
 			[]

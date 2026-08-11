@@ -1696,8 +1696,9 @@ void Game::Initialize(
 											foreign_units.insert( it );
 										}
 									}
+									const bool is_planet_buster = selected_unit->IsPlanetBuster();
 									m_glsmac->WithGSE(
-										[ &game, &selected_unit, &tile, &foreign_units ]( GSE_CALLABLE ) {
+										[ &game, &selected_unit, &tile, &foreign_units, is_planet_buster ]( GSE_CALLABLE ) {
 											const auto* um = game->GetUM();
 											if ( foreign_units.empty() ) {
 												// move
@@ -1724,12 +1725,24 @@ void Game::Initialize(
 												if ( !defender ) {
 													return;
 												}
-												game->Event(
-													GSE_CALL, "attack_unit", {
-														{ "attacker", attacker->Wrap( GSE_CALL ) },
-														{ "defender", defender->Wrap( GSE_CALL ) },
-													}
-												);
+												if ( is_planet_buster ) {
+													const auto& c = tile->GetCoords();
+													auto* target = game->GetMap()->GetTile( c.x, c.y );
+													game->Event(
+														GSE_CALL, "planet_buster", {
+															{ "unit", attacker->Wrap( GSE_CALL ) },
+															{ "tile", target->Wrap( GSE_CALL ) },
+														}
+													);
+												}
+												else {
+													game->Event(
+														GSE_CALL, "attack_unit", {
+															{ "attacker", attacker->Wrap( GSE_CALL ) },
+															{ "defender", defender->Wrap( GSE_CALL ) },
+														}
+													);
+												}
 											}
 										}
 									);
@@ -1960,21 +1973,35 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 		if ( !selected_unit || !selected_unit->IsActive() ) {
 			return;
 		}
+		const bool is_planet_buster = selected_unit->IsPlanetBuster();
 		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 		for ( const auto& it : tile->GetUnits() ) {
 			if ( !it.second->IsEmbarked() && !it.second->IsOwned() ) {
 				foreign_units.insert( it );
 			}
 		}
-		if ( foreign_units.empty() ) {
+		if ( foreign_units.empty() && !is_planet_buster ) {
 			return;
 		}
-		const auto defender_id = foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId();
+		const auto defender_id = foreign_units.empty()
+			? 0
+			: foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId();
+		const auto target_coords = tile->GetCoords();
 		auto* game = m_game;
 		m_glsmac->WithGSE(
-			[ game, attacker_id, defender_id ]( GSE_CALLABLE ) {
+			[ game, attacker_id, defender_id, target_coords, is_planet_buster ]( GSE_CALLABLE ) {
 				auto* attacker = game->GetUM()->GetUnit( attacker_id );
 				if ( !attacker ) {
+					return;
+				}
+				if ( is_planet_buster ) {
+					auto* target = game->GetMap()->GetTile( target_coords.x, target_coords.y );
+					game->Event(
+						GSE_CALL, "planet_buster", {
+							{ "unit", attacker->Wrap( GSE_CALL ) },
+							{ "tile", target->Wrap( GSE_CALL ) },
+						}
+					);
 					return;
 				}
 				auto* defender = game->GetUM()->GetUnit( defender_id );

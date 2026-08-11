@@ -94,6 +94,10 @@ const bool Unit::IsEmbarked() const {
 	return m_is_embarked;
 }
 
+const bool Unit::IsPlanetBuster() const {
+	return m_def->IsPlanetBuster();
+}
+
 tile::Tile* Unit::GetTile() const {
 	return m_tile;
 }

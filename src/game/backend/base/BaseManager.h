@@ -56,6 +56,8 @@ public:
 	void UndefineFacility( const std::string& id );
 	void SpawnBase( GSE_CALLABLE, base::Base* base );
 	void DespawnBase( GSE_CALLABLE, const size_t base_id );
+	std::string SnapshotBase( const base::Base* base ) const;
+	base::Base* RestoreBase( GSE_CALLABLE, const std::string& snapshot );
 
 	const std::map< size_t, Base* >& GetBases() const;
 	const popdefs_t& GetBasePopDefs() const;
@@ -98,6 +100,7 @@ private:
 		const base::Base* base = nullptr;
 	};
 	std::unordered_map< size_t, base_update_t > m_base_updates = {};
+	static constexpr size_t MAX_BASE_SNAPSHOT_SIZE = 4 * 1024 * 1024;
 
 	void QueueBaseUpdate( const base::Base* base, const base_update_op_t op );
 

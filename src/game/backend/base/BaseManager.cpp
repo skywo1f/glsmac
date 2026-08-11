@@ -20,6 +20,7 @@
 #include "gse/value/Bool.h"
 #include "gse/value/Array.h"
 #include "gse/value/Float.h"
+#include "gse/value/String.h"
 
 namespace game {
 namespace backend {
@@ -251,6 +252,36 @@ void BaseManager::DespawnBase( GSE_CALLABLE, const size_t base_id ) {
 	}
 
 	delete base;
+}
+
+std::string BaseManager::SnapshotBase( const base::Base* base ) const {
+	if ( !base ) {
+		THROW( "cannot snapshot a null base" );
+	}
+	const auto it = m_bases.find( base->m_id );
+	if ( it == m_bases.end() || it->second != base ) {
+		THROW( "cannot snapshot a base that is not active" );
+	}
+	const auto snapshot = base::Base::Serialize( base ).ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_BASE_SNAPSHOT_SIZE ) {
+		THROW( "serialized base snapshot size is invalid" );
+	}
+	return snapshot;
+}
+
+base::Base* BaseManager::RestoreBase( GSE_CALLABLE, const std::string& snapshot ) {
+	if ( snapshot.empty() || snapshot.size() > MAX_BASE_SNAPSHOT_SIZE ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Serialized base snapshot size is invalid" );
+	}
+	types::Buffer id_buffer( snapshot );
+	const auto id = id_buffer.ReadInt< size_t >( "base id" );
+	if ( id == 0 || m_bases.find( id ) != m_bases.end() ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Serialized base snapshot ID is invalid or already active" );
+	}
+	types::Buffer buffer( snapshot );
+	auto base = std::unique_ptr< base::Base >( base::Base::Deserialize( GSE_CALL, buffer, m_game ) );
+	SpawnBase( GSE_CALL, base.get() );
+	return base.release();
 }
 
 const std::map< size_t, Base* >& BaseManager::GetBases() const {
@@ -849,6 +880,33 @@ WRAPIMPL_BEGIN( BaseManager )
 				}
 
 				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"snapshot_base",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE_UNWRAP( base, 0, Base );
+				try {
+					return VALUE( gse::value::String, , SnapshotBase( base ) );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"restore_base",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( snapshot, 0, String );
+				try {
+					return RestoreBase( GSE_CALL, snapshot )->Wrap( GSE_CALL );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
 			} )
 		},
 		{

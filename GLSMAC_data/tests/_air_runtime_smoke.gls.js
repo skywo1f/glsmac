@@ -140,18 +140,26 @@
 			}
 
 			if (turn_id == 2) {
+				let wait_ticks = 0;
 				#async(100, () => {
+					wait_ticks++;
+					if (um.has_unit(immediate_crash_id) || um.has_unit(missile_crash_id)) {
+						if (wait_ticks >= 20) {
+							fail('Needlejet or missile crash event timed out');
+							return false;
+						}
+						return true;
+					}
 					if (
-						!um.has_unit(countdown_id) || um.get_unit(countdown_id).fuel != 1 ||
-						um.has_unit(immediate_crash_id) || um.has_unit(missile_crash_id)
+						!um.has_unit(countdown_id) || um.get_unit(countdown_id).fuel != 1
 					) {
 						fail('Needlejet countdown or crash timing is invalid');
-						return;
+						return false;
 					}
 					const copter = um.get_unit(copter_id);
 					if (copter.fuel != 0 || copter.health < 0.699 || copter.health > 0.701) {
 						fail('Copter field landing damage is invalid');
-						return;
+						return false;
 					}
 					if (
 						!um.has_unit(gravship_id) || um.get_unit(gravship_id).fuel != 0 ||
@@ -159,9 +167,10 @@
 						um.get_unit(airbase_refuel_id).fuel != 2
 					) {
 						fail('air refueling or Gravship range is invalid');
-						return;
+						return false;
 					}
 					game.event('complete_turn', {});
+					return false;
 				});
 				return;
 			}

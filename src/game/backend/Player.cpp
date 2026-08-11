@@ -54,6 +54,7 @@ Player::Player( const Player* const other ) {
 	m_integrity_blemishes = other->m_integrity_blemishes;
 	m_prototyped_components = other->m_prototyped_components;
 	m_orbital_facilities = other->m_orbital_facilities;
+	m_orbital_defense_deployments = other->m_orbital_defense_deployments;
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
@@ -277,6 +278,17 @@ void Player::SetOrbitalFacilityCount( const std::string& id, const int64_t count
 		THROW( "too many orbital facility types" );
 	}
 	m_orbital_facilities[ id ] = count;
+}
+
+int64_t Player::GetOrbitalDefenseDeployments() const {
+	return m_orbital_defense_deployments;
+}
+
+void Player::SetOrbitalDefenseDeployments( const int64_t deployments ) {
+	if ( deployments < 0 || deployments > MAX_ORBITAL_FACILITY_COUNT ) {
+		THROW( "orbital defense deployment count is out of range" );
+	}
+	m_orbital_defense_deployments = deployments;
 }
 
 const Player::social_engineering_t& Player::GetSocialEngineering() const {
@@ -832,6 +844,28 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_orbital_defense_deployments",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetOrbitalDefenseDeployments() );
+				} )
+			},
+			{
+				"set_orbital_defense_deployments",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( deployments, 0, Int );
+					try {
+						SetOrbitalDefenseDeployments( deployments );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_social_engineering",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1209,6 +1243,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteString( id );
 		buf.WriteInt( count );
 	}
+	buf.WriteInt( m_orbital_defense_deployments );
 
 	return buf;
 }
@@ -1441,6 +1476,16 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	int64_t orbital_defense_deployments = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		orbital_defense_deployments = buf.ReadInt();
+		if (
+			orbital_defense_deployments < 0 ||
+			orbital_defense_deployments > MAX_ORBITAL_FACILITY_COUNT
+		) {
+			THROW( "invalid serialized orbital defense deployment count" );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1469,6 +1514,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_integrity_blemishes = integrity_blemishes;
 	m_prototyped_components = std::move( prototyped_components );
 	m_orbital_facilities = std::move( orbital_facilities );
+	m_orbital_defense_deployments = orbital_defense_deployments;
 
 }
 

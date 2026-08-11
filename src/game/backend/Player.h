@@ -107,6 +107,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const orbital_facilities_t& GetOrbitalFacilities() const;
 	int64_t GetOrbitalFacilityCount( const std::string& id ) const;
 	void SetOrbitalFacilityCount( const std::string& id, const int64_t count );
+	int64_t GetOrbitalDefenseDeployments() const;
+	void SetOrbitalDefenseDeployments( const int64_t deployments );
 
 	using social_engineering_t = std::array< std::string, 4 >;
 	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
@@ -230,6 +232,7 @@ private:
 		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
 	};
 	orbital_facilities_t m_orbital_facilities = {};
+	int64_t m_orbital_defense_deployments = 0;
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};

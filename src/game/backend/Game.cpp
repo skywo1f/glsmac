@@ -1454,6 +1454,12 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 	}
 
 	m_state->WithGSE( this, [ this ]( GSE_CALLABLE ) {
+		for ( const auto& slot : m_state->m_slots->GetSlots() ) {
+			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+				slot.GetPlayer()->SetOrbitalDefenseDeployments( 0 );
+			}
+		}
+
 		for ( auto& it : m_um->GetUnits() ) {
 			auto* unit = it.second;
 			m_state->TriggerObject(

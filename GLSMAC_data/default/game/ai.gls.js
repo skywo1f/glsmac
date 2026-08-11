@@ -5,6 +5,7 @@ const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
 const pathfinding = #include('ai/pathfinding');
 const probes = #include('ai/probes');
+const planet_busters = #include('ai/planet_busters');
 const production = #include('ai/production');
 const research = #include('ai/research');
 const social_engineering = #include('ai/social_engineering');
@@ -46,6 +47,18 @@ const is_protected_partner = (game, player, other_player_id) => {
 	}
 	const relation = player.get_diplomatic_relation(game.get_player(other_player_id));
 	return relation == 'treaty' || relation == 'pact';
+};
+
+const is_planet_buster_production = (production_item, unit_defs) => {
+	if (production_item.production_kind != 'unit') {
+		return false;
+	}
+	for (definition of unit_defs) {
+		if (definition.id == production_item.id) {
+			return #is_defined(definition.weapon) && definition.weapon == 'PlanetBuster';
+		}
+	}
+	return false;
 };
 
 const filter_hostile_units = (game, player, units) => {
@@ -544,6 +557,24 @@ const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 			available_tiles :+tile;
 		}
 	}
+	if (unit.get_def().weapon == 'PlanetBuster') {
+		const target = planet_busters.choose_target(
+			unit,
+			player,
+			available_tiles,
+			(owner_id) => {
+				if (owner_id == player.id) {
+					return true;
+				}
+				return player.get_diplomatic_relation(game.get_player(owner_id)) != 'vendetta';
+			}
+		);
+		if (target == null) {
+			return false;
+		}
+		game.event_as(player.id, 'planet_buster', {unit: unit, tile: target});
+		return true;
+	}
 	const target = combat.choose_attack_target(
 		unit,
 		player.id,
@@ -572,6 +603,55 @@ const queue_production = (game, player, bases, units) => {
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
+	let orbital_defense_threats = 0;
+	let planet_buster_target_value = 0;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id ||
+			player.get_diplomatic_relation(other) != 'vendetta'
+		) {
+			continue;
+		}
+		let has_planet_buster = other.has_technology('OrbitalSpaceflight');
+		for (unit of all_units) {
+			if (
+				unit.owner == other.id &&
+				unit.get_def().weapon == 'PlanetBuster'
+			) {
+				has_planet_buster = true;
+				break;
+			}
+		}
+		if (has_planet_buster) {
+			orbital_defense_threats++;
+		}
+		for (candidate of game.get_bm().get_bases()) {
+			if (candidate.get_owner().id == other.id) {
+				planet_buster_target_value = #max(
+					planet_buster_target_value,
+					candidate.get_size()
+				);
+			}
+		}
+	}
+	let orbital_defense_committed = player.get_orbital_facility_count('OrbitalDefensePod');
+	let planet_busters_committed = 0;
+	for (unit of units) {
+		if (unit.get_def().weapon == 'PlanetBuster') {
+			planet_busters_committed++;
+		}
+	}
+	for (candidate of bases) {
+		const queue = candidate.get_production_queue();
+		if (#sizeof(queue) > 0) {
+			if (queue[0].id == 'OrbitalDefensePod') {
+				orbital_defense_committed++;
+			}
+			if (is_planet_buster_production(queue[0], unit_defs)) {
+				planet_busters_committed++;
+			}
+		}
+	}
 	const get_datalinks_candidates = game.get(
 		'f_project_get_planetary_datalinks_candidates'
 	);
@@ -611,6 +691,15 @@ const queue_production = (game, player, bases, units) => {
 		}
 	}
 	for (base of bases) {
+		const queue = base.get_production_queue();
+		if (#sizeof(queue) > 0) {
+			if (queue[0].id == 'OrbitalDefensePod') {
+				orbital_defense_committed--;
+			}
+			if (is_planet_buster_production(queue[0], unit_defs)) {
+				planet_busters_committed--;
+			}
+		}
 		const commerce_key = 'b' + #to_string(base.id);
 		const base_commerce = #is_defined(commerce_ledger[commerce_key])
 			? commerce_ledger[commerce_key].total
@@ -708,6 +797,12 @@ const queue_production = (game, player, bases, units) => {
 				const resolver = game.get('f_orbital_get_marginal_yield');
 				return #is_defined(resolver) ? resolver(player, def) : 0;
 			},
+			needs_orbital_defense: orbital_defense_committed < orbital_defense_threats,
+			orbital_defense_threats: orbital_defense_threats,
+			needs_planet_buster:
+				planet_busters_committed == 0 && planet_buster_target_value >= 4 &&
+				metrics.own_combat_power * 1.25 < metrics.strongest_rival_power,
+			planet_buster_target_value: planet_buster_target_value,
 			base_labs: game.get('f_technology_get_base_labs')(base).total,
 			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
 			empath_guild_infiltration_count: empath_guild_infiltration_count,
@@ -750,6 +845,9 @@ const queue_production = (game, player, bases, units) => {
 			if (#is_defined(selected.def.weapon) && selected.def.weapon == 'ProbeTeam') {
 				probe_count++;
 			}
+			if (#is_defined(selected.def.weapon) && selected.def.weapon == 'PlanetBuster') {
+				planet_busters_committed++;
+			}
 		} else if (
 			selected != null &&
 			(selected.kind == 'facility' || selected.kind == 'project')
@@ -758,8 +856,10 @@ const queue_production = (game, player, bases, units) => {
 				selected.def,
 				available_energy
 			);
+			if (selected.def.id == 'OrbitalDefensePod') {
+				orbital_defense_committed++;
+			}
 		}
-		const queue = base.get_production_queue();
 		let production_changed = false;
 		if (selected == null) {
 			if (#sizeof(queue) > 0) {

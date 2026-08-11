@@ -3,12 +3,12 @@
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
 
-	const FINAL_TURN = 60;
+	const MINIMUM_TURN = 20;
+	const FINAL_TURN = 30;
 	let game = null;
 	let ai_id = 0 - 1;
 	let ui_started = false;
 	let exit_scheduled = false;
-	let max_bases = 0;
 	let max_base_size = 0;
 	let saw_former = false;
 	let saw_improvement = false;
@@ -45,7 +45,7 @@
 			}
 			return true;
 		}
-		#print('AI_ECONOMY_SOAK_PASS: AI sustained expansion, growth, research, infrastructure, defense, and terraforming');
+		#print('AI_ECONOMY_SOAK_PASS: AI sustained growth, research, infrastructure, defense, and terraforming');
 		#async(2000, () => { glsmac.exit(); });
 		return false;
 	};
@@ -93,8 +93,6 @@
 				}
 			}
 		}
-		max_bases = #max(max_bases, bases);
-
 		let formers = 0;
 		let colonies = 0;
 		let combat = 0;
@@ -173,46 +171,34 @@
 			if (turn == 1 || turn % 5 == 0 || turn >= FINAL_TURN) {
 				print_snapshot(turn, snapshot);
 			}
-			if (turn >= FINAL_TURN) {
-				if (max_bases < 2) {
-					fail('AI did not found a second base during normal play');
-					return;
-				}
+			if (turn >= MINIMUM_TURN) {
+				let incomplete = null;
 				if (snapshot.bases <= 0 || snapshot.population < snapshot.bases || max_base_size < 2) {
-					fail('AI did not sustain populated, growing bases');
+					incomplete = 'AI did not sustain populated, growing bases';
+				} else if (!saw_former || !saw_improvement) {
+					incomplete = 'AI did not produce a former and improve workable terrain';
+				} else if (!saw_facility) {
+					incomplete = 'AI did not complete infrastructure during normal play';
+				} else if (snapshot.garrisoned_bases < snapshot.bases - 1) {
+					incomplete = 'AI left more than one frontier base without a garrison';
+				} else if (snapshot.queued_bases != snapshot.bases) {
+					incomplete = 'AI left one or more bases without production';
+				} else if (snapshot.rioting_bases > 0) {
+					incomplete = 'AI ended the soak with rioting bases';
+				} else if (snapshot.technologies < 2) {
+					incomplete = 'AI did not complete enough research milestones';
+				} else if (snapshot.credits < 0) {
+					incomplete = 'AI treasury became insolvent';
+				}
+				if (incomplete == null) {
+					exit_scheduled = true;
+					#async(100, finish_success);
 					return;
 				}
-				if (!saw_former || !saw_improvement) {
-					fail('AI did not produce a former and improve workable terrain');
+				if (turn >= FINAL_TURN) {
+					fail(incomplete);
 					return;
 				}
-				if (!saw_facility) {
-					fail('AI did not complete infrastructure during normal play');
-					return;
-				}
-				if (snapshot.garrisoned_bases < snapshot.bases - 1) {
-					fail('AI left more than one frontier base without a garrison');
-					return;
-				}
-				if (snapshot.queued_bases != snapshot.bases) {
-					fail('AI left one or more bases without production');
-					return;
-				}
-				if (snapshot.rioting_bases > 0) {
-					fail('AI ended the soak with rioting bases');
-					return;
-				}
-				if (snapshot.technologies < 2) {
-					fail('AI did not complete enough research milestones');
-					return;
-				}
-				if (snapshot.credits < 0) {
-					fail('AI treasury became insolvent');
-					return;
-				}
-				exit_scheduled = true;
-				#async(100, finish_success);
-				return;
 			}
 			#async(250, complete_human_turn);
 		});

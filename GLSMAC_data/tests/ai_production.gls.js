@@ -78,6 +78,8 @@ const former = unit('Former', 0, 1, 1.0, 20, false, true);
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
 const probe_team = unit('ProbeTeam', 0, 1, 2.0, 40, false, false);
 probe_team.weapon = 'ProbeTeam';
+const planet_buster_unit = unit('PlanetBuster', 99, 1, 12.0, 225, false, false);
+planet_buster_unit.weapon = 'PlanetBuster';
 const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
 sea_colony.is_water = true;
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
@@ -255,6 +257,11 @@ orbital_context.get_orbital_marginal_yield = (def) => {
 };
 test.assert(production.score_orbital(sky_hydroponics, orbital_context) != null);
 test.assert(production.score_orbital(orbital_defense, orbital_context) == null);
+orbital_context.needs_orbital_defense = true;
+orbital_context.orbital_defense_threats = 2;
+orbital_context.priorities = {defense: 100};
+test.assert(production.score_orbital(orbital_defense, orbital_context) != null);
+orbital_context.needs_orbital_defense = false;
 test.assert(
 	production.choose(base, [laser], [stockpile, sky_hydroponics], orbital_context).id ==
 	'SkyHydroponicsLab'
@@ -264,6 +271,16 @@ test.assert(production.score_orbital(sky_hydroponics, orbital_context) == null);
 orbital_context.needs_garrison = true;
 orbital_context.get_orbital_marginal_yield = (def) => { return 3; };
 test.assert(production.score_orbital(sky_hydroponics, orbital_context) == null);
+
+let planet_buster_context = context(false, false, false, false, 10);
+planet_buster_context.needs_planet_buster = false;
+test.assert(production.score_unit(planet_buster_unit, planet_buster_context) == null);
+planet_buster_context.needs_planet_buster = true;
+planet_buster_context.planet_buster_target_value = 8;
+planet_buster_context.priorities = {military: 100};
+test.assert(production.score_unit(planet_buster_unit, planet_buster_context) != null);
+planet_buster_context.needs_garrison = true;
+test.assert(production.score_unit(planet_buster_unit, planet_buster_context) == null);
 
 let blocked_expansion_context = context(false, false, true, false, 0);
 blocked_expansion_context.can_expand = false;

@@ -256,6 +256,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
+				source.SetOrbitalDefenseDeployments( 2 );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -281,6 +282,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					cloned.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
 					"player orbital facilities were not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetOrbitalDefenseDeployments() == 2,
+					"player orbital defense deployments were not cloned"
 				);
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
@@ -313,6 +318,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
 					"player orbital facilities were not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetOrbitalDefenseDeployments() == 2,
+					"player orbital defense deployments were not serialized"
 				);
 				GT_ASSERT(
 					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
@@ -502,6 +511,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					legacy.GetOrbitalFacilities().empty(),
 					"legacy player orbital facilities did not default to empty"
 				);
+				GT_ASSERT(
+					legacy.GetOrbitalDefenseDeployments() == 0,
+					"legacy player orbital defense deployments did not default to zero"
+				);
 				bool rejected_duplicate_relation = false;
 				try {
 					auto player = make_diplomatic_player();
@@ -648,6 +661,19 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_orbital_count = true;
 				}
 				GT_ASSERT( rejected_invalid_orbital_count, "invalid orbital facility count accepted" );
+
+				bool rejected_invalid_orbital_deployments = false;
+				try {
+					Player invalid( "Orbital", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetOrbitalDefenseDeployments( Player::MAX_ORBITAL_FACILITY_COUNT + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_orbital_deployments = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_orbital_deployments,
+					"invalid orbital defense deployment count accepted"
+				);
 				GT_OK();
 			}
 		);

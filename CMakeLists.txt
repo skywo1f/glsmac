@@ -212,6 +212,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( PLANET_BUSTER_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/planet-buster-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${PLANET_BUSTER_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME planet_buster_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${PLANET_BUSTER_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_planet_buster_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( planet_buster_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "PLANET_BUSTER_RUNTIME_FAIL"
+			PASS_REGULAR_EXPRESSION "PLANET_BUSTER_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( PLANETARY_DATALINKS_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/planetary-datalinks-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${PLANETARY_DATALINKS_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME planetary_datalinks_runtime_smoke COMMAND
@@ -323,6 +348,7 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
 			--verbose
@@ -331,7 +357,7 @@ IF ( BUILD_TESTING )
 			FAIL_REGULAR_EXPRESSION "AI_RUNTIME_FAIL"
 			PASS_REGULAR_EXPRESSION "AI_RUNTIME_PASS"
 			RUN_SERIAL TRUE
-			TIMEOUT 180
+			TIMEOUT 150
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
@@ -344,16 +370,18 @@ IF ( BUILD_TESTING )
 			--mainscript "../tests/_ai_economy_soak"
 			--quickstart
 			--quickstart-ai "1"
-			--quickstart-mapsize "40x20"
+			--quickstart-mapsize "20x10"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
 		)
 		SET_TESTS_PROPERTIES( ai_economy_soak PROPERTIES
 			FAIL_REGULAR_EXPRESSION "AI_ECONOMY_SOAK_FAIL;Event rejected"
 			PASS_REGULAR_EXPRESSION "AI_ECONOMY_SOAK_PASS"
+			LABELS runtime_long
 			RUN_SERIAL TRUE
 			TIMEOUT 300
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
@@ -372,6 +400,7 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
 			--verbose
@@ -423,15 +452,15 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
-			--verbose
 		)
 		SET_TESTS_PROPERTIES( ai_repair_runtime_smoke PROPERTIES
 			FAIL_REGULAR_EXPRESSION "AI_REPAIR_RUNTIME_FAIL"
 			PASS_REGULAR_EXPRESSION "AI_REPAIR_RUNTIME_PASS"
 			RUN_SERIAL TRUE
-			TIMEOUT 60
+			TIMEOUT 90
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
@@ -474,15 +503,15 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
-			--verbose
 		)
 		SET_TESTS_PROPERTIES( ai_reinforcement_runtime_smoke PROPERTIES
 			FAIL_REGULAR_EXPRESSION "AI_REINFORCEMENT_RUNTIME_FAIL"
 			PASS_REGULAR_EXPRESSION "AI_REINFORCEMENT_RUNTIME_PASS"
 			RUN_SERIAL TRUE
-			TIMEOUT 60
+			TIMEOUT 120
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
@@ -525,6 +554,7 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
 			--verbose

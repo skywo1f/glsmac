@@ -67,6 +67,7 @@ public:
 	const bool IsOwned() const;
 	const bool IsActive() const;
 	const bool IsEmbarked() const;
+	const bool IsPlanetBuster() const;
 	tile::Tile* GetTile() const;
 
 	const size_t GetSelectionWeight() const;

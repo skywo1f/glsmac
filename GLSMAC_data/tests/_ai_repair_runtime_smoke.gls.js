@@ -27,7 +27,7 @@
 	const finish_setup = () => {
 		setup_wait_ticks++;
 		for (unit of staging_tile.get_units()) {
-			if (unit.owner == ai_id && unit.health < 0.2) {
+			if (unit.owner == ai_id && unit.health < 0.4) {
 				injured_id = unit.id;
 				break;
 			}
@@ -123,7 +123,7 @@
 				tile: staging_tile,
 				type: 'ScoutPatrol',
 				morale: 1,
-				health: 0.1,
+				health: 0.3,
 			});
 			#async(100, finish_setup);
 		});

@@ -12,6 +12,8 @@
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const sky_hydroponics_stamp = 3;
+	const orbital_defense_pods_stamp = 2;
+	const orbital_defense_deployments_stamp = 1;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
@@ -154,6 +156,14 @@
 				sky_hydroponics_stamp
 			) {
 				return 'orbital facility counts were not restored';
+			}
+			if (
+				game.get_player().get_orbital_facility_count('OrbitalDefensePod') !=
+					orbital_defense_pods_stamp ||
+				game.get_player().get_orbital_defense_deployments() !=
+					orbital_defense_deployments_stamp
+			) {
+				return 'orbital defense deployment state was not restored';
 			}
 			if (game.get_um().has_unit(defeated_snapshot_unit_id)) {
 				return 'defeated unit was restored from the snapshot';

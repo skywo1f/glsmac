@@ -68,6 +68,21 @@ const score_stockpile = (def, context) => {
 const score_orbital = (def, context) => {
 	const is_orbital_resource = #is_defined(def.orbital_resource) &&
 		def.orbital_resource != '';
+	const is_orbital_defense = #is_defined(def.orbital_defense) && def.orbital_defense;
+	if (is_orbital_defense) {
+		if (
+			context.needs_garrison || context.needs_former ||
+			(context.needs_colony && context.can_expand) ||
+			!#is_defined(context.needs_orbital_defense) || !context.needs_orbital_defense
+		) {
+			return null;
+		}
+		const threats = #is_defined(context.orbital_defense_threats)
+			? context.orbital_defense_threats
+			: 1;
+		return 30000 + get_priority(context, 'defense', 50) * 500 + threats * 15000 -
+			get_mineral_cost(def, context);
+	}
 	if (
 		!is_orbital_resource ||
 		context.needs_garrison || context.needs_former ||
@@ -119,6 +134,20 @@ const score_unit = (def, context) => {
 				#round(def.movement_per_turn * 1000.0) - get_mineral_cost(def, context) -
 				get_unit_support_penalty(def, context)
 			: null;
+	}
+	if (#is_defined(def.weapon) && def.weapon == 'PlanetBuster') {
+		if (
+			context.needs_garrison || context.needs_former ||
+			(context.needs_colony && context.can_expand) ||
+			!#is_defined(context.needs_planet_buster) || !context.needs_planet_buster
+		) {
+			return null;
+		}
+		const target_value = #is_defined(context.planet_buster_target_value)
+			? context.planet_buster_target_value
+			: 4;
+		return 10000 + get_priority(context, 'military', 50) * 300 + target_value * 5000 -
+			get_mineral_cost(def, context) - get_unit_support_penalty(def, context);
 	}
 	if (def.offense <= 0) {
 		return null;

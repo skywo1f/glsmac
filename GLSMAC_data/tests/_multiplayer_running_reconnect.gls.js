@@ -16,6 +16,8 @@
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const sky_hydroponics_stamp = 3;
+	const orbital_defense_pods_stamp = 2;
+	const orbital_defense_deployments_stamp = 1;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
@@ -105,6 +107,8 @@
 					integrity_blemishes: borrower.get_integrity_blemishes(),
 					prototyped_components: borrower.get_prototyped_components(),
 					sky_hydroponics: borrower.get_orbital_facility_count('SkyHydroponicsLab'),
+					orbital_defense_pods: borrower.get_orbital_facility_count('OrbitalDefensePod'),
+					orbital_defense_deployments: borrower.get_orbital_defense_deployments(),
 				};
 				borrower.set_diplomatic_loan(e.data.lender, {
 					balance: loan_balance_stamp,
@@ -114,6 +118,8 @@
 				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
 				borrower.set_prototyped_components(prototyped_components_stamp);
 				borrower.set_orbital_facility_count('SkyHydroponicsLab', sky_hydroponics_stamp);
+				borrower.set_orbital_facility_count('OrbitalDefensePod', orbital_defense_pods_stamp);
+				borrower.set_orbital_defense_deployments(orbital_defense_deployments_stamp);
 				return previous;
 			},
 			rollback: (e) => {
@@ -129,6 +135,13 @@
 				borrower.set_orbital_facility_count(
 					'SkyHydroponicsLab',
 					e.applied.sky_hydroponics
+				);
+				borrower.set_orbital_facility_count(
+					'OrbitalDefensePod',
+					e.applied.orbital_defense_pods
+				);
+				borrower.set_orbital_defense_deployments(
+					e.applied.orbital_defense_deployments
 				);
 			},
 		});
@@ -427,7 +440,11 @@
 							game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp ||
 							game.get_player().get_prototyped_components() != prototyped_components_stamp ||
 							game.get_player().get_orbital_facility_count('SkyHydroponicsLab') !=
-								sky_hydroponics_stamp
+								sky_hydroponics_stamp ||
+							game.get_player().get_orbital_facility_count('OrbitalDefensePod') !=
+								orbital_defense_pods_stamp ||
+							game.get_player().get_orbital_defense_deployments() !=
+								orbital_defense_deployments_stamp
 						) {
 							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial diplomatic stamp is invalid');
 							glsmac.exit();
