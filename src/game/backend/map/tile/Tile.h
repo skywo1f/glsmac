@@ -98,6 +98,7 @@ public:
 	//   it recalculates dynamic properties and solves inconsistencies
 	//   safe to call anytime
 	void Update();
+	void RefreshWrappers();
 
 	// reset to empty state
 	void Clear();

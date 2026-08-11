@@ -12,6 +12,38 @@ namespace backend {
 namespace map {
 namespace tile {
 
+struct serialized_tiles_state_t {
+	uint32_t width;
+	uint32_t height;
+	std::vector< std::string > tiles;
+	bool is_validated;
+};
+
+static const serialized_tiles_state_t ReadSerializedTiles( types::Buffer buf ) {
+	serialized_tiles_state_t state = {};
+	state.width = buf.ReadInt< uint32_t >( "map width" );
+	state.height = buf.ReadInt< uint32_t >( "map height" );
+	const auto area = static_cast< uint64_t >( state.width ) * state.height;
+	if (
+		state.width < settings::MAP_MIN_DIMENSION ||
+		state.height < settings::MAP_MIN_DIMENSION ||
+		( state.width & 1 ) ||
+		( state.height & 1 ) ||
+		area > settings::MAP_MAX_AREA
+	) {
+		THROW( "invalid serialized map dimensions" );
+	}
+	state.tiles.reserve( static_cast< size_t >( area / 2 ) );
+	for ( size_t i = 0 ; i < area / 2 ; i++ ) {
+		state.tiles.push_back( buf.ReadString() );
+	}
+	state.is_validated = buf.ReadBool();
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized tiles" );
+	}
+	return state;
+}
+
 Tiles::Tiles( Map* const map, const uint32_t width, const uint32_t height )
 	: m_map( map ) {
 	if ( width || height ) {
@@ -322,32 +354,22 @@ const types::Buffer Tiles::Serialize() const {
 }
 
 void Tiles::Deserialize( types::Buffer buf ) {
-
-	const auto width = buf.ReadInt< uint32_t >( "map width" );
-	const auto height = buf.ReadInt< uint32_t >( "map height" );
-	const auto area = static_cast< uint64_t >( width ) * height;
-	if (
-		width < settings::MAP_MIN_DIMENSION ||
-		height < settings::MAP_MIN_DIMENSION ||
-		( width & 1 ) ||
-		( height & 1 ) ||
-		area > settings::MAP_MAX_AREA
-	) {
-		THROW( "invalid serialized map dimensions" );
-	}
-	std::vector< std::string > serialized_tiles;
-	serialized_tiles.reserve( static_cast< size_t >( area / 2 ) );
-	for ( size_t i = 0 ; i < area / 2 ; i++ ) {
-		serialized_tiles.push_back( buf.ReadString() );
-	}
-	const auto is_validated = buf.ReadBool();
-	if ( buf.GetRemaining() != 0 ) {
-		THROW( "unexpected data after serialized tiles" );
-	}
+	const auto state = ReadSerializedTiles( buf );
 
 	m_width = m_height = 0;
-	Resize( width, height );
+	Resize( state.width, state.height );
+	ApplySerializedTiles( state.tiles, state.is_validated );
+}
 
+void Tiles::Restore( types::Buffer buf ) {
+	const auto state = ReadSerializedTiles( buf );
+	if ( state.width != m_width || state.height != m_height ) {
+		THROW( "serialized terrain snapshot dimensions do not match the active map" );
+	}
+	ApplySerializedTiles( state.tiles, state.is_validated );
+}
+
+void Tiles::ApplySerializedTiles( const std::vector< std::string >& serialized_tiles, const bool is_validated ) {
 	size_t tile_index = 0;
 	for ( auto y = 0 ; y < m_height ; y++ ) {
 		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {

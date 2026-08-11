@@ -689,6 +689,309 @@ void Map::RefreshTile( tile::Tile* tile ) {
 	m_sprite_instances_to_add.clear();
 }
 
+const Map::tiles_t Map::GetAllTiles() const {
+	tiles_t tiles;
+	tiles.reserve( GetWidth() * GetHeight() / 2 );
+	for ( size_t y = 0 ; y < GetHeight() ; y++ ) {
+		for ( size_t x = y & 1 ; x < GetWidth() ; x += 2 ) {
+			tiles.push_back( GetTile( x, y ) );
+		}
+	}
+	return tiles;
+}
+
+bool Map::IsTileRefreshTarget( const tile::Tile* tile ) const {
+	return m_active_refresh_tiles.empty() || m_active_refresh_tiles.find( tile ) != m_active_refresh_tiles.end();
+}
+
+std::string Map::ApplyCrater( tile::Tile* center, const size_t radius ) {
+	ASSERT( center, "cannot create a crater around a null tile" );
+	ASSERT( radius >= 1 && radius <= 4, "crater radius must be between one and four tiles" );
+	ASSERT( GetTile( center->coord.x, center->coord.y ) == center, "crater center does not belong to map" );
+
+	const auto snapshot = m_tiles->Serialize().ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	std::unordered_map< tile::Tile*, size_t > distance = { { center, 0 } };
+	tiles_t pending = { center };
+	for ( size_t i = 0 ; i < pending.size() ; i++ ) {
+		auto* const current = pending.at( i );
+		const auto current_distance = distance.at( current );
+		if ( current_distance >= radius ) {
+			continue;
+		}
+		for ( auto* const neighbour : current->neighbours ) {
+			if ( distance.find( neighbour ) == distance.end() ) {
+				distance.insert( { neighbour, current_distance + 1 } );
+				pending.push_back( neighbour );
+			}
+		}
+	}
+
+	tile_set_t blast_tiles;
+	for ( const auto& it : distance ) {
+		blast_tiles.insert( it.first );
+	}
+
+	const auto all_tiles = GetAllTiles();
+	std::unordered_map< tile::elevation_t*, tiles_t > vertex_owners;
+	for ( auto* const map_tile : all_tiles ) {
+		for ( auto* const vertex : map_tile->elevation.corners ) {
+			auto& owners = vertex_owners[ vertex ];
+			if ( std::find( owners.begin(), owners.end(), map_tile ) == owners.end() ) {
+				owners.push_back( map_tile );
+			}
+		}
+	}
+
+	static constexpr tile::elevation_t CRATER_ELEVATION_STEP = 1000;
+	for ( auto& it : vertex_owners ) {
+		size_t maximum_distance = 0;
+		bool fully_inside_blast = true;
+		for ( auto* const owner : it.second ) {
+			const auto distance_it = distance.find( owner );
+			if ( distance_it == distance.end() ) {
+				fully_inside_blast = false;
+				break;
+			}
+			maximum_distance = std::max( maximum_distance, distance_it->second );
+		}
+		if ( fully_inside_blast ) {
+			const auto depth_steps = std::min( radius, radius - maximum_distance + 1 );
+			auto* const vertex = it.first;
+			*vertex = std::max(
+				tile::ELEVATION_MIN,
+				*vertex - static_cast< tile::elevation_t >( depth_steps ) * CRATER_ELEVATION_STEP
+			);
+		}
+	}
+
+	static constexpr tile::feature_t DESTROYED_SURFACE_FEATURES =
+		tile::FEATURE_RIVER |
+		tile::FEATURE_MONOLITH |
+		tile::FEATURE_XENOFUNGUS |
+		tile::FEATURE_UNITY_POD |
+		tile::FEATURE_UNITY_ENERGY |
+		tile::FEATURE_UNITY_CHOPPER |
+		tile::FEATURE_UNITY_RADAR;
+	for ( auto* const blast_tile : blast_tiles ) {
+		blast_tile->features &= static_cast< tile::feature_t >( ~DESTROYED_SURFACE_FEATURES );
+		blast_tile->terraforming = tile::TERRAFORMING_NONE;
+	}
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( blast_tiles );
+	}
+	catch ( ... ) {
+		m_tiles->Restore( types::Buffer( snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot;
+}
+
+void Map::RestoreTerrain( const std::string& snapshot ) {
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	// Validate the complete snapshot before changing any live tile.
+	tile::Tiles validated_tiles( this );
+	validated_tiles.Deserialize( types::Buffer( snapshot ) );
+	if ( validated_tiles.GetWidth() != GetWidth() || validated_tiles.GetHeight() != GetHeight() ) {
+		THROW( "serialized terrain snapshot dimensions do not match the active map" );
+	}
+
+	const auto all_tiles = GetAllTiles();
+	std::vector< std::string > previous_tiles;
+	previous_tiles.reserve( all_tiles.size() );
+	for ( auto* const map_tile : all_tiles ) {
+		previous_tiles.push_back( map_tile->Serialize().ToString() );
+	}
+
+	m_tiles->Restore( types::Buffer( snapshot ) );
+	tile_set_t changed_tiles;
+	for ( size_t i = 0 ; i < all_tiles.size() ; i++ ) {
+		auto* const map_tile = all_tiles.at( i );
+		map_tile->RefreshWrappers();
+		if ( map_tile->Serialize().ToString() != previous_tiles.at( i ) ) {
+			changed_tiles.insert( map_tile );
+		}
+	}
+	RefreshTerrain( changed_tiles );
+}
+
+void Map::RefreshTerrain( const tile_set_t& changed_tiles ) {
+	if ( changed_tiles.empty() ) {
+		return;
+	}
+	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
+
+	tile_set_t refresh_set = changed_tiles;
+	for ( size_t ring = 0 ; ring < 2 ; ring++ ) {
+		tiles_t edge( refresh_set.begin(), refresh_set.end() );
+		for ( auto* const map_tile : edge ) {
+			for ( auto* const neighbour : map_tile->neighbours ) {
+				refresh_set.insert( neighbour );
+			}
+		}
+	}
+
+	const auto all_tiles = GetAllTiles();
+	tiles_t refresh_tiles;
+	refresh_tiles.reserve( refresh_set.size() );
+	for ( auto* const map_tile : all_tiles ) {
+		if ( refresh_set.find( map_tile ) != refresh_set.end() ) {
+			refresh_tiles.push_back( map_tile );
+			m_active_refresh_tiles.insert( map_tile );
+		}
+	}
+
+	const auto random_state = GetRandom()->GetState();
+	common::mt_flag_t canceled = false;
+	try {
+		LoadTiles( refresh_tiles, MT_C );
+		FixNormals( refresh_tiles, MT_C );
+	}
+	catch ( ... ) {
+		m_current_tile = nullptr;
+		m_current_ts = nullptr;
+		m_active_refresh_tiles.clear();
+		m_map_state->copy_from_after.clear();
+		m_sprite_actors_to_add.clear();
+		m_sprite_instances_to_remove.clear();
+		m_sprite_instances_to_add.clear();
+		GetRandom()->SetState( random_state );
+		throw;
+	}
+	m_current_tile = nullptr;
+	m_current_ts = nullptr;
+	m_active_refresh_tiles.clear();
+	GetRandom()->SetState( random_state );
+
+	QueueTerrainUpdates( refresh_tiles );
+}
+
+void Map::QueueTerrainUpdates( const tiles_t& tiles ) {
+	struct texture_cell_t {
+		size_t x;
+		size_t y;
+	};
+	std::vector< texture_cell_t > cells;
+	cells.reserve( tiles.size() * tile::LAYER_MAX );
+	for ( auto* const map_tile : tiles ) {
+		for ( size_t layer = 0 ; layer < tile::LAYER_MAX ; layer++ ) {
+			const auto position = GetTextureAtlasPosition(
+				map_tile->coord.x,
+				map_tile->coord.y,
+				static_cast< tile::tile_layer_type_t >( layer )
+			);
+			cells.push_back( { position.x, position.y } );
+		}
+	}
+	std::sort(
+		cells.begin(),
+		cells.end(),
+		[]( const texture_cell_t& first, const texture_cell_t& second ) {
+			return first.y == second.y ? first.x < second.x : first.y < second.y;
+		}
+	);
+	cells.erase(
+		std::unique(
+			cells.begin(),
+			cells.end(),
+			[]( const texture_cell_t& first, const texture_cell_t& second ) {
+				return first.x == second.x && first.y == second.y;
+			}
+		),
+		cells.end()
+	);
+
+	FrontendRequest::tile_updates_t tile_updates;
+	tile_updates.reserve( tiles.size() );
+	for ( auto* const map_tile : tiles ) {
+		tile_updates.push_back( { map_tile, GetTileState( map_tile ) } );
+	}
+	const FrontendRequest::tile_updates_t empty_tile_updates;
+	const FrontendRequest::tile_sprite_actors_t empty_sprite_actors;
+	const FrontendRequest::tile_sprite_removals_t empty_sprite_removals;
+	const FrontendRequest::tile_sprite_additions_t empty_sprite_additions;
+
+	const auto& cell_dimensions = s_consts.tc.texture_pcx.dimensions;
+	bool include_state_updates = true;
+	for ( size_t first = 0 ; first < cells.size() ; ) {
+		size_t last = first;
+		while (
+			last + 1 < cells.size() &&
+			cells.at( last + 1 ).y == cells.at( first ).y &&
+			cells.at( last + 1 ).x == cells.at( last ).x + cell_dimensions.x
+		) {
+			last++;
+		}
+		const auto patch_width = cells.at( last ).x - cells.at( first ).x + cell_dimensions.x;
+		types::texture::Texture texture_patch(
+			"TerrainBatchPatch",
+			patch_width,
+			cell_dimensions.y
+		);
+		texture_patch.AddFrom(
+			m_textures.terrain,
+			types::texture::AM_DEFAULT,
+			cells.at( first ).x,
+			cells.at( first ).y,
+			cells.at( last ).x + cell_dimensions.x - 1,
+			cells.at( first ).y + cell_dimensions.y - 1
+		);
+
+		auto fr = FrontendRequest( FrontendRequest::FR_UPDATE_TILES );
+		NEW(
+			fr.data.update_tiles.tile_updates,
+			FrontendRequest::tile_updates_t,
+			include_state_updates ? tile_updates : empty_tile_updates
+		);
+		NEW(
+			fr.data.update_tiles.sprite_actors,
+			FrontendRequest::tile_sprite_actors_t,
+			include_state_updates ? m_sprite_actors_to_add : empty_sprite_actors
+		);
+		NEW(
+			fr.data.update_tiles.sprite_removals,
+			FrontendRequest::tile_sprite_removals_t,
+			include_state_updates ? m_sprite_instances_to_remove : empty_sprite_removals
+		);
+		NEW(
+			fr.data.update_tiles.sprite_additions,
+			FrontendRequest::tile_sprite_additions_t,
+			include_state_updates ? m_sprite_instances_to_add : empty_sprite_additions
+		);
+		NEW(
+			fr.data.update_tiles.serialized_terrain_texture_patch,
+			std::string,
+			texture_patch.Serialize().ToString()
+		);
+		fr.data.update_tiles.terrain_texture_x = cells.at( first ).x;
+		fr.data.update_tiles.terrain_texture_y = cells.at( first ).y;
+		fr.data.update_tiles.terrain_texture_width = patch_width;
+		fr.data.update_tiles.terrain_texture_height = cell_dimensions.y;
+		m_game->AddFrontendRequest( fr );
+
+		include_state_updates = false;
+		first = last + 1;
+	}
+
+	m_sprite_actors_to_add.clear();
+	m_sprite_instances_to_remove.clear();
+	m_sprite_instances_to_add.clear();
+}
+
 tile::Tiles* Map::GetTilesPtr() const {
 	ASSERT( m_tiles, "tiles not set" );
 	return m_tiles;

@@ -168,6 +168,35 @@
 				fail('no isolated land target is available for the live blast');
 				return;
 			}
+			target_tile.update_terraforming({road: true, farm: true});
+			target_tile.update_features({xenofungus: true});
+			const target_elevation_before = target_tile.elevation + 0;
+			const target_was_land = target_tile.is_land == true;
+			const terrain_snapshot = tm.apply_crater(target_tile, 1);
+			if (
+				target_tile.elevation >= target_elevation_before ||
+				target_tile.terraforming.road || target_tile.terraforming.farm ||
+				target_tile.features.xenofungus
+			) {
+				fail(
+					'native crater mismatch: elevation=' + #to_string(target_tile.elevation) +
+					' before=' + #to_string(target_elevation_before) +
+					' road=' + #to_string(target_tile.terraforming.road) +
+					' farm=' + #to_string(target_tile.terraforming.farm) +
+					' fungus=' + #to_string(target_tile.features.xenofungus)
+				);
+				return;
+			}
+			tm.restore_terrain(terrain_snapshot);
+			if (
+				target_tile.elevation != target_elevation_before ||
+				target_tile.is_land != target_was_land ||
+				!target_tile.terraforming.road || !target_tile.terraforming.farm ||
+				!target_tile.features.xenofungus
+			) {
+				fail('native terrain snapshot did not restore tile state and wrappers');
+				return;
+			}
 
 			const bm = game.get_bm();
 			let target_base = bm.spawn_base(defender, target_tile, {
@@ -245,6 +274,14 @@
 				}
 				if (target_survived || game.get_um().has_unit(blast_defender_id)) {
 					fail('live Planet Buster blast did not destroy its target');
+					return false;
+				}
+				if (
+					target_tile.elevation >= target_elevation_before ||
+					target_tile.terraforming.road || target_tile.terraforming.farm ||
+					target_tile.features.xenofungus
+				) {
+					fail('live Planet Buster blast did not leave a cleared crater');
 					return false;
 				}
 				if (!game.get_um().has_unit(survivor_id)) {

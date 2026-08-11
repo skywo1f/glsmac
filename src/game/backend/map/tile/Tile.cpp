@@ -99,6 +99,57 @@ void Tile::Update() {
 	is_water_tile = corners_in_water > 2;
 }
 
+void Tile::RefreshWrappers() {
+	std::lock_guard guard( m_wrapobjs_mutex );
+	for ( auto* const wrapobj : m_wrapobjs ) {
+		const auto f_get_property = [ wrapobj ]( const std::string& name, const gse::value_type_t type ) -> gse::Value* {
+			const auto it = wrapobj->value.find( name );
+			ASSERT( it != wrapobj->value.end(), "tile wrapper has no " + name + " property" );
+			ASSERT( it->second->type == type, "tile wrapper " + name + " property has an invalid type" );
+			return it->second;
+		};
+
+		( (gse::value::Bool*)f_get_property( "is_water", gse::VT_BOOL ) )->value = is_water_tile;
+		( (gse::value::Bool*)f_get_property( "is_land", gse::VT_BOOL ) )->value = !is_water_tile;
+		( (gse::value::Int*)f_get_property( "moisture", gse::VT_INT ) )->value = moisture;
+		( (gse::value::Int*)f_get_property( "rockiness", gse::VT_INT ) )->value = rockiness;
+		( (gse::value::Int*)f_get_property( "elevation", gse::VT_INT ) )->value = *elevation.center;
+
+		auto* const wrapped_features = (gse::value::Object*)f_get_property( "features", gse::VT_OBJECT );
+#define X_FEATURE( _x, _i ) \
+		{ \
+			const auto& flag_it = wrapped_features->value.find( util::String::GetLowerCase( #_x ) ); \
+			ASSERT( flag_it != wrapped_features->value.end(), "tile wrapper has no feature flag" ); \
+			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile feature flag is not a bool" ); \
+			( (gse::value::Bool*)flag_it->second )->value = ( features & FEATURE_ ## _x ) != 0; \
+		}
+		X_FEATURES
+#undef X_FEATURE
+
+		auto* const wrapped_bonuses = (gse::value::Object*)f_get_property( "bonuses", gse::VT_OBJECT );
+#define X_BONUS( _x, _i ) \
+		{ \
+			const auto& flag_it = wrapped_bonuses->value.find( util::String::GetLowerCase( #_x ) ); \
+			ASSERT( flag_it != wrapped_bonuses->value.end(), "tile wrapper has no bonus flag" ); \
+			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile bonus flag is not a bool" ); \
+			( (gse::value::Bool*)flag_it->second )->value = bonus == BONUS_ ## _x; \
+		}
+		X_BONUSES
+#undef X_BONUS
+
+		auto* const wrapped_terraforming = (gse::value::Object*)f_get_property( "terraforming", gse::VT_OBJECT );
+#define X_TERRAFORMING( _x, _i ) \
+		{ \
+			const auto& flag_it = wrapped_terraforming->value.find( util::String::GetLowerCase( #_x ) ); \
+			ASSERT( flag_it != wrapped_terraforming->value.end(), "tile wrapper has no terraforming flag" ); \
+			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile terraforming flag is not a bool" ); \
+			( (gse::value::Bool*)flag_it->second )->value = ( terraforming & TERRAFORMING_ ## _x ) != 0; \
+		}
+		X_TERRAFORMINGS
+#undef X_TERRAFORMING
+	}
+}
+
 void Tile::Clear() {
 	for ( auto& c : elevation.corners ) {
 		*c = 0;
@@ -265,22 +316,7 @@ void Tile::SetFeatures( GSE_CALLABLE, const feature_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( features != value ) {
 		features = value;
-		std::lock_guard guard( m_wrapobjs_mutex );
-		for ( auto* const wrapobj : m_wrapobjs ) {
-			const auto& property_it = wrapobj->value.find( "features" );
-			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no features property" );
-			ASSERT( property_it->second->type == gse::VT_OBJECT, "tile features property is not an object" );
-			const auto* const wrapped_features = (gse::value::Object*)property_it->second;
-#define X_FEATURE( _x, _i ) \
-			{ \
-				const auto& flag_it = wrapped_features->value.find( util::String::GetLowerCase( #_x ) ); \
-				ASSERT( flag_it != wrapped_features->value.end(), "tile wrapper has no feature flag" ); \
-				ASSERT( flag_it->second->type == gse::VT_BOOL, "tile feature flag is not a bool" ); \
-				( (gse::value::Bool*)flag_it->second )->value = ( features & FEATURE_ ## _x ) != 0; \
-			}
-			X_FEATURES
-#undef X_FEATURE
-		}
+		RefreshWrappers();
 		tiles->GetMap()->RefreshTile( this );
 	}
 }
@@ -292,22 +328,7 @@ void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( terraforming != value ) {
 		terraforming = value;
-		std::lock_guard guard( m_wrapobjs_mutex );
-		for ( auto* const wrapobj : m_wrapobjs ) {
-			const auto& property_it = wrapobj->value.find( "terraforming" );
-			ASSERT( property_it != wrapobj->value.end(), "tile wrapper has no terraforming property" );
-			ASSERT( property_it->second->type == gse::VT_OBJECT, "tile terraforming property is not an object" );
-			const auto* const wrapped_terraforming = (gse::value::Object*)property_it->second;
-#define X_TERRAFORMING( _x, _i ) \
-			{ \
-				const auto& flag_it = wrapped_terraforming->value.find( util::String::GetLowerCase( #_x ) ); \
-				ASSERT( flag_it != wrapped_terraforming->value.end(), "tile wrapper has no terraforming flag" ); \
-				ASSERT( flag_it->second->type == gse::VT_BOOL, "tile terraforming flag is not a bool" ); \
-				( (gse::value::Bool*)flag_it->second )->value = ( terraforming & TERRAFORMING_ ## _x ) != 0; \
-			}
-			X_TERRAFORMINGS
-#undef X_TERRAFORMING
-		}
+		RefreshWrappers();
 		tiles->GetMap()->RefreshTile( this );
 	}
 }

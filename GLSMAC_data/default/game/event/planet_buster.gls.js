@@ -2,6 +2,7 @@ const PLANET_BUSTER_WEAPON = 'PlanetBuster';
 const ORBITAL_DEFENSE = 'OrbitalDefensePod';
 const SANCTION_YEARS = 20;
 const MAX_MAJOR_ATROCITIES = 1000000;
+const MAX_REACTOR_POWER = 4;
 
 const tile_key = (tile) => {
 	return #to_string(tile.x) + ':' + #to_string(tile.y);
@@ -209,7 +210,7 @@ return {
 		const definition = unit.get_def();
 		if (
 			!definition.is_missile || definition.weapon != PLANET_BUSTER_WEAPON ||
-			definition.reactor_power <= 0
+			definition.reactor_power <= 0 || definition.reactor_power > MAX_REACTOR_POWER
 		) {
 			return 'Unit is not a Planet Buster';
 		}
@@ -222,6 +223,11 @@ return {
 		}
 		if (source.is_locked() || target.is_locked()) {
 			return 'Planet Buster launch tiles are locked';
+		}
+		for (blast_tile of get_tiles_in_radius(target, definition.reactor_power)) {
+			if (blast_tile.is_locked()) {
+				return 'Planet Buster blast radius contains locked tiles';
+			}
 		}
 		if (e.game.get_player(e.caller).get_major_atrocities() >= MAX_MAJOR_ATROCITIES) {
 			return 'Major atrocity limit has been reached';
@@ -271,6 +277,7 @@ return {
 			actor_sanction_turns: actor.get_sanction_turns(),
 			diplomacy: snapshot_diplomacy(e.game, actor),
 			defense: e.resolved.defense,
+			terrain_snapshot: null,
 		};
 
 		const defense = e.resolved.defense;
@@ -315,6 +322,9 @@ return {
 		if (e.game.um.has_unit(missile.id)) {
 			e.game.um.despawn_unit(e.game.um.get_unit(missile.id));
 		}
+		if (!defense.intercepted) {
+			applied.terrain_snapshot = e.game.tm.apply_crater(e.data.tile, e.resolved.radius);
+		}
 
 		actor.set_major_atrocities(applied.actor_atrocities + 1);
 		actor.set_sanction_turns(#min(MAX_MAJOR_ATROCITIES, applied.actor_sanction_turns + SANCTION_YEARS));
@@ -349,6 +359,9 @@ return {
 	rollback: (e) => {
 		const actor = e.game.get_player(e.caller);
 		e.game.am.stop_animations(e.applied.animations_id);
+		if (e.applied.terrain_snapshot != null) {
+			e.game.tm.restore_terrain(e.applied.terrain_snapshot);
+		}
 		for (base of e.applied.bases) {
 			e.game.bm.restore_base(base.snapshot);
 		}

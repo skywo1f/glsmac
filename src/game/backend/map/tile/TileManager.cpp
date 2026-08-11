@@ -9,6 +9,7 @@
 #include "gse/context/Context.h"
 #include "gse/callable/Native.h"
 #include "gse/ExecutionPointer.h"
+#include "gse/value/String.h"
 
 namespace game {
 namespace backend {
@@ -192,6 +193,43 @@ WRAPIMPL_BEGIN( TileManager )
 				N_GETVALUE_UNWRAP( other, 1, Tile );
 				const auto* m = GetMap( GSE_CALL );
 				return VALUE( gse::value::Int,, GetDistance( tile, other, m->GetWidth() ) );
+			} )
+		},
+		{
+			"apply_crater",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				N_GETVALUE( radius, 1, Int );
+				if ( radius < 1 || radius > 4 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Crater radius must be between one and four tiles" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyCrater( center, static_cast< size_t >( radius ) )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"restore_terrain",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( snapshot, 0, String );
+				try {
+					GetMap( GSE_CALL )->RestoreTerrain( snapshot );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
 			} )
 		},
 	};

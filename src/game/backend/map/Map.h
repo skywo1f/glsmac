@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "types/Serializable.h"
@@ -120,6 +121,9 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	const size_t GetWidth() const;
 	const size_t GetHeight() const;
 	void RefreshTile( tile::Tile* tile );
+	std::string ApplyCrater( tile::Tile* center, const size_t radius );
+	void RestoreTerrain( const std::string& snapshot );
+	bool IsTileRefreshTarget( const tile::Tile* tile ) const;
 
 	// be careful using this
 	tile::Tiles* GetTilesPtr() const;
@@ -173,6 +177,7 @@ private:
 	MapState* m_map_state = nullptr;
 
 	typedef std::vector< tile::Tile* > tiles_t;
+	typedef std::unordered_set< tile::Tile* > tile_set_t;
 
 	typedef std::vector< module::Module* > module_pass_t;
 	typedef std::vector< module_pass_t > module_passes_t;
@@ -185,6 +190,9 @@ private:
 	void ProcessTiles( module_passes_t& module_passes, const tiles_t& tiles, MT_CANCELABLE );
 	void LoadTiles( const tiles_t& tiles, MT_CANCELABLE );
 	void FixNormals( const tiles_t& tiles, MT_CANCELABLE );
+	void RefreshTerrain( const tile_set_t& changed_tiles );
+	void QueueTerrainUpdates( const tiles_t& tiles );
+	const tiles_t GetAllTiles() const;
 
 	// texture.pcx contains some textures grouped in certain way based on adjactent neighbours
 	// calculate all variants once and cache for faster lookups later
@@ -199,6 +207,8 @@ private:
 
 	tile::TileState* m_current_ts = nullptr;
 	const tile::Tile* m_current_tile = nullptr;
+	std::unordered_set< const tile::Tile* > m_active_refresh_tiles = {};
+	static constexpr size_t MAX_TERRAIN_SNAPSHOT_SIZE = 4 * 1024 * 1024;
 };
 
 }

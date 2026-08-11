@@ -11,6 +11,9 @@ const make_world = (random_roll, pod_count, deployments) => {
 	let messages = [];
 	let triggers = [];
 	let stopped_animation = 0;
+	let crater_apply_count = 0;
+	let crater_restore_count = 0;
+	const terrain_snapshot = 'terrain:before-crater';
 
 	const make_tile = (x, y) => {
 		let tile = {
@@ -171,6 +174,18 @@ const make_world = (random_roll, pod_count, deployments) => {
 			get_distance: (first, second) => {
 				return #abs(first.x - second.x) + #abs(first.y - second.y);
 			},
+			apply_crater: (tile, radius) => {
+				test.assert(
+					tile.x == center.x && tile.y == center.y &&
+					radius == defs.planet_buster.reactor_power
+				);
+				crater_apply_count++;
+				return terrain_snapshot;
+			},
+			restore_terrain: (snapshot) => {
+				test.assert(snapshot == terrain_snapshot);
+				crater_restore_count++;
+			},
 		},
 		um: {
 			get_units: () => {
@@ -305,12 +320,15 @@ const make_world = (random_roll, pod_count, deployments) => {
 		target_base: target_base,
 		support_base: support_base,
 		center: center,
+		locked_test_tile: ring[2],
 		outside: outside,
 		units: units,
 		bases: bases,
 		messages: messages,
 		get_message_count: () => { return #sizeof(messages); },
 		get_stopped_animation: () => { return stopped_animation; },
+		get_crater_apply_count: () => { return crater_apply_count; },
+		get_crater_restore_count: () => { return crater_restore_count; },
 	};
 };
 
@@ -328,12 +346,19 @@ let missile_definition = world.missile.get_def();
 missile_definition.weapon = 'ConventionalPayload';
 test.assert(#is_defined(planet_buster.validate(event)));
 missile_definition.weapon = 'PlanetBuster';
+missile_definition.reactor_power = 5;
+test.assert(#is_defined(planet_buster.validate(event)));
+missile_definition.reactor_power = 1;
 world.missile.movement = 0.0;
 test.assert(#is_defined(planet_buster.validate(event)));
 world.missile.movement = 1.0;
 event.data.tile = world.outside;
 test.assert(#is_defined(planet_buster.validate(event)));
 event.data.tile = world.center;
+let locked_blast_tile = world.locked_test_tile;
+locked_blast_tile.locked = true;
+test.assert(#is_defined(planet_buster.validate(event)));
+locked_blast_tile.locked = false;
 
 event.resolved = planet_buster.resolve(event);
 test.assert(event.resolved.radius == 1);
@@ -353,6 +378,7 @@ let bystander_key = key(world.bystander.id);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
 test.assert(world.get_message_count() == 2);
+test.assert(world.get_crater_apply_count() == 1);
 
 planet_buster.rollback(event);
 test.assert(world.game.um.has_unit(world.missile.id));
@@ -367,6 +393,7 @@ test.assert(live_actor.get_sanction_turns() == 3);
 test.assert(live_actor.relations[victim_key] == 'neutral');
 test.assert(live_actor.relations[bystander_key] == 'neutral');
 test.assert(world.get_stopped_animation() == 44);
+test.assert(world.get_crater_restore_count() == 1);
 
 world = make_world(0, 1, 0);
 event = {caller: world.actor.id, game: world.game, data: {unit: world.missile, tile: world.center}};
@@ -383,6 +410,7 @@ test.assert(
 test.assert(world.game.um.has_unit(world.defender.id));
 test.assert(world.center.get_base() != null);
 test.assert(!world.game.um.has_unit(world.missile.id));
+test.assert(world.get_crater_apply_count() == 0);
 planet_buster.rollback(event);
 live_victim = world.game.get_player(world.victim.id);
 test.assert(
@@ -390,6 +418,7 @@ test.assert(
 	live_victim.get_orbital_defense_deployments() == 0
 );
 test.assert(world.game.um.has_unit(world.missile.id));
+test.assert(world.get_crater_restore_count() == 0);
 
 world = make_world(1, 1, 0);
 event = {caller: world.actor.id, game: world.game, data: {unit: world.missile, tile: world.center}};
