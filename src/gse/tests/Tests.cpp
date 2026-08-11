@@ -426,6 +426,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				Player ai_source( "Computer", Player::PR_AI, nullptr, "Citizen" );
 				Player ai_roundtrip( ai_source.Serialize() );
 				GT_ASSERT( ai_roundtrip.IsAI(), "AI player role was not serialized" );
+				Player native_source( "Planet", Player::PR_NATIVE, nullptr, "Citizen" );
+				Player native_roundtrip( native_source.Serialize() );
+				GT_ASSERT( native_roundtrip.IsNative(), "native player role was not serialized" );
+				GT_ASSERT( !native_roundtrip.IsAI(), "native player was exposed as normal AI" );
 
 				const auto make_player = [](
 					const std::vector< std::string >& technologies,
@@ -1441,7 +1445,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				using game::backend::faction::Faction;
 
 				Faction source( "CARETAKERS", "Caretakers" );
-				source.m_flags = Faction::FF_NAVAL | Faction::FF_PROGENITOR;
+				source.m_flags = Faction::FF_NAVAL | Faction::FF_PROGENITOR | Faction::FF_NATIVE;
 				source.m_colors.text = types::Color::FromRGBA( 0x10203040 );
 				source.m_colors.text_shadow = types::Color::FromRGBA( 0x50607080 );
 				source.m_colors.border = types::Color::FromRGBA( 0x90a0b0c0 );

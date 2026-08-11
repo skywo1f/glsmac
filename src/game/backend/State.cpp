@@ -1,6 +1,7 @@
 #include "State.h"
 
 #include "game/backend/faction/FactionManager.h"
+#include "game/backend/faction/Faction.h"
 #include "Game.h"
 #include "game/backend/connection/Connection.h"
 #include "Bindings.h"
@@ -108,6 +109,26 @@ void State::RemovePlayer( Player* player ) {
 	}
 #endif
 	m_players.erase( player );
+}
+
+Player* State::EnsureNativePlayer() {
+	m_slots->Resize( TOTAL_SLOT_COUNT );
+	auto& slot = m_slots->GetSlot( NATIVE_SLOT_INDEX );
+	if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+		auto* const player = slot.GetPlayer();
+		ASSERT( player && player->IsNative(), "reserved native slot contains a playable faction" );
+		return player;
+	}
+	if ( slot.GetState() == slot::Slot::SS_CLOSED ) {
+		slot.Open();
+	}
+	auto* const faction = m_fm->Get( "PLANET" );
+	ASSERT( faction && ( faction->m_flags & faction::Faction::FF_NATIVE ), "Planet faction is not configured" );
+	const auto& rules = m_settings.global.rules;
+	NEWV( player, Player, "Planet", Player::PR_NATIVE, faction, rules.GetDefaultDifficultyLevel() );
+	AddPlayer( player );
+	slot.SetPlayer( player, 0, "Planet" );
+	return player;
 }
 
 void State::AddCIDSlot( const network::cid_t cid, const size_t slot ) {

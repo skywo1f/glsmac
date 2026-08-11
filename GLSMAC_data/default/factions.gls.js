@@ -15,6 +15,8 @@ const factions = [
 	faction('Spartans', 'spartans', {starting_technologies: ['DoctrineMobility']}),
 	faction('Believers', 'believe', {starting_technologies: ['SocialPsych']}),
 	faction('Peacekeepers', 'peace', {starting_technologies: ['Biogenetics']}),
+	// Planet is a serialized owner for independent native life, never a playable faction.
+	faction('Planet', 'believe', {is_native: true, starting_technologies: []}),
 	faction('Consciousness', 'cyborg', {starting_technologies: ['AppliedPhysics', 'InformationNetworks']}),
 	faction('Pirates', 'pirates', {is_naval: true, starting_technologies: ['DoctrineMobility']}),
 	faction('Drones', 'drone', {starting_technologies: ['IndustrialBase']}),

@@ -48,7 +48,13 @@ return {
 		};
 		e.game.am.stop_animations(e.data.animations_id);
 		unit.move_to_tile(e.data.tile, () => {});
-		if (base != null && applied.orig_base_owner.id != unit.owner) {
+		if (
+			base != null && applied.orig_base_owner.id != unit.owner &&
+			(
+				#typeof(unit.get_owner) != 'Callable' ||
+				unit.get_owner().type != 'native'
+			)
+		) {
 			applied.base_capture = base_capture.capture_base(e.game, base, unit.get_owner());
 			applied.rehomed_units = applied.base_capture.rehomed_units;
 		}

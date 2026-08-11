@@ -200,6 +200,7 @@ const faction_fields = {
 	starting_technologies: true,
 	is_naval: true,
 	is_progenitor: true,
+	is_native: true,
 };
 
 const add_error = (errors, path, message) => {
@@ -1417,6 +1418,7 @@ const validate_factions = (factions, technologies, errors) => {
 		validate_known_fields(entry.data, faction_fields, path, errors);
 		validate_bool(entry.data, 'is_naval', path, errors, false);
 		validate_bool(entry.data, 'is_progenitor', path, errors, false);
+		validate_bool(entry.data, 'is_native', path, errors, false);
 		if (#typeof(entry.data.starting_technologies) != 'Array') {
 			add_error(errors, path + '.starting_technologies', 'must be an array');
 			continue;

@@ -142,6 +142,8 @@ const run_case = (kind, verify_resolve) => {
 		{id: 'UnityRover', name: 'Unity Rover', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0},
 		{id: 'UnityScoutChopper', name: 'Unity Scout Chopper', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0},
 		{id: 'UnityFoil', name: 'Unity Foil', offense: 0, weapon: 'TroopTransport', cargo_capacity: 2},
+		{id: 'MindWorms', name: 'Mind Worms', offense: 1, weapon: 'PsiAttack', cargo_capacity: 0},
+		{id: 'IsleOfTheDeep', name: 'Isle of the Deep', offense: 1, weapon: 'PsiAttack', cargo_capacity: 4},
 	];
 	const find_definition = (id) => {
 		for (definition of definitions) {
@@ -171,6 +173,7 @@ const run_case = (kind, verify_resolve) => {
 	let opened_events = 0;
 	let earthquake_applies = 0;
 	let earthquake_restores = 0;
+	const native_player = {id: 8, name: 'Planet'};
 	const game = {
 		random: {
 			get_int: (low, high) => {
@@ -182,6 +185,7 @@ const run_case = (kind, verify_resolve) => {
 		},
 		get_turn: () => { return 20; },
 		get_player: (id) => { return player; },
+		get_native_player: () => { return native_player; },
 		get: (key) => {
 			if (key == 'f_base_get_production_cost') {
 				return (base, item) => { return item.mineral_cost; };
@@ -226,7 +230,13 @@ const run_case = (kind, verify_resolve) => {
 				const id = next_unit_id;
 				next_unit_id++;
 				const key = 'u' + #to_string(id);
-				spawned[key] = {id: id, present: true, def: data.def};
+				spawned[key] = {
+					id: id,
+					present: true,
+					def: data.def,
+					owner: data.owner,
+					transport_id: data.transport_id,
+				};
 				return {
 					id: id,
 					movement: 1.0,
@@ -279,6 +289,15 @@ const run_case = (kind, verify_resolve) => {
 		resolution.improvement = 'mine';
 	} else if (kind == 'clone') {
 		resolution.unit_def = 'ScoutPatrol';
+	} else if (kind == 'native') {
+		resolution.outbreak = {
+			spawns: [{
+				def: 'MindWorms',
+				tile: center,
+				morale: 1,
+				transport_index: 0 - 1,
+			}],
+		};
 	} else if (kind == 'resource') {
 		resolution.bonus = 'minerals';
 	}
@@ -308,6 +327,11 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(!feature_state.xenofungus && terraforming_state.mine && terraforming_state.road);
 	} else if (kind == 'clone') {
 		test.assert(game.um.get_unit(applied.spawned_unit_id).def == 'ScoutPatrol');
+	} else if (kind == 'native') {
+		test.assert(#sizeof(applied.native_outbreak.unit_ids) == 1);
+		const spawned_native = game.um.get_unit(applied.native_outbreak.unit_ids[0]);
+		test.assert(spawned_native.def == 'MindWorms');
+		test.assert(spawned_native.owner == native_player);
 	} else if (kind == 'resource') {
 		test.assert(bonus_state.minerals);
 	}
@@ -338,6 +362,8 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(research == {technologies: [], target: 'Alpha', progress: 4});
 	} else if (kind == 'terraforming') {
 		test.assert(feature_state.xenofungus && !terraforming_state.mine && !terraforming_state.road);
+	} else if (kind == 'native') {
+		test.assert(!game.um.has_unit(applied.native_outbreak.unit_ids[0]));
 	} else if (kind == 'resource') {
 		test.assert(!bonus_state.minerals);
 	}
@@ -346,7 +372,7 @@ const run_case = (kind, verify_resolve) => {
 run_case('energy', true);
 for (kind of [
 	'river', 'earthquake', 'production', 'artifact', 'fungus', 'monolith',
-	'vehicle', 'technology', 'terraforming', 'clone', 'resource'
+	'vehicle', 'technology', 'terraforming', 'clone', 'native', 'resource'
 ]) {
 	run_case(kind, false);
 }

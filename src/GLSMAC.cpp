@@ -555,10 +555,15 @@ void GLSMAC::Reset( GSE_CALLABLE ) {
 			const auto* fm = m_state->GetFM();
 			ASSERT( fm, "fm is null" );
 			faction = fm->Get( util::String::GetUpperCase( c->GetQuickstartFaction() ) );
+			if ( faction && ( faction->m_flags & game::backend::faction::Faction::FF_NATIVE ) ) {
+				faction = nullptr;
+			}
 			if ( !faction ) {
 				std::string errmsg = "Faction \"" + c->GetQuickstartFaction() + "\" does not exist. Available factions:";
 				for ( const auto& f : fm->GetAll() ) {
-					errmsg += " " + f->m_id;
+					if ( !( f->m_flags & game::backend::faction::Faction::FF_NATIVE ) ) {
+						errmsg += " " + f->m_id;
+					}
 				}
 				ShowError( errmsg, []() {
 					g_engine->ShutDown();
@@ -623,7 +628,8 @@ void GLSMAC::RandomizeSettings( GSE_CALLABLE ) {
 }
 
 void GLSMAC::AddSinglePlayerSlot( game::backend::faction::Faction* const faction ) {
-	m_state->m_slots->Resize( 7 ); // TODO: make dynamic?
+	m_state->m_slots->Resize( game::backend::State::TOTAL_SLOT_COUNT );
+	m_state->EnsureNativePlayer();
 	const auto& rules = m_state->m_settings.global.rules;
 	const auto& difficulty_level = rules.m_difficulty_levels.GetString(
 		static_cast< int >( m_state->m_settings.global.difficulty_level )
@@ -647,8 +653,9 @@ void GLSMAC::AddSinglePlayerSlot( game::backend::faction::Faction* const faction
 game::backend::Player* GLSMAC::AddAIPlayerSlot() {
 	ASSERT( m_state, "game state is not initialized" );
 	if ( m_state->m_slots->GetSlots().empty() ) {
-		m_state->m_slots->Resize( 7 );
+		m_state->m_slots->Resize( game::backend::State::TOTAL_SLOT_COUNT );
 	}
+	m_state->EnsureNativePlayer();
 
 	size_t slot_num = m_state->m_slots->GetCount();
 	for ( size_t i = 0 ; i < m_state->m_slots->GetCount() ; i++ ) {
@@ -661,7 +668,10 @@ game::backend::Player* GLSMAC::AddAIPlayerSlot() {
 
 	game::backend::faction::Faction* faction = nullptr;
 	for ( auto* const candidate : m_state->GetFM()->GetAll() ) {
-		if ( candidate->m_flags & game::backend::faction::Faction::FF_NAVAL ) {
+		if ( candidate->m_flags & (
+			game::backend::faction::Faction::FF_NAVAL |
+			game::backend::faction::Faction::FF_NATIVE
+		) ) {
 			continue;
 		}
 		bool is_selected = false;

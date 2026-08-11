@@ -157,6 +157,10 @@ WRAPIMPL_BEGIN( Faction )
 				VALUE( gse::value::Bool, , m_flags & Faction::FF_PROGENITOR )
 			},
 			{
+				"is_native",
+				VALUE( gse::value::Bool, , m_flags & Faction::FF_NATIVE )
+			},
+			{
 				"get_starting_technologies",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );

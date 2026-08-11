@@ -135,6 +135,10 @@ const bool Player::IsAI() const {
 	return m_role == PR_AI;
 }
 
+const bool Player::IsNative() const {
+	return m_role == PR_NATIVE;
+}
+
 const bool Player::IsTurnCompleted() const {
 	return m_is_turn_completed;
 }
@@ -536,7 +540,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"type",
-				VALUE( gse::value::String, , IsAI() ? "ai" : "human" )
+				VALUE( gse::value::String, , IsNative() ? "native" : ( IsAI() ? "ai" : "human" ) )
 			},
 			{
 				"name",
@@ -1350,7 +1354,7 @@ void Player::Deserialize( types::Buffer buf ) {
 
 	const auto name = buf.ReadString();
 	const auto serialized_role = buf.ReadInt();
-	if ( serialized_role < PR_NONE || serialized_role > PR_AI ) {
+	if ( serialized_role < PR_NONE || serialized_role > PR_NATIVE ) {
 		THROW( "invalid serialized player role: " + std::to_string( serialized_role ) );
 	}
 	std::unique_ptr< faction::Faction > faction;

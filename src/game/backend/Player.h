@@ -30,6 +30,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		PR_HOST,
 		PR_PLAYER,
 		PR_AI,
+		PR_NATIVE,
 	};
 
 	Player( types::Buffer buf );
@@ -61,6 +62,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 
 	const role_t GetRole() const;
 	const bool IsAI() const;
+	const bool IsNative() const;
 
 	const bool IsTurnCompleted() const;
 	void CompleteTurn();

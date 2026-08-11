@@ -21,6 +21,7 @@ return (i) => {
 		['Random', () => { start('RANDOM'); }],
 	];
 	for (faction of game.get_fm().list()) {
+		if (#is_defined(faction.is_native) && faction.is_native) { continue; }
 		const selected_faction = faction;
 		entries :+[faction.name, () => { start(selected_faction.id); }];
 	}

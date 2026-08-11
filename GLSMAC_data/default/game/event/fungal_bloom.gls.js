@@ -1,4 +1,5 @@
 const terraforming = #include('../../units/terraforming');
+const native_life = #include('../native_life');
 
 return {
 
@@ -62,6 +63,25 @@ return {
 		}
 	},
 
+	resolve: (e) => {
+		const life_level = native_life.get_life_level(e.game);
+		if (life_level <= 0) {
+			return {outbreak: {spawns: []}};
+		}
+		const severity = 1 + #min(
+			2,
+			#floor(#to_float(e.data.damage) / 40.0)
+		);
+		return {
+			outbreak: native_life.resolve_outbreak(
+				e.game,
+				e.data.tile,
+				#min(life_level, severity),
+				true
+			),
+		};
+	},
+
 	apply: (e) => {
 		const owner = e.data.base.get_owner();
 		let old_terraforming = {};
@@ -97,15 +117,24 @@ return {
 				'Planetary warming has destabilized the polar ice caps.'
 			);
 		}
+		const outbreak = #is_defined(e.resolved) &&
+			#is_defined(e.resolved.outbreak) &&
+			#sizeof(e.resolved.outbreak.spawns) > 0
+			? native_life.apply_outbreak(e.game, e.resolved.outbreak)
+			: null;
 		return {
 			xenofungus: old_xenofungus,
 			terraforming: old_terraforming,
 			ecological_damage_events: previous_events,
 			climate: climate,
+			outbreak: outbreak,
 		};
 	},
 
 	rollback: (e) => {
+		if (#is_defined(e.applied.outbreak) && e.applied.outbreak != null) {
+			native_life.rollback_outbreak(e.game, e.applied.outbreak);
+		}
 		e.data.tile.update_features({xenofungus: e.applied.xenofungus});
 		e.data.tile.update_terraforming(e.applied.terraforming);
 		e.data.base.get_owner().set_ecological_damage_events(

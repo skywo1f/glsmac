@@ -28,7 +28,7 @@ void Server::ProcessEvent( const network::Event& event ) {
 			ASSERT( !m_player, "player already set" );
 			Log( "Listening" );
 			m_state->m_settings.global.Initialize();
-			m_state->m_slots->Resize( 7 ); // TODO: make dynamic?
+			m_state->m_slots->Resize( State::TOTAL_SLOT_COUNT );
 			const auto& rules = m_state->m_settings.global.rules;
 			NEW(
 				m_player, Player,
@@ -43,6 +43,7 @@ void Server::ProcessEvent( const network::Event& event ) {
 			auto& slot = m_state->m_slots->GetSlot( m_slot );
 			slot.SetPlayer( m_player, 0, event.data.remote_address ); // host always has cid 0
 			slot.SetLinkedGSID( m_state->m_settings.local.account.GetGSID() );
+			m_state->EnsureNativePlayer();
 			if ( m_on_listen ) {
 				m_on_listen();
 			}
@@ -692,7 +693,11 @@ void Server::ClearReadyFlags() {
 	auto& slots = m_state->m_slots->GetSlots();
 	for ( size_t num = 0 ; num < slots.size() ; num++ ) {
 		auto& slot = slots.at( num );
-		if ( slot.GetState() == slot::Slot::SS_PLAYER && slot.HasPlayerFlag( slot::PF_READY ) ) {
+		if (
+			slot.GetState() == slot::Slot::SS_PLAYER &&
+			!slot.GetPlayer()->IsNative() &&
+			slot.HasPlayerFlag( slot::PF_READY )
+		) {
 			Log( "Clearing 'ready' flag of " + slot.GetPlayer()->GetPlayerName() );
 			const auto old_flags = slot.GetPlayerFlags();
 			slot.UnsetPlayerFlag( slot::PF_READY );

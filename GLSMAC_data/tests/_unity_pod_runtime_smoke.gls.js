@@ -62,7 +62,8 @@
 	const is_supported_outcome = (outcome) => {
 		for (candidate of [
 			'energy', 'river', 'earthquake', 'production', 'artifact', 'fungus',
-			'monolith', 'vehicle', 'technology', 'terraforming', 'clone', 'resource'
+			'monolith', 'vehicle', 'technology', 'terraforming', 'clone', 'native',
+			'resource'
 		]) {
 			if (candidate == outcome) {
 				return true;

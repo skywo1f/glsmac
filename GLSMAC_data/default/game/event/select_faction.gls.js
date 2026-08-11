@@ -13,6 +13,9 @@ return {
 		let faction_exists = false;
 		for (faction of e.game.get_fm().list()) {
 			if (faction.id == e.data.faction) {
+				if (#is_defined(faction.is_native) && faction.is_native) {
+					return 'Planet cannot be selected as a playable faction';
+				}
 				faction_exists = true;
 				break;
 			}

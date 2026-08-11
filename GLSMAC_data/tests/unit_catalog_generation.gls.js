@@ -2,7 +2,7 @@ const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 
 test.assert(units.generated_count > 92);
-test.assert(#sizeof(units.definitions) == units.generated_count + 16);
+test.assert(#sizeof(units.definitions) == units.generated_count + 17);
 
 const get_unit = (id) => {
 	for (unit of units.definitions) {
@@ -22,6 +22,7 @@ const unity_rover = get_unit('UnityRover');
 const unity_chopper = get_unit('UnityScoutChopper');
 const unity_foil = get_unit('UnityFoil');
 const isle = get_unit('IsleOfTheDeep');
+const locusts = get_unit('LocustsOfChiron');
 test.assert(unity_rover != null && !unity_rover.data.buildable);
 test.assert(
 	unity_rover.data.movement_type == 'land' &&
@@ -37,6 +38,11 @@ test.assert(unity_foil != null && !unity_foil.data.buildable);
 test.assert(
 	unity_foil.data.movement_type == 'water' &&
 	unity_foil.data.cargo_capacity == 2
+);
+test.assert(
+	locusts != null && locusts.data.movement_type == 'air' &&
+	locusts.data.movement_per_turn == 8 &&
+	locusts.data.required_technology == 'CentauriGenetics'
 );
 test.assert(isle != null && isle.data.is_native && isle.data.cargo_capacity == 4);
 
@@ -78,7 +84,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		test.assert(data.movement_per_turn == 2);
 		found_probe_team = true;
 	}
-	if (i < 16) {
+	if (i < 17) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);

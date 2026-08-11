@@ -35,7 +35,8 @@ const native_lifeform = (
 	movement_per_turn,
 	base_y,
 	abilities,
-	cargo_capacity
+	cargo_capacity,
+	required_technology
 ) => {
 	return {
 		id: id,
@@ -45,12 +46,15 @@ const native_lifeform = (
 			is_native: true,
 			offense: 1,
 			defense: 1,
-			chassis: movement_type == 'water' ? 'Foil' : 'Infantry',
+			chassis: movement_type == 'water'
+				? 'Foil'
+				: (movement_type == 'air' ? 'Gravship' : 'Infantry'),
 			weapon: 'PsiAttack',
 			armor: 'PsiDefense',
 			reactor: 'FissionPlant',
 			reactor_power: 1,
 			abilities: abilities,
+			required_technology: required_technology,
 			morale: 'NATIVE',
 			type: 'static',
 			movement_type: movement_type,
@@ -186,11 +190,12 @@ const units = [
 	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 104, 156, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
 	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 2, 541, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
 	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 2, 310, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
-	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0),
-	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233, [], 0),
-	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4),
-	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, [], 0),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0),
+	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0, ''),
+	native_lifeform('MindWorms', 'Mind Worms', 50, 'land', 1, 233, [], 0, 'CentauriEmpathy'),
+	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4, 'CentauriMeditation'),
+	native_lifeform('LocustsOfChiron', 'Locusts of Chiron', 100, 'air', 8, 387, [], 0, 'CentauriGenetics'),
+	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, [], 0, ''),
+	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0, ''),
 ];
 
 for (unit of generated.definitions) {

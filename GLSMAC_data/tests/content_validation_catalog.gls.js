@@ -90,6 +90,14 @@ for (id of [
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'complete');
 }
+let planet = null;
+for (faction of catalog.factions) {
+	if (faction.id == 'PLANET') {
+		planet = faction;
+		break;
+	}
+}
+test.assert(planet != null && planet.data.is_native);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 38,
@@ -108,5 +116,5 @@ test.assert(result.counts == {
 	abilities: 24,
 	predefined_units: 14,
 	moralesets: 2,
-	factions: 14,
+	factions: 15,
 });

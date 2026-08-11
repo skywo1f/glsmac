@@ -13,7 +13,7 @@ const fm = {
 
 factions.configure(fm);
 
-test.assert(configured_count == 14);
+test.assert(configured_count == 15);
 test.assert(configured.GAIANS.starting_technologies == ['CentauriEcology']);
 test.assert(configured.HIVE.starting_technologies == ['DoctrineLoyalty']);
 test.assert(configured.UNIVERSITY.starting_technologies == ['InformationNetworks']);

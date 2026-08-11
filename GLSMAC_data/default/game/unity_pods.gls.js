@@ -1,4 +1,5 @@
 const technology_acquisition = #include('./technology_acquisition');
+const native_life = #include('./native_life');
 
 const MAX_ENERGY_CREDITS = 1000000000;
 const TERRAFORMING_KEYS = [
@@ -297,6 +298,21 @@ const make_resolution = (game, unit, tile, kind) => {
 			? {kind: kind, unit_def: definition.id}
 			: null;
 	}
+	if (kind == 'native') {
+		const life_level = native_life.get_life_level(game);
+		if (life_level <= 0) {
+			return null;
+		}
+		const outbreak = native_life.resolve_outbreak(
+			game,
+			tile,
+			game.random.get_int(1, life_level),
+			false
+		);
+		return #sizeof(outbreak.spawns) == 0
+			? null
+			: {kind: kind, outbreak: outbreak};
+	}
 	if (kind == 'resource') {
 		if (
 			tile.get_base() != null || tile.features.xenofungus ||
@@ -326,6 +342,7 @@ const get_weighted_kind = (roll) => {
 	if (roll < 68) { return 'technology'; }
 	if (roll < 82) { return 'terraforming'; }
 	if (roll < 83) { return 'clone'; }
+	if (roll < 91) { return 'native'; }
 	return 'resource';
 };
 
@@ -346,6 +363,7 @@ const resolve = (game, unit, tile) => {
 		'vehicle',
 		'technology',
 		'terraforming',
+		'native',
 		'resource',
 	];
 	for (kind of fallbacks) {
@@ -403,6 +421,7 @@ const apply = (game, unit, tile, resolved) => {
 		pod_was_present: tile.features.unity_pod,
 		tiles: [],
 		spawned_unit_id: 0,
+		native_outbreak: null,
 		energy_credits: 0,
 		base: null,
 		base_minerals: 0,
@@ -497,6 +516,9 @@ const apply = (game, unit, tile, resolved) => {
 			? 'kelp farms'
 			: resolved.improvement + ' improvements';
 		game.message('A Unity terraforming pod established nearby ' + label + '.');
+	} else if (resolved.kind == 'native') {
+		applied.native_outbreak = native_life.apply_outbreak(game, resolved.outbreak);
+		game.message('A Unity Pod disturbed a nest of native lifeforms.');
 	} else if (resolved.kind == 'resource') {
 		applied.tiles :+snapshot_tile(tile);
 		tile.set_bonus(resolved.bonus);
@@ -515,6 +537,9 @@ const apply = (game, unit, tile, resolved) => {
 };
 
 const rollback = (game, applied) => {
+	if (applied.native_outbreak != null) {
+		native_life.rollback_outbreak(game, applied.native_outbreak);
+	}
 	if (#is_defined(applied.research)) {
 		technology_acquisition.rollback(game, applied.research);
 	}

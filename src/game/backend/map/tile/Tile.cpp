@@ -94,7 +94,7 @@ void Tile::Update() {
 
 	*elevation.center = ( *elevation.left + *elevation.top + *elevation.right + *elevation.bottom ) / 4;
 
-	const auto sea_level = tiles
+	const auto sea_level = tiles && tiles->GetMap()
 		? tiles->GetMap()->GetSeaLevel()
 		: ELEVATION_LEVEL_COAST;
 	uint8_t corners_in_water = *elevation.center < sea_level
@@ -124,7 +124,10 @@ void Tile::RefreshWrappers() {
 		( (gse::value::Int*)f_get_property( "moisture", gse::VT_INT ) )->value = moisture;
 		( (gse::value::Int*)f_get_property( "rockiness", gse::VT_INT ) )->value = rockiness;
 		( (gse::value::Int*)f_get_property( "elevation", gse::VT_INT ) )->value = *elevation.center;
-		( (gse::value::Int*)f_get_property( "sea_level", gse::VT_INT ) )->value = tiles->GetMap()->GetSeaLevel();
+		( (gse::value::Int*)f_get_property( "sea_level", gse::VT_INT ) )->value =
+			tiles && tiles->GetMap()
+				? tiles->GetMap()->GetSeaLevel()
+				: ELEVATION_LEVEL_COAST;
 
 		auto* const wrapped_features = (gse::value::Object*)f_get_property( "features", gse::VT_OBJECT );
 #define X_FEATURE( _x, _i ) \
@@ -467,7 +470,9 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"sea_level",
-			VALUE( gse::value::Int,, tiles->GetMap()->GetSeaLevel() )
+			VALUE( gse::value::Int,, tiles && tiles->GetMap()
+				? tiles->GetMap()->GetSeaLevel()
+				: ELEVATION_LEVEL_COAST )
 		},
 		GETN( W ),
 		GETN( NW ),

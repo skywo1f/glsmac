@@ -67,6 +67,9 @@ void Client::ProcessEvent( const network::Event& event ) {
 									if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
 										const auto& player = slot.GetPlayer();
 										m_state->AddPlayer( player );
+										if ( player->IsNative() ) {
+											continue;
+										}
 
 										auto* player_copy = new Player( player );
 										WTrigger(

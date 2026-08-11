@@ -37,6 +37,12 @@ return {
 			data.transport_id = e.data.transport_id;
 		}
 		const unit = e.game.um.spawn_unit(data);
+		if (#is_defined(e.data.movement)) {
+			unit.movement = e.data.movement;
+		}
+		if (#is_defined(e.data.moved_this_turn)) {
+			unit.moved_this_turn = e.data.moved_this_turn;
+		}
 
 		return {
 			unit: unit,

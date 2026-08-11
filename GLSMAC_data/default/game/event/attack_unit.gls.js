@@ -188,7 +188,13 @@ return {
 			sequence: damage_sequence,
 			attacker_dead: attacker_health <= 0.0,
 			defender_dead: defender_health <= 0.0,
-			advance_after_combat: !attacker_is_artillery,
+			advance_after_combat:
+				!attacker_is_artillery &&
+				(
+					target_tile == null || target_tile.get_base() == null ||
+					#typeof(attacker.get_owner) != 'Callable' ||
+					attacker.get_owner().type != 'native'
+				),
 		};
 	},
 

@@ -15,6 +15,12 @@ return {
 		e.game.complete_turn(e.caller);
 		if (e.game.is_master()) {
 			let everybody_completed_turn = true;
+			if (#typeof(e.game.get_native_player) == 'Callable') {
+				const native = e.game.get_native_player();
+				if (native != null && !e.game.is_turn_complete(native.id)) {
+					everybody_completed_turn = false;
+				}
+			}
 			for (player of e.game.get_players()) {
 				if (!e.game.is_turn_complete(player.id)) {
 					everybody_completed_turn = false;

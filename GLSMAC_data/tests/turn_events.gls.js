@@ -11,6 +11,7 @@ let advanced_turns = [];
 let current_turn = 4;
 let is_master = true;
 let unit_tile_locked = false;
+let native_enabled = false;
 
 const players = [
 	{id: 0},
@@ -33,6 +34,9 @@ const game = {
 	},
 	get_players: () => {
 		return players;
+	},
+	get_native_player: () => {
+		return native_enabled ? {id: 2} : null;
 	},
 	get_turn: () => {
 		return current_turn;
@@ -99,6 +103,20 @@ test.assert(#is_defined(uncomplete_turn.validate(event)));
 uncomplete_turn.rollback(event);
 test.assert(completed == [true, true]);
 
+native_enabled = true;
+completed = [true, false, false];
+emitted_events = [];
+complete_turn.apply(event);
+test.assert(completed == [true, true, false]);
+test.assert(emitted_events == []);
+complete_turn.rollback(event);
+completed[2] = true;
+complete_turn.apply(event);
+test.assert(#sizeof(emitted_events) == 1);
+native_enabled = false;
+completed = [true, true];
+emitted_events = [];
+
 let advance_event = {
 	caller: 1,
 	game: game,
@@ -114,6 +132,13 @@ test.assert(#is_defined(advance_turn.validate(advance_event)));
 
 completed[1] = true;
 test.assert(!#is_defined(advance_turn.validate(advance_event)));
+native_enabled = true;
+completed = [true, true, false];
+test.assert(#is_defined(advance_turn.validate(advance_event)));
+completed[2] = true;
+test.assert(!#is_defined(advance_turn.validate(advance_event)));
+native_enabled = false;
+completed = [true, true];
 advance_turn.apply(advance_event);
 test.assert(current_turn == 5);
 test.assert(advanced_turns == [5]);

@@ -105,6 +105,14 @@ return {
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
+		const dst_base = dst_tile.get_base();
+		if (
+			#typeof(e.data.unit.get_owner) == 'Callable' &&
+			e.data.unit.get_owner().type == 'native' &&
+			dst_base != null && dst_base.get_owner().id != e.data.unit.owner
+		) {
+			return 'Wild native life cannot capture bases';
+		}
 
 		if (src_tile == dst_tile) {
 			return 'Source tile is same as destination tile';

@@ -593,9 +593,27 @@ WRAPIMPL_BEGIN( Game )
 					if ( state == slot::Slot::SS_OPEN || state == slot::Slot::SS_CLOSED ) {
 						continue; // skip
 					}
+					if ( slot.GetPlayer()->IsNative() ) {
+						continue;
+					}
 					elements.push_back( slot.Wrap( GSE_CALL ) );
 				}
 				return VALUE( gse::value::Array,, elements );
+			} )
+		},
+		{
+			"get_native_player",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				for ( auto& slot : m_state->m_slots->GetSlots() ) {
+					if (
+						slot.GetState() == slot::Slot::SS_PLAYER &&
+						slot.GetPlayer() && slot.GetPlayer()->IsNative()
+					) {
+						return slot.Wrap( GSE_CALL );
+					}
+				}
+				GSE_ERROR( gse::EC.GAME_ERROR, "Native Planet player is not configured" );
 			} )
 		},
 		{
@@ -844,9 +862,9 @@ WRAPIMPL_BEGIN( Game )
 				if (
 					caller_slot.GetState() != slot::Slot::SS_PLAYER
 					|| !caller_slot.GetPlayer()
-					|| !caller_slot.GetPlayer()->IsAI()
+					|| ( !caller_slot.GetPlayer()->IsAI() && !caller_slot.GetPlayer()->IsNative() )
 				) {
-					GSE_ERROR( gse::EC.GAME_ERROR, "AI events require a computer-controlled caller" );
+					GSE_ERROR( gse::EC.GAME_ERROR, "Delegated events require a computer-controlled caller" );
 				}
 				N_GETVALUE( name, 1, String );
 				{
@@ -1317,7 +1335,10 @@ Player* Game::GetConquestWinner() const {
 	std::unordered_set< size_t > surviving_slots = {};
 	const auto& slots = m_state->m_slots->GetSlots();
 	for ( const auto& slot : slots ) {
-		if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+		if (
+			slot.GetState() == slot::Slot::SS_PLAYER &&
+			!slot.GetPlayer()->IsNative()
+		) {
 			active_player_count++;
 		}
 	}
@@ -1327,7 +1348,10 @@ Player* Game::GetConquestWinner() const {
 
 	for ( const auto& it : m_bm->GetBases() ) {
 		const auto* const owner = it.second->m_owner;
-		if ( owner && owner->GetState() == slot::Slot::SS_PLAYER ) {
+		if (
+			owner && owner->GetState() == slot::Slot::SS_PLAYER &&
+			!owner->GetPlayer()->IsNative()
+		) {
 			surviving_slots.insert( owner->GetIndex() );
 		}
 	}
@@ -1338,7 +1362,8 @@ Player* Game::GetConquestWinner() const {
 			unit->m_def &&
 			unit->m_def->m_can_found_base &&
 			unit->m_owner &&
-			unit->m_owner->GetState() == slot::Slot::SS_PLAYER
+			unit->m_owner->GetState() == slot::Slot::SS_PLAYER &&
+			!unit->m_owner->GetPlayer()->IsNative()
 		) {
 			surviving_slots.insert( unit->m_owner->GetIndex() );
 		}
@@ -1373,6 +1398,9 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	const auto& winner = m_state->m_slots->GetSlot( winner_slot );
 	if ( winner.GetState() != slot::Slot::SS_PLAYER || !winner.GetPlayer() ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Victory winner slot has no player" );
+	}
+	if ( winner.GetPlayer()->IsNative() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Planet cannot claim a faction victory" );
 	}
 	if ( type == VT_CONQUEST ) {
 		auto* const expected_winner = GetConquestWinner();
@@ -1474,7 +1502,10 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 
 	m_state->WithGSE( this, [ this ]( GSE_CALLABLE ) {
 		for ( const auto& slot : m_state->m_slots->GetSlots() ) {
-			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+			if (
+				slot.GetState() == slot::Slot::SS_PLAYER &&
+				!slot.GetPlayer()->IsNative()
+			) {
 				slot.GetPlayer()->SetOrbitalDefenseDeployments( 0 );
 			}
 		}
@@ -1515,7 +1546,9 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 	});
 
 	for ( const auto& slot : m_state->m_slots->GetSlots() ) {
-		if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+		if (
+			slot.GetState() == slot::Slot::SS_PLAYER
+		) {
 			slot.GetPlayer()->UncompleteTurn();
 		}
 	}
@@ -1893,11 +1926,16 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 		std::vector< size_t > available_factions = {};
 		available_factions.reserve( factions.size() );
 		for ( size_t i = 0 ; i < factions.size() ; i++ ) {
-			available_factions.push_back( i );
+			if ( !( factions.at( i )->m_flags & faction::Faction::FF_NATIVE ) ) {
+				available_factions.push_back( i );
+			}
 		}
 		const auto& slots = m_state->m_slots->GetSlots();
 		for ( const auto& slot : slots ) {
-			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+			if (
+				slot.GetState() == slot::Slot::SS_PLAYER &&
+				!slot.GetPlayer()->IsNative()
+			) {
 				auto* const player = slot.GetPlayer();
 				ASSERT( player, "player not set" );
 				if ( player->GetFaction() ) {
@@ -1915,7 +1953,10 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 			}
 		}
 		for ( const auto& slot : slots ) {
-			if ( slot.GetState() == slot::Slot::SS_PLAYER ) {
+			if (
+				slot.GetState() == slot::Slot::SS_PLAYER &&
+				!slot.GetPlayer()->IsNative()
+			) {
 				auto* const player = slot.GetPlayer();
 				ASSERT( player, "player not set" );
 				if ( !player->GetFaction() ) {

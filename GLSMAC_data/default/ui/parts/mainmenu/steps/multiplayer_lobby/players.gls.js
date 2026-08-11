@@ -16,6 +16,7 @@ return (i) => {
 			}],
 		];
 		for (faction of factions) {
+			if (#is_defined(faction.is_native) && faction.is_native) { continue; }
 			faction_choices :+[faction.id, faction.name, {
 				color: faction.text_color,
 			}];

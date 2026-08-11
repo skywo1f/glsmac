@@ -102,6 +102,16 @@
 		game.on('start_ui', (e) => {
 			ui_started = true;
 			const players = game.get_players();
+			const native_player = game.get_native_player();
+			if (
+				native_player.type != 'native' || native_player.id != 7 ||
+				game.get_player(native_player.id) != native_player ||
+				native_player.get_faction().id != 'PLANET' ||
+				!native_player.get_faction().is_native
+			) {
+				fail('serialized Planet player identity is invalid');
+				return;
+			}
 			if (#sizeof(players) == 7) {
 				validate_seven_player_start();
 				return;

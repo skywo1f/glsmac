@@ -385,6 +385,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( NATIVE_LIFE_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/native-life-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${NATIVE_LIFE_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME native_life_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${NATIVE_LIFE_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_native_life_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( native_life_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "NATIVE_LIFE_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "NATIVE_LIFE_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( FACILITY_ACTIONS_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/facility-actions-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${FACILITY_ACTIONS_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME facility_actions_runtime_smoke COMMAND

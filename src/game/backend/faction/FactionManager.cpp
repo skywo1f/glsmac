@@ -147,6 +147,10 @@ WRAPIMPL_BEGIN( FactionManager )
 				if ( is_progenitor ) {
 					faction->m_flags |= Faction::FF_PROGENITOR;
 				}
+				N_GETPROP_OPT_BOOL( is_native, faction_def, "is_native")
+				if ( is_native ) {
+					faction->m_flags |= Faction::FF_NATIVE;
+				}
 				N_GETPROP_OPT(
 					gse::value::array_elements_t,
 					starting_technology_values,
