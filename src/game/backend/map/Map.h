@@ -122,6 +122,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	const size_t GetHeight() const;
 	void RefreshTile( tile::Tile* tile );
 	std::string ApplyCrater( tile::Tile* center, const size_t radius );
+	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
 	void RestoreTerrain( const std::string& snapshot );
 	bool IsTileRefreshTarget( const tile::Tile* tile ) const;
 

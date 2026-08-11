@@ -218,6 +218,28 @@ WRAPIMPL_BEGIN( TileManager )
 			} )
 		},
 		{
+			"apply_earthquake",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				N_GETVALUE( elevation_steps, 1, Int );
+				if ( elevation_steps < 1 || elevation_steps > 3 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Earthquake must raise terrain by one to three levels" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyEarthquake( center, static_cast< size_t >( elevation_steps ) )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
 			"restore_terrain",
 			NATIVE_CALL( this ) {
 				m_game->CheckRW( GSE_CALL );

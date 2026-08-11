@@ -110,9 +110,11 @@ public:
 
 	const std::string ToString() const;
 	static feature_t GetFeatureFromString( const std::string& name );
+	static bonus_t GetBonusFromString( const std::string& name );
 	static terraforming_t GetTerraformingFromString( const std::string& name );
 	static const std::string& GetTerraformingString( const terraforming_t value );
 	void SetFeatures( GSE_CALLABLE, const feature_t value );
+	void SetBonus( GSE_CALLABLE, const bonus_t value );
 	void SetTerraforming( GSE_CALLABLE, const terraforming_t value );
 
 	WRAPDEFS_PTR( Tile );

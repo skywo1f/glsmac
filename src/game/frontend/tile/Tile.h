@@ -13,6 +13,10 @@ namespace types::mesh {
 class Render;
 }
 
+namespace game {
+struct tile_render_snapshot_t;
+}
+
 namespace game::backend::map::tile {
 class Tile;
 class TileState;
@@ -85,7 +89,7 @@ public:
 
 	const render_data_t& GetRenderData() const;
 
-	void Update( const backend::map::tile::Tile& tile, const backend::map::tile::TileState& ts );
+	void Update( const tile_render_snapshot_t& snapshot );
 
 private:
 

@@ -13,6 +13,7 @@ const research = #include('ai/research');
 const social_engineering = #include('ai/social_engineering');
 const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
+const unity_pods = #include('ai/unity_pods');
 const movement_rules = #include('movement_rules');
 const unit_abilities = #include('unit_abilities');
 const artifact_rules = #include('artifact_rules');
@@ -1243,6 +1244,18 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles, strategic_units)) {
 			return 1000;
 		}
+	}
+	const pod_destination = unity_pods.choose_destination(
+		game,
+		unit,
+		(source, candidate) => { return can_enter(unit, candidate, source); }
+	);
+	if (pod_destination != null && pod_destination.step != null) {
+		game.event_as(player.id, 'move_unit', {
+			unit: unit,
+			tile: pod_destination.step,
+		});
+		return 100;
 	}
 	const unit_key = #to_string(unit.id);
 	let reinforcement_base = null;

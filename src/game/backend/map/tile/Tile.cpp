@@ -54,6 +54,13 @@ static const std::unordered_map< std::string, feature_t > s_feature_by_name = {
 #undef X_FEATURE
 };
 
+static const std::unordered_map< std::string, bonus_t > s_bonus_by_name = {
+	{ "none", BONUS_NONE },
+#define X_BONUS( _x, _i ) { util::String::GetLowerCase( #_x ), BONUS_ ## _x },
+	X_BONUSES
+#undef X_BONUS
+};
+
 static const std::unordered_map< terraforming_t, std::string > s_terraforming_names = {
 	{ TERRAFORMING_NONE, "none" },
 #define X_TERRAFORMING( _x, _i ) { TERRAFORMING_ ## _x, util::String::GetLowerCase( #_x ) },
@@ -172,7 +179,13 @@ const types::Buffer Tile::Serialize() const {
 	buf.WriteInt( coord.x );
 	buf.WriteInt( coord.y );
 
-	buf.WriteInt( *elevation.center );
+	const auto center = (
+		*elevation.left +
+		*elevation.top +
+		*elevation.right +
+		*elevation.bottom
+	) / 4;
+	buf.WriteInt( center );
 	buf.WriteInt( *elevation.left );
 	buf.WriteInt( *elevation.top );
 	buf.WriteInt( *elevation.right );
@@ -291,6 +304,13 @@ feature_t Tile::GetFeatureFromString( const std::string& name ) {
 		: it->second;
 }
 
+bonus_t Tile::GetBonusFromString( const std::string& name ) {
+	const auto& it = s_bonus_by_name.find( util::String::GetLowerCase( name ) );
+	return it == s_bonus_by_name.end()
+		? BONUS_NONE
+		: it->second;
+}
+
 terraforming_t Tile::GetTerraformingFromString( const std::string& name ) {
 	if ( util::String::GetLowerCase( name ) == "none" ) {
 		return TERRAFORMING_NONE;
@@ -316,6 +336,18 @@ void Tile::SetFeatures( GSE_CALLABLE, const feature_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( features != value ) {
 		features = value;
+		RefreshWrappers();
+		tiles->GetMap()->RefreshTile( this );
+	}
+}
+
+void Tile::SetBonus( GSE_CALLABLE, const bonus_t value ) {
+	if ( value > BONUS_MINERALS ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile bonus value: " + std::to_string( value ) );
+	}
+	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+	if ( bonus != value ) {
+		bonus = value;
 		RefreshWrappers();
 		tiles->GetMap()->RefreshTile( this );
 	}
@@ -478,6 +510,19 @@ WRAPIMPL_BEGIN( Tile )
 					}
 				}
 				SetFeatures( GSE_CALL, updated );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"set_bonus",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( name, 0, String );
+				const auto value = GetBonusFromString( name );
+				if ( value == BONUS_NONE && util::String::GetLowerCase( name ) != "none" ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile bonus: " + name );
+				}
+				SetBonus( GSE_CALL, value );
 				return VALUE( gse::value::Undefined );
 			} )
 		},

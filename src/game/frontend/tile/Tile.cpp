@@ -2,6 +2,7 @@
 
 #include "game/frontend/unit/Unit.h"
 #include "game/frontend/base/Base.h"
+#include "game/FrontendRequest.h"
 #include "game/backend/map/tile/Tile.h"
 #include "game/backend/map/tile/TileState.h"
 #include "types/mesh/Render.h"
@@ -286,15 +287,15 @@ const Tile::render_data_t& Tile::GetRenderData() const {
 	return m_render_data;
 }
 
-void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::tile::TileState& ts ) {
+void Tile::Update( const tile_render_snapshot_t& snapshot ) {
 
-	m_is_water = tile.is_water_tile;
+	m_is_water = snapshot.is_water;
 
-	backend::map::tile::tile_layer_type_t lt = ( tile.is_water_tile
+	backend::map::tile::tile_layer_type_t lt = ( snapshot.is_water
 		? backend::map::tile::LAYER_WATER
 		: backend::map::tile::LAYER_LAND
 	);
-	const auto& layer = ts.layers[ lt ];
+	const auto& layer = snapshot.layers[ lt ];
 
 	backend::map::tile::tile_vertices_t selection_coords = {};
 	backend::map::tile::tile_vertices_t preview_coords = {
@@ -333,18 +334,18 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 	x( bottom );
 #undef x
 
-	if ( !tile.is_water_tile && ts.is_coastline_corner ) {
-		if ( tile.W->is_water_tile ) {
-			selection_coords.left = ts.layers[ backend::map::tile::LAYER_WATER ].coords.left;
+	if ( !snapshot.is_water && snapshot.is_coastline_corner ) {
+		if ( snapshot.west_is_water ) {
+			selection_coords.left = snapshot.layers[ backend::map::tile::LAYER_WATER ].coords.left;
 		}
-		if ( tile.N->is_water_tile ) {
-			selection_coords.top = ts.layers[ backend::map::tile::LAYER_WATER ].coords.top;
+		if ( snapshot.north_is_water ) {
+			selection_coords.top = snapshot.layers[ backend::map::tile::LAYER_WATER ].coords.top;
 		}
-		if ( tile.E->is_water_tile ) {
-			selection_coords.right = ts.layers[ backend::map::tile::LAYER_WATER ].coords.right;
+		if ( snapshot.east_is_water ) {
+			selection_coords.right = snapshot.layers[ backend::map::tile::LAYER_WATER ].coords.right;
 		}
-		if ( tile.S->is_water_tile ) {
-			selection_coords.bottom = ts.layers[ backend::map::tile::LAYER_WATER ].coords.bottom;
+		if ( snapshot.south_is_water ) {
+			selection_coords.bottom = snapshot.layers[ backend::map::tile::LAYER_WATER ].coords.bottom;
 		}
 	}
 
@@ -362,14 +363,14 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 	};
 
 	std::vector< backend::map::tile::tile_layer_type_t > layers = {};
-	if ( tile.is_water_tile ) {
+	if ( snapshot.is_water ) {
 		layers.push_back( backend::map::tile::LAYER_LAND );
 		layers.push_back( backend::map::tile::LAYER_WATER_SURFACE );
 		layers.push_back( backend::map::tile::LAYER_WATER_SURFACE_EXTRA ); // TODO: only near coastlines?
 		layers.push_back( backend::map::tile::LAYER_WATER );
 	}
 	else {
-		if ( ts.is_coastline_corner ) {
+		if ( snapshot.is_coastline_corner ) {
 			layers.push_back( backend::map::tile::LAYER_WATER_SURFACE );
 			layers.push_back( backend::map::tile::LAYER_WATER_SURFACE_EXTRA );
 			layers.push_back( backend::map::tile::LAYER_WATER );
@@ -390,7 +391,7 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 
 		NEWV( mesh, types::mesh::Render, 5, 4 );
 
-		const auto& l = ts.layers[ lt ];
+		const auto& l = snapshot.layers[ lt ];
 
 		auto tint = l.colors;
 
@@ -417,14 +418,14 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 	}
 
 	std::vector< std::string > sprites = {};
-	for ( auto& s : ts.sprites ) {
-		sprites.push_back( s.actor );
+	for ( const auto& sprite : snapshot.sprites ) {
+		sprites.push_back( sprite );
 	}
 
 	std::vector< std::string > info_lines = {};
 
-	auto e = *tile.elevation.center;
-	if ( tile.is_water_tile ) {
+	auto e = snapshot.elevation;
+	if ( snapshot.is_water ) {
 		if ( e < backend::map::tile::ELEVATION_LEVEL_TRENCH ) {
 			info_lines.push_back( "Ocean Trench" );
 		}
@@ -439,7 +440,7 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 	else {
 		info_lines.push_back( "Elev: " + std::to_string( e ) + "m" );
 		std::string tilestr = "";
-		switch ( tile.rockiness ) {
+		switch ( snapshot.rockiness ) {
 			case backend::map::tile::ROCKINESS_FLAT: {
 				tilestr += "Flat";
 				break;
@@ -454,7 +455,7 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 			}
 		}
 		tilestr += " & ";
-		switch ( tile.moisture ) {
+		switch ( snapshot.moisture ) {
 			case backend::map::tile::MOISTURE_ARID: {
 				tilestr += "Arid";
 				break;
@@ -472,18 +473,18 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 	}
 
 #define FEATURE( _feature, _line ) \
-            if ( tile.features & backend::map::tile::_feature ) { \
+			if ( snapshot.features & backend::map::tile::_feature ) { \
                 info_lines.push_back( _line ); \
             }
 
-	if ( tile.is_water_tile ) {
+	if ( snapshot.is_water ) {
 		FEATURE( FEATURE_XENOFUNGUS, "Sea Fungus" )
 	}
 	else {
 		FEATURE( FEATURE_XENOFUNGUS, "Xenofungus" )
 	}
 
-	switch ( tile.bonus ) {
+	switch ( snapshot.bonus ) {
 		case backend::map::tile::BONUS_NUTRIENT: {
 			info_lines.push_back( "Nutrient bonus" );
 			break;
@@ -501,7 +502,7 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 		}
 	}
 
-	if ( tile.is_water_tile ) {
+	if ( snapshot.is_water ) {
 		FEATURE( FEATURE_GEOTHERMAL, "Geothermal" )
 	}
 	else {
@@ -515,11 +516,11 @@ void Tile::Update( const backend::map::tile::Tile& tile, const backend::map::til
 #undef FEATURE
 
 #define TERRAFORMING( _terraforming, _line ) \
-            if ( tile.terraforming & backend::map::tile::_terraforming ) { \
+			if ( snapshot.terraforming & backend::map::tile::_terraforming ) { \
                 info_lines.push_back( _line ); \
             }
 
-	if ( tile.is_water_tile ) {
+	if ( snapshot.is_water ) {
 		TERRAFORMING( TERRAFORMING_FARM, "Kelp Farm" );
 		TERRAFORMING( TERRAFORMING_SOLAR, "Tidal Harness" );
 		TERRAFORMING( TERRAFORMING_MINE, "Mining Platform" );

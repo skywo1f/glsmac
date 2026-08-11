@@ -172,6 +172,15 @@ Map::Map( Game* game )
 }
 
 Map::~Map() {
+	if ( m_meshes.terrain ) {
+		DELETE( m_meshes.terrain );
+	}
+	if ( m_meshes.terrain_data ) {
+		DELETE( m_meshes.terrain_data );
+	}
+	if ( m_textures.terrain ) {
+		DELETE( m_textures.terrain );
+	}
 	if ( m_tiles ) {
 		DELETE( m_tiles );
 	}
@@ -631,13 +640,14 @@ void Map::RefreshTile( tile::Tile* tile ) {
 	ASSERT( tile, "cannot refresh a null tile" );
 	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
 	ASSERT( GetTile( tile->coord.x, tile->coord.y ) == tile, "tile does not belong to map" );
-	ASSERT( !tile->is_water_tile, "live sea tile refresh is not implemented" );
 
 	const auto random_state = GetRandom()->GetState();
 	try {
 		m_current_tile = tile;
 		m_current_ts = GetTileState( tile );
-		module::LandSurface( this ).GenerateTile( m_current_tile, m_current_ts, m_map_state );
+		if ( !tile->is_water_tile ) {
+			module::LandSurface( this ).GenerateTile( m_current_tile, m_current_ts, m_map_state );
+		}
 		module::Sprites( this ).GenerateTile( m_current_tile, m_current_ts, m_map_state );
 	}
 	catch ( ... ) {
@@ -650,7 +660,11 @@ void Map::RefreshTile( tile::Tile* tile ) {
 	m_current_ts = nullptr;
 	GetRandom()->SetState( random_state );
 
-	const auto texture_position = GetTextureAtlasPosition( tile->coord.x, tile->coord.y, tile::LAYER_LAND );
+	const auto texture_position = GetTextureAtlasPosition(
+		tile->coord.x,
+		tile->coord.y,
+		tile->is_water_tile ? tile::LAYER_WATER : tile::LAYER_LAND
+	);
 	const auto& texture_dimensions = s_consts.tc.texture_pcx.dimensions;
 	types::texture::Texture texture_patch(
 		"TerrainTilePatch",
@@ -668,7 +682,7 @@ void Map::RefreshTile( tile::Tile* tile ) {
 
 	auto fr = FrontendRequest( FrontendRequest::FR_UPDATE_TILES );
 	NEW( fr.data.update_tiles.tile_updates, FrontendRequest::tile_updates_t, {
-		{ tile, GetTileState( tile ) },
+		tile_render_snapshot_t( *tile, *GetTileState( tile ) ),
 	} );
 	NEW( fr.data.update_tiles.sprite_actors, FrontendRequest::tile_sprite_actors_t, m_sprite_actors_to_add );
 	NEW( fr.data.update_tiles.sprite_removals, FrontendRequest::tile_sprite_removals_t, m_sprite_instances_to_remove );
@@ -787,6 +801,41 @@ std::string Map::ApplyCrater( tile::Tile* center, const size_t radius ) {
 
 	try {
 		RefreshTerrain( blast_tiles );
+	}
+	catch ( ... ) {
+		m_tiles->Restore( types::Buffer( snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot;
+}
+
+std::string Map::ApplyEarthquake( tile::Tile* center, const size_t elevation_steps ) {
+	ASSERT( center, "cannot create an earthquake around a null tile" );
+	ASSERT( elevation_steps >= 1 && elevation_steps <= 3, "earthquake must raise terrain by one to three levels" );
+	ASSERT( GetTile( center->coord.x, center->coord.y ) == center, "earthquake center does not belong to map" );
+	ASSERT( !center->is_water_tile, "earthquake center must be on land" );
+
+	const auto snapshot = m_tiles->Serialize().ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	const auto amount = static_cast< tile::elevation_t >( elevation_steps ) * 1000;
+	for ( auto* const vertex : center->elevation.corners ) {
+		*vertex = std::min( tile::ELEVATION_MAX, *vertex + amount );
+	}
+
+	const auto all_tiles = GetAllTiles();
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( { center } );
 	}
 	catch ( ... ) {
 		m_tiles->Restore( types::Buffer( snapshot ) );
@@ -918,12 +967,14 @@ void Map::QueueTerrainUpdates( const tiles_t& tiles ) {
 	FrontendRequest::tile_updates_t tile_updates;
 	tile_updates.reserve( tiles.size() );
 	for ( auto* const map_tile : tiles ) {
-		tile_updates.push_back( { map_tile, GetTileState( map_tile ) } );
+		tile_updates.emplace_back( *map_tile, *GetTileState( map_tile ) );
 	}
 	const FrontendRequest::tile_updates_t empty_tile_updates;
 	const FrontendRequest::tile_sprite_actors_t empty_sprite_actors;
 	const FrontendRequest::tile_sprite_removals_t empty_sprite_removals;
 	const FrontendRequest::tile_sprite_additions_t empty_sprite_additions;
+	const auto serialized_terrain_mesh = m_meshes.terrain->Serialize().ToString();
+	const auto serialized_terrain_data_mesh = m_meshes.terrain_data->Serialize().ToString();
 
 	const auto& cell_dimensions = s_consts.tc.texture_pcx.dimensions;
 	bool include_state_updates = true;
@@ -977,6 +1028,18 @@ void Map::QueueTerrainUpdates( const tiles_t& tiles ) {
 			std::string,
 			texture_patch.Serialize().ToString()
 		);
+		if ( include_state_updates ) {
+			NEW(
+				fr.data.update_tiles.serialized_terrain_mesh,
+				std::string,
+				serialized_terrain_mesh
+			);
+			NEW(
+				fr.data.update_tiles.serialized_terrain_data_mesh,
+				std::string,
+				serialized_terrain_data_mesh
+			);
+		}
 		fr.data.update_tiles.terrain_texture_x = cells.at( first ).x;
 		fr.data.update_tiles.terrain_texture_y = cells.at( first ).y;
 		fr.data.update_tiles.terrain_texture_width = patch_width;
@@ -1287,7 +1350,12 @@ void Map::InitTextureAndMesh() {
 		atlas_dimensions.y
 	);
 
-	// not deleting meshes because if they exist - it means they are already linked to actor and are deleted together when needed
+	if ( m_meshes.terrain ) {
+		DELETE( m_meshes.terrain );
+	}
+	if ( m_meshes.terrain_data ) {
+		DELETE( m_meshes.terrain_data );
+	}
 	NEW( m_meshes.terrain, types::mesh::Render,
 		( m_map_state->dimensions.x * tile::LAYER_MAX + 1 ) * m_map_state->dimensions.y * 5 / 2, // + 1 for overdraw column
 		( m_map_state->dimensions.x * tile::LAYER_MAX + 1 ) * m_map_state->dimensions.y * 4 / 2 // + 1 for overdraw column
@@ -1380,7 +1448,8 @@ void Map::ProcessTiles( module_passes_t& module_passes, const tiles_t& tiles, MT
 				MT_RETIF();
 			}
 
-			if ( !--state_iterate_eta ) {
+			// A live refresh runs inside an event transaction and must not re-enter state processing.
+			if ( m_active_refresh_tiles.empty() && !--state_iterate_eta ) {
 				// keep processing state (i.e. network events) while loading
 				m_game->GetState()->Iterate();
 				state_iterate_eta = ITERATE_STATE_EVERY_N_TILES;

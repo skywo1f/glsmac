@@ -1,5 +1,6 @@
 const movement_rules = #include('../movement_rules');
 const base_capture = #include('../base_capture');
+const unity_pods = #include('../unity_pods');
 
 const get_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
@@ -182,12 +183,19 @@ return {
 				? get_boarding_transport(e.data.unit, dst_tile)
 				: null;
 
-		return {
-			is_movement_successful:
+		const is_movement_successful =
 				(movement >= movement_cost) // unit has enough moves
 				||
-				(e.game.random.get_float(0.0, movement_cost) < movement), // unit doesn't have enough moves but was lucky
+				(e.game.random.get_float(0.0, movement_cost) < movement); // unit doesn't have enough moves but was lucky
+		return {
+			is_movement_successful: is_movement_successful,
 			transport_id: transport == null ? 0 : transport.id,
+			unity_pod:
+				is_movement_successful &&
+				#is_defined(dst_tile.features.unity_pod) &&
+				dst_tile.features.unity_pod
+					? unity_pods.resolve(e.game, e.data.unit, dst_tile)
+					: null,
 		};
 	},
 
@@ -211,6 +219,7 @@ return {
 			movement_started: e.resolved.is_movement_successful,
 			base_capture: null,
 			rehomed_units: [],
+			unity_pod: null,
 		};
 
 		const fungus_road = has_fungus_road(unit, e.game);
@@ -242,6 +251,14 @@ return {
 				result.rehomed_units = result.base_capture.rehomed_units;
 			}
 			finish_movement();
+			if (#is_defined(e.resolved.unity_pod) && e.resolved.unity_pod != null) {
+				result.unity_pod = unity_pods.apply(
+					e.game,
+					unit,
+					dst_tile,
+					e.resolved.unity_pod
+				);
+			}
 		} else {
 			// No native move is started on a failed roll, so update state synchronously.
 			if (movement >= movement_cost) {
@@ -259,6 +276,9 @@ return {
 
 		const unit = e.data.unit;
 		const orig = e.applied.orig;
+		if (e.applied.unity_pod != null) {
+			unity_pods.rollback(e.game, e.applied.unity_pod);
+		}
 		if (e.applied.movement_started) {
 			if (get_transport_id(unit) > 0) {
 				unit.disembark();

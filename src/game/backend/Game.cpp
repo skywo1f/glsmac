@@ -230,10 +230,18 @@ void Game::Iterate() {
 			m_response_map_data->terrain_texture->Deserialize( m_map->m_textures.terrain->Serialize() );
 
 			ASSERT( m_map->m_meshes.terrain, "map terrain mesh not generated" );
-			m_response_map_data->terrain_mesh = m_map->m_meshes.terrain;
+			NEW(
+				m_response_map_data->terrain_mesh,
+				types::mesh::Render,
+				*m_map->m_meshes.terrain
+			);
 
 			ASSERT( m_map->m_meshes.terrain_data, "map terrain data mesh not generated" );
-			m_response_map_data->terrain_data_mesh = m_map->m_meshes.terrain_data;
+			NEW(
+				m_response_map_data->terrain_data_mesh,
+				types::mesh::Data,
+				*m_map->m_meshes.terrain_data
+			);
 
 			m_response_map_data->sprites.actors = &m_map->m_sprite_actors;
 			m_response_map_data->sprites.instances = &m_map->m_sprite_instances;
@@ -1090,10 +1098,6 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 				response.result = R_SUCCESS;
 				response.data.get_map_data = m_response_map_data;
 				m_response_map_data = nullptr;
-				// render resources are transferred to the frontend; the backend keeps its
-				// CPU terrain texture so live tile updates can be generated safely.
-				m_map->m_meshes.terrain = nullptr;
-				m_map->m_meshes.terrain_data = nullptr;
 			}
 			else if ( m_init_cancel ) {
 				response.result = R_ABORTED;

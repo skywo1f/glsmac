@@ -100,6 +100,11 @@ scenarios, for:
   opponent-aware AI production and targeting; Orbital Defense Pods make one
   50% interception attempt per undeployed pod each turn and can sacrifice an
   already deployed pod for a guaranteed interception;
+- land and sea Unity Pods resolve during ordinary movement with reversible,
+  deterministic events; supported rewards cover energy, rivers, earthquakes,
+  production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
+  technologies, terraforming, unit cloning, and resource bonuses, while AI
+  explorers and combat units route toward reachable pods;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -158,7 +163,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - all 38 base facilities represented: 36 complete and 2 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 248 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 252 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -185,6 +190,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   global warming, sea-level changes, volcanoes, several ecology-related Secret
   Project effects, and the original engine's
   undocumented post-bloom clean-mineral facility bonus;
+- remaining Unity Pod parity: map-survey and commlink rewards, independent wild
+  native-life encounters, dimensional-gate teleportation, and once-per-unit
+  monolith visit tracking;
 - direct Orbital Defense Pod attacks against rival satellites are not
   available;
 - Pressure Dome remains partial because sea-level rise and base submersion are
@@ -202,21 +210,27 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 105 cases: 82 isolated native/script GSE tests
-and 23 asset-backed runtime scenarios. The current matrix is green. A complete
-run finished in 769.50 seconds; 103 cases passed in that invocation, and the two
-tests with stale catalog totals passed after their expectations were corrected.
-All 82 isolated cases also passed together under AddressSanitizer in 811.70
-seconds. Script isolation keeps allocator lifetime bounded and reports the
-exact script that fails.
+The Release CTest matrix contains 109 cases: 85 isolated native/script GSE tests
+and 24 asset-backed runtime scenarios. Script isolation keeps allocator
+lifetime bounded and reports the exact script that fails.
 
-All 23 runtime scenarios are green against an installed Planetary Pack,
+The latest uninterrupted full run completed 108 of 109 cases in 870.61
+seconds. The multiplayer runtime harness reached its internal 90-second
+deadline after both peers had already passed most gameplay stages. The same
+scenario passed immediately afterward in isolation in 33.82 seconds, as it had
+before the full run. All cases therefore pass independently, but the
+load-sensitive multiplayer full-matrix timeout remains a release-readiness
+flake to diagnose rather than a clean-matrix result.
+
+All 24 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
 Planetary Council, Datalinks, air units, transports, sea colonies, and the
-standard AI runtime. The new rendered facility-actions scenario passed in
-11.40 seconds and verifies the serialized Psi Gate and Alien Artifact
-capabilities, non-buildable Artifact definition, 50-mineral contribution,
-transport/cargo teleport, and per-turn endpoint limits.
+standard AI runtime. The rendered Unity Pod scenario verifies live land and sea
+sprite refresh, bonus mutation, earthquake apply/rollback with terrain mesh
+synchronization, reward-unit serialization, and movement-triggered resolution.
+The rendered facility-actions scenario verifies the serialized Psi Gate and
+Alien Artifact capabilities, non-buildable Artifact definition, 50-mineral
+contribution, transport/cargo teleport, and per-turn endpoint limits.
 
 The eight specialized AI scenarios are green after two asynchronous lifecycle
 defects were fixed. The economy soak passed in 130.97 seconds; opponent
@@ -248,11 +262,10 @@ The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;
 its explicit milestone and pass/fail assertions remain enabled.
 
-The rendered facility-actions scenario was also attempted under
-AddressSanitizer. Instrumented startup reached the live turn and spawned all
-test entities without a sanitizer diagnostic, but did not complete within 240
-seconds. Its Release result is authoritative for the rendered workflow; the
-sanitizer claim is therefore limited to the 82 isolated tests above.
+The rendered Unity Pod scenario also completes under AddressSanitizer against
+the installed Planetary Pack. This directly covers terrain mesh replacement,
+immutable frontend tile-update snapshots, rapid sprite changes, and the
+movement reward path that previously exposed a frontend access violation.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -34,7 +34,8 @@ const native_lifeform = (
 	movement_type,
 	movement_per_turn,
 	base_y,
-	abilities
+	abilities,
+	cargo_capacity
 ) => {
 	return {
 		id: id,
@@ -56,7 +57,7 @@ const native_lifeform = (
 			movement_per_turn: movement_per_turn,
 			operational_range: 0,
 			is_missile: false,
-			cargo_capacity: 0,
+			cargo_capacity: cargo_capacity,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',
@@ -120,6 +121,58 @@ const conventional_unit = (
 	};
 };
 
+const special_unit = (
+	id,
+	name,
+	mineral_cost,
+	offense,
+	defense,
+	sprite_x,
+	sprite_y,
+	movement_type,
+	movement_per_turn,
+	operational_range,
+	cargo_capacity,
+	chassis,
+	weapon,
+	armor,
+	required_technology
+) => {
+	return {
+		id: id,
+		data: {
+			name: name,
+			mineral_cost: mineral_cost,
+			is_native: false,
+			offense: offense,
+			defense: defense,
+			can_found_base: false,
+			can_terraform: false,
+			required_technology: required_technology,
+			chassis: chassis,
+			weapon: weapon,
+			armor: armor,
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: [],
+			morale: 'STANDARD',
+			type: 'static',
+			movement_type: movement_type,
+			movement_per_turn: movement_per_turn,
+			operational_range: operational_range,
+			is_missile: false,
+			cargo_capacity: cargo_capacity,
+			render: {
+				type: 'sprite',
+				file: 'units.pcx',
+				x: sprite_x, y: sprite_y,
+				w: 100, h: 75,
+				cx: sprite_x + 51, cy: sprite_y + 51,
+			},
+		},
+	};
+};
+
 const units = [
 	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
 	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
@@ -130,10 +183,14 @@ const units = [
 	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
 	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, 104, 156, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
 	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, 2, 156, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
-	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, []),
-	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233, []),
-	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, []),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery']),
+	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 104, 156, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 2, 541, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 2, 310, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
+	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0),
+	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233, [], 0),
+	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4),
+	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, [], 0),
+	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0),
 ];
 
 for (unit of generated.definitions) {
@@ -141,9 +198,13 @@ for (unit of generated.definitions) {
 }
 
 for (unit of units) {
-	if (unit.id == 'AlienArtifact') {
+	if (
+		unit.id == 'AlienArtifact' ||
+		unit.id == 'UnityRover' ||
+		unit.id == 'UnityScoutChopper' ||
+		unit.id == 'UnityFoil'
+	) {
 		unit.data.buildable = false;
-		break;
 	}
 }
 

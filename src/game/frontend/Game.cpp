@@ -32,6 +32,7 @@
 #include "Slot.h"
 #include "game/frontend/unit/BadgeDefs.h"
 #include "scene/actor/Instanced.h"
+#include "scene/actor/Mesh.h"
 #include "game/frontend/sprite/InstancedSprite.h"
 #include "loader/texture/TextureLoader.h"
 #include "game/frontend/actor/Actor.h"
@@ -42,6 +43,7 @@
 #include "types/texture/Texture.h"
 #include "types/mesh/Render.h"
 #include "types/mesh/Data.h"
+#include "types/Buffer.h"
 #include "game/backend/map/Consts.h"
 #include "input/Types.h"
 #include "GLSMAC.h"
@@ -977,6 +979,25 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			break;
 		}
 		case FrontendRequest::FR_UPDATE_TILES: {
+			if ( request->data.update_tiles.serialized_terrain_mesh ) {
+				ASSERT(
+					request->data.update_tiles.serialized_terrain_data_mesh,
+					"terrain mesh update is missing its data mesh"
+				);
+				auto* const terrain_actor = m_actors.terrain->GetMeshActor();
+				terrain_actor->UpdateMesh(
+					types::Buffer( *request->data.update_tiles.serialized_terrain_mesh )
+				);
+				terrain_actor->UpdateDataMesh(
+					types::Buffer( *request->data.update_tiles.serialized_terrain_data_mesh )
+				);
+			}
+			else {
+				ASSERT(
+					!request->data.update_tiles.serialized_terrain_data_mesh,
+					"terrain data mesh update is missing its render mesh"
+				);
+			}
 			types::texture::Texture texture_patch(
 				request->data.update_tiles.terrain_texture_width,
 				request->data.update_tiles.terrain_texture_height
@@ -1017,16 +1038,12 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				actor->SetInstance( addition.first, addition.second.second );
 			}
 			const auto& tiles_data = *request->data.update_tiles.tile_updates;
-			for ( const auto& tile_data : tiles_data ) {
-				const auto& t = tile_data.first;
-				ASSERT( t, "tile not found" );
-				const auto& ts = tile_data.second;
-				ASSERT( ts, "tile state not found" );
-				auto* tile = m_tm->GetTile( t->coord.x, t->coord.y );
+			for ( const auto& snapshot : tiles_data ) {
+				auto* tile = m_tm->GetTile( snapshot.coords.x, snapshot.coords.y );
 				ASSERT( tile, "matching tile not found" );
 
 				Log( "Updating tile: " + tile->GetCoords().ToString() );
-				tile->Update( *t, *ts );
+				tile->Update( snapshot );
 			}
 			RefreshSelectedTile( m_um->GetSelectedUnit() );
 			break;
@@ -1455,7 +1472,7 @@ void Game::Initialize(
 			auto* tile = m_tm->GetTile( x, y );
 			//Log( "Initializing tile: " + tile->GetCoords().ToString() );
 			const size_t tile_index = y * ( m_map_data.width / 2 ) + x / 2;
-			tile->Update( tiles->at( tile_index ), tile_states->at( tile_index ) );
+			tile->Update( tile_render_snapshot_t( tiles->at( tile_index ), tile_states->at( tile_index ) ) );
 		}
 	}
 

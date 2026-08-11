@@ -3,8 +3,38 @@
 #include <cstring>
 
 #include "common/Common.h"
+#include "backend/map/tile/Tile.h"
+#include "backend/map/tile/TileState.h"
 
 namespace game {
+
+tile_render_snapshot_t::tile_render_snapshot_t(
+	const backend::map::tile::Tile& tile,
+	const backend::map::tile::TileState& tile_state
+) {
+	coords = tile.coord;
+	is_water = tile.is_water_tile;
+	west_is_water = tile.W->is_water_tile;
+	north_is_water = tile.N->is_water_tile;
+	east_is_water = tile.E->is_water_tile;
+	south_is_water = tile.S->is_water_tile;
+	is_coastline_corner = tile_state.is_coastline_corner;
+	elevation = *tile.elevation.center;
+	moisture = tile.moisture;
+	rockiness = tile.rockiness;
+	bonus = tile.bonus;
+	features = tile.features;
+	terraforming = tile.terraforming;
+	for ( size_t layer = 0 ; layer < backend::map::tile::LAYER_MAX ; layer++ ) {
+		layers[ layer ].coords = tile_state.layers[ layer ].coords;
+		layers[ layer ].tex_coords = tile_state.layers[ layer ].tex_coords;
+		layers[ layer ].colors.Set( tile_state.layers[ layer ].colors );
+	}
+	sprites.reserve( tile_state.sprites.size() );
+	for ( const auto& sprite : tile_state.sprites ) {
+		sprites.push_back( sprite.actor );
+	}
+}
 
 FrontendRequest::FrontendRequest( const request_type_t type )
 	: type( type ) {
@@ -38,6 +68,20 @@ FrontendRequest::FrontendRequest( const FrontendRequest& other )
 				std::string,
 				*other.data.update_tiles.serialized_terrain_texture_patch
 			);
+			if ( other.data.update_tiles.serialized_terrain_mesh ) {
+				NEW(
+					data.update_tiles.serialized_terrain_mesh,
+					std::string,
+					*other.data.update_tiles.serialized_terrain_mesh
+				);
+			}
+			if ( other.data.update_tiles.serialized_terrain_data_mesh ) {
+				NEW(
+					data.update_tiles.serialized_terrain_data_mesh,
+					std::string,
+					*other.data.update_tiles.serialized_terrain_data_mesh
+				);
+			}
 			break;
 		}
 		case FR_FACTION_DEFINE: {
@@ -139,6 +183,12 @@ FrontendRequest::~FrontendRequest() {
 			DELETE( data.update_tiles.sprite_removals );
 			DELETE( data.update_tiles.sprite_additions );
 			DELETE( data.update_tiles.serialized_terrain_texture_patch );
+			if ( data.update_tiles.serialized_terrain_mesh ) {
+				DELETE( data.update_tiles.serialized_terrain_mesh );
+			}
+			if ( data.update_tiles.serialized_terrain_data_mesh ) {
+				DELETE( data.update_tiles.serialized_terrain_data_mesh );
+			}
 			break;
 		}
 		case FR_FACTION_DEFINE: {

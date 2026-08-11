@@ -2,18 +2,43 @@ const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 
 test.assert(units.generated_count > 92);
-test.assert(#sizeof(units.definitions) == units.generated_count + 12);
+test.assert(#sizeof(units.definitions) == units.generated_count + 16);
 
-let artifact = null;
-for (unit of units.definitions) {
-	if (unit.id == 'AlienArtifact') {
-		artifact = unit;
-		break;
+const get_unit = (id) => {
+	for (unit of units.definitions) {
+		if (unit.id == id) {
+			return unit;
+		}
 	}
-}
+	return null;
+};
+
+const artifact = get_unit('AlienArtifact');
 test.assert(artifact != null);
 test.assert(!artifact.data.buildable);
 test.assert(artifact.data.weapon == 'AlienArtifact');
+
+const unity_rover = get_unit('UnityRover');
+const unity_chopper = get_unit('UnityScoutChopper');
+const unity_foil = get_unit('UnityFoil');
+const isle = get_unit('IsleOfTheDeep');
+test.assert(unity_rover != null && !unity_rover.data.buildable);
+test.assert(
+	unity_rover.data.movement_type == 'land' &&
+	unity_rover.data.movement_per_turn == 2
+);
+test.assert(unity_chopper != null && !unity_chopper.data.buildable);
+test.assert(
+	unity_chopper.data.movement_type == 'air' &&
+	unity_chopper.data.movement_per_turn == 8 &&
+	unity_chopper.data.operational_range == 1
+);
+test.assert(unity_foil != null && !unity_foil.data.buildable);
+test.assert(
+	unity_foil.data.movement_type == 'water' &&
+	unity_foil.data.cargo_capacity == 2
+);
+test.assert(isle != null && isle.data.is_native && isle.data.cargo_capacity == 4);
 
 let ids = {};
 let found_late_land_assault = false;
@@ -53,7 +78,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		test.assert(data.movement_per_turn == 2);
 		found_probe_team = true;
 	}
-	if (i < 12) {
+	if (i < 16) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);

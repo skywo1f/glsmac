@@ -1116,6 +1116,15 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
 				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
 
+				// Rendering may temporarily adjust the cached center without changing its corners.
+				source_center++;
+				restored.Deserialize( source.Serialize() );
+				source.Update();
+				GT_ASSERT(
+					restored_center == source_center,
+					"tile serialization preserved a stale derived center elevation"
+				);
+
 				const auto serialize_source = [&]( const int moisture, const feature_t features, const terraforming_t terraforming ) {
 					types::Buffer serialized;
 					serialized.WriteInt( source.coord.x );
