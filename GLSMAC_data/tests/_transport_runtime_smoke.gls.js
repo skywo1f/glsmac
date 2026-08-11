@@ -18,7 +18,7 @@
 	const finish_if_ready = () => {
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
-			#print('TRANSPORT_RUNTIME_PASS: validated capacity, embark, carrier movement, disembark, destruction, and rollback');
+			#print('TRANSPORT_RUNTIME_PASS: validated capacity, embark, Carrier Deck aircraft, transport movement, disembark, destruction, and rollback');
 			#async(500, () => { glsmac.exit(); });
 		}
 	};
@@ -49,6 +49,20 @@
 			for (def of game.get_um().get_unit_defs()) {
 				if (def.chassis == 'Foil' && def.weapon == 'TroopTransport') {
 					return def;
+				}
+			}
+			return null;
+		};
+
+		const find_carrier_def = () => {
+			for (def of game.get_um().get_unit_defs()) {
+				if (!def.is_water || def.weapon != 'TroopTransport' || def.cargo_capacity <= 0) {
+					continue;
+				}
+				for (ability of def.abilities) {
+					if (ability == 'CarrierDeck') {
+						return def;
+					}
 				}
 			}
 			return null;
@@ -169,6 +183,7 @@
 			const um = game.get_um();
 			const player = game.get_player();
 			const transport_def = find_transport_def();
+			const carrier_def = find_carrier_def();
 			const tiles = find_test_tiles();
 			if (transport_def == null || transport_def.cargo_capacity != 2) {
 				fail('generated Fission Foil transport metadata is invalid');
@@ -176,6 +191,10 @@
 			}
 			if (tiles == null) {
 				fail('could not find a coastal transport test route');
+				return;
+			}
+			if (carrier_def == null) {
+				fail('generated catalog has no usable Carrier Deck transport');
 				return;
 			}
 
@@ -186,6 +205,44 @@
 				morale: 2,
 				health: 1.0,
 			});
+			const flight_deck = um.spawn_unit({
+				def: carrier_def.id,
+				owner: player,
+				tile: tiles.source_water,
+				morale: 2,
+				health: 1.0,
+			});
+			const aircraft = um.spawn_unit({
+				def: 'UnityScoutChopper',
+				owner: player,
+				tile: tiles.source_water,
+				morale: 2,
+				health: 1.0,
+			});
+			let ordinary_transport_rejected_aircraft = false;
+			try {
+				aircraft.embark(carrier);
+			} catch {
+				:
+					(error) => {
+						ordinary_transport_rejected_aircraft = true;
+					}
+			}
+			if (!ordinary_transport_rejected_aircraft || aircraft.is_embarked) {
+				fail('ordinary troop transport accepted aircraft');
+				return;
+			}
+			aircraft.embark(flight_deck);
+			if (
+				!aircraft.is_embarked || aircraft.transport_id != flight_deck.id ||
+				#sizeof(flight_deck.get_cargo()) != 1
+			) {
+				fail('Carrier Deck did not accept aircraft');
+				return;
+			}
+			aircraft.disembark();
+			um.despawn_unit(aircraft);
+			um.despawn_unit(flight_deck);
 			const cargo_one = um.spawn_unit({
 				def: 'ScoutPatrol',
 				owner: player,

@@ -6,6 +6,15 @@ const is_artillery = (def) => {
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };
 
+const get_reactor_power = (unit_or_def) => {
+	const def = #is_defined(unit_or_def.get_def) ? unit_or_def.get_def() : unit_or_def;
+	return #is_defined(def.reactor_power) ? #max(def.reactor_power, 1) : 1;
+};
+
+const get_damage = (target, base_damage) => {
+	return base_damage / #to_float(get_reactor_power(target));
+};
+
 const get_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
 };
@@ -390,6 +399,8 @@ const get_best_defender = (attacker, tile, game) => {
 return {
 	is_artillery: is_artillery,
 	has_ability: has_ability,
+	get_reactor_power: get_reactor_power,
+	get_damage: get_damage,
 	is_airbase_tile: is_airbase_tile,
 	is_naval_base_tile: is_naval_base_tile,
 	is_air_unit_in_flight: is_air_unit_in_flight,

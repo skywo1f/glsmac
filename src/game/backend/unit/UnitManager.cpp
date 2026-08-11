@@ -261,14 +261,21 @@ const std::string* UnitManager::ValidateEmbark( const Unit* unit, const Unit* tr
 	ASSERT( transport->m_def->m_type == DT_STATIC, "only static transports are supported" );
 	const auto* const cargo_def = static_cast< const StaticDef* >( unit->m_def );
 	const auto* const transport_def = static_cast< const StaticDef* >( transport->m_def );
-	if ( cargo_def->m_movement_type != MT_LAND ) {
-		return new std::string( "Only land units can embark on troop transports" );
-	}
 	if ( cargo_def->m_cargo_capacity > 0 ) {
 		return new std::string( "Transports cannot be nested" );
 	}
 	if ( transport_def->m_movement_type == MT_LAND || transport_def->m_cargo_capacity <= 0 ) {
 		return new std::string( "Target unit is not a sea or air transport" );
+	}
+	if ( cargo_def->m_movement_type == MT_AIR ) {
+		if (
+			transport_def->m_movement_type != MT_WATER ||
+			!transport_def->HasAbility( "CarrierDeck" )
+		) {
+			return new std::string( "Air units require a sea transport with Carrier Deck" );
+		}
+	} else if ( cargo_def->m_movement_type != MT_LAND ) {
+		return new std::string( "Only land units and Carrier Deck aircraft can embark" );
 	}
 	if ( GetCargo( transport ).size() >= static_cast< size_t >( transport_def->m_cargo_capacity ) ) {
 		return new std::string( "Transport has no remaining cargo capacity" );

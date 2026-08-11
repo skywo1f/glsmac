@@ -253,3 +253,26 @@ player.energy_credits = 55;
 test.assert(rules.choose_ai_target(game, player, current_unit) == laser);
 player.energy_credits = 40;
 test.assert(rules.choose_ai_target(game, player, current_unit) == null);
+
+const fusion_laser = #clone(laser);
+fusion_laser.id = 'FusionLaserInfantry';
+fusion_laser.name = 'Fusion Laser Infantry';
+fusion_laser.mineral_cost = 30;
+fusion_laser.required_technology = 'FusionPower';
+fusion_laser.reactor = 'FusionReactor';
+fusion_laser.reactor_power = 2;
+definitions :+fusion_laser;
+known :+'FusionPower';
+test.assert(rules.is_compatible(scout, fusion_laser));
+test.assert(rules.is_compatible(laser, fusion_laser));
+test.assert(!rules.is_compatible(fusion_laser, laser));
+test.assert(rules.get_cost(game, player, laser, fusion_laser) == 30);
+player.energy_credits = 100;
+current_unit = make_unit({
+	id: 8,
+	def: scout.id,
+	owner: player,
+	morale: 2,
+	health: 1.0,
+});
+test.assert(rules.choose_ai_target(game, player, current_unit) == fusion_laser);

@@ -102,7 +102,8 @@ const get_force_power = (unit) => {
 	return (
 		#to_float(def.offense * 2 + def.defense) +
 		def.movement_per_turn * 0.5
-	) * combat_rules.get_morale_multiplier(unit) * unit.health;
+	) * #to_float(combat_rules.get_reactor_power(def)) *
+		combat_rules.get_morale_multiplier(unit) * unit.health;
 };
 
 const get_reinforcement_score = (tm, unit, base, player_id, units, reservations) => {

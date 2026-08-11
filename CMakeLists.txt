@@ -385,6 +385,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( REACTOR_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/reactor-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${REACTOR_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME reactor_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${REACTOR_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_reactor_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( reactor_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "REACTOR_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "REACTOR_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( UNITY_POD_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/unity-pod-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${UNITY_POD_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME unity_pod_runtime_smoke COMMAND

@@ -1,5 +1,6 @@
 const manifest = #include('../content/base_units');
 const technologies = #include('../content/base_technologies');
+const design_rules = #include('design_rules');
 
 const add_technology_closure = (known, technology_id) => {
 	if (technology_id == '' || #is_defined(known[technology_id])) {
@@ -66,6 +67,19 @@ const get_best_chassis_by_triad = (known) => {
 		}
 	}
 	return result;
+};
+
+const get_best_reactor = (known) => {
+	let best = null;
+	for (reactor of manifest.reactors) {
+		if (!is_available(reactor, known)) {
+			continue;
+		}
+		if (best == null || reactor.power > best.power) {
+			best = reactor;
+		}
+	}
+	return best;
 };
 
 const find_component = (entries, id) => {
@@ -136,39 +150,62 @@ const get_render = (chassis, role) => {
 	};
 };
 
-const make_definition = (technology_id, chassis, weapon, armor, role, abilities) => {
+const make_definition = (
+	technology_id,
+	chassis,
+	weapon,
+	armor,
+	role,
+	abilities,
+	reactor
+) => {
 	const role_name = role == 'assault' ? weapon.short_name : armor.short_name;
 	let ability_name = '';
-	let ability_cost = 0;
 	let ability_ids = [];
 	let ability_suffix = '';
 	for (ability of abilities) {
 		if (ability.abbreviation != '') {
 			ability_name += ability.abbreviation + ' ';
 		}
-		ability_cost += ability.cost > 0 ? ability.cost : 1;
 		ability_ids :+ability.id;
 		ability_suffix += ability.id;
 	}
-	let name = ability_name + role_name + ' ' + chassis.name;
+	const reactor_name = reactor.power == 1 ? '' : (
+		reactor.power == 2 ? 'Fusion ' : (
+			reactor.power == 3 ? 'Quantum ' : 'Singularity '
+		)
+	);
+	let name = reactor_name + ability_name + role_name + ' ' + chassis.name;
 	if (role == 'artillery') {
-		name = weapon.short_name + ' Artillery ' + chassis.name;
+		name = reactor_name + weapon.short_name + ' Artillery ' + chassis.name;
 	} else if (role == 'former') {
-		name = ability_name + (chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
+		name = reactor_name + ability_name +
+			(chassis.id == 'Infantry' ? 'Former' : chassis.name + ' Former');
 	} else if (role == 'transport') {
-		name = chassis.name + ' Transport';
+		name = reactor_name + ability_name + chassis.name + ' Transport';
 	} else if (role == 'colony') {
-		name = chassis.id == 'Infantry' ? 'Colony Pod' : chassis.name + ' Colony Pod';
+		name = reactor_name + (
+			chassis.id == 'Infantry' ? 'Colony Pod' : chassis.name + ' Colony Pod'
+		);
 	}
-	const reactor_power = 1;
-	const cargo_capacity = weapon.id == 'TroopTransport'
-		? chassis.cargo * reactor_power
-		: 0;
+	const reactor_suffix = reactor.power == 1 ? '' : reactor.id;
+	const cargo_capacity = design_rules.get_cargo_capacity(
+		chassis,
+		weapon,
+		abilities,
+		reactor
+	);
 	return {
-		id: 'Generated' + chassis.id + weapon.id + armor.id + ability_suffix,
+		id: 'Generated' + chassis.id + weapon.id + armor.id + ability_suffix + reactor_suffix,
 		data: {
 			name: name,
-			mineral_cost: #max((chassis.cost + weapon.cost + armor.cost + ability_cost) * 5, 10),
+			mineral_cost: design_rules.get_mineral_cost(
+				chassis,
+				weapon,
+				armor,
+				abilities,
+				reactor
+			),
 			is_native: false,
 			offense: weapon.offense,
 			defense: armor.defense,
@@ -178,8 +215,8 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 			chassis: chassis.id,
 			weapon: weapon.id,
 			armor: armor.id,
-			reactor: 'FissionPlant',
-			reactor_power: reactor_power,
+			reactor: reactor.id,
+			reactor_power: reactor.power,
 			abilities: ability_ids,
 			morale: 'STANDARD',
 			type: 'static',
@@ -195,24 +232,33 @@ const make_definition = (technology_id, chassis, weapon, armor, role, abilities)
 
 let definitions = [];
 let seen = {};
-seen['Infantry|HandWeapons|NoArmor|'] = true;
-seen['Speeder|HandWeapons|NoArmor|'] = true;
-seen['Infantry|Laser|NoArmor|'] = true;
-seen['Infantry|HandWeapons|SynthmetalArmor|'] = true;
-seen['Infantry|ColonyModule|NoArmor|'] = true;
-seen['Infantry|TerraformingUnit|NoArmor|'] = true;
+seen['Infantry|HandWeapons|NoArmor||FissionPlant'] = true;
+seen['Speeder|HandWeapons|NoArmor||FissionPlant'] = true;
+seen['Infantry|Laser|NoArmor||FissionPlant'] = true;
+seen['Infantry|HandWeapons|SynthmetalArmor||FissionPlant'] = true;
+seen['Infantry|ColonyModule|NoArmor||FissionPlant'] = true;
+seen['Infantry|TerraformingUnit|NoArmor||FissionPlant'] = true;
 
-const add_design = (technology_id, chassis, weapon, armor, role, abilities) => {
+const add_design = (technology_id, chassis, weapon, armor, role, abilities, reactor) => {
 	let ability_signature = '';
 	for (ability of abilities) {
 		ability_signature += ability.id + ',';
 	}
-	const signature = chassis.id + '|' + weapon.id + '|' + armor.id + '|' + ability_signature;
+	const signature = chassis.id + '|' + weapon.id + '|' + armor.id + '|' +
+		ability_signature + '|' + reactor.id;
 	if (#is_defined(seen[signature])) {
 		return;
 	}
 	seen[signature] = true;
-	definitions :+make_definition(technology_id, chassis, weapon, armor, role, abilities);
+	definitions :+make_definition(
+		technology_id,
+		chassis,
+		weapon,
+		armor,
+		role,
+		abilities,
+		reactor
+	);
 };
 
 const add_milestone_designs = (technology_id) => {
@@ -221,42 +267,48 @@ const add_milestone_designs = (technology_id) => {
 	const weapon = get_best_weapon(known);
 	const armor = get_best_armor(known);
 	const chassis_by_triad = get_best_chassis_by_triad(known);
-	if (weapon == null || armor == null) {
+	const reactor = get_best_reactor(known);
+	if (weapon == null || armor == null || reactor == null) {
 		return;
 	}
+	const reactor_changed = technology_id == '' ||
+		reactor.required_technology == technology_id;
+	const add = (chassis, weapon, armor, role, abilities) => {
+		add_design(technology_id, chassis, weapon, armor, role, abilities, reactor);
+	};
 	for (triad in chassis_by_triad) {
 		const chassis = chassis_by_triad[triad];
-		add_design(technology_id, chassis, weapon, armor, 'assault', []);
-		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+		add(chassis, weapon, armor, 'assault', []);
+		add(chassis, hand_weapons, armor, 'garrison', []);
 		const assault_abilities = get_role_abilities(known, 'assault');
 		if (#sizeof(assault_abilities) > 0) {
-			add_design(technology_id, chassis, weapon, armor, 'assault', assault_abilities);
+			add(chassis, weapon, armor, 'assault', assault_abilities);
 		}
 		const garrison_abilities = get_role_abilities(known, 'garrison');
 		if (#sizeof(garrison_abilities) > 0) {
-			add_design(technology_id, chassis, hand_weapons, armor, 'garrison', garrison_abilities);
+			add(chassis, hand_weapons, armor, 'garrison', garrison_abilities);
 		}
 		if (triad != 'air' && is_available(heavy_artillery, known)) {
-			add_design(technology_id, chassis, weapon, armor, 'artillery', [heavy_artillery]);
+			add(chassis, weapon, armor, 'artillery', [heavy_artillery]);
 		}
 		if (triad == 'land' && is_available(amphibious_pods, known)) {
-			add_design(technology_id, chassis, weapon, armor, 'assault', [amphibious_pods]);
+			add(chassis, weapon, armor, 'assault', [amphibious_pods]);
 		}
 		if (is_available(air_superiority, known)) {
-			add_design(technology_id, chassis, weapon, armor, 'assault', [air_superiority]);
+			add(chassis, weapon, armor, 'assault', [air_superiority]);
 		}
 	}
 	for (chassis of manifest.chassis) {
 		if (
 			chassis.missile || !is_available(chassis, known) ||
-			chassis.required_technology != technology_id
+			(chassis.required_technology != technology_id && !reactor_changed)
 		) {
 			continue;
 		}
-		add_design(technology_id, chassis, weapon, armor, 'assault', []);
-		add_design(technology_id, chassis, hand_weapons, armor, 'garrison', []);
+		add(chassis, weapon, armor, 'assault', []);
+		add(chassis, hand_weapons, armor, 'garrison', []);
 		if (chassis.triad != 'air') {
-			add_design(technology_id, chassis, colony_module, no_armor, 'colony', []);
+			add(chassis, colony_module, no_armor, 'colony', []);
 		}
 	}
 	if (is_available(troop_transport, known)) {
@@ -265,21 +317,25 @@ const add_milestone_designs = (technology_id) => {
 				chassis.triad != 'sea' || !is_available(chassis, known) ||
 				(
 					chassis.required_technology != technology_id &&
-					troop_transport.required_technology != technology_id
+					troop_transport.required_technology != technology_id &&
+					!reactor_changed
 				)
 			) {
 				continue;
 			}
-			add_design(technology_id, chassis, troop_transport, no_armor, 'transport', []);
+			add(chassis, troop_transport, no_armor, 'transport', []);
 		}
 	}
 	const missile = find_component(manifest.chassis, 'Missile');
 	if (
-		technology_id == missile.required_technology &&
+		(
+			technology_id == missile.required_technology ||
+			technology_id == conventional_payload.required_technology ||
+			reactor_changed
+		) &&
 		is_available(missile, known) && is_available(conventional_payload, known)
 	) {
-		add_design(
-			technology_id,
+		add(
 			missile,
 			conventional_payload,
 			no_armor,
@@ -288,11 +344,12 @@ const add_milestone_designs = (technology_id) => {
 		);
 	}
 	if (
-		technology_id == planet_buster.required_technology &&
+		(
+			technology_id == planet_buster.required_technology || reactor_changed
+		) &&
 		is_available(missile, known) && is_available(planet_buster, known)
 	) {
-		add_design(
-			technology_id,
+		add(
 			missile,
 			planet_buster,
 			no_armor,
@@ -302,15 +359,17 @@ const add_milestone_designs = (technology_id) => {
 	}
 	const carrier_chassis = chassis_by_triad['sea'];
 	if (
-		technology_id == carrier_deck.required_technology &&
-		#is_defined(carrier_chassis) && is_available(carrier_deck, known)
+		(
+			technology_id == carrier_deck.required_technology || reactor_changed
+		) &&
+		#is_defined(carrier_chassis) && is_available(carrier_deck, known) &&
+		is_available(troop_transport, known)
 	) {
-		add_design(
-			technology_id,
+		add(
 			carrier_chassis,
-			hand_weapons,
+			troop_transport,
 			armor,
-			'garrison',
+			'transport',
 			[carrier_deck]
 		);
 	}
@@ -318,13 +377,13 @@ const add_milestone_designs = (technology_id) => {
 	for (ability_id of ['HighMorale', 'CleanReactor']) {
 		const ability = find_component(manifest.abilities, ability_id);
 		if (is_available(ability, known)) {
-			add_design(technology_id, infantry, hand_weapons, no_armor, 'garrison', [ability]);
+			add(infantry, hand_weapons, no_armor, 'garrison', [ability]);
 		}
 	}
 
 	const former_chassis = chassis_by_triad['land'];
 	if (#is_defined(former_chassis) && is_available(terraforming_unit, known)) {
-		add_design(technology_id, former_chassis, terraforming_unit, no_armor, 'former', []);
+		add(former_chassis, terraforming_unit, no_armor, 'former', []);
 		let former_abilities = [];
 		for (ability_id of ['SuperFormer', 'FungicideTanks']) {
 			const ability = find_component(manifest.abilities, ability_id);
@@ -333,8 +392,7 @@ const add_milestone_designs = (technology_id) => {
 			}
 		}
 		if (#sizeof(former_abilities) > 0) {
-			add_design(
-				technology_id,
+			add(
 				former_chassis,
 				terraforming_unit,
 				no_armor,
@@ -344,8 +402,7 @@ const add_milestone_designs = (technology_id) => {
 		}
 		const clean_reactor = find_component(manifest.abilities, 'CleanReactor');
 		if (is_available(clean_reactor, known)) {
-			add_design(
-				technology_id,
+			add(
 				former_chassis,
 				terraforming_unit,
 				no_armor,

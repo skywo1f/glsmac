@@ -73,6 +73,10 @@ const facility = (id, nutrients, minerals, energy, psych, research, maintenance,
 const scout = unit('Scout', 1, 1, 1.0, 10, false, false);
 const rover = unit('Rover', 1, 1, 2.0, 20, false, false);
 const laser = unit('Laser', 2, 1, 1.0, 20, false, false);
+const fusion_laser = #clone(laser);
+fusion_laser.id = 'FusionLaser';
+fusion_laser.reactor = 'FusionReactor';
+fusion_laser.reactor_power = 2;
 const defender = unit('Defender', 1, 2, 1.0, 20, false, false);
 const former = unit('Former', 0, 1, 1.0, 20, false, true);
 const colony = unit('Colony', 0, 1, 1.0, 30, true, false);
@@ -161,6 +165,10 @@ sea_expansion_context.needs_sea_colony = false;
 test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
+test.assert(
+	production.score_unit(fusion_laser, context(false, false, false, false, 10)) >
+	production.score_unit(laser, context(false, false, false, false, 10))
+);
 
 let headquarters_context = context(false, false, false, false, 10);
 headquarters_context.needs_headquarters = false;

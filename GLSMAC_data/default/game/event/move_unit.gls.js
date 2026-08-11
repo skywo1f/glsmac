@@ -7,11 +7,23 @@ const get_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
 };
 
+const can_board_transport = (unit, transport) => {
+	if (#is_defined(unit.is_land) && unit.is_land) {
+		return true;
+	}
+	return (
+		#is_defined(unit.is_air) && unit.is_air &&
+		#is_defined(transport.is_water) && transport.is_water &&
+		unit_abilities.has(transport, 'CarrierDeck')
+	);
+};
+
 const get_boarding_transport = (unit, tile) => {
 	for (candidate of tile.get_units()) {
 		const def = candidate.get_def();
 		if (
 			candidate.owner == unit.owner && get_transport_id(candidate) == 0 &&
+			can_board_transport(unit, candidate) &&
 			def.cargo_capacity > 0 &&
 			#sizeof(candidate.get_cargo()) < def.cargo_capacity
 		) {
@@ -157,8 +169,13 @@ return {
 			dst_tile
 		);
 		if (get_transport_id(e.data.unit) > 0) {
-			if (!e.data.unit.is_land || !dst_tile.is_land) {
+			const embarked_land = #is_defined(e.data.unit.is_land) && e.data.unit.is_land;
+			const embarked_air = #is_defined(e.data.unit.is_air) && e.data.unit.is_air;
+			if (embarked_land && !dst_tile.is_land) {
 				return 'Embarked land units can only disembark onto land';
+			}
+			if (!embarked_land && !embarked_air) {
+				return 'Only embarked land and air units can disembark';
 			}
 		} else if (
 			e.data.unit.is_land && src_tile.is_water && dst_tile.is_land &&
@@ -213,9 +230,13 @@ return {
 		);
 		const transport =
 			get_transport_id(e.data.unit) == 0 &&
-			#is_defined(e.data.unit.is_land) && e.data.unit.is_land &&
-			#is_defined(dst_tile.is_water) && dst_tile.is_water &&
-			!amphibious_base_crossing
+			(
+				(
+					#is_defined(e.data.unit.is_land) && e.data.unit.is_land &&
+					dst_tile.is_water &&
+					!amphibious_base_crossing
+				) || (#is_defined(e.data.unit.is_air) && e.data.unit.is_air)
+			)
 				? get_boarding_transport(e.data.unit, dst_tile)
 				: null;
 

@@ -150,7 +150,13 @@ return {
 			const combat_roll = e.game.random.get_float(0.0, powers.attack + powers.defence);
 			if (combat_roll < powers.attack && defender.health > MIN_BOMBARDMENT_HEALTH) {
 				const maximum_damage = defender.health - MIN_BOMBARDMENT_HEALTH;
-				const damage = #min(maximum_damage, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
+				const damage = #min(
+					maximum_damage,
+					combat_rules.get_damage(
+						defender,
+						e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE)
+					)
+				);
 				damage_sequence [] = [true, damage];
 			}
 			return {
@@ -176,12 +182,24 @@ return {
 		while (attacker_health > 0.0 && defender_health > 0.0) {
 			const combat_roll = e.game.random.get_float(0.0, attack_power + defence_power);
 			if (combat_roll < attack_power) {
-				let damage = #min(defender_health, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
+				let damage = #min(
+					defender_health,
+					combat_rules.get_damage(
+						defender,
+						e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE)
+					)
+				);
 				damage_sequence [] = [true, damage];
 				defender_health -= damage;
 			}
 			else {
-				let damage = #min(attacker_health, e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE));
+				let damage = #min(
+					attacker_health,
+					combat_rules.get_damage(
+						attacker,
+						e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE)
+					)
+				);
 				damage_sequence [] = [false, damage];
 				attacker_health -= damage;
 			}

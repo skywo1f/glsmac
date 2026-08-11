@@ -12,6 +12,14 @@ const index_components = (entries) => {
 const chassis = index_components(manifest.chassis);
 const weapons = index_components(manifest.weapons);
 const armors = index_components(manifest.armors);
+const reactors = index_components(manifest.reactors);
+
+const get_reactor_power = (def) => {
+	if (#is_defined(def.reactor_power)) {
+		return def.reactor_power;
+	}
+	return #is_defined(reactors[def.reactor]) ? reactors[def.reactor].power : 1;
+};
 
 const get_energy_credits = (player) => {
 	return #typeof(player.get_energy_credits) == 'Callable'
@@ -50,7 +58,8 @@ const is_compatible = (source, target) => {
 		!#is_defined(weapons[target.weapon]) ||
 		!#is_defined(armors[source.armor]) ||
 		!#is_defined(armors[target.armor]) ||
-		!#is_defined(target.mineral_cost) || target.mineral_cost <= 0
+		!#is_defined(target.mineral_cost) || target.mineral_cost <= 0 ||
+		get_reactor_power(target) < get_reactor_power(source)
 	) {
 		return false;
 	}
@@ -187,9 +196,10 @@ const get_combat_value = (def) => {
 	if (def.offense <= 0) {
 		return 0.0;
 	}
-	return #to_float(def.offense * 2 + def.defense) +
+	return (#to_float(def.offense * 2 + def.defense) +
 		def.movement_per_turn * 0.5 +
-		(#is_defined(def.abilities) ? #to_float(#sizeof(def.abilities)) * 0.25 : 0.0);
+		(#is_defined(def.abilities) ? #to_float(#sizeof(def.abilities)) * 0.25 : 0.0)) *
+		#to_float(get_reactor_power(def));
 };
 
 const choose_ai_target = (game, player, unit) => {

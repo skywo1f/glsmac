@@ -1,5 +1,6 @@
 const units = #include('../default/units');
 const technologies = #include('../default/technologies');
+const manifest = #include('../default/content/base_units');
 
 test.assert(units.generated_count > 92);
 test.assert(#sizeof(units.definitions) == units.generated_count + 17);
@@ -67,6 +68,12 @@ let found_amphibious_unit = false;
 let found_land_sam = false;
 let found_sea_sam = false;
 let found_air_sam = false;
+let found_fission = false;
+let found_fusion = false;
+let found_quantum = false;
+let found_singularity = false;
+let found_fusion_transport = false;
+let found_singularity_planet_buster = false;
 for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const entry = units.definitions[i];
 	test.assert(!#is_defined(ids[entry.id]));
@@ -77,8 +84,20 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	test.assert(data.chassis != '');
 	test.assert(data.weapon != '');
 	test.assert(data.armor != '');
-	test.assert(data.reactor == 'FissionPlant');
-	test.assert(data.reactor_power == 1);
+	test.assert(data.reactor_power >= 1 && data.reactor_power <= 4);
+	if (data.reactor == 'FissionPlant') {
+		test.assert(data.reactor_power == 1);
+		found_fission = true;
+	} else if (data.reactor == 'FusionReactor') {
+		test.assert(data.reactor_power == 2);
+		found_fusion = true;
+	} else if (data.reactor == 'QuantumChamber') {
+		test.assert(data.reactor_power == 3);
+		found_quantum = true;
+	} else {
+		test.assert(data.reactor == 'SingularityEngine' && data.reactor_power == 4);
+		found_singularity = true;
+	}
 	test.assert(#typeof(data.abilities) == 'Array');
 	test.assert(data.operational_range >= 0);
 	test.assert(#typeof(data.is_missile) == 'Bool');
@@ -89,6 +108,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		found_probe_team = true;
 	}
 	if (i < 17) {
+		test.assert(data.reactor == 'FissionPlant');
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);
@@ -107,6 +127,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		} else if (ability == 'FungicideTanks' && data.can_terraform) {
 			found_fungicidal_former = true;
 		} else if (ability == 'CarrierDeck' && data.movement_type == 'water') {
+			test.assert(data.weapon == 'TroopTransport' && data.cargo_capacity > 0);
 			found_carrier = true;
 		} else if (ability == 'AmphibiousPods') {
 			test.assert(data.movement_type == 'land');
@@ -136,6 +157,16 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	}
 	if (data.movement_type == 'water') {
 		found_sea_unit = true;
+		if (data.weapon == 'TroopTransport' && data.reactor_power == 2) {
+			let base_capacity = 0;
+			for (chassis of manifest.chassis) {
+				if (chassis.id == data.chassis) {
+					base_capacity = chassis.cargo;
+				}
+			}
+			test.assert(data.cargo_capacity == base_capacity * 2);
+			found_fusion_transport = true;
+		}
 	} else if (data.movement_type == 'air') {
 		found_air_unit = true;
 		if (data.chassis == 'Needlejet') {
@@ -154,8 +185,10 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 			} else {
 				test.assert(data.weapon == 'PlanetBuster');
 				test.assert(data.offense == 99);
-				test.assert(data.mineral_cost == 225);
-				test.assert(data.required_technology == 'OrbitalSpaceflight');
+				test.assert(data.mineral_cost == 320);
+				if (data.reactor_power == 4) {
+					found_singularity_planet_buster = true;
+				}
 				found_planet_buster = true;
 			}
 		}
@@ -185,3 +218,9 @@ test.assert(found_amphibious_unit);
 test.assert(found_land_sam);
 test.assert(found_sea_sam);
 test.assert(found_air_sam);
+test.assert(found_fission);
+test.assert(found_fusion);
+test.assert(found_quantum);
+test.assert(found_singularity);
+test.assert(found_fusion_transport);
+test.assert(found_singularity_planet_buster);

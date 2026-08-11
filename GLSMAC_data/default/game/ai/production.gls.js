@@ -20,6 +20,10 @@ const get_mineral_cost = (def, context) => {
 		: def.mineral_cost;
 };
 
+const get_reactor_power = (def) => {
+	return #is_defined(def.reactor_power) ? #max(def.reactor_power, 1) : 1;
+};
+
 const get_unit_support_penalty = (def, context) => {
 	const projected_overage = #max(
 		context.supported_units + unit_abilities.get_support_cost(def) - context.free_support,
@@ -172,7 +176,9 @@ const score_unit = (def, context) => {
 		return null;
 	}
 	if (context.needs_garrison) {
-		return EMERGENCY_GARRISON_SCORE + def.defense * 1000 + def.offense * 100 +
+		const reactor_power = get_reactor_power(def);
+		return EMERGENCY_GARRISON_SCORE + def.defense * reactor_power * 1000 +
+			def.offense * reactor_power * 100 +
 			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def, context) -
 			get_mineral_cost(def, context) -
 			get_unit_support_penalty(def, context);
@@ -180,8 +186,9 @@ const score_unit = (def, context) => {
 	if (!context.needs_military) {
 		return null;
 	}
+	const reactor_power = get_reactor_power(def);
 	return 20000 + get_priority(context, 'military', 33) * 300 +
-		def.offense * 1000 + def.defense * 250 +
+		def.offense * reactor_power * 1000 + def.defense * reactor_power * 250 +
 		#round(def.movement_per_turn * 100.0) + get_unit_ability_score(def, context) -
 		get_mineral_cost(def, context) -
 		get_unit_support_penalty(def, context);

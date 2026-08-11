@@ -61,6 +61,11 @@ scenarios, for:
 - persistent faction-wide chassis, weapon, and armor prototype history across
   saves and reconnects, with the exact first-production surcharge, Skunkworks
   and Spartan waivers, and the first prototype's morale bonus;
+- generated Fission, Fusion, Quantum, and Singularity unit families use the
+  original integer cost formula, reactor minimum-cost rows, durability scaling,
+  sea-transport capacity scaling, and reactor-aware AI production, combat, and
+  upgrade valuation; advanced reactor upgrades cannot be reversed into weaker
+  reactors;
 - individual unit upgrades preserve identity, morale, health, and home base,
   enforce original chassis/equipment/component rules, consume the unit's turn,
   use the original energy-cost formula, receive the Nano Factory discount, and
@@ -176,7 +181,9 @@ scenarios, for:
 - air-unit range and refueling, naval and air combat access, transports and
   cargo, field repair, facility repair, and unit morale; Amphibious Pods permit
   transport assaults and sea-base crossings, while Air Superiority provides
-  cross-triad targeting and the original interceptor combat modifiers;
+  cross-triad targeting and the original interceptor combat modifiers; Carrier
+  Deck sea transports accept, move, deploy, and refuel aircraft while ordinary
+  troop transports reject them;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
 - seven-player startup, multiplayer turn/event synchronization, and reconnect
@@ -187,7 +194,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - all 38 base facilities represented: 37 complete and 1 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 306 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 411 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -215,6 +222,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   satellites are not available;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
+- a player-facing Unit Workshop for arbitrary legal chassis, weapon, armor,
+  reactor, and ability combinations; the current catalog provides generated
+  role families across all four reactors rather than unrestricted custom
+  designs;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -225,9 +236,17 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 118 cases: 91 isolated native/script GSE tests
-and 27 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 121 cases: 93 isolated native/script GSE tests
+and 28 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After four-tier reactor generation, original unit-cost calculation, reactor
+durability and transport scaling, and functional Carrier Deck aircraft cargo
+were added, all 93 isolated tests passed in 196.61 seconds. Ten high-value
+installed-asset scenarios covering standard startup, Planet Busters, air,
+transports, combat access, reactors, AI, opponent strategy, multiplayer, and
+running-game reconnect passed in 292.34 seconds. The Windows x64 Release build
+completed successfully before those runtime checks.
 
 After Amphibious Pods, Air Superiority, native-life capture, and shared rollback
 snapshot hardening were added, all 91 isolated tests passed in 176.92 seconds.
@@ -266,7 +285,7 @@ and both climate Council motions were added, all 86 isolated tests passed in
 160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
 installed-asset runtime coverage passed together in 54.92 seconds.
 
-All 24 runtime scenarios are green against an installed Planetary Pack,
+All 28 runtime scenarios are green against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
 Planetary Council, Datalinks, air units, transports, sea colonies, and the
 standard AI runtime. The rendered Unity Pod scenario verifies live land and sea
