@@ -19,7 +19,7 @@ namespace game {
 namespace backend {
 namespace unit {
 
-static constexpr int64_t COMPONENT_METADATA_VERSION = 3;
+static constexpr int64_t COMPONENT_METADATA_VERSION = 4;
 
 // TODO: per-def values?
 const health_t StaticDef::HEALTH_MAX = 1.0f;
@@ -71,7 +71,8 @@ StaticDef::StaticDef(
 	const std::set< std::string >& abilities,
 	const int64_t operational_range,
 	const bool is_missile,
-	const int64_t cargo_capacity
+	const int64_t cargo_capacity,
+	const bool buildable
 )
 	: Def(
 		id,
@@ -84,7 +85,8 @@ StaticDef::StaticDef(
 		offense,
 		defense,
 		can_found_base,
-		can_terraform
+		can_terraform,
+		buildable
 	)
 	, m_movement_type( movement_type )
 	, m_movement_per_turn( movement_per_turn )
@@ -190,6 +192,7 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	buf.WriteInt( def->m_operational_range );
 	buf.WriteBool( def->m_is_missile );
 	buf.WriteInt( def->m_cargo_capacity );
+	buf.WriteBool( def->m_buildable );
 }
 
 StaticDef* StaticDef::Deserialize(
@@ -233,6 +236,7 @@ StaticDef* StaticDef::Deserialize(
 	int64_t operational_range = 0;
 	bool is_missile = false;
 	int64_t cargo_capacity = 0;
+	bool buildable = true;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto version = buf.ReadInt();
 		if ( version < 1 || version > COMPONENT_METADATA_VERSION ) {
@@ -281,6 +285,9 @@ StaticDef* StaticDef::Deserialize(
 				THROW( "invalid serialized unit cargo capacity" );
 			}
 		}
+		if ( version >= 4 ) {
+			buildable = buf.ReadBool();
+		}
 	}
 	return new StaticDef(
 		id,
@@ -304,7 +311,8 @@ StaticDef* StaticDef::Deserialize(
 		abilities,
 		operational_range,
 		is_missile,
-		cargo_capacity
+		cargo_capacity,
+		buildable
 	);
 }
 

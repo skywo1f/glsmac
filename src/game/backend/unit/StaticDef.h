@@ -44,7 +44,8 @@ public:
 		const std::set< std::string >& abilities = {},
 		const int64_t operational_range = 0,
 		const bool is_missile = false,
-		const int64_t cargo_capacity = 0
+		const int64_t cargo_capacity = 0,
+		const bool buildable = true
 	);
 	~StaticDef();
 

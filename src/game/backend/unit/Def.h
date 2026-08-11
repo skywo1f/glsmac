@@ -39,7 +39,8 @@ public:
 		const int64_t offense,
 		const int64_t defense,
 		const bool can_found_base,
-		const bool can_terraform
+		const bool can_terraform,
+		const bool buildable
 	);
 	virtual ~Def() = default;
 
@@ -54,6 +55,7 @@ public:
 	const int64_t m_defense;
 	const bool m_can_found_base;
 	const bool m_can_terraform;
+	const bool m_buildable;
 
 	virtual const movement_type_t GetMovementType() const = 0;
 

@@ -204,7 +204,7 @@ gse::Wrappable* Base::GetProductionDef( const production_t& production ) const {
 }
 
 bool Base::CanProduceUnit( const unit::Def* def ) const {
-	if ( !def || def->m_mineral_cost <= 0 ) {
+	if ( !def || !def->m_buildable || def->m_mineral_cost <= 0 ) {
 		return false;
 	}
 	const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;

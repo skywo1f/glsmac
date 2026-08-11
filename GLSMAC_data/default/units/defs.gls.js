@@ -129,6 +129,7 @@ const units = [
 	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 206, 156, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
 	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
 	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, 104, 156, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
+	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, 2, 156, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
 	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, []),
 	native_lifeform('MindWorms', 'Mind Worms', 30, 'land', 1, 233, []),
 	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, []),
@@ -137,6 +138,13 @@ const units = [
 
 for (unit of generated.definitions) {
 	units :+unit;
+}
+
+for (unit of units) {
+	if (unit.id == 'AlienArtifact') {
+		unit.data.buildable = false;
+		break;
+	}
 }
 
 const result = {

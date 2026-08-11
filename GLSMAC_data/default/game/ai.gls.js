@@ -7,6 +7,7 @@ const economic_victory = #include('ai/economic_victory');
 const pathfinding = #include('ai/pathfinding');
 const probes = #include('ai/probes');
 const planet_busters = #include('ai/planet_busters');
+const psi_gates = #include('ai/psi_gates');
 const production = #include('ai/production');
 const research = #include('ai/research');
 const social_engineering = #include('ai/social_engineering');
@@ -1003,7 +1004,7 @@ const move_colony = (game, player, unit, all_bases) => {
 
 const move_artifact = (game, player, unit) => {
 	const tile = unit.get_tile();
-	if (tile.is_locked() || !technology_acquisition.can_grant(game, player)) {
+	if (tile.is_locked()) {
 		return false;
 	}
 	if (!#is_defined(artifact_rules.get_study_error(game, unit, player.id))) {
@@ -1016,22 +1017,33 @@ const move_artifact = (game, player, unit) => {
 		(source, candidate) => { return can_enter(unit, candidate, source); },
 		(candidate, distance) => {
 			const base = candidate.get_base();
-			if (
-				base == null || base.get_owner().id != player.id ||
-				artifact_rules.get_study_method(base) == ''
-			) {
+			if (base == null || base.get_owner().id != player.id) {
 				return null;
 			}
-			return 100000 - distance * 100 + (
-				base.has_facility('TheUniversalTranslator') ? 50000 : 0
-			);
+			const can_study =
+				technology_acquisition.can_grant(game, player) &&
+				artifact_rules.get_study_method(base) != '';
+			const contribution = artifact_rules.get_contribution_target(base);
+			if (!can_study && contribution == null) {
+				return null;
+			}
+			if (can_study) {
+				return 200000 - distance * 100 + (
+					base.has_facility('TheUniversalTranslator') ? 50000 : 0
+				);
+			}
+			return (contribution.kind == 'project' ? 120000 : 100000) - distance * 100;
 		}
 	);
 	if (destination == null) {
 		return false;
 	}
 	if (destination.target == tile) {
-		game.event_as(player.id, 'study_alien_artifact', {unit: unit});
+		if (!#is_defined(artifact_rules.get_study_error(game, unit, player.id))) {
+			game.event_as(player.id, 'study_alien_artifact', {unit: unit});
+		} else {
+			game.event_as(player.id, 'contribute_alien_artifact', {unit: unit});
+		}
 		return true;
 	}
 	if (destination.step != null && can_enter(unit, destination.step, tile)) {
@@ -1180,6 +1192,9 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		if (tile == destination) {
 			return 0;
 		}
+		if (psi_gates.try_teleport(game, player, unit, destination, all_bases)) {
+			return 100;
+		}
 		const current_distance = game.get_tm().get_distance(tile, destination);
 		let repair_step = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 			if (!can_enter(unit, candidate)) {
@@ -1274,6 +1289,9 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	}
 	if (reinforcement_base != null) {
 		const destination = reinforcement_base.get_tile();
+		if (psi_gates.try_teleport(game, player, unit, destination, all_bases)) {
+			return 100;
+		}
 		const current_distance = game.get_tm().get_distance(tile, destination);
 		let reinforcement_step = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 			if (!can_enter(unit, candidate)) {
@@ -1305,6 +1323,12 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	const enemy_distance = enemy_base == null
 		? 100000
 		: game.get_tm().get_distance(tile, enemy_base.get_tile());
+	if (
+		enemy_base != null &&
+		psi_gates.try_teleport(game, player, unit, enemy_base.get_tile(), all_bases)
+	) {
+		return 100;
+	}
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
 		if (!can_enter(unit, candidate)) {
 			return 0 - 100000;

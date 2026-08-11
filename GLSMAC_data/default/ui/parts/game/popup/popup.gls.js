@@ -8,6 +8,8 @@ return {
 		'economic_victory',
 		'diplomacy',
 		'probe_operations',
+		'alien_artifact',
+		'psi_gate',
 		'unit_upgrade',
 		'base_screen',
 	],

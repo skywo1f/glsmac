@@ -54,6 +54,7 @@ const effects = {
 	BioenhancementCenter: {unit_morale_bonus: 2, native_lifecycle_bonus: 1},
 	CentauriPreserve: {native_lifecycle_bonus: 1},
 	TempleOfPlanet: {native_lifecycle_bonus: 1},
+	PsiGate: {psi_gate: true},
 	SkyHydroponicsLab: {
 		orbital_resource: 'NUTRIENTS',
 		required_facility: 'AerospaceComplex',
@@ -74,8 +75,6 @@ const effects = {
 };
 
 const partial_effects = {
-	ResearchHospital: true,
-	Nanohospital: true,
 	PressureDome: true,
 	OrbitalDefensePod: true,
 };

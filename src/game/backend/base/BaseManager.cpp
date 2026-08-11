@@ -436,6 +436,7 @@ WRAPIMPL_BEGIN( BaseManager )
 				N_GETPROP_OPT( int64_t, mineral_to_energy_divisor, def, "mineral_to_energy_divisor", Int, 0 );
 				N_GETPROP_OPT( std::string, orbital_resource, def, "orbital_resource", String, "" );
 				N_GETPROP_OPT( bool, orbital_defense, def, "orbital_defense", Bool, false );
+				N_GETPROP_OPT( bool, psi_gate, def, "psi_gate", Bool, false );
 				if (
 					id.empty() ||
 					name.empty() ||
@@ -658,7 +659,8 @@ WRAPIMPL_BEGIN( BaseManager )
 					prototype_cost_waiver,
 					mineral_to_energy_divisor,
 					orbital_resource,
-					orbital_defense
+					orbital_defense,
+					psi_gate
 				) );
 				return VALUE( gse::value::Undefined );
 			} )

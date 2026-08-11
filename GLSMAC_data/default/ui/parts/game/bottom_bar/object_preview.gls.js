@@ -1,5 +1,6 @@
 const terraforming = #include('../../../../units/terraforming');
 const artifact_rules = #include('../../../../game/artifact_rules');
+const psi_gate_rules = #include('../../../../game/psi_gate_rules');
 
 return {
 
@@ -23,6 +24,14 @@ return {
 		return #is_defined(resolver)
 			? resolver(this.p.game.get_player(), unit.get_def())
 			: [];
+	},
+
+	get_psi_gate_destinations: (unit) => {
+		return psi_gate_rules.get_available_destinations(
+			this.p.game,
+			unit,
+			this.p.game.get_player().id
+		);
 	},
 
 	open_upgrade_popup: () => {
@@ -207,26 +216,42 @@ return {
 				}
 
 				if (
+					is_owned && object.transport_id == 0 &&
+					def.weapon == 'AlienArtifact' &&
+					(
+						!#is_defined(artifact_rules.get_study_error(
+							this.p.game,
+							object,
+							this.p.game.get_player().id
+						)) ||
+						!#is_defined(artifact_rules.get_contribution_error(
+							this.p.game,
+							object,
+							this.p.game.get_player().id
+						))
+					)
+				) {
+					this.action_unit = object;
+					this.action_mode = 'alien_artifact';
+					this.action_button.text = 'USE ARTIFACT';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (
+					is_owned && object.transport_id == 0 &&
+					#sizeof(this.get_psi_gate_destinations(object)) > 0
+				) {
+					this.action_unit = object;
+					this.action_mode = 'psi_gate';
+					this.action_button.text = 'PSI GATE';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (
 					is_owned && object.transport_id == 0 && def.weapon == 'ProbeTeam' &&
 					object.movement > 0.0
 				) {
 					this.action_unit = object;
 					this.action_mode = 'probe';
 					this.action_button.text = 'PROBE ACTION';
-					this.close_terraform_menu();
-					this.action_button.show();
-				} else if (
-					is_owned && object.transport_id == 0 &&
-					def.weapon == 'AlienArtifact' &&
-					!#is_defined(artifact_rules.get_study_error(
-						this.p.game,
-						object,
-						this.p.game.get_player().id
-					))
-				) {
-					this.action_unit = object;
-					this.action_mode = 'study_artifact';
-					this.action_button.text = 'STUDY ARTIFACT';
 					this.close_terraform_menu();
 					this.action_button.show();
 				} else if (is_owned && object.transport_id == 0 && def.can_found_base) {
@@ -359,8 +384,12 @@ return {
 			} else if (this.action_mode == 'probe') {
 				p.modules.popup.set('probe_operations', {unit: this.action_unit});
 				p.modules.popup.show('probe_operations');
-			} else if (this.action_mode == 'study_artifact') {
-				p.game.event('study_alien_artifact', {unit: this.action_unit});
+			} else if (this.action_mode == 'alien_artifact') {
+				p.modules.popup.set('alien_artifact', {unit: this.action_unit});
+				p.modules.popup.show('alien_artifact');
+			} else if (this.action_mode == 'psi_gate') {
+				p.modules.popup.set('psi_gate', {unit: this.action_unit});
+				p.modules.popup.show('psi_gate');
 			} else if (this.action_mode == 'upgrade') {
 				this.open_upgrade_popup();
 			}

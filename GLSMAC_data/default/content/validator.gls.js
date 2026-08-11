@@ -73,6 +73,7 @@ const facility_fields = {
 	mineral_to_energy_divisor: true,
 	orbital_resource: true,
 	orbital_defense: true,
+	psi_gate: true,
 };
 
 const facility_manifest_fields = {
@@ -95,6 +96,7 @@ const unit_fields = {
 	defense: true,
 	can_found_base: true,
 	can_terraform: true,
+	buildable: true,
 	required_technology: true,
 	chassis: true,
 	weapon: true,
@@ -608,6 +610,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'growth_rating_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'native_lifecycle_bonus', path, errors, false, 0, 10);
 		validate_bool(data, 'prototype_cost_waiver', path, errors, false);
+		validate_bool(data, 'psi_gate', path, errors, false);
 		validate_optional_string(data, 'required_technology', path, errors);
 		if (
 			#is_defined(data.required_technology) &&
@@ -644,6 +647,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 			(#is_defined(data.growth_rating_bonus) && data.growth_rating_bonus > 0) ||
 			(#is_defined(data.native_lifecycle_bonus) && data.native_lifecycle_bonus > 0) ||
 			(#is_defined(data.prototype_cost_waiver) && data.prototype_cost_waiver) ||
+			(#is_defined(data.psi_gate) && data.psi_gate) ||
 			is_mineral_conversion ||
 			is_orbital ||
 			(#is_defined(data.granted_facility) && data.granted_facility != '') ||
@@ -1116,6 +1120,7 @@ const validate_units = (units, technologies, morale_ids, unit_manifest, errors) 
 		validate_int(data, 'defense', path, errors, true, 0, MAX_DEFINITION_VALUE);
 		validate_bool(data, 'can_found_base', path, errors, false);
 		validate_bool(data, 'can_terraform', path, errors, false);
+		validate_bool(data, 'buildable', path, errors, false);
 		for (component of ['chassis', 'weapon', 'armor', 'reactor']) {
 			validate_string(data, component, path, errors, true);
 		}

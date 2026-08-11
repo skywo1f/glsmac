@@ -2,7 +2,18 @@ const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 
 test.assert(units.generated_count > 92);
-test.assert(#sizeof(units.definitions) == units.generated_count + 11);
+test.assert(#sizeof(units.definitions) == units.generated_count + 12);
+
+let artifact = null;
+for (unit of units.definitions) {
+	if (unit.id == 'AlienArtifact') {
+		artifact = unit;
+		break;
+	}
+}
+test.assert(artifact != null);
+test.assert(!artifact.data.buildable);
+test.assert(artifact.data.weapon == 'AlienArtifact');
 
 let ids = {};
 let found_late_land_assault = false;
@@ -42,7 +53,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		test.assert(data.movement_per_turn == 2);
 		found_probe_team = true;
 	}
-	if (i < 11) {
+	if (i < 12) {
 		continue;
 	}
 	test.assert(data.mineral_cost >= 10);

@@ -439,6 +439,20 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 		} )
 	},
 	{
+		"teleport_to_tile",
+		NATIVE_CALL( this ) {
+			m_um->m_game->CheckRW( GSE_CALL );
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
+			const auto* errmsg = m_um->TeleportUnitToTile( GSE_CALL, this, tile );
+			if ( errmsg ) {
+				GSE_ERROR( gse::EC.GAME_ERROR, *errmsg );
+				delete errmsg;
+			}
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
 		"set_terraforming_order",
 		NATIVE_CALL( this ) {
 			N_EXPECT_ARGS( 2 );

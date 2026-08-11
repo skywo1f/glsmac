@@ -472,6 +472,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( int64_t, operational_range, unit_def, "operational_range", Int, 0 );
 				N_GETPROP_OPT_BOOL( is_missile, unit_def, "is_missile" );
 				N_GETPROP_OPT( int64_t, cargo_capacity, unit_def, "cargo_capacity", Int, 0 );
+				N_GETPROP_OPT( bool, buildable, unit_def, "buildable", Bool, true );
 				N_GETPROP_OPT(
 					gse::value::array_elements_t,
 					ability_values,
@@ -594,7 +595,8 @@ WRAPIMPL_BEGIN( UnitManager )
 								abilities,
 								operational_range,
 								is_missile,
-								cargo_capacity
+								cargo_capacity,
+								buildable
 							);
 
 						DefineUnit( def );
@@ -1101,6 +1103,40 @@ const std::string* UnitManager::MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::t
 	m_game->AddFrontendRequest( fr );
 
 	return nullptr; // no error
+}
+
+const std::string* UnitManager::TeleportUnitToTile( GSE_CALLABLE, Unit* unit, map::tile::Tile* dst_tile ) {
+	if ( !unit || !dst_tile ) {
+		return new std::string( "Unit and destination tile must exist" );
+	}
+	if ( unit->m_animation_id ) {
+		return new std::string( "Unit cannot teleport while another movement is active" );
+	}
+	auto* const src_tile = unit->GetTile();
+	if ( src_tile == dst_tile ) {
+		return new std::string( "Unit is already on the destination tile" );
+	}
+	if ( src_tile->IsLocked() || dst_tile->IsLocked() ) {
+		return new std::string( "Unit cannot teleport through a locked tile" );
+	}
+
+	const auto teleport = [ this, dst_tile ]( GSE_CALLABLE, Unit* const target ) {
+		auto fr = FrontendRequest( FrontendRequest::FR_UNIT_TELEPORT );
+		fr.data.unit_teleport.unit_id = target->m_id;
+		fr.data.unit_teleport.dst_tile_coords = {
+			dst_tile->coord.x,
+			dst_tile->coord.y
+		};
+		target->SetTile( GSE_CALL, dst_tile );
+		m_game->AddFrontendRequest( fr );
+		RefreshUnit( GSE_CALL, target );
+	};
+
+	teleport( GSE_CALL, unit );
+	for ( auto* const cargo : GetCargo( unit ) ) {
+		teleport( GSE_CALL, cargo );
+	}
+	return nullptr;
 }
 
 const std::string* UnitManager::AttackUnitValidate( GSE_CALLABLE, Unit* attacker, Unit* defender ) {

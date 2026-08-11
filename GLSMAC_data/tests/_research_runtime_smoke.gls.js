@@ -551,9 +551,9 @@
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
 				if (
-					#sizeof(facility_ids) != 37 ||
+					#sizeof(facility_ids) != 38 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
-					maintenance != 73 || mineral_multiplier != 2.0 ||
+					maintenance != 75 || mineral_multiplier != 2.0 ||
 					psych_bonus != 0 || psych_multiplier != 2.0 ||
 					research_multiplier != 2.0 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 2 ||

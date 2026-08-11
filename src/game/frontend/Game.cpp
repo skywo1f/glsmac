@@ -1202,6 +1202,26 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			m_um->MoveUnit( unit, dst_tile, d.running_animation_id );
 			break;
 		}
+		case FrontendRequest::FR_UNIT_TELEPORT: {
+			const auto& d = request->data.unit_teleport;
+			auto* const unit = m_um->GetUnitById( d.unit_id );
+			ASSERT( unit, "unit is null" );
+			auto* const src_tile = unit->GetTile();
+			auto* const dst_tile = m_tm->GetTile(
+				{
+					d.dst_tile_coords.x,
+					d.dst_tile_coords.y
+				}
+			);
+			auto* const selected_unit = m_um->GetSelectedUnit();
+			if ( selected_unit == unit ) {
+				SetSelectedTile( dst_tile );
+			}
+			unit->SetTile( dst_tile );
+			RenderTile( src_tile, selected_unit );
+			m_um->RefreshUnit( unit );
+			break;
+		}
 		case FrontendRequest::FR_BASE_POP_DEFINE: {
 			types::Buffer buf( *request->data.base_pop_define.serialized_popdef );
 			const auto* popdef = backend::base::PopDef::Deserialize( buf );

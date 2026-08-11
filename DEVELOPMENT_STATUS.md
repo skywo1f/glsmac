@@ -51,7 +51,13 @@ scenarios, for:
   completion, preserving existing research progress with deterministic
   rollback and explicit AI production value; Alien Artifacts can also be
   studied for free technologies once per Network Node or without limit at the
-  Translator base, with player controls, AI routing, and serialized usage;
+  Translator base, or consumed for 50 minerals toward a Secret Project or
+  unprototyped unit, with player controls, AI routing, reversible events, and
+  an asset-backed frontend/backend synchronization test;
+- Psi Gates teleport units and attached transport cargo between two owned,
+  available gate bases without spending movement, reserve both endpoints for
+  the turn, preserve state across event rollback, and expose deterministic
+  player and target-aware AI controls;
 - persistent faction-wide chassis, weapon, and armor prototype history across
   saves and reconnects, with the exact first-production surcharge, Skunkworks
   and Spartan waivers, and the first prototype's morale bonus;
@@ -150,9 +156,9 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- 37 of 38 base facilities represented: 33 complete and 4 partial;
+- all 38 base facilities represented: 36 complete and 2 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 247 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 248 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -181,13 +187,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   undocumented post-bloom clean-mineral facility bonus;
 - direct Orbital Defense Pod attacks against rival satellites are not
   available;
-- several remaining facility effects, including submersion, Psi Gates, disease
-  protection, and Alien Artifact production contributions to Secret Projects
-  and prototypes;
-- Psi Gate is the only absent base-facility definition; both hospitals remain
-  partial because disease protection is absent, Pressure Dome still lacks
-  submersion protection, and Orbital Defense Pod remains partial only because
-  direct satellite warfare is absent;
+- Pressure Dome remains partial because sea-level rise and base submersion are
+  not implemented; Orbital Defense Pod remains partial because direct
+  satellite warfare is absent;
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
 - complete UI workflows, player-facing diagnostics, accessibility review,
@@ -200,19 +202,21 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 101 cases: 79 isolated native/script GSE tests
-and 22 asset-backed runtime scenarios. The complete isolated Release matrix
-passed 79/79 in 141.43 seconds. The same 79 cases passed under AddressSanitizer
-in two bounded invocations: 40/40 in 717.14 seconds and 39/39 in 75.63 seconds.
-Script isolation keeps allocator lifetime bounded and reports the exact script
-that fails.
+The Release CTest matrix contains 105 cases: 82 isolated native/script GSE tests
+and 23 asset-backed runtime scenarios. The current matrix is green. A complete
+run finished in 769.50 seconds; 103 cases passed in that invocation, and the two
+tests with stale catalog totals passed after their expectations were corrected.
+All 82 isolated cases also passed together under AddressSanitizer in 811.70
+seconds. Script isolation keeps allocator lifetime bounded and reports the
+exact script that fails.
 
-All 22 runtime scenarios are green in bounded groups against an installed
-Planetary Pack. The 12 general gameplay scenarios passed 12/12 in 205.93
-seconds, including diplomacy, probes, research, Planet Busters, economic
-victory, Planetary Council, Datalinks, air units, transports, sea colonies, and
-the standard AI runtime. The Council scenario completed a live Governor
-election and Supreme Leader diplomatic victory in 17.63 seconds.
+All 23 runtime scenarios are green against an installed Planetary Pack,
+including diplomacy, probes, research, Planet Busters, economic victory,
+Planetary Council, Datalinks, air units, transports, sea colonies, and the
+standard AI runtime. The new rendered facility-actions scenario passed in
+11.40 seconds and verifies the serialized Psi Gate and Alien Artifact
+capabilities, non-buildable Artifact definition, 50-mineral contribution,
+transport/cargo teleport, and per-turn endpoint limits.
 
 The eight specialized AI scenarios are green after two asynchronous lifecycle
 defects were fixed. The economy soak passed in 130.97 seconds; opponent
@@ -243,6 +247,12 @@ logic or force synchronous movement.
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;
 its explicit milestone and pass/fail assertions remain enabled.
+
+The rendered facility-actions scenario was also attempted under
+AddressSanitizer. Instrumented startup reached the live turn and spawned all
+test entities without a sanitizer diagnostic, but did not complete within 240
+seconds. Its Release result is authoritative for the rendered workflow; the
+sanitizer claim is therefore limited to the 82 isolated tests above.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

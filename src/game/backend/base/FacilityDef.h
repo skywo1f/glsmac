@@ -92,7 +92,8 @@ public:
 		const bool prototype_cost_waiver = false,
 		const int64_t mineral_to_energy_divisor = 0,
 		const std::string& orbital_resource = "",
-		const bool orbital_defense = false
+		const bool orbital_defense = false,
+		const bool psi_gate = false
 	);
 	virtual ~FacilityDef() = default;
 
@@ -161,6 +162,7 @@ public:
 	const int64_t m_mineral_to_energy_divisor;
 	const std::string m_orbital_resource;
 	const bool m_orbital_defense;
+	const bool m_psi_gate;
 
 	static const types::Buffer Serialize( const FacilityDef* def );
 	static FacilityDef* Deserialize( types::Buffer& buf );

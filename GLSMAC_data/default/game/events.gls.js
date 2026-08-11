@@ -53,6 +53,8 @@ return (game) => {
 		'process_diplomatic_sanctions',
 		'probe_operation',
 		'study_alien_artifact',
+		'contribute_alien_artifact',
+		'teleport_unit',
 		'upgrade_unit',
 		'fungal_bloom',
 		'declare_victory',

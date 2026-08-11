@@ -58,6 +58,7 @@ public:
 		FR_LOADER_SHOW,
 		FR_LOADER_TEXT,
 		FR_LOADER_HIDE,
+		FR_UNIT_TELEPORT,
 	};
 	FrontendRequest( const request_type_t type );
 	FrontendRequest( const FrontendRequest& other );
@@ -203,6 +204,13 @@ public:
 				size_t y;
 			} dst_tile_coords;
 		} unit_move;
+		struct {
+			size_t unit_id;
+			struct {
+				size_t x;
+				size_t y;
+			} dst_tile_coords;
+		} unit_teleport;
 		struct {
 			const std::string* serialized_popdef;
 		} base_pop_define;

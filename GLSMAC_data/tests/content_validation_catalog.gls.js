@@ -2,6 +2,9 @@ const content = #include('./_content_validation_common');
 const catalog = content.make_catalog();
 const result = content.validator.validate(catalog);
 
+for (error of result.errors) {
+	#print('CONTENT_VALIDATION_ERROR: ' + error);
+}
 test.assert(result.errors == []);
 test.assert(content.get_facility(catalog, 'TreeFarm').data.forest_nutrient_bonus == 1);
 test.assert(content.get_facility(catalog, 'HybridForest').data.forest_nutrient_bonus == 1);
@@ -25,6 +28,7 @@ test.assert(content.get_facility(catalog, 'CentauriPreserve').data.native_lifecy
 test.assert(content.get_facility(catalog, 'TempleOfPlanet').data.native_lifecycle_bonus == 1);
 test.assert(catalog.facility_coverage.status.CentauriPreserve == 'complete');
 test.assert(catalog.facility_coverage.status.TempleOfPlanet == 'complete');
+test.assert(content.get_facility(catalog, 'PsiGate').data.psi_gate);
 test.assert(content.get_facility(catalog, 'BiologyLab').data.full_repair_native);
 test.assert(content.get_facility(catalog, 'Skunkworks').data.prototype_cost_waiver);
 test.assert(catalog.facility_coverage.status.Skunkworks == 'complete');
@@ -79,20 +83,20 @@ for (id of [
 	test.assert(catalog.project_coverage.status[id] == 'partial');
 }
 for (id of [
-	'ResearchHospital', 'Nanohospital', 'PressureDome', 'OrbitalDefensePod',
+	'PressureDome', 'OrbitalDefensePod',
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
 for (id of [
-	'PsiGate',
+	'ResearchHospital', 'Nanohospital', 'PsiGate',
 ]) {
-	test.assert(content.get_facility(catalog, id) == null);
+	test.assert(catalog.facility_coverage.status[id] == 'complete');
 }
 test.assert(result.counts == {
 	technologies: 77,
-	facilities: 37,
-	complete_facilities: 33,
-	partial_facilities: 4,
+	facilities: 38,
+	complete_facilities: 36,
+	partial_facilities: 2,
 	implemented_projects: 33,
 	complete_projects: 32,
 	partial_projects: 1,

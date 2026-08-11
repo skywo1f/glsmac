@@ -24,7 +24,8 @@ Def::Def(
 	const int64_t offense,
 	const int64_t defense,
 	const bool can_found_base,
-	const bool can_terraform
+	const bool can_terraform,
+	const bool buildable
 )
 	: m_id( id )
 	, m_moraleset( moraleset )
@@ -36,7 +37,8 @@ Def::Def(
 	, m_offense( offense )
 	, m_defense( defense )
 	, m_can_found_base( can_found_base )
-	, m_can_terraform( can_terraform ) {
+	, m_can_terraform( can_terraform )
+	, m_buildable( buildable ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -177,6 +179,10 @@ WRAPIMPL_BEGIN( Def )
 			{
 				"can_terraform",
 				VALUE( gse::value::Bool, , m_can_terraform )
+			},
+			{
+				"buildable",
+				VALUE( gse::value::Bool, , m_buildable )
 			},
 		};
 WRAPIMPL_END_PTR()

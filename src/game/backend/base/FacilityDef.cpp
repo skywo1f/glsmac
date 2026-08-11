@@ -74,7 +74,8 @@ FacilityDef::FacilityDef(
 	const bool prototype_cost_waiver,
 	const int64_t mineral_to_energy_divisor,
 	const std::string& orbital_resource,
-	const bool orbital_defense
+	const bool orbital_defense,
+	const bool psi_gate
 )
 	: m_id( id )
 	, m_name( name )
@@ -140,7 +141,8 @@ FacilityDef::FacilityDef(
 	, m_prototype_cost_waiver( prototype_cost_waiver )
 	, m_mineral_to_energy_divisor( mineral_to_energy_divisor )
 	, m_orbital_resource( orbital_resource )
-	, m_orbital_defense( orbital_defense ) {
+	, m_orbital_defense( orbital_defense )
+	, m_psi_gate( psi_gate ) {
 	if (
 		m_id.empty() ||
 		m_name.empty() ||
@@ -350,6 +352,7 @@ const types::Buffer FacilityDef::Serialize( const FacilityDef* def ) {
 	buf.WriteInt( def->m_mineral_to_energy_divisor );
 	buf.WriteString( def->m_orbital_resource );
 	buf.WriteBool( def->m_orbital_defense );
+	buf.WriteBool( def->m_psi_gate );
 	return buf;
 }
 
@@ -419,6 +422,7 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 	const auto mineral_to_energy_divisor = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
 	const auto orbital_resource = buf.GetRemaining() > 0 ? buf.ReadString() : "";
 	const auto orbital_defense = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
+	const auto psi_gate = buf.GetRemaining() > 0 ? buf.ReadBool() : false;
 	return new FacilityDef(
 		id,
 		name,
@@ -484,7 +488,8 @@ FacilityDef* FacilityDef::Deserialize( types::Buffer& buf ) {
 		prototype_cost_waiver,
 		mineral_to_energy_divisor,
 		orbital_resource,
-		orbital_defense
+		orbital_defense,
+		psi_gate
 	);
 }
 
@@ -753,6 +758,10 @@ WRAPIMPL_BEGIN( FacilityDef )
 		{
 			"orbital_defense",
 			VALUE( gse::value::Bool, , m_orbital_defense )
+		},
+		{
+			"psi_gate",
+			VALUE( gse::value::Bool, , m_psi_gate )
 		},
 	};
 WRAPIMPL_END_PTR()
