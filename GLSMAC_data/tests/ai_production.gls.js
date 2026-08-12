@@ -370,6 +370,7 @@ test.assert(
 );
 offensive_context.needs_garrison = true;
 test.assert(production.get_unit_ability_score(nerve_gas_laser, offensive_context) == 0);
+offensive_context.needs_garrison = false;
 const drop_laser = unit('DropLaser', 2, 1, 1.0, 25, false, false);
 drop_laser.abilities = ['DropPods'];
 let drop_context = context(false, false, false, false, 0);
@@ -379,6 +380,24 @@ test.assert(
 );
 drop_context.needs_garrison = true;
 test.assert(production.get_unit_ability_score(drop_laser, drop_context) == 0);
+const radar_laser = unit('RadarLaser', 2, 1, 1.0, 25, false, false);
+radar_laser.abilities = ['DeepRadar'];
+const radar_artillery = unit('RadarArtillery', 2, 1, 1.0, 30, false, false);
+radar_artillery.abilities = ['DeepRadar', 'HeavyArtillery'];
+test.assert(
+	production.get_unit_ability_score(radar_artillery, offensive_context) >
+	production.get_unit_ability_score(radar_laser, offensive_context)
+);
+const cloaked_laser = unit('CloakedLaser', 2, 1, 1.0, 25, false, false);
+cloaked_laser.abilities = ['CloakingDevice'];
+const submarine_laser = unit('SubmarineLaser', 2, 1, 4.0, 25, false, false);
+submarine_laser.abilities = ['DeepPressureHull'];
+test.assert(production.get_unit_ability_score(cloaked_laser, offensive_context) == 7000);
+test.assert(production.get_unit_ability_score(submarine_laser, offensive_context) == 7000);
+offensive_context.needs_garrison = true;
+test.assert(production.get_unit_ability_score(cloaked_laser, offensive_context) == 0);
+test.assert(production.get_unit_ability_score(submarine_laser, offensive_context) == 0);
+offensive_context.needs_garrison = false;
 const super_former = unit('SuperFormer', 0, 1, 1.0, 25, false, true);
 super_former.abilities = ['SuperFormer'];
 const fungicidal_former = unit('FungicidalFormer', 0, 1, 1.0, 25, false, true);

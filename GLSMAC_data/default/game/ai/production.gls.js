@@ -76,6 +76,23 @@ const get_unit_ability_score = (def, context) => {
 	) {
 		score += 9000;
 	}
+	if (unit_abilities.has(def, 'DeepRadar')) {
+		score += unit_abilities.has(def, 'HeavyArtillery') ? 7000 : 3000;
+	}
+	if (
+		unit_abilities.has(def, 'CloakingDevice') && #is_defined(context) &&
+		#is_defined(context.needs_military) && context.needs_military &&
+		!context.needs_garrison
+	) {
+		score += 7000;
+	}
+	if (
+		unit_abilities.has(def, 'DeepPressureHull') && #is_defined(context) &&
+		#is_defined(context.needs_military) && context.needs_military &&
+		!context.needs_garrison
+	) {
+		score += 7000;
+	}
 	return score;
 };
 

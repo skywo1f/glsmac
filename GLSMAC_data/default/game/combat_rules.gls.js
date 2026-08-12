@@ -1,4 +1,5 @@
 const unit_abilities = #include('unit_abilities');
+const visibility_rules = #include('visibility_rules');
 
 const is_artillery = (def) => {
 	return #is_defined(def.is_artillery) ? def.is_artillery : def.id == 'SporeLauncher';
@@ -260,6 +261,24 @@ const get_project_effects = (unit, game) => {
 		};
 };
 
+const get_sensor_defense_bonus = (defender, game) => {
+	if (!#is_defined(game) || !#is_defined(defender.get_tile)) {
+		return 0.0;
+	}
+	const tile = defender.get_tile();
+	const is_land_square = #is_defined(tile.is_land)
+		? tile.is_land
+		: (#is_defined(defender.is_land) && defender.is_land);
+	if (!is_land_square) {
+		return 0.0;
+	}
+	return visibility_rules.has_friendly_sensor(
+		game,
+		defender.owner,
+		tile
+	) ? 0.25 : 0.0;
+};
+
 const get_combat_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
@@ -317,6 +336,7 @@ const get_combat_powers = (attacker, defender, game) => {
 	if (defender_tile.get_base() != null || defender_tile.terraforming.bunker) {
 		defence_modifier += 0.25;
 	}
+	defence_modifier += get_sensor_defense_bonus(defender, game);
 	if (!is_psi_combat) {
 		if (
 			#is_defined(attacker.is_air) && attacker.is_air &&
@@ -365,6 +385,7 @@ const get_artillery_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
 	let attack_modifier = is_nerve_gas_attack(attacker, defender) ? 1.5 : 1.0;
+	const defence_modifier = 1.0 + get_sensor_defense_bonus(defender, game);
 	if (#is_defined(attacker.airdropped_this_turn) && attacker.airdropped_this_turn) {
 		attack_modifier *= 0.5;
 	}
@@ -379,7 +400,7 @@ const get_artillery_powers = (attacker, defender, game) => {
 			defender,
 			get_base_defender_morale_bonus(defender, game) +
 				get_social_morale_bonus(defender, game, true)
-		) * defender.health,
+		) * defender.health * defence_modifier,
 	};
 };
 
@@ -401,7 +422,11 @@ const get_best_defender = (attacker, tile, game) => {
 	for (defender of tile.get_units()) {
 		if (
 			defender.owner == attacker.owner || defender.health <= 0.0 ||
-			!can_attack_target(attacker, defender)
+			!can_attack_target(attacker, defender) ||
+			(
+				#is_defined(game) &&
+				!visibility_rules.can_target(game, attacker.owner, attacker, defender)
+			)
 		) {
 			continue;
 		}
@@ -435,6 +460,7 @@ return {
 	get_base_defender_morale_minimum: get_base_defender_morale_minimum,
 	get_social_morale_bonus: get_social_morale_bonus,
 	get_base_defense_multiplier: get_base_defense_multiplier,
+	get_sensor_defense_bonus: get_sensor_defense_bonus,
 	get_combat_powers: get_combat_powers,
 	get_artillery_powers: get_artillery_powers,
 	get_attack_powers: get_attack_powers,

@@ -3,9 +3,12 @@ const cost_rules = #include('../units/design_rules');
 
 const SUPPORTED_ABILITIES = {
 	SuperFormer: true,
+	DeepRadar: true,
+	CloakingDevice: true,
 	AmphibiousPods: true,
 	DropPods: true,
 	AirSuperiority: true,
+	DeepPressureHull: true,
 	CarrierDeck: true,
 	AAATracking: true,
 	CommJammer: true,
@@ -219,6 +222,12 @@ const get_error = (player, selection) => {
 		if (!is_ability_compatible(chassis, weapon, armor, ability)) {
 			return ability.name + ' is incompatible with this design';
 		}
+	}
+	if (
+		has_ability(abilities, 'DeepPressureHull') &&
+		has_ability(abilities, 'CarrierDeck')
+	) {
+		return 'Deep Pressure Hull cannot be combined with Carrier Deck';
 	}
 	return #undefined;
 };

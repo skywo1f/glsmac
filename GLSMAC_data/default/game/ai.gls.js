@@ -1,5 +1,6 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const action_state = #include('ai/action_state');
+const turn_rules = #include('./turn_rules');
 const airdrops = #include('ai/airdrops');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
@@ -458,7 +459,7 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		if (
 			combat.get_garrison_count(base, player.id) <
-			combat.get_required_garrison(tm, base, player.id, all_units)
+			combat.get_required_garrison(tm, base, player.id, all_units, game)
 		) {
 			underdefended_bases++;
 		}
@@ -667,7 +668,8 @@ const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 		available_tiles,
 		game.get_tm(),
 		units,
-		(owner_id) => { return !is_protected_partner(game, player, owner_id); }
+		(owner_id) => { return !is_protected_partner(game, player, owner_id); },
+		game
 	);
 	if (target == null) {
 		return false;
@@ -861,7 +863,13 @@ const queue_production = (game, player, bases, units) => {
 				supported_units += unit_abilities.get_support_cost(unit) * social_support_cost;
 			}
 		}
-		const required_garrison = combat.get_required_garrison(tm, base, player.id, all_units);
+		const required_garrison = combat.get_required_garrison(
+			tm,
+			base,
+			player.id,
+			all_units,
+			game
+		);
 		const psych = game.get('f_economy_get_base_psych')(game, base);
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
@@ -1496,7 +1504,8 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			game.get_tm(),
 			current_base,
 			player.id,
-			strategic_units
+			strategic_units,
+			game
 		);
 		if (defenders <= required_garrison) {
 			return 0;
@@ -1567,7 +1576,8 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			player.id,
 			strategic_bases,
 			strategic_units,
-			reservations
+			reservations,
+			game
 		);
 		if (reinforcement_base != null) {
 			reinforcement_assignments[unit_key] = reinforcement_base.id;
@@ -1607,7 +1617,8 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		unit,
 		player.id,
 		strategic_bases,
-		strategic_units
+		strategic_units,
+		game
 	);
 	const enemy_distance = enemy_base == null
 		? 100000
@@ -1663,6 +1674,7 @@ const play_turn = (game, player, done) => {
 	queue_production(game, player, bases, units);
 
 	let steps = 0;
+	let completion_ready_checks = 0;
 	let action_attempts = {};
 	let reinforcement_assignments = {};
 	const play_next_action = () => {
@@ -1817,10 +1829,22 @@ const play_turn = (game, player, done) => {
 		}
 		steps++;
 		if (action_started && steps < 1000) {
+			completion_ready_checks = 0;
 			#async(action_delay, play_next_action);
 			return;
 		}
 		if ((waiting_for_animation || waiting_for_action) && steps < 1000) {
+			completion_ready_checks = 0;
+			#async(MOVEMENT_ACTION_DELAY, play_next_action);
+			return;
+		}
+		if (turn_rules.has_pending_owned_animation(game, player.id)) {
+			completion_ready_checks = 0;
+			#async(MOVEMENT_ACTION_DELAY, play_next_action);
+			return;
+		}
+		completion_ready_checks++;
+		if (completion_ready_checks < 2) {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}

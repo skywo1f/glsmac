@@ -72,7 +72,7 @@
 				return true;
 			}
 			#print('AI_REINFORCEMENT_RUNTIME_PASS: field rover routed to an under-defended friendly base');
-			#async(2000, () => { glsmac.exit(); });
+			#async(500, () => { glsmac.exit(); });
 			return false;
 		}
 		if (wait_ticks >= 300) {

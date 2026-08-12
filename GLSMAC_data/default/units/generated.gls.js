@@ -100,6 +100,9 @@ const supply_transport = find_component(manifest.weapons, 'SupplyTransport');
 const conventional_payload = find_component(manifest.weapons, 'ConventionalPayload');
 const planet_buster = find_component(manifest.weapons, 'PlanetBuster');
 const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
+const deep_radar = find_component(manifest.abilities, 'DeepRadar');
+const cloaking_device = find_component(manifest.abilities, 'CloakingDevice');
+const deep_pressure_hull = find_component(manifest.abilities, 'DeepPressureHull');
 const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
 const amphibious_pods = find_component(manifest.abilities, 'AmphibiousPods');
 const drop_pods = find_component(manifest.abilities, 'DropPods');
@@ -297,6 +300,15 @@ const add_milestone_designs = (technology_id) => {
 		}
 		if (triad != 'air' && is_available(heavy_artillery, known)) {
 			add(chassis, weapon, armor, 'artillery', [heavy_artillery]);
+			if (is_available(deep_radar, known) && #is_defined(known.NeuralGrafting)) {
+				add(chassis, weapon, armor, 'artillery', [deep_radar, heavy_artillery]);
+			}
+		}
+		if (triad == 'land' && is_available(cloaking_device, known)) {
+			add(chassis, weapon, armor, 'assault', [cloaking_device]);
+		}
+		if (triad == 'sea' && is_available(deep_pressure_hull, known)) {
+			add(chassis, weapon, armor, 'assault', [deep_pressure_hull]);
 		}
 		if (triad == 'land' && is_available(amphibious_pods, known)) {
 			add(chassis, weapon, armor, 'assault', [amphibious_pods]);

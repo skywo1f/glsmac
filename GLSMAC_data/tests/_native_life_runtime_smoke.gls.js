@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const turn_rules = #include('../default/game/turn_rules');
 
 	let game = null;
 	let target_id = 0;
@@ -10,6 +11,7 @@
 	let target_owner_id = 0;
 	let setup_complete = false;
 	let combat_observed = false;
+	let turn_ready_checks = 0;
 	let finished = false;
 
 	const fail = (message) => {
@@ -40,6 +42,27 @@
 		}
 		if (!combat_observed) {
 			#async(100, observe_combat);
+		}
+	};
+
+	const complete_human_turn = () => {
+		if (finished || game == null) {
+			return;
+		}
+		const human = game.get_player();
+		if (!game.is_turn_complete(human.id)) {
+			if (turn_rules.has_pending_owned_animation(game, human.id)) {
+				turn_ready_checks = 0;
+				#async(250, complete_human_turn);
+				return;
+			}
+			turn_ready_checks++;
+			if (turn_ready_checks < 2) {
+				#async(250, complete_human_turn);
+				return;
+			}
+			game.event('complete_turn', {});
+			#async(250, complete_human_turn);
 		}
 	};
 
@@ -96,11 +119,7 @@
 			});
 			setup_complete = true;
 			#async(100, observe_combat);
-			#async(500, () => {
-				if (!game.is_turn_complete(human.id)) {
-					game.event('complete_turn', {});
-				}
-			});
+			#async(500, complete_human_turn);
 			#async(15000, () => { fail('native combat did not complete a turn in time'); });
 		});
 

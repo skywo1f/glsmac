@@ -28,7 +28,7 @@ static const std::vector< uint8_t > s_base_render_population_thresholds = {
 
 static const bool HasUnembarkedUnit( const tile::Tile* tile ) {
 	for ( const auto& it : tile->GetUnits() ) {
-		if ( !it.second->IsEmbarked() ) {
+		if ( !it.second->IsEmbarked() && it.second->IsVisibleToPlayer() ) {
 			return true;
 		}
 	}

@@ -62,7 +62,8 @@ scenarios, for:
   and Spartan waivers, and the first prototype's morale bonus;
 - a player-facing Unit Workshop creates deterministic, faction-owned designs
   from researched original-SMAC chassis, weapons, armor, reactors, and
-  behavior-backed special abilities; the server recomputes legality and cost,
+  behavior-backed special abilities, including Deep Radar, Cloaking Device,
+  and Deep Pressure Hull; the server recomputes legality and cost,
   production and upgrades enforce ownership, AI production can value its own
   custom designs, prototype rules apply normally, and definitions survive a
   running-game reconnect; faction-specific obsolescence is persistent and
@@ -186,12 +187,16 @@ scenarios, for:
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
   terrain remains clear, and out-of-vision enemy bases and units are concealed
-  from rendering, selection, and previews; the minimap includes the same fog,
-  friendly Sensor Arrays provide live two-square coverage in claimed territory
-  and record that terrain when construction completes, and bilateral pacts
-  immediately exchange existing maps and continuously share later exploration;
-  old saves preserve their formerly unrestricted map view, while map trades and
-  automatic pact sharing have reversible settlement and network synchronization;
+  from rendering, selection, and previews; the minimap includes the same fog;
+  Deep Radar extends exploration and live sight to two squares; Cloaking Device
+  and Deep Pressure Hull units remain concealed unless directly encountered or
+  detected by an owned Sensor Array; Sensor Arrays provide live two-square
+  coverage, reveal concealed enemies, record terrain when construction completes,
+  and grant the original 25% defense bonus to units on covered land squares;
+  bilateral pacts immediately exchange existing maps and continuously share later
+  exploration; old saves preserve their formerly unrestricted map view, while
+  map trades and automatic pact sharing have reversible settlement and network
+  synchronization;
 - persistent energy loans with player-authored lending and borrowing terms,
   atomic principal transfer, yearly repayment, partial-payment handling,
   wartime balance growth, human controls, and relationship-, reserve-, risk-,
@@ -244,14 +249,15 @@ scenarios, for:
   AI and native-life controllers retry animation-blocked turn completion and
   stop cleanly when the turn advances;
 - seven-player startup, multiplayer turn/event synchronization, and reconnect
-  restoration of a running game.
+  restoration of a running game; clients consume synchronized content definitions
+  without redundantly submitting host-only initialization events.
 
 The base-game content validator currently reports:
 
 - 77 technologies;
 - all 38 base facilities represented: 38 complete and 0 partial;
 - all 33 Secret Projects represented: 33 complete and 0 partial;
-- 488 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 533 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -271,8 +277,8 @@ The following original-SMAC systems remain absent or materially incomplete:
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
 - volcanoes;
-- remaining Unit Workshop parity: original behaviors for currently unavailable
-  abilities such as Cloaking and Deep Pressure Hull;
+- remaining visibility parity: original fungus sight restrictions and broader
+  terrain-sensitive line-of-sight fidelity;
 - complete UI workflows, including the interactive abandon-versus-evacuate
   Headquarters prompt, accessibility review, packaging, upgrade migration, and
   release documentation;
@@ -284,7 +290,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 134 cases: 103 isolated native/script GSE tests
+The Release CTest matrix contains 135 cases: 104 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -514,6 +520,19 @@ the seven-player runtime passed in 58.65 seconds while exercising successful
 and failed native-player attacks, treaty betrayal, and full rollback through an
 authoritative event; and multiplayer synchronization plus running reconnect
 passed in 64.79 seconds.
+
+After Deep Radar, concealed-unit detection, Sensor Array defense, Cloaking
+Device, and Deep Pressure Hull behavior were completed, the Windows x64 Release
+build succeeded and all 104 isolated native/script tests passed in 306.96
+seconds. The ten-scenario installed-asset visibility, movement, combat, native,
+facility, and colony group passed in 183.95 seconds, with native combat also
+passing five consecutive stress runs. The long AI economy soak passed in 415.14
+seconds; repair and reinforcement passed in 103.05 and 90.38 seconds; air,
+hurry-production, seven-player, opponent-strategy, and conquest scenarios also
+passed. Multiplayer passed in 66.38 seconds. Running reconnect exposed clients
+redundantly submitting 533 host-only content definitions; restricting those
+events to the authoritative host removed the rejected-event flood, and the same
+reconnect scenario then passed under its original deadline in 61.60 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -975,7 +975,9 @@ return (game) => {
 		return result;
 	});
 
-	pops.define(game);
+	if (#typeof(game.is_master) != 'Callable' || game.is_master()) {
+		pops.define(game);
+	}
 
 	game.on('start', (e) => {
 

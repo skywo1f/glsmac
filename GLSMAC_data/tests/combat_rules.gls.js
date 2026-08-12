@@ -3,14 +3,21 @@ const combat_rules = #include('../default/game/combat_rules');
 const make_tile = () => {
 	let base = null;
 	let units = [];
+	let surrounding = [];
 	return {
+		x: 0,
+		y: 0,
+		is_land: true,
+		is_water: false,
 		rockiness: 1,
 		features: {xenofungus: false},
-		terraforming: {bunker: false},
+		terraforming: {bunker: false, sensor: false},
 		get_base: () => { return base; },
 		set_base: (value) => { base = value; },
 		get_units: () => { return units; },
 		add_unit: (unit) => { units :+unit; },
+		get_surrounding_tiles: () => { return surrounding; },
+		set_surrounding_tiles: (tiles) => { surrounding = tiles; },
 	};
 };
 
@@ -88,6 +95,9 @@ const pholus_game = {
 		if (key == 'f_social_get_morale_bonus') {
 			return #undefined;
 		}
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return null; };
+		}
 		test.assert(key == 'f_project_get_player_effects');
 		return (player) => { return {
 			psi_attack_multiplier: 1.0,
@@ -111,6 +121,9 @@ const project_psi_game = {
 		}
 		if (key == 'f_base_get_effective_facilities') {
 			return (base) => { return base.get_facilities(); };
+		}
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return null; };
 		}
 		test.assert(key == 'f_project_get_player_effects');
 		return (player) => {
@@ -144,6 +157,9 @@ const project_defense_game = {
 		if (key == 'f_social_get_morale_bonus') {
 			return #undefined;
 		}
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return null; };
+		}
 		test.assert(key == 'f_base_get_effective_facilities');
 		return (base) => { return [{defense_multiplier: 2.0}]; };
 	},
@@ -152,6 +168,35 @@ test.assert(
 	combat_rules.get_base_defense_multiplier(defender, attacker, project_defense_game) == 2.0
 );
 test.assert(combat_rules.get_combat_powers(attacker, defender, project_defense_game).defence == 5.0);
+
+const sensor_defense_tile = make_tile();
+const sensor_tile = make_tile();
+sensor_tile.x = 2;
+sensor_tile.terraforming.sensor = true;
+sensor_defense_tile.set_surrounding_tiles([sensor_tile]);
+sensor_tile.set_surrounding_tiles([sensor_defense_tile]);
+const sensor_defender = make_unit(sensor_defense_tile, 2, 1, 2, false, 'land');
+let sensor_owner = {id: 2};
+const sensor_game = {
+	get: (key) => {
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return tile == sensor_tile ? sensor_owner : null; };
+		}
+		return #undefined;
+	},
+};
+test.assert(combat_rules.get_sensor_defense_bonus(sensor_defender, sensor_game) == 0.25);
+test.assert(combat_rules.get_combat_powers(attacker, sensor_defender, sensor_game).defence == 2.5);
+const sensor_air_defender = make_unit(sensor_defense_tile, 2, 1, 2, false, 'air');
+test.assert(combat_rules.get_sensor_defense_bonus(sensor_air_defender, sensor_game) == 0.25);
+sensor_defense_tile.is_land = false;
+sensor_defense_tile.is_water = true;
+test.assert(combat_rules.get_sensor_defense_bonus(sensor_defender, sensor_game) == 0.0);
+sensor_defense_tile.is_land = true;
+sensor_defense_tile.is_water = false;
+sensor_owner = {id: 1};
+test.assert(combat_rules.get_sensor_defense_bonus(sensor_defender, sensor_game) == 0.0);
+test.assert(combat_rules.get_combat_powers(attacker, sensor_defender, sensor_game).defence == 2.0);
 
 const social_attack_tile = make_tile();
 const social_defense_tile = make_tile();

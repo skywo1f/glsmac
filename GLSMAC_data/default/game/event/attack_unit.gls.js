@@ -4,6 +4,7 @@ const MIN_BOMBARDMENT_HEALTH = 0.1;
 const NERVE_GAS_SANCTION_YEARS = 10;
 const MAX_MAJOR_ATROCITIES = 1000000;
 const combat_rules = #include('../combat_rules');
+const visibility_rules = #include('../visibility_rules');
 const native_capture = #include('../native_capture');
 const entity_snapshots = #include('../entity_snapshots');
 const snapshot_unit = entity_snapshots.snapshot_unit;
@@ -128,6 +129,14 @@ return {
 					? 'Defender tile is out of artillery range'
 					: 'Defender tile is not adjacent to attacker tile';
 			}
+		}
+		if (!visibility_rules.can_target(
+			e.game,
+			e.caller,
+			e.data.attacker,
+			e.data.defender
+		)) {
+			return 'Concealed unit has not been detected';
 		}
 		if (!combat_rules.can_attack_target(e.data.attacker, e.data.defender)) {
 			if (

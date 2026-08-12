@@ -1,3 +1,5 @@
+const unit_abilities = #include('unit_abilities');
+
 const tile_has_friendly_unit = (unit, tile) => {
 	for (other of tile.get_units()) {
 		if (other.owner == unit.owner) {
@@ -23,7 +25,10 @@ const tile_is_in_enemy_zoc = (unit, tile) => {
 };
 
 const is_zoc_move_blocked = (unit, source, destination) => {
-	if (!unit.is_land || destination.get_base() != null || tile_has_friendly_unit(unit, destination)) {
+	if (
+		!unit.is_land || unit_abilities.ignores_zoc(unit) ||
+		destination.get_base() != null || tile_has_friendly_unit(unit, destination)
+	) {
 		return false;
 	}
 	return tile_is_in_enemy_zoc(unit, source) && tile_is_in_enemy_zoc(unit, destination);

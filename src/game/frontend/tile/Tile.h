@@ -42,7 +42,8 @@ public:
 
 	static std::vector< size_t > GetUnitsOrder(
 		const std::unordered_map< size_t, unit::Unit* >& units,
-		const bool include_unowned = true
+		const bool include_unowned = true,
+		const bool include_concealed = false
 	);
 
 	Tile( const types::Vec2< size_t >& coords );

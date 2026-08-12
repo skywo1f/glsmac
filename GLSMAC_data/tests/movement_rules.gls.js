@@ -46,6 +46,7 @@ const mover = {
 	movement: 1.0,
 	health: 1.0,
 	get_tile: () => { return source; },
+	get_def: () => { return {weapon: 'Laser', abilities: []}; },
 };
 const enemy_land = {owner: enemy_owner.id, is_land: true, is_water: false, is_air: false};
 
@@ -62,6 +63,13 @@ test.assert(move_unit.validate({
 	game: {is_turn_complete: () => { return false; }},
 	data: {unit: mover, tile: destination},
 }) == 'Unit cannot move directly between enemy zones of control');
+
+const cloaked_mover = #clone(mover);
+cloaked_mover.get_def = () => { return {weapon: 'Laser', abilities: ['CloakingDevice']}; };
+test.assert(!movement_rules.is_zoc_move_blocked(cloaked_mover, source, destination));
+const probe_mover = #clone(mover);
+probe_mover.get_def = () => { return {weapon: 'ProbeTeam', abilities: []}; };
+test.assert(!movement_rules.is_zoc_move_blocked(probe_mover, source, destination));
 
 source_guard.set_units([]);
 test.assert(!movement_rules.is_zoc_move_blocked(mover, source, destination));

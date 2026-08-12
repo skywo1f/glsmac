@@ -35,6 +35,8 @@ public:
 
 	const bool IsArtillery() const;
 	const bool IsPlanetBuster() const;
+	const bool HasDeepRadar() const;
+	const bool IsConcealed() const;
 
 	sprite::Sprite* GetSprite( const backend::unit::morale_t morale );
 
@@ -56,6 +58,8 @@ private:
 	int64_t m_defense;
 	bool m_is_artillery = false;
 	bool m_is_planet_buster = false;
+	bool m_has_deep_radar = false;
+	bool m_is_concealed = false;
 
 	typedef std::unordered_map< backend::unit::morale_t, sprite::Sprite > morale_based_sprites_t;
 

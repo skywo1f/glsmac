@@ -165,6 +165,39 @@ test.assert(#is_defined(rules.get_error(player, selection(
 	'Needlejet', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
 ))));
 
+known.AdvancedMilitaryAlgorithms = true;
+const radar_scout = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DeepRadar']
+);
+preview = rules.get_preview(game, player, radar_scout);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['DeepRadar']);
+
+known.FrictionlessSurfaces = true;
+const cloaked_laser = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['CloakingDevice']
+);
+test.assert(!#is_defined(rules.get_error(player, cloaked_laser)));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['CloakingDevice']
+))));
+
+known.Nanometallurgy = true;
+const submarine = selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['DeepPressureHull']
+);
+test.assert(!#is_defined(rules.get_error(player, submarine)));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DeepPressureHull']
+))));
+test.assert(rules.get_error(player, selection(
+	'Foil',
+	'TroopTransport',
+	'NoArmor',
+	'FissionPlant',
+	['DeepPressureHull', 'CarrierDeck']
+)) == 'Deep Pressure Hull cannot be combined with Carrier Deck');
+
 test.assert(
 	#is_defined(rules.get_error(player, selection(
 		'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['EmpathSong', 'EmpathSong']

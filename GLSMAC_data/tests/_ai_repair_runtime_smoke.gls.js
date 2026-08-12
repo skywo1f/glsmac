@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const turn_rules = #include('../default/game/turn_rules');
 
 	let game = null;
 	let injured_id = 0;
@@ -12,6 +13,7 @@
 	let setup_complete = false;
 	let setup_wait_ticks = 0;
 	let wait_ticks = 0;
+	let turn_ready_checks = 0;
 
 	const fail = (message) => {
 		#print('AI_REPAIR_RUNTIME_FAIL: ' + message);
@@ -19,9 +21,20 @@
 	};
 
 	const complete_human_turn = () => {
-		if (!game.is_game_over() && !game.is_turn_complete(game.get_player().id)) {
-			game.event('complete_turn', {});
+		if (game.is_game_over() || game.is_turn_complete(game.get_player().id)) {
+			return false;
 		}
+		const human = game.get_player();
+		if (turn_rules.has_pending_owned_animation(game, human.id)) {
+			turn_ready_checks = 0;
+			return true;
+		}
+		turn_ready_checks++;
+		if (turn_ready_checks < 2) {
+			return true;
+		}
+		game.event('complete_turn', {});
+		return true;
 	};
 
 	const finish_setup = () => {
@@ -40,6 +53,7 @@
 			return true;
 		}
 		setup_complete = true;
+		#print('AI_REPAIR_RUNTIME_TRACE: injured unit setup completed');
 		#async(100, complete_human_turn);
 		#async(100, check_result);
 		return false;
@@ -52,6 +66,13 @@
 			return false;
 		}
 		const injured = game.get_um().get_unit(injured_id);
+		if (wait_ticks % 100 == 0) {
+			#print(
+				'AI_REPAIR_RUNTIME_TRACE: checks=' + #to_string(wait_ticks) +
+				' health=' + #to_string(injured.health) +
+				' at_home=' + #to_string(injured.get_tile() == home_tile)
+			);
+		}
 		if (!arrived_home && injured.get_tile() == home_tile) {
 			arrived_home = true;
 			if (injured.health >= 0.5) {
@@ -125,6 +146,7 @@
 				morale: 1,
 				health: 0.3,
 			});
+			#print('AI_REPAIR_RUNTIME_TRACE: queued injured unit setup');
 			#async(100, finish_setup);
 		});
 

@@ -11,6 +11,7 @@ const MIN_DIRECT_ATTACK_SCORE = 0.5;
 const MIN_GROUP_ATTACK_SCORE = 0.55;
 const ATTACK_SUPPORT_DISTANCE = 1;
 const combat_rules = #include('../combat_rules');
+const visibility_rules = #include('../visibility_rules');
 
 const is_triad_blocked = (unit, tile) => {
 	return combat_rules.is_triad_attack_blocked(unit, tile);
@@ -67,11 +68,12 @@ const can_threaten_tile = (unit, tile) => {
 	return combat_rules.is_artillery(def) || !is_triad_blocked(unit, tile);
 };
 
-const get_required_garrison = (tm, base, player_id, units) => {
+const get_required_garrison = (tm, base, player_id, units, game) => {
 	let result = 1;
 	for (unit of units) {
 		if (
 			unit.owner != player_id &&
+			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit)) &&
 			can_threaten_tile(unit, base.get_tile()) &&
 			tm.get_distance(base.get_tile(), unit.get_tile()) <= THREAT_DISTANCE
 		) {
@@ -106,7 +108,7 @@ const get_force_power = (unit) => {
 		combat_rules.get_morale_multiplier(unit) * unit.health;
 };
 
-const get_reinforcement_score = (tm, unit, base, player_id, units, reservations) => {
+const get_reinforcement_score = (tm, unit, base, player_id, units, reservations, game) => {
 	const tile = base.get_tile();
 	if (
 		base.get_owner().id != player_id ||
@@ -116,7 +118,7 @@ const get_reinforcement_score = (tm, unit, base, player_id, units, reservations)
 	}
 	const key = #to_string(base.id);
 	const reserved = #is_defined(reservations[key]) ? reservations[key] : 0;
-	const required = get_required_garrison(tm, base, player_id, units);
+	const required = get_required_garrison(tm, base, player_id, units, game);
 	const shortage = required - get_garrison_count(base, player_id) - reserved;
 	if (shortage <= 0) {
 		return null;
@@ -124,11 +126,11 @@ const get_reinforcement_score = (tm, unit, base, player_id, units, reservations)
 	return shortage * 10000 + required * 1000 - tm.get_distance(unit.get_tile(), tile) * 100;
 };
 
-const choose_reinforcement_target = (tm, unit, player_id, bases, units, reservations) => {
+const choose_reinforcement_target = (tm, unit, player_id, bases, units, reservations, game) => {
 	let best = null;
 	let best_score = 0;
 	for (base of bases) {
-		const score = get_reinforcement_score(tm, unit, base, player_id, units, reservations);
+		const score = get_reinforcement_score(tm, unit, base, player_id, units, reservations, game);
 		if (score == null) {
 			continue;
 		}
@@ -148,11 +150,11 @@ const choose_reinforcement_target = (tm, unit, player_id, bases, units, reservat
 	return best;
 };
 
-const get_attack_score = (attacker, defender) => {
-	return combat_rules.get_attack_score(attacker, defender);
+const get_attack_score = (attacker, defender, game) => {
+	return combat_rules.get_attack_score(attacker, defender, game);
 };
 
-const get_attack_commitment_score = (tm, attacker, defender, player_id, units) => {
+const get_attack_commitment_score = (tm, attacker, defender, player_id, units, game) => {
 	const target_tile = defender.get_tile();
 	let support = 0.0;
 	let defense = 0.0;
@@ -168,27 +170,29 @@ const get_attack_commitment_score = (tm, attacker, defender, player_id, units) =
 			tm.get_distance(unit.get_tile(), target_tile) <= ATTACK_SUPPORT_DISTANCE &&
 			!is_triad_blocked(unit, target_tile)
 		) {
-			support += combat_rules.get_attack_powers(unit, defender).attack;
+			support += combat_rules.get_attack_powers(unit, defender, game).attack;
 		} else if (unit.owner != player_id && unit.health > 0.0 && unit.get_tile() == target_tile) {
-			defense += combat_rules.get_attack_powers(attacker, unit).defence;
+			if (!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit)) {
+				defense += combat_rules.get_attack_powers(attacker, unit, game).defence;
+			}
 		}
 	}
 	const total = support + defense;
 	return total > 0.0 ? support / total : 0.0;
 };
 
-const can_commit_attack = (tm, attacker, defender, player_id, units) => {
+const can_commit_attack = (tm, attacker, defender, player_id, units, game) => {
 	if (combat_rules.is_artillery(attacker.get_def())) {
 		return true;
 	}
-	if (get_attack_score(attacker, defender) >= MIN_DIRECT_ATTACK_SCORE) {
+	if (get_attack_score(attacker, defender, game) >= MIN_DIRECT_ATTACK_SCORE) {
 		return true;
 	}
 	return #is_defined(tm) && #is_defined(units) &&
-		get_attack_commitment_score(tm, attacker, defender, player_id, units) >= MIN_GROUP_ATTACK_SCORE;
+		get_attack_commitment_score(tm, attacker, defender, player_id, units, game) >= MIN_GROUP_ATTACK_SCORE;
 };
 
-const choose_attack_target = (attacker, player_id, tiles, tm, units, is_target_allowed) => {
+const choose_attack_target = (attacker, player_id, tiles, tm, units, is_target_allowed, game) => {
 	let best = null;
 	let best_score = 0.0;
 	const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
@@ -199,15 +203,15 @@ const choose_attack_target = (attacker, player_id, tiles, tm, units, is_target_a
 		) {
 			continue;
 		}
-		const unit = combat_rules.get_best_defender(attacker, tile);
+		const unit = combat_rules.get_best_defender(attacker, tile, game);
 		if (
 			unit == null ||
 			(#is_defined(is_target_allowed) && !is_target_allowed(unit.owner)) ||
-			!can_commit_attack(tm, attacker, unit, player_id, units)
+			!can_commit_attack(tm, attacker, unit, player_id, units, game)
 		) {
 			continue;
 		}
-		const score = get_attack_score(attacker, unit);
+		const score = get_attack_score(attacker, unit, game);
 		if (
 			best == null ||
 			score > best_score ||
@@ -231,7 +235,7 @@ const choose_attack_target = (attacker, player_id, tiles, tm, units, is_target_a
 	return best;
 };
 
-const get_assault_score = (tm, attacker, base, player_id, units) => {
+const get_assault_score = (tm, attacker, base, player_id, units, game) => {
 	const base_tile = base.get_tile();
 	if (
 		base.get_owner().id == player_id ||
@@ -243,8 +247,11 @@ const get_assault_score = (tm, attacker, base, player_id, units) => {
 	let support = 0.0;
 	for (unit of units) {
 		const def = unit.get_def();
-		if (unit.owner != player_id && unit.get_tile() == base_tile) {
-			defense += combat_rules.get_attack_powers(attacker, unit).defence;
+		if (
+			unit.owner != player_id && unit.get_tile() == base_tile &&
+			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit))
+		) {
+			defense += combat_rules.get_attack_powers(attacker, unit, game).defence;
 		} else if (
 			unit.owner == player_id &&
 			can_threaten_tile(unit, base_tile) &&
@@ -268,11 +275,11 @@ const get_assault_score = (tm, attacker, base, player_id, units) => {
 	);
 };
 
-const choose_assault_target = (tm, attacker, player_id, bases, units) => {
+const choose_assault_target = (tm, attacker, player_id, bases, units, game) => {
 	let best = null;
 	let best_score = 0.0;
 	for (base of bases) {
-		const score = get_assault_score(tm, attacker, base, player_id, units);
+		const score = get_assault_score(tm, attacker, base, player_id, units, game);
 		if (score == null) {
 			continue;
 		}

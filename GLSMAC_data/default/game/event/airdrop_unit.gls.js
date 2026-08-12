@@ -101,7 +101,7 @@ return {
 			queue_exploration = e.game.get('f_exploration_queue_at_tile');
 		}
 		if (#is_defined(queue_exploration) && e.game.get_um().has_unit(e.data.unit.id)) {
-			queue_exploration(e.data.unit.get_owner(), e.data.destination);
+			queue_exploration(e.data.unit.get_owner(), e.data.destination, e.data.unit);
 		}
 
 		if (e.game.is_master()) {

@@ -189,9 +189,16 @@ test.assert(!combat_rules.is_air_unit_in_flight(bomber));
 test.assert(combat_rules.can_attack_target(rifle, bomber));
 target_land.terraforming.airbase = false;
 
+let sensor_owner = null;
 const validate_game = {
 	is_turn_complete: (player_id) => { return false; },
 	tm: {get_distance: (from, to) => { return 1; }},
+	get: (name) => {
+		if (name == 'f_territory_get_owner') {
+			return (tile) => { return sensor_owner; };
+		}
+		return #undefined;
+	},
 };
 ordinary.get_tile = () => { return water_tile; };
 ordinary.transport_id = 50;
@@ -228,6 +235,41 @@ test.assert(
 	}) == 'Only units with Amphibious Pods can attack from a transport'
 );
 sam.transport_id = 0;
+
+const cloaked_def = make_def(
+	'CloakedInfantry',
+	['CloakingDevice'],
+	'land',
+	'Infantry'
+);
+const cloaked_defender = make_unit(20, defender_owner, target_land, cloaked_def, 'land');
+test.assert(!#is_defined(attack_unit.validate({
+	caller: attacker_owner.id,
+	game: validate_game,
+	data: {attacker: rifle, defender: cloaked_defender},
+})));
+const artillery_def = make_def(
+	'RadarArtillery',
+	['DeepRadar', 'HeavyArtillery'],
+	'land',
+	'Infantry'
+);
+artillery_def.is_artillery = true;
+const artillery = make_unit(21, attacker_owner, land_tile, artillery_def, 'land');
+test.assert(attack_unit.validate({
+	caller: attacker_owner.id,
+	game: validate_game,
+	data: {attacker: artillery, defender: cloaked_defender},
+}) == 'Concealed unit has not been detected');
+target_land.terraforming.sensor = true;
+sensor_owner = attacker_owner;
+test.assert(!#is_defined(attack_unit.validate({
+	caller: attacker_owner.id,
+	game: validate_game,
+	data: {attacker: artillery, defender: cloaked_defender},
+})));
+target_land.terraforming.sensor = false;
+sensor_owner = null;
 
 const movement_game = {
 	is_turn_complete: (player_id) => { return false; },

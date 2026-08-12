@@ -25,6 +25,10 @@ UnitDef::UnitDef( sprite::InstancedSpriteManager* ism, const backend::unit::Def*
 			const auto* def = (backend::unit::StaticDef*)unitdef;
 			m_is_artillery = def->IsArtillery();
 			m_is_planet_buster = def->m_is_missile && def->m_weapon_id == "PlanetBuster";
+			m_has_deep_radar = def->HasAbility( "DeepRadar" );
+			m_is_concealed =
+				def->HasAbility( "CloakingDevice" ) ||
+				def->HasAbility( "DeepPressureHull" );
 
 			switch ( def->m_render->m_type ) {
 
@@ -63,6 +67,14 @@ const bool UnitDef::IsArtillery() const {
 
 const bool UnitDef::IsPlanetBuster() const {
 	return m_is_planet_buster;
+}
+
+const bool UnitDef::HasDeepRadar() const {
+	return m_has_deep_radar;
+}
+
+const bool UnitDef::IsConcealed() const {
+	return m_is_concealed;
 }
 
 sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {

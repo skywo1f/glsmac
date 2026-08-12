@@ -1,5 +1,6 @@
 const action_state = #include('./ai/action_state');
 const strategy = #include('./native_strategy');
+const turn_rules = #include('./turn_rules');
 
 const ACTION_DELAY = 200;
 
@@ -17,6 +18,7 @@ const play_turn = (game, player, done) => {
 	strategy.queue_ambient_spawn(game);
 	const turn_id = game.get_turn();
 	let steps = 0;
+	let completion_ready_checks = 0;
 	let action_attempts = {};
 	const play_next_action = () => {
 		if (
@@ -72,6 +74,17 @@ const play_turn = (game, player, done) => {
 			(action_started || waiting_for_action || waiting_for_animation) &&
 			steps < 1000
 		) {
+			completion_ready_checks = 0;
+			#async(ACTION_DELAY, play_next_action);
+			return;
+		}
+		if (turn_rules.has_pending_owned_animation(game, player.id)) {
+			completion_ready_checks = 0;
+			#async(ACTION_DELAY, play_next_action);
+			return;
+		}
+		completion_ready_checks++;
+		if (completion_ready_checks < 2) {
 			#async(ACTION_DELAY, play_next_action);
 			return;
 		}

@@ -50,6 +50,7 @@ Unit::Unit(
 		}
 	)
 	, m_is_owned( is_owned )
+	, m_is_visible_to_player( is_owned )
 	, m_movement( movement )
 	, m_morale( morale )
 	, m_morale_string( morale_string )
@@ -96,6 +97,31 @@ const bool Unit::IsEmbarked() const {
 
 const bool Unit::IsPlanetBuster() const {
 	return m_def->IsPlanetBuster();
+}
+
+const bool Unit::IsArtillery() const {
+	return m_def->IsArtillery();
+}
+
+const bool Unit::HasDeepRadar() const {
+	return m_def->HasDeepRadar();
+}
+
+const bool Unit::IsConcealed() const {
+	return m_def->IsConcealed();
+}
+
+const bool Unit::IsVisibleToPlayer() const {
+	return m_is_visible_to_player;
+}
+
+const bool Unit::SetVisibleToPlayer( const bool is_visible ) {
+	if ( m_is_visible_to_player == is_visible ) {
+		return false;
+	}
+	m_is_visible_to_player = is_visible;
+	m_tile->InvalidateUnitOrder();
+	return true;
 }
 
 tile::Tile* Unit::GetTile() const {

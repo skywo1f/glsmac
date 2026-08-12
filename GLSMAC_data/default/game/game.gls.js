@@ -99,9 +99,11 @@ return (glsmac) => {
 			resources.configure(game);
 			technologies.configure(game);
 
-			resources.define(game);
-			units.define(game);
-			facilities.define(game);
+			if (#typeof(game.is_master) != 'Callable' || game.is_master()) {
+				resources.define(game);
+				units.define(game);
+				facilities.define(game);
+			}
 
 			const worldscript = #is_defined(glsmac.config.worldscript) ? glsmac.config.worldscript : 'default';
 			game.on('create_world', (e) => {

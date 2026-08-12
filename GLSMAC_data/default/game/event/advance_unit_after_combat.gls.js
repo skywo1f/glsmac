@@ -76,7 +76,7 @@ return {
 			queue_contacts(unit.get_owner(), e.data.tile);
 		}
 		if (#is_defined(queue_exploration)) {
-			queue_exploration(unit.get_owner(), e.data.tile);
+			queue_exploration(unit.get_owner(), e.data.tile, unit);
 		}
 		if (
 			base != null && applied.orig_base_owner.id != unit.owner &&

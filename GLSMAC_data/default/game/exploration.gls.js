@@ -1,3 +1,5 @@
+const visibility_rules = #include('visibility_rules');
+
 const tile_key = (tile) => {
 	return #to_string(tile.x) + '_' + #to_string(tile.y);
 };
@@ -123,9 +125,10 @@ const queue_reveal = (game, player, tiles) => {
 	}
 };
 
-const queue_at_tile = (game, player, tile) => {
+const queue_at_tile = (game, player, tile, unit) => {
 	if (tile != null) {
-		queue_reveal(game, player, get_tiles_in_radius(tile, 1));
+		const radius = #is_defined(unit) ? visibility_rules.get_sight_radius(unit) : 1;
+		queue_reveal(game, player, get_tiles_in_radius(tile, radius));
 	}
 };
 
@@ -160,7 +163,7 @@ const scan_entities = (game) => {
 	}
 	if (#typeof(game.get_um) == 'Callable') {
 		for (unit of game.get_um().get_units()) {
-			queue_at_tile(game, game.get_player(unit.owner), unit.get_tile());
+			queue_at_tile(game, game.get_player(unit.owner), unit.get_tile(), unit);
 		}
 	}
 	if (#typeof(game.get_bm) == 'Callable') {
@@ -187,8 +190,8 @@ return (game) => {
 		game.set('f_exploration_queue_reveal', (player, tiles) => {
 			return queue_reveal(game, player, tiles);
 		});
-		game.set('f_exploration_queue_at_tile', (player, tile) => {
-			return queue_at_tile(game, player, tile);
+		game.set('f_exploration_queue_at_tile', (player, tile, unit) => {
+			return queue_at_tile(game, player, tile, unit);
 		});
 		game.set('f_exploration_queue_sensor_at_tile', (tile) => {
 			return queue_sensor_at_tile(game, tile);

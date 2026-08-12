@@ -13,14 +13,19 @@ namespace tile {
 
 std::vector< size_t > Tile::GetUnitsOrder(
 	const std::unordered_map< size_t, unit::Unit* >& units,
-	const bool include_unowned
+	const bool include_unowned,
+	const bool include_concealed
 ) {
 	std::map< size_t, std::vector< size_t > > weights; // { weight, units }
 
 	for ( auto& it : units ) {
 		const auto unit_id = it.first;
 		const auto* unit = it.second;
-		if ( unit->IsEmbarked() || ( !include_unowned && !unit->IsOwned() ) ) {
+		if (
+			unit->IsEmbarked() ||
+			( !include_unowned && !unit->IsOwned() ) ||
+			( !include_concealed && !unit->IsVisibleToPlayer() )
+		) {
 			continue;
 		}
 		size_t weight = unit->GetSelectionWeight();

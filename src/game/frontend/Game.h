@@ -403,6 +403,7 @@ private:
 	) const;
 	const size_t GetTileDistance( const tile::Tile* first, const tile::Tile* second ) const;
 	const base::Base* GetClaimingBase( const tile::Tile* tile ) const;
+	const bool CanTargetUnit( const unit::Unit* attacker, const unit::Unit* defender ) const;
 
 	// some additional management of world actors such as calling Iterate()
 	// note that all world actors must be instanced

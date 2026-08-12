@@ -14,6 +14,15 @@ const get_unit = (id) => {
 	return null;
 };
 
+const has_ability = (data, ability_id) => {
+	for (ability of data.abilities) {
+		if (ability == ability_id) {
+			return true;
+		}
+	}
+	return false;
+};
+
 const artifact = get_unit('AlienArtifact');
 test.assert(artifact != null);
 test.assert(!artifact.data.buildable);
@@ -57,6 +66,9 @@ let found_gravship = false;
 let found_missile = false;
 let found_planet_buster = false;
 let found_carrier = false;
+let found_radar_artillery = false;
+let found_cloaked_land = false;
+let found_submarine = false;
 let found_sea_colony = false;
 let found_fast_land_colony = false;
 let found_clean_unit = false;
@@ -135,6 +147,14 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		} else if (ability == 'CarrierDeck' && data.movement_type == 'water') {
 			test.assert(data.weapon == 'TroopTransport' && data.cargo_capacity > 0);
 			found_carrier = true;
+		} else if (ability == 'DeepRadar' && has_ability(data, 'HeavyArtillery')) {
+			found_radar_artillery = true;
+		} else if (ability == 'CloakingDevice') {
+			test.assert(data.movement_type == 'land');
+			found_cloaked_land = true;
+		} else if (ability == 'DeepPressureHull') {
+			test.assert(data.movement_type == 'water');
+			found_submarine = true;
 		} else if (ability == 'AmphibiousPods') {
 			test.assert(data.movement_type == 'land');
 			found_amphibious_unit = true;
@@ -232,6 +252,9 @@ test.assert(found_gravship);
 test.assert(found_missile);
 test.assert(found_planet_buster);
 test.assert(found_carrier);
+test.assert(found_radar_artillery);
+test.assert(found_cloaked_land);
+test.assert(found_submarine);
 test.assert(found_sea_colony);
 test.assert(found_fast_land_colony);
 test.assert(found_clean_unit);

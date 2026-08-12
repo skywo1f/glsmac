@@ -106,6 +106,10 @@ reveal.caller = 0;
 values.f_exploration_queue_at_tile(alpha, center);
 test.assert(#sizeof(events) == 1 && events[0].name == 'reveal_map_tiles');
 test.assert(#sizeof(events[0].data.tiles) == 3);
+events = [];
+const radar_unit = {get_def: () => { return {abilities: ['DeepRadar']}; }};
+values.f_exploration_queue_at_tile(alpha, center, radar_unit);
+test.assert(#sizeof(events) == 1 && #sizeof(events[0].data.tiles) == 4);
 
 values.f_exploration_apply_reveal(alpha, [center, west, east]);
 values.f_exploration_apply_reveal(beta, [center]);

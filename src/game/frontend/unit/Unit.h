@@ -68,6 +68,11 @@ public:
 	const bool IsActive() const;
 	const bool IsEmbarked() const;
 	const bool IsPlanetBuster() const;
+	const bool IsArtillery() const;
+	const bool HasDeepRadar() const;
+	const bool IsConcealed() const;
+	const bool IsVisibleToPlayer() const;
+	const bool SetVisibleToPlayer( const bool is_visible );
 	tile::Tile* GetTile() const;
 
 	const size_t GetSelectionWeight() const;
@@ -155,6 +160,7 @@ private:
 	} m_render;
 
 	const bool m_is_owned = false;
+	bool m_is_visible_to_player = false;
 	bool m_is_active = false;
 	backend::unit::movement_t m_movement = 0.0f;
 	backend::unit::morale_t m_morale = 0;

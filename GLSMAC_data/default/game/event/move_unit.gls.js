@@ -325,7 +325,7 @@ return {
 				queue_exploration = e.game.get('f_exploration_queue_at_tile');
 			}
 			if (#is_defined(queue_exploration)) {
-				queue_exploration(unit.get_owner(), dst_tile);
+				queue_exploration(unit.get_owner(), dst_tile, unit);
 			}
 			if (
 				get_transport_id(unit) == 0 && dst_base != null &&

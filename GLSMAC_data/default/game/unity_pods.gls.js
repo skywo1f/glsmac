@@ -595,7 +595,7 @@ const apply = (game, unit, tile, resolved) => {
 		}
 		let queue_exploration = game.get('f_exploration_queue_at_tile');
 		if (#is_defined(queue_exploration)) {
-			queue_exploration(unit.get_owner(), resolved.destination);
+			queue_exploration(unit.get_owner(), resolved.destination, unit);
 		}
 		game.message(
 			tile.is_water

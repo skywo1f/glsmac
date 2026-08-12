@@ -1578,12 +1578,23 @@ const base::Base* Game::GetClaimingBase( const tile::Tile* tile ) const {
 	return result;
 }
 
+const bool Game::CanTargetUnit( const unit::Unit* attacker, const unit::Unit* defender ) const {
+	if ( !attacker || !defender || defender->IsOwned() || defender->IsEmbarked() ) {
+		return false;
+	}
+	return defender->IsVisibleToPlayer() || (
+		!attacker->IsArtillery() &&
+		GetTileDistance( attacker->GetTile(), defender->GetTile() ) == 1
+	);
+}
+
 void Game::RefreshMapVisibility() {
 	if ( !m_map_visibility_dirty || !m_actors.fog ) {
 		return;
 	}
 
 	std::unordered_set< size_t > visible_tiles = {};
+	std::unordered_set< size_t > sensor_detected_tiles = {};
 	for ( auto& it : m_tm->GetTiles() ) {
 		auto* const tile = &it.second;
 		const auto* const base = tile->GetBase();
@@ -1592,8 +1603,11 @@ void Game::RefreshMapVisibility() {
 		}
 		for ( const auto& unit : tile->GetUnits() ) {
 			if ( unit.second->IsOwned() ) {
-				AddVisibleTilesInRadius( tile, 1, visible_tiles );
-				break;
+				AddVisibleTilesInRadius(
+					tile,
+					unit.second->HasDeepRadar() ? 2 : 1,
+					visible_tiles
+				);
 			}
 		}
 	}
@@ -1605,6 +1619,7 @@ void Game::RefreshMapVisibility() {
 			if ( owner && owner->IsOwned() ) {
 				owned_sensor_count++;
 				AddVisibleTilesInRadius( tile, 2, visible_tiles );
+				AddVisibleTilesInRadius( tile, 2, sensor_detected_tiles );
 			}
 		}
 	}
@@ -1614,13 +1629,35 @@ void Game::RefreshMapVisibility() {
 	);
 	auto* const selected_unit = m_um->GetSelectedUnit();
 	const size_t selected_unit_id = selected_unit ? selected_unit->GetId() : 0;
+	size_t concealed_visible_count = 0;
+	size_t concealed_hidden_count = 0;
 	for ( auto& it : m_tm->GetTiles() ) {
 		auto* const tile = &it.second;
 		const auto& coords = tile->GetCoords();
 		const auto key = GetTileIndex( coords );
 		const bool is_visible = visible_tiles.find( key ) != visible_tiles.end();
+		bool needs_render = false;
 		if ( tile->IsCurrentlyVisible() != is_visible ) {
 			tile->SetCurrentlyVisible( is_visible );
+			needs_render = true;
+		}
+		const bool has_sensor_detection = sensor_detected_tiles.find( key ) != sensor_detected_tiles.end();
+		for ( const auto& unit : tile->GetUnits() ) {
+			auto* const candidate = unit.second;
+			const bool unit_is_visible = candidate->IsOwned() || (
+				is_visible && ( !candidate->IsConcealed() || has_sensor_detection )
+			);
+			needs_render = candidate->SetVisibleToPlayer( unit_is_visible ) || needs_render;
+			if ( candidate->IsConcealed() && !candidate->IsOwned() ) {
+				if ( unit_is_visible ) {
+					concealed_visible_count++;
+				}
+				else {
+					concealed_hidden_count++;
+				}
+			}
+		}
+		if ( needs_render ) {
 			tile->Render( selected_unit_id );
 		}
 
@@ -1651,7 +1688,9 @@ void Game::RefreshMapVisibility() {
 		"Map visibility: " + std::to_string( m_currently_visible_tiles.size() ) +
 		" visible, " + std::to_string( m_explored_tiles.size() ) +
 		" explored of " + std::to_string( m_tm->GetTiles().size() ) + " tiles, " +
-		std::to_string( owned_sensor_count ) + " owned sensors"
+		std::to_string( owned_sensor_count ) + " owned sensors, " +
+		std::to_string( concealed_visible_count ) + " concealed detected, " +
+		std::to_string( concealed_hidden_count ) + " concealed hidden"
 	);
 	RefreshSelectedTile( selected_unit );
 	if ( m_exploration_changed ) {
@@ -2019,10 +2058,7 @@ void Game::Initialize(
 									std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 									for ( const auto& it : dst_tile->GetUnits() ) {
 										const auto& unit = it.second;
-										if (
-											dst_tile->IsCurrentlyVisible() &&
-											!unit->IsEmbarked() && !unit->IsOwned()
-										) { // TODO: pacts
+										if ( CanTargetUnit( selected_unit, unit ) ) { // TODO: pacts
 											// TODO: skip units of treaty/truce faction?
 											foreign_units.insert( it );
 										}
@@ -2052,7 +2088,7 @@ void Game::Initialize(
 												if ( !attacker ) {
 													return;
 												}
-												auto* defender = um->GetUnit( foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId() );
+												auto* defender = um->GetUnit( foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units, true, true ).front() )->GetId() );
 												if ( !defender ) {
 													return;
 												}
@@ -2335,10 +2371,7 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 		const bool is_planet_buster = selected_unit->IsPlanetBuster();
 		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 		for ( const auto& it : tile->GetUnits() ) {
-			if (
-				tile->IsCurrentlyVisible() &&
-				!it.second->IsEmbarked() && !it.second->IsOwned()
-			) {
+			if ( CanTargetUnit( selected_unit, it.second ) ) {
 				foreign_units.insert( it );
 			}
 		}
@@ -2347,7 +2380,7 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 		}
 		const auto defender_id = foreign_units.empty()
 			? 0
-			: foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId();
+			: foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units, true, true ).front() )->GetId();
 		const auto target_coords = tile->GetCoords();
 		auto* game = m_game;
 		m_glsmac->WithGSE(

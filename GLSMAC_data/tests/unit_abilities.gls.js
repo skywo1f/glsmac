@@ -18,6 +18,14 @@ test.assert(abilities.get_morale_bonus(unit_def([])) == 0);
 test.assert(abilities.get_morale_bonus(unit_def(['HighMorale'])) == 1);
 test.assert(abilities.get_police_effect(unit_def([])) == 1);
 test.assert(abilities.get_police_effect(unit(['NonLethalMethods'])) == 2);
+test.assert(abilities.get_sight_radius(unit_def([])) == 1);
+test.assert(abilities.get_sight_radius(unit(['DeepRadar'])) == 2);
+test.assert(!abilities.is_concealed(unit_def([])));
+test.assert(abilities.is_concealed(unit(['CloakingDevice'])));
+test.assert(abilities.is_concealed(unit(['DeepPressureHull'])));
+test.assert(!abilities.ignores_zoc({weapon: 'Laser', abilities: []}));
+test.assert(abilities.ignores_zoc({weapon: 'ProbeTeam', abilities: []}));
+test.assert(abilities.ignores_zoc(unit(['CloakingDevice'])));
 
 test.assert(abilities.get_terraforming_rate_multiplier(unit_def([]), 'farm') == 1.0);
 test.assert(

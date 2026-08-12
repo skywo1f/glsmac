@@ -15,13 +15,21 @@ const make_tile = (x, y) => {
 		is_water: false,
 		rockiness: 1,
 		features: {xenofungus: false},
-		terraforming: {bunker: false},
+		terraforming: {bunker: false, sensor: false},
 		get_base: () => { return base; },
 		set_base: (value) => { base = value; },
 		get_units: () => { return units; },
 		add_unit: (unit) => { units :+unit; },
 		get_surrounding_tiles: () => { return surrounding; },
 		set_surrounding_tiles: (tiles) => { surrounding = tiles; },
+		is_adjactent_to: (tile) => {
+			for (candidate of surrounding) {
+				if (candidate == tile) {
+					return true;
+				}
+			}
+			return false;
+		},
 	};
 };
 
@@ -292,6 +300,69 @@ test.assert(
 	) == null
 );
 
+const stealth_origin = make_tile(70, 70);
+const stealth_target = make_tile(71, 70);
+stealth_origin.set_surrounding_tiles([stealth_target]);
+stealth_target.set_surrounding_tiles([stealth_origin]);
+const stealth_attacker = make_combat_unit(player_id, stealth_origin, 4, 1, 1.0, 2);
+const stealth_defender = make_combat_unit(other_player_id, stealth_target, 1, 1, 1.0, 2);
+stealth_defender.get_def = () => { return {
+	id: 'CloakedDefender',
+	is_native: false,
+	offense: 1,
+	defense: 1,
+	movement_per_turn: 1.0,
+	abilities: ['CloakingDevice'],
+}; };
+const stealth_artillery = make_combat_unit(player_id, stealth_origin, 4, 1, 1.0, 2);
+stealth_artillery.get_def = () => { return {
+	id: 'RadarArtillery',
+	is_native: false,
+	is_artillery: true,
+	offense: 4,
+	defense: 1,
+	movement_per_turn: 1.0,
+	abilities: ['DeepRadar', 'HeavyArtillery'],
+}; };
+let stealth_sensor_owner = null;
+const stealth_game = {
+	get: (key) => {
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return stealth_sensor_owner; };
+		}
+		return #undefined;
+	},
+};
+test.assert(combat.choose_attack_target(
+	stealth_attacker,
+	player_id,
+	[stealth_target],
+	tm,
+	[stealth_attacker, stealth_defender],
+	#undefined,
+	stealth_game
+) == stealth_defender);
+test.assert(combat.choose_attack_target(
+	stealth_artillery,
+	player_id,
+	[stealth_target],
+	tm,
+	[stealth_artillery, stealth_defender],
+	#undefined,
+	stealth_game
+) == null);
+stealth_target.terraforming.sensor = true;
+stealth_sensor_owner = {id: player_id};
+test.assert(combat.choose_attack_target(
+	stealth_artillery,
+	player_id,
+	[stealth_target],
+	tm,
+	[stealth_artillery, stealth_defender],
+	#undefined,
+	stealth_game
+) == stealth_defender);
+
 const commitment_origin = make_tile(60, 60);
 const commitment_target_tile = make_tile(61, 60);
 const commitment_support_tile = make_tile(61, 59);
@@ -319,6 +390,32 @@ test.assert(
 		supported_force
 	) > 0.55
 );
+commitment_target_tile.terraforming.sensor = true;
+const defender_sensor_game = {
+	get: (key) => {
+		if (key == 'f_territory_get_owner') {
+			return (tile) => { return {id: other_player_id}; };
+		}
+		return #undefined;
+	},
+};
+test.assert(
+	combat.get_attack_commitment_score(
+		tm,
+		cautious_attacker,
+		fortified_defender,
+		player_id,
+		supported_force,
+		defender_sensor_game
+	) < combat.get_attack_commitment_score(
+		tm,
+		cautious_attacker,
+		fortified_defender,
+		player_id,
+		supported_force
+	)
+);
+commitment_target_tile.terraforming.sensor = false;
 test.assert(
 	combat.choose_attack_target(
 		cautious_attacker,
