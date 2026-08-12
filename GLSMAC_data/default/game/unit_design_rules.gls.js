@@ -4,6 +4,7 @@ const cost_rules = #include('../units/design_rules');
 const SUPPORTED_ABILITIES = {
 	SuperFormer: true,
 	AmphibiousPods: true,
+	DropPods: true,
 	AirSuperiority: true,
 	CarrierDeck: true,
 	AAATracking: true,

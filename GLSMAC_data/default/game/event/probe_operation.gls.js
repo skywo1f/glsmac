@@ -36,10 +36,12 @@ const spawn_snapshot = (game, snapshot, owner_id, transferred) => {
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
 		convoy_resource: transferred ? 'none' : snapshot.convoy_resource,
+		airdropped_this_turn: transferred ? false : snapshot.airdropped_this_turn,
 	});
 	unit.movement = transferred ? 0.0 : snapshot.movement;
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
 	unit.native_capture_attempted = transferred ? false : snapshot.native_capture_attempted;
+	unit.airdropped_this_turn = transferred ? false : snapshot.airdropped_this_turn;
 	return unit;
 };
 

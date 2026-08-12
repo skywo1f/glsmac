@@ -1,5 +1,6 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const action_state = #include('ai/action_state');
+const airdrops = #include('ai/airdrops');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
@@ -1508,6 +1509,9 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	}
 	if (reinforcement_base != null) {
 		const destination = reinforcement_base.get_tile();
+		if (airdrops.try_drop(game, player, unit, destination)) {
+			return 100;
+		}
 		if (psi_gates.try_teleport(game, player, unit, destination, all_bases)) {
 			return 100;
 		}
@@ -1542,6 +1546,12 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 	const enemy_distance = enemy_base == null
 		? 100000
 		: game.get_tm().get_distance(tile, enemy_base.get_tile());
+	if (
+		enemy_base != null &&
+		airdrops.try_drop(game, player, unit, enemy_base.get_tile())
+	) {
+		return 100;
+	}
 	if (
 		enemy_base != null &&
 		psi_gates.try_teleport(game, player, unit, enemy_base.get_tile(), all_bases)

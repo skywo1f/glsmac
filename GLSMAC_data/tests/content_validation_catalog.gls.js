@@ -77,11 +77,7 @@ test.assert(catalog.facility_coverage.status.NetworkNode == 'complete');
 test.assert(catalog.project_coverage.status.TheUniversalTranslator == 'complete');
 test.assert(catalog.project_coverage.status.TheNanoFactory == 'complete');
 test.assert(catalog.project_coverage.status.TheEmpathGuild == 'complete');
-for (id of [
-	'TheSpaceElevator',
-]) {
-	test.assert(catalog.project_coverage.status[id] == 'partial');
-}
+test.assert(catalog.project_coverage.status.TheSpaceElevator == 'complete');
 for (id of ['OrbitalDefensePod']) {
 	test.assert(catalog.facility_coverage.status[id] == 'partial');
 }
@@ -104,8 +100,8 @@ test.assert(result.counts == {
 	complete_facilities: 37,
 	partial_facilities: 1,
 	implemented_projects: 33,
-	complete_projects: 32,
-	partial_projects: 1,
+	complete_projects: 33,
+	partial_projects: 0,
 	base_facilities: 38,
 	projects: 33,
 	units: #sizeof(content.units.definitions),

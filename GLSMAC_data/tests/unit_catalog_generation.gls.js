@@ -71,6 +71,7 @@ let found_sea_sam = false;
 let found_air_sam = false;
 let found_land_nerve_gas = false;
 let found_air_nerve_gas = false;
+let found_drop_unit = false;
 let found_fission = false;
 let found_fusion = false;
 let found_quantum = false;
@@ -153,6 +154,9 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 			} else if (data.movement_type == 'air') {
 				found_air_nerve_gas = true;
 			}
+		} else if (ability == 'DropPods') {
+			test.assert(!data.is_native && data.movement_type == 'land');
+			found_drop_unit = true;
 		}
 	}
 	if (data.can_terraform) {
@@ -242,6 +246,7 @@ test.assert(found_sea_sam);
 test.assert(found_air_sam);
 test.assert(found_land_nerve_gas);
 test.assert(found_air_nerve_gas);
+test.assert(found_drop_unit);
 test.assert(found_fission);
 test.assert(found_fusion);
 test.assert(found_quantum);

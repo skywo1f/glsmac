@@ -15,6 +15,7 @@ return (game) => {
 		'spawn_unit',
 		'despawn_unit',
 		'move_unit',
+		'airdrop_unit',
 		'attack_unit',
 		'planet_buster',
 		'advance_unit_after_combat',

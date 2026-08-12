@@ -68,7 +68,7 @@
 		if (hurried && garrisoned && !base.get_tile().is_locked()) {
 			#print('AI_HURRY_RUNTIME_PASS: AI spent energy to rush an emergency base defender');
 			setup_complete = false;
-			#async(2000, () => { glsmac.exit(); });
+			#async(500, () => { glsmac.exit(); });
 			return false;
 		}
 		if (wait_ticks >= 250) {

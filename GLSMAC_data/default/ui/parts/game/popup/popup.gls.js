@@ -10,6 +10,7 @@ return {
 		'probe_operations',
 		'alien_artifact',
 		'supply_transport',
+		'airdrop',
 		'psi_gate',
 		'unit_upgrade',
 		'unit_workshop',

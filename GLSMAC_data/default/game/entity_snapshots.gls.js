@@ -19,6 +19,8 @@ const snapshot_unit = (unit) => {
 		convoy_resource: #is_defined(unit.convoy_resource) ? '' + unit.convoy_resource : 'none',
 		native_capture_attempted: #is_defined(unit.native_capture_attempted)
 			? unit.native_capture_attempted == true : false,
+		airdropped_this_turn: #is_defined(unit.airdropped_this_turn)
+			? unit.airdropped_this_turn == true : false,
 	};
 };
 
@@ -37,6 +39,8 @@ const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 		transport_id: snapshot.transport_id,
 		convoy_resource: transferred || !#is_defined(snapshot.convoy_resource)
 			? 'none' : snapshot.convoy_resource,
+		airdropped_this_turn: transferred || !#is_defined(snapshot.airdropped_this_turn)
+			? false : snapshot.airdropped_this_turn,
 	});
 	unit.movement = transferred ? 0.0 : snapshot.movement;
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;

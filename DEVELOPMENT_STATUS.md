@@ -211,7 +211,12 @@ scenarios, for:
   conventional land and air designs, grant +50% offense against non-native
   units, count as a major atrocity, impose U.N. Charter sanctions, and halve a
   defeated base's population, destroying size-one bases and rehoming their
-  surviving supported units;
+  surviving supported units; Drop Pods provide eight-square insertion from
+  owned bases and friendly airbases, Graviton Theory and the Space Elevator
+  provide global orbital insertion, Air Superiority patrols can deny landing
+  zones, reactor-scaled landing damage and the same-turn attack penalty apply,
+  transport cargo moves and rolls back with its carrier, and player and
+  target-aware AI controls use the same authoritative rules;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
   AI and native-life controllers retry animation-blocked turn completion and
@@ -223,8 +228,8 @@ The base-game content validator currently reports:
 
 - 77 technologies;
 - all 38 base facilities represented: 37 complete and 1 partial;
-- all 33 Secret Projects represented: 32 complete and 1 partial;
-- 476 runtime unit definitions, 14 source-manifest predefined units, and 68
+- all 33 Secret Projects represented: 33 complete and 0 partial;
+- 488 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -250,10 +255,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   dimensional-gate teleportation, and once-per-unit monolith visit tracking;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
-- the Space Elevator is the only partial Secret Project; it still lacks global
-  orbital insertion and its remaining Drop Pod interactions;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
-  abilities such as Drop Pods, Cloaking, and Deep Pressure Hull;
+  abilities such as Cloaking and Deep Pressure Hull;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -264,9 +267,25 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 127 cases: 97 isolated native/script GSE tests
+The Release CTest matrix contains 129 cases: 99 isolated native/script GSE tests
 and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After Drop Pods were completed, the Windows x64 Release build succeeded and all
+99 isolated tests passed in 213.14 seconds. Focused installed-asset Workshop,
+combat-access, and running-reconnect scenarios passed together in 80.46 seconds;
+the multiplayer synchronization harness passed in 52.17 seconds. Across bounded
+batches, 28 of 30 asset-backed scenarios passed. Coverage verifies 488-definition
+generation, Workshop legality, eight-square and orbital insertion, interceptor
+denial, reactor-scaled landing damage, the same-turn attack penalty, cargo and
+rollback behavior, AI production and destination choice, native persistence,
+turn reset, and reconnect restoration. The unchanged research runtime still
+fails to replicate its test-only energy seed, while the long AI economy soak
+deterministically stops advancing after its turn-15 trace. Neither scenario
+reaches a Drop-capable design or unit; both remain runtime blockers rather than
+being reported as passing. The air logic scenario now runs headlessly and passed
+in 16.02 seconds; the AI hurry scenario passed in 60.16 seconds after its
+post-success shutdown delay and CTest teardown allowance were corrected.
 
 After Nerve Gas Pods were completed, the Windows x64 Release build succeeded
 and all 97 isolated tests passed in 209.66 seconds. The installed-asset Unit

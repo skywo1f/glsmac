@@ -36,6 +36,9 @@ return {
 		if (#is_defined(e.data.transport_id)) {
 			data.transport_id = e.data.transport_id;
 		}
+		if (#is_defined(e.data.airdropped_this_turn)) {
+			data.airdropped_this_turn = e.data.airdropped_this_turn;
+		}
 		const unit = e.game.um.spawn_unit(data);
 		if (#is_defined(e.data.movement)) {
 			unit.movement = e.data.movement;

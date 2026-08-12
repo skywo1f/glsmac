@@ -100,7 +100,8 @@ Unit::Unit(
 	const uint16_t fuel,
 	const size_t transport_id,
 	const bool native_capture_attempted,
-	const convoy_resource_t convoy_resource
+	const convoy_resource_t convoy_resource,
+	const bool airdropped_this_turn
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -117,7 +118,8 @@ Unit::Unit(
 	, m_fuel( fuel )
 	, m_transport_id( transport_id )
 	, m_native_capture_attempted( native_capture_attempted )
-	, m_convoy_resource( convoy_resource ) {
+	, m_convoy_resource( convoy_resource )
+	, m_airdropped_this_turn( airdropped_this_turn ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -304,6 +306,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_transport_id );
 	buf.WriteBool( unit->m_native_capture_attempted );
 	buf.WriteInt( unit->m_convoy_resource );
+	buf.WriteBool( unit->m_airdropped_this_turn );
 	return buf;
 }
 
@@ -365,6 +368,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		? buf.ReadInt< int64_t >( "unit convoy resource" )
 		: static_cast< int64_t >( CR_NONE );
 	const auto convoy_resource = static_cast< convoy_resource_t >( convoy_resource_value );
+	const auto airdropped_this_turn = buf.GetRemaining() > 0
+		? buf.ReadBool()
+		: false;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -410,7 +416,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		fuel,
 		transport_id,
 		native_capture_attempted,
-		convoy_resource
+		convoy_resource,
+		airdropped_this_turn
 	);
 }
 
@@ -446,6 +453,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "transport_id", Int, m_transport_id )
 	WRAPIMPL_GET_PTR( "native_capture_attempted", m_native_capture_attempted )
 	WRAPIMPL_GET_CUSTOM( "convoy_resource", String, GetConvoyResourceString( m_convoy_resource ) )
+	WRAPIMPL_GET_PTR( "airdropped_this_turn", m_airdropped_this_turn )
 	WRAPIMPL_GET_CUSTOM( "is_embarked", Bool, m_transport_id != 0 )
 	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
 	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
@@ -608,6 +616,7 @@ WRAPIMPL_DYNAMIC_SETTERS( Unit )
 	WRAPIMPL_SET_PTR( "health", Float, m_health )
 	WRAPIMPL_SET_PTR( "moved_this_turn", Bool, m_moved_this_turn )
 	WRAPIMPL_SET_PTR( "native_capture_attempted", Bool, m_native_capture_attempted )
+	WRAPIMPL_SET_PTR( "airdropped_this_turn", Bool, m_airdropped_this_turn )
 WRAPIMPL_DYNAMIC_ON_SET( Unit )
 	// this is potentially risky because if it gets zero health it will be despawned without script's awareness, how to handle it?
 	// maybe despawn unit from within script? but then it would be script's responsibility to ensure there are no zero-health units walking around

@@ -745,6 +745,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( int64_t, fuel, obj, "fuel", Int, 0 - 1 );
 				N_GETPROP_OPT( size_t, transport_id, obj, "transport_id", Int, 0 );
 				N_GETPROP_OPT( std::string, convoy_resource_name, obj, "convoy_resource", String, "none" );
+				N_GETPROP_OPT( bool, airdropped_this_turn, obj, "airdropped_this_turn", Bool, false );
 				if ( home_base_id > 0 && m_game->IsRunning() ) {
 					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
 					if ( !home_base ) {
@@ -801,7 +802,8 @@ WRAPIMPL_BEGIN( UnitManager )
 					static_cast< uint16_t >( fuel ),
 					0,
 					false,
-					convoy_resource
+					convoy_resource,
+					airdropped_this_turn
 				);
 				if ( transport_id > 0 ) {
 					auto* const transport = GetUnit( transport_id );

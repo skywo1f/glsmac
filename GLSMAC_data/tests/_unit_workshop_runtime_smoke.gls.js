@@ -62,6 +62,7 @@
 			});
 			first.movement = 0.25;
 			first.moved_this_turn = true;
+			first.airdropped_this_turn = true;
 			game.get_um().spawn_unit({
 				def: 'ScoutPatrol', owner: player, tile: own_base.get_tile(),
 				morale: 2, health: 1.0, home_base_id: own_base.id,
@@ -168,6 +169,7 @@
 									id: unit.id,
 									movement: unit.movement,
 									moved_this_turn: unit.moved_this_turn,
+									airdropped_this_turn: unit.airdropped_this_turn,
 									morale: unit.morale,
 									health: unit.health,
 								};
@@ -205,6 +207,7 @@
 						if (
 							unit.def != preview.id || unit.movement != snapshot.movement ||
 							unit.moved_this_turn != snapshot.moved_this_turn ||
+							unit.airdropped_this_turn != snapshot.airdropped_this_turn ||
 							unit.morale != snapshot.morale || unit.health != snapshot.health
 						) {
 							fail('bulk upgrade did not preserve unit state');

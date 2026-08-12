@@ -793,6 +793,7 @@
 			const air_def = air_unit.get_def();
 			if (
 				air_unit.owner != player_id || air_unit.fuel != 1 ||
+				!air_unit.airdropped_this_turn ||
 				air_def.chassis != 'Needlejet' || air_def.operational_range != 2 ||
 				air_def.is_missile || !air_def.is_air
 			) {
@@ -979,6 +980,7 @@
 						health: 1.0,
 						morale: 2,
 						fuel: 1,
+						airdropped_this_turn: true,
 					});
 					game.event('running_reconnect_spawn_supply', {
 						owner: client_base.get_owner(),
@@ -996,6 +998,14 @@
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {
+				if (
+					!game.get_um().has_unit(air_snapshot_unit_id) ||
+					game.get_um().get_unit(air_snapshot_unit_id).airdropped_this_turn
+				) {
+					#print('RUNNING_RECONNECT_FAIL_HOST: air-drop turn flag did not reset');
+					glsmac.exit();
+					return;
+				}
 				for (player of game.get_players()) {
 					const research_error = get_research_state_error(player, true);
 					if (#is_defined(research_error)) {

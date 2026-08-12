@@ -1,5 +1,6 @@
 const terraforming = #include('../../../../units/terraforming');
 const artifact_rules = #include('../../../../game/artifact_rules');
+const airdrop_rules = #include('../../../../game/airdrop_rules');
 const psi_gate_rules = #include('../../../../game/psi_gate_rules');
 const supply_rules = #include('../../../../game/supply_rules');
 
@@ -297,6 +298,19 @@ return {
 					this.action_button.show();
 				} else if (
 					is_owned && object.transport_id == 0 &&
+					!#is_defined(airdrop_rules.get_source_error(
+						this.p.game,
+						object,
+						this.p.game.get_player().id
+					))
+				) {
+					this.action_unit = object;
+					this.action_mode = 'airdrop';
+					this.action_button.text = 'AIR DROP';
+					this.close_terraform_menu();
+					this.action_button.show();
+				} else if (
+					is_owned && object.transport_id == 0 &&
 					#sizeof(this.get_psi_gate_destinations(object)) > 0
 				) {
 					this.action_unit = object;
@@ -451,6 +465,9 @@ return {
 			} else if (this.action_mode == 'supply_transport') {
 				p.modules.popup.set('supply_transport', {unit: this.action_unit});
 				p.modules.popup.show('supply_transport');
+			} else if (this.action_mode == 'airdrop') {
+				p.modules.popup.set('airdrop', {unit: this.action_unit});
+				p.modules.popup.show('airdrop');
 			} else if (this.action_mode == 'psi_gate') {
 				p.modules.popup.set('psi_gate', {unit: this.action_unit});
 				p.modules.popup.show('psi_gate');
@@ -480,6 +497,11 @@ return {
 			if (this.action_mode == 'supply_transport' && e.code == 'O') {
 				p.modules.popup.set('supply_transport', {unit: this.action_unit});
 				p.modules.popup.show('supply_transport');
+				return true;
+			}
+			if (this.action_mode == 'airdrop' && e.code == 'I') {
+				p.modules.popup.set('airdrop', {unit: this.action_unit});
+				p.modules.popup.show('airdrop');
 				return true;
 			}
 			if (this.action_mode == 'terraform') {

@@ -345,6 +345,8 @@ nerve_gas_attacker.get_def = () => {
 test.assert(combat_rules.is_nerve_gas_attack(nerve_gas_attacker, defender));
 test.assert(combat_rules.get_combat_powers(nerve_gas_attacker, defender).attack == 3.0);
 test.assert(!combat_rules.is_nerve_gas_attack(nerve_gas_attacker, native_attacker));
+nerve_gas_attacker.airdropped_this_turn = true;
+test.assert(combat_rules.get_combat_powers(nerve_gas_attacker, defender).attack == 1.5);
 
 const nerve_gas_artillery = make_unit(attack_tile, 1, 2, 1, false, 'land');
 nerve_gas_artillery.get_def = () => {
@@ -359,6 +361,8 @@ nerve_gas_artillery.get_def = () => {
 	};
 };
 test.assert(combat_rules.get_artillery_powers(nerve_gas_artillery, defender).attack == 3.0);
+nerve_gas_artillery.airdropped_this_turn = true;
+test.assert(combat_rules.get_artillery_powers(nerve_gas_artillery, defender).attack == 1.5);
 
 const illegal_psi_gas = make_unit(attack_tile, 1, 1, 1, false, 'land');
 illegal_psi_gas.get_def = () => {

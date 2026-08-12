@@ -15,10 +15,12 @@ const restore_unit = (e, backup) => {
 		fuel: backup.fuel,
 		transport_id: backup.transport_id,
 		convoy_resource: backup.convoy_resource,
+		airdropped_this_turn: backup.airdropped_this_turn,
 	});
 	unit.movement = backup.movement;
 	unit.moved_this_turn = backup.moved_this_turn;
 	unit.native_capture_attempted = backup.native_capture_attempted;
+	unit.airdropped_this_turn = backup.airdropped_this_turn;
 };
 
 const get_initial_production = (game, owner, tile) => {

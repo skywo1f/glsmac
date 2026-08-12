@@ -20,8 +20,8 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'COMBAT_ACCESS_RUNTIME_PASS: validated generated amphibious, SAM, and nerve gas ' +
-				'designs, transport assault state, airborne targeting, and combat strength'
+				'COMBAT_ACCESS_RUNTIME_PASS: validated generated amphibious, SAM, nerve gas, and ' +
+				'Drop designs, transport assault state, airborne targeting, and combat strength'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -78,6 +78,7 @@
 			let air_sam_def = null;
 			let bomber_def = null;
 			let nerve_gas_def = null;
+			let drop_def = null;
 			for (def of um.get_unit_defs()) {
 				if (def.chassis == 'Foil' && def.weapon == 'TroopTransport') {
 					transport_def = def;
@@ -118,11 +119,20 @@
 						nerve_gas_def = def;
 					}
 				}
+				if (def.offense > 0 && has_ability(def, 'DropPods')) {
+					if (!def.is_land || def.is_native) {
+						fail('generated Drop design has an illegal chassis');
+						return;
+					}
+					if (drop_def == null) {
+						drop_def = def;
+					}
+				}
 			}
 			if (
 				transport_def == null || amphibious_def == null || land_sam_def == null ||
 				sea_sam_def == null || air_sam_def == null || bomber_def == null ||
-				nerve_gas_def == null
+				nerve_gas_def == null || drop_def == null
 			) {
 				fail('generated combat-access unit definitions are incomplete');
 				return;
@@ -327,6 +337,32 @@
 					return;
 				}
 				um.despawn_unit(gas_attacker);
+
+				const dropper = spawn(drop_def.id, player, air_source, 0);
+				dropper.movement = 0.75;
+				dropper.health = 0.8;
+				const normal_drop_powers = combat_rules.get_combat_powers(
+					dropper,
+					surface_defender,
+					game
+				);
+				dropper.moved_this_turn = true;
+				dropper.airdropped_this_turn = true;
+				const dropped_powers = combat_rules.get_combat_powers(
+					dropper,
+					surface_defender,
+					game
+				);
+				if (
+					!dropper.moved_this_turn || !dropper.airdropped_this_turn ||
+					dropper.movement != 0.75 || dropper.health != 0.8 ||
+					dropped_powers.attack < normal_drop_powers.attack * 0.5 - 0.001 ||
+					dropped_powers.attack > normal_drop_powers.attack * 0.5 + 0.001
+				) {
+					fail('live Drop combat flag or attack penalty is invalid');
+					return;
+				}
+				um.despawn_unit(dropper);
 
 				um.despawn_unit(bomber_over_land);
 				um.despawn_unit(coastal_defender);

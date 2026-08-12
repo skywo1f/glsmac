@@ -287,6 +287,9 @@ const get_combat_powers = (attacker, defender, game) => {
 	if (is_nerve_gas_attack(attacker, defender)) {
 		attack_modifier *= 1.5;
 	}
+	if (#is_defined(attacker.airdropped_this_turn) && attacker.airdropped_this_turn) {
+		attack_modifier *= 0.5;
+	}
 	const defender_tile = defender.get_tile();
 	if (
 		has_ability(attacker_def, 'AirSuperiority') &&
@@ -361,12 +364,15 @@ const get_combat_powers = (attacker, defender, game) => {
 const get_artillery_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
-	const nerve_gas_multiplier = is_nerve_gas_attack(attacker, defender) ? 1.5 : 1.0;
+	let attack_modifier = is_nerve_gas_attack(attacker, defender) ? 1.5 : 1.0;
+	if (#is_defined(attacker.airdropped_this_turn) && attacker.airdropped_this_turn) {
+		attack_modifier *= 0.5;
+	}
 	return {
 		attack: #to_float(attacker_def.offense) * get_morale_multiplier(
 			attacker,
 			get_social_morale_bonus(attacker, game, false)
-		) * attacker.health * nerve_gas_multiplier,
+		) * attacker.health * attack_modifier,
 		defence: #to_float(
 			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
 		) * get_morale_multiplier(

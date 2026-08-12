@@ -148,6 +148,23 @@ test.assert(#is_defined(rules.get_error(player, selection(
 	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['NerveGasPods']
 ))));
 
+known.MindMachineInterface = true;
+const drop_pods = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+);
+preview = rules.get_preview(game, player, drop_pods);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['DropPods']);
+test.assert(!#is_defined(rules.get_error(player, selection(
+	'Infantry', 'PsiAttack', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Needlejet', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+
 test.assert(
 	#is_defined(rules.get_error(player, selection(
 		'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['EmpathSong', 'EmpathSong']

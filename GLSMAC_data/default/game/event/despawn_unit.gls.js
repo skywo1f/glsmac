@@ -46,10 +46,12 @@ return {
 				fuel: u.fuel,
 				transport_id: u.transport_id,
 				convoy_resource: u.convoy_resource,
+				airdropped_this_turn: u.airdropped_this_turn,
 			});
 			unit.movement = u.movement;
 			unit.moved_this_turn = u.moved_this_turn;
 			unit.native_capture_attempted = u.native_capture_attempted;
+			unit.airdropped_this_turn = u.airdropped_this_turn;
 		}
 	},
 

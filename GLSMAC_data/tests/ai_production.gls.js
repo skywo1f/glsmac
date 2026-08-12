@@ -370,6 +370,15 @@ test.assert(
 );
 offensive_context.needs_garrison = true;
 test.assert(production.get_unit_ability_score(nerve_gas_laser, offensive_context) == 0);
+const drop_laser = unit('DropLaser', 2, 1, 1.0, 25, false, false);
+drop_laser.abilities = ['DropPods'];
+let drop_context = context(false, false, false, false, 0);
+test.assert(
+	production.score_unit(drop_laser, drop_context) >
+	production.score_unit(laser, drop_context)
+);
+drop_context.needs_garrison = true;
+test.assert(production.get_unit_ability_score(drop_laser, drop_context) == 0);
 const super_former = unit('SuperFormer', 0, 1, 1.0, 25, false, true);
 super_former.abilities = ['SuperFormer'];
 const fungicidal_former = unit('FungicidalFormer', 0, 1, 1.0, 25, false, true);

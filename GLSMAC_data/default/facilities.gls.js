@@ -123,9 +123,7 @@ const project_effects = {
 	TheAscentToTranscendence: {},
 };
 
-const partial_project_effects = {
-	TheSpaceElevator: true,
-};
+const partial_project_effects = {};
 
 const facilities = [];
 const coverage = {complete: 0, partial: 0, status: {}};

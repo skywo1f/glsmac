@@ -1521,6 +1521,7 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 				}; }
 			);
 			unit->m_moved_this_turn = false;
+			unit->m_airdropped_this_turn = false;
 			m_um->RefreshUnit( GSE_CALL, unit );
 		}
 

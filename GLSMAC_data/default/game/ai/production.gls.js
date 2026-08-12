@@ -69,6 +69,13 @@ const get_unit_ability_score = (def, context) => {
 	) {
 		score += 9000;
 	}
+	if (
+		unit_abilities.has(def, 'DropPods') && #is_defined(context) &&
+		#is_defined(context.needs_military) && context.needs_military &&
+		!context.needs_garrison
+	) {
+		score += 9000;
+	}
 	return score;
 };
 

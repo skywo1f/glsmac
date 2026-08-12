@@ -15,10 +15,12 @@ const restore_unit = (game, snapshot) => {
 		fuel: snapshot.fuel,
 		transport_id: snapshot.transport_id,
 		convoy_resource: snapshot.convoy_resource,
+		airdropped_this_turn: snapshot.airdropped_this_turn,
 	});
 	unit.movement = snapshot.movement;
 	unit.moved_this_turn = snapshot.moved_this_turn;
 	unit.native_capture_attempted = snapshot.native_capture_attempted;
+	unit.airdropped_this_turn = snapshot.airdropped_this_turn;
 	return unit;
 };
 

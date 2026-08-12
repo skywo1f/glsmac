@@ -66,6 +66,7 @@ const restore_unit = (e, backup) => {
 			fuel: backup.fuel,
 			transport_id: backup.transport_id,
 			convoy_resource: backup.convoy_resource,
+			airdropped_this_turn: backup.airdropped_this_turn,
 		});
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
@@ -78,6 +79,7 @@ const restore_unit = (e, backup) => {
 	unit.health = backup.health;
 	unit.moved_this_turn = backup.moved_this_turn;
 	unit.native_capture_attempted = backup.native_capture_attempted;
+	unit.airdropped_this_turn = backup.airdropped_this_turn;
 };
 
 const promote_unit = (um, unit) => {

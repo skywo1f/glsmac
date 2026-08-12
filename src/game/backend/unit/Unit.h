@@ -48,7 +48,8 @@ public:
 		const uint16_t fuel,
 		const size_t transport_id,
 		const bool native_capture_attempted = false,
-		const convoy_resource_t convoy_resource = CR_NONE
+		const convoy_resource_t convoy_resource = CR_NONE,
+		const bool airdropped_this_turn = false
 	);
 	virtual ~Unit();
 
@@ -67,6 +68,7 @@ public:
 	size_t m_transport_id;
 	bool m_native_capture_attempted;
 	convoy_resource_t m_convoy_resource;
+	bool m_airdropped_this_turn;
 	bool m_is_registered = false;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
