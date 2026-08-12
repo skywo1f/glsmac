@@ -11,6 +11,9 @@
 	let runtime_probe_id = 0;
 	let probe_morale_before_operation = 0;
 	let probe_morale_at_notification = 0;
+	let interrogation_notified = false;
+	let intercepted_probe_id = 0;
+	let interceptor_id = 0;
 
 	const fail = (message) => {
 		if (!finished) {
@@ -35,6 +38,12 @@
 			if (runtime_probe_id != 0 && game.get_um().has_unit(runtime_probe_id)) {
 				probe_morale_at_notification = game.get_um().get_unit(runtime_probe_id).morale;
 			}
+		});
+		game.on('probe_interrogated', (e) => {
+			interrogation_notified =
+				intercepted_probe_id != 0 && interceptor_id != 0 &&
+				e.unit.id == intercepted_probe_id &&
+				e.player.id == game.get_um().get_unit(interceptor_id).owner;
 		});
 
 		game.on('start_ui', (e) => {
@@ -91,17 +100,22 @@
 			}
 
 			let probe_tile = null;
+			let subversion_probe_tile = null;
 			for (tile of target_base.get_tile().get_surrounding_tiles()) {
 				if (
 					tile != target_base.get_tile() && tile.is_land &&
 					tile.get_base() == null && #sizeof(tile.get_units()) == 0 && !tile.is_locked()
 				) {
-					probe_tile = tile;
-					break;
+					if (probe_tile == null) {
+						probe_tile = tile;
+					} else {
+						subversion_probe_tile = tile;
+						break;
+					}
 				}
 			}
-			if (probe_tile == null) {
-				fail('opponent base has no adjacent land probe tile');
+			if (probe_tile == null || subversion_probe_tile == null) {
+				fail('opponent base has fewer than two adjacent land probe tiles');
 				return;
 			}
 
@@ -129,8 +143,12 @@
 				return;
 			}
 
-			const probe = game.get_um().spawn_unit({
+			const intercepted_probe_for_runtime = game.get_um().spawn_unit({
 				def: 'ProbeTeam', owner: actor, tile: probe_tile, morale: 2, health: 1.0,
+			});
+			let probe = game.get_um().spawn_unit({
+				def: 'ProbeTeam', owner: actor, tile: subversion_probe_tile,
+				morale: 2, health: 1.0,
 			});
 			const target = game.get_um().spawn_unit({
 				def: 'ScoutPatrol', owner: target_player, tile: target_base.get_tile(),
@@ -141,8 +159,8 @@
 			let probe_morale_expected = 0;
 			actor.set_energy_credits(10000);
 			target_player.set_energy_credits(200);
-			const energy_before = game.get_player(actor.id).energy_credits;
-			const expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
+			let energy_before = game.get_player(actor.id).energy_credits;
+			let expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 			if (expected_cost == null || expected_cost <= 0 || expected_cost > energy_before) {
 				fail(
 					'live subversion cost is invalid: cost=' +
@@ -157,7 +175,9 @@
 				return;
 			}
 
-			start_runtime = () => {
+			const run_subversion = () => {
+				energy_before = game.get_player(actor.id).energy_credits;
+				expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 				probe_morale_before_operation = probe.morale;
 				probe_morale_expected = #min(
 					probe_morale_before_operation + 1,
@@ -206,9 +226,67 @@
 					}
 					finished = true;
 					#print(
-						'PROBE_RUNTIME_PASS: validated probe catalog, atrocity state, build gate, cost, subversion, promotion, movement, diplomacy, and notification'
+						'PROBE_RUNTIME_PASS: validated probe catalog, neutral probe interrogation/repatriation, subversion, promotion, diplomacy, and notification'
 					);
 					#async(2500, () => { glsmac.exit(); });
+					return false;
+				});
+			};
+
+			start_runtime = () => {
+				const interception_relation = target_player.get_diplomatic_relation(actor);
+				if (interception_relation != 'neutral' && interception_relation != 'treaty') {
+					fail('quickstart factions are not eligible for neutral probe interrogation');
+					return;
+				}
+				const get_territory_owner = game.get('f_territory_get_owner');
+				const territory_owner = get_territory_owner(probe_tile);
+				if (territory_owner == null || territory_owner.id != target_player.id) {
+					fail('probe operation tile is not inside the target faction territory');
+					return;
+				}
+				const intercepted_probe = intercepted_probe_for_runtime;
+				const interceptor = target;
+				intercepted_probe_id = intercepted_probe.id;
+				interceptor_id = interceptor.id;
+				const intercepted_probe_movement = intercepted_probe.movement + 0.0;
+				const intercepted_probe_moved = intercepted_probe.moved_this_turn == true;
+				const interceptor_movement = interceptor.movement + 0.0;
+				const interceptor_moved = interceptor.moved_this_turn == true;
+				game.event('attack_unit', {
+					attacker: interceptor,
+					defender: intercepted_probe,
+				});
+				let interrogation_ticks = 0;
+				#async(50, () => {
+					interrogation_ticks++;
+					if (
+						!game.get_um().has_unit(intercepted_probe_id) ||
+						game.get_um().get_unit(intercepted_probe_id).get_tile() ==
+							probe_tile
+					) {
+						if (interrogation_ticks >= 100) {
+							fail('probe interrogation did not repatriate the intercepted unit');
+							return false;
+						}
+						return true;
+					}
+					const returned_probe = game.get_um().get_unit(intercepted_probe_id);
+					const return_base = returned_probe.get_tile().get_base();
+					if (
+						return_base == null || return_base.get_owner().id != actor.id ||
+						returned_probe.movement != intercepted_probe_movement ||
+						(returned_probe.moved_this_turn == true) != intercepted_probe_moved ||
+						interceptor.movement != interceptor_movement ||
+						(interceptor.moved_this_turn == true) != interceptor_moved ||
+						actor.get_diplomatic_relation(target_player) != interception_relation ||
+						target_player.get_diplomatic_relation(actor) != interception_relation ||
+						!interrogation_notified
+					) {
+						fail('live probe interrogation side effects are invalid');
+						return false;
+					}
+					run_subversion();
 					return false;
 				});
 			};

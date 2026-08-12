@@ -22,6 +22,8 @@ const unit_abilities = #include('unit_abilities');
 const artifact_rules = #include('artifact_rules');
 const supply_rules = #include('supply_rules');
 const technology_acquisition = #include('technology_acquisition');
+const probe_interception = #include('probe_interception');
+const visibility_rules = #include('visibility_rules');
 const air = #include('../units/air');
 
 const owned_bases = (game, player) => {
@@ -671,6 +673,29 @@ const attack_enemy_in_tiles = (game, player, unit, tiles, units) => {
 		(owner_id) => { return !is_protected_partner(game, player, owner_id); },
 		game
 	);
+	if (target == null) {
+		return false;
+	}
+	game.event_as(player.id, 'attack_unit', {attacker: unit, defender: target});
+	return true;
+};
+
+const interrogate_adjacent_probe = (game, player, unit) => {
+	let target = null;
+	for (tile of unit.get_tile().get_surrounding_tiles()) {
+		if (tile.is_locked()) {
+			continue;
+		}
+		for (other of tile.get_units()) {
+			if (
+				visibility_rules.can_target(game, player.id, unit, other) &&
+				probe_interception.get_interception(game, unit, other) != null &&
+				(target == null || other.id < target.id)
+			) {
+				target = other;
+			}
+		}
+	}
 	if (target == null) {
 		return false;
 	}
@@ -1496,6 +1521,9 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: repair_step});
 			return 100;
 		}
+	}
+	if (interrogate_adjacent_probe(game, player, unit)) {
+		return 100;
 	}
 	const current_base = tile.get_base();
 	if (current_base != null && current_base.get_owner().id == player.id) {

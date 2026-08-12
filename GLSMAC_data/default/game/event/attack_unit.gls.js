@@ -7,6 +7,7 @@ const combat_rules = #include('../combat_rules');
 const visibility_rules = #include('../visibility_rules');
 const native_capture = #include('../native_capture');
 const entity_snapshots = #include('../entity_snapshots');
+const probe_interception = #include('../probe_interception');
 const snapshot_unit = entity_snapshots.snapshot_unit;
 
 const is_un_charter_active = (game) => {
@@ -160,6 +161,13 @@ return {
 		if (attacker_def.offense <= 0) {
 			return 'Noncombat units cannot attack';
 		}
+		if (probe_interception.get_interception(
+			e.game,
+			e.data.attacker,
+			e.data.defender
+		) != null) {
+			return;
+		}
 		if (combat_rules.has_ability(attacker_def, 'NerveGasPods')) {
 			let atrocity_defender = e.data.defender;
 			if (#is_defined(defender_tile.get_units)) {
@@ -184,6 +192,14 @@ return {
 
 	resolve: (e) => {
 		const attacker = e.data.attacker;
+		const interception = probe_interception.resolve(
+			e.game,
+			attacker,
+			e.data.defender
+		);
+		if (interception != null) {
+			return {probe_interception: interception};
+		}
 		const target_tile = #is_defined(e.data.defender.get_tile)
 			? e.data.defender.get_tile()
 			: null;
@@ -292,6 +308,18 @@ return {
 
 	apply: (e) => {
 		const attacker = e.data.attacker;
+		if (
+			#is_defined(e.resolved.probe_interception) &&
+			e.resolved.probe_interception != null
+		) {
+			return {
+				probe_interception: probe_interception.apply(
+					e.game,
+					attacker,
+					e.resolved.probe_interception
+				),
+			};
+		}
 		const defender = #is_defined(e.resolved.defender_id) &&
 			#is_defined(e.game.um) && e.game.um.has_unit(e.resolved.defender_id)
 			? e.game.um.get_unit(e.resolved.defender_id)
@@ -532,6 +560,10 @@ return {
 
 	rollback: (e) => {
 		const a = e.applied;
+		if (#is_defined(a.probe_interception)) {
+			probe_interception.rollback(e.game, a.probe_interception);
+			return;
+		}
 		e.game.am.stop_animations(a.animations_id);
 		if (#is_defined(a.native_capture)) {
 			native_capture.rollback(e.game, a.native_capture);

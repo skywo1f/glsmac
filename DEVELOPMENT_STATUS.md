@@ -250,8 +250,9 @@ scenarios, for:
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
   energy drain, drone riots, researcher assassination, genetic plague, unit
-  subversion, base mind control, resident Probe Team defense, player controls,
-  and a relationship-, value-, affordability-, and distance-aware AI policy;
+  subversion, base mind control, resident Probe Team defense, neutral/treaty
+  Probe Team interrogation and domain-compatible repatriation, player controls,
+  and relationship-, value-, affordability-, and distance-aware AI policies;
 - land and sea colonization, terraforming, conventional and psi combat, and
   conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -295,10 +296,10 @@ The following original-SMAC systems remain absent or materially incomplete:
 - deeper diplomacy including surrender, the Council defiance path, and richer
   bundled or counteroffers beyond the implemented energy, technology, commlink,
   and world-map terms;
-- remaining probe-team parity: captured faction leader rescue,
-  counterespionage, probe interrogation, exact original cost/outcome and
-  probe-combat tuning, richer intelligence displays, and full global
-  Council expulsion consequences for major atrocities;
+- remaining probe-team parity: the interactive leave/interrogate/eliminate
+  interception choice, exact original cost/outcome and probe-combat tuning,
+  richer intelligence displays, and full global Council expulsion consequences
+  for major atrocities;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -316,7 +317,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 138 cases: 107 isolated native/script GSE tests
+The Release CTest matrix contains 139 cases: 108 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -607,6 +608,15 @@ dust penalty. Ordinary multiplayer passed in 55.28 seconds. Running reconnect
 passed in 50.78 seconds while directly restoring the post-turn dust duration;
 the versioned map payload now carries sea level and every climate field instead
 of terrain tiles alone.
+
+After neutral/treaty Probe Team interrogation and repatriation were added, the
+Windows x64 Release build succeeded and all 108 isolated native/script tests
+passed in 273.12 seconds. The installed-asset probe runtime passed in 29.77
+seconds and directly verified normal attack dispatch, nearest owned-base return,
+unchanged interceptor and probe movement, preserved diplomacy, notification,
+and the subsequent subversion, promotion, pricing, and vendetta path. AI combat
+units use the same authoritative event and only select visible, lone probes in
+their own territory; sea probes avoid landlocked return bases.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
