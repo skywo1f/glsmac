@@ -45,7 +45,12 @@ const get_headquarters_destination = (game, lost_base, owner) => {
 	return best;
 };
 
-const get_headquarters_evacuation = (game, base, owner, economic_victory_state) => {
+const get_headquarters_evacuation_candidate = (
+	game,
+	base,
+	owner,
+	economic_victory_state
+) => {
 	const destination = get_headquarters_destination(game, base, owner);
 	if (
 		destination == null ||
@@ -54,21 +59,41 @@ const get_headquarters_evacuation = (game, base, owner, economic_victory_state) 
 	) {
 		return null;
 	}
-	const resolver = #typeof(game.get) == 'Callable'
-		? game.get('f_base_should_evacuate_headquarters')
-		: #undefined;
-	if (
-		#is_defined(resolver) &&
-		!resolver(base, destination, owner, HEADQUARTERS_EVACUATION_COST)
-	) {
-		return null;
-	}
 	return {
+		base: base,
+		player: owner,
 		destination: destination,
 		energy_credits: get_energy_credits(owner),
 		cost: HEADQUARTERS_EVACUATION_COST,
 		economic_victory_state: economic_victory_state,
 	};
+};
+
+const get_headquarters_evacuation = (game, candidate) => {
+	if (candidate == null) {
+		return null;
+	}
+	const resolver = #typeof(game.get) == 'Callable'
+		? game.get('f_base_should_evacuate_headquarters')
+		: #undefined;
+	const offer = #typeof(game.get) == 'Callable'
+		? game.get('f_headquarters_offer_evacuation')
+		: #undefined;
+	if (#typeof(resolver) == 'Callable') {
+		return resolver(
+			candidate.base,
+			candidate.destination,
+			candidate.player,
+			candidate.cost
+		) ? candidate : null;
+	}
+	if (
+		#typeof(offer) == 'Callable' && #is_defined(candidate.player.type) &&
+		candidate.player.type == 'human'
+	) {
+		return null;
+	}
+	return candidate;
 };
 
 const apply_headquarters_evacuation = (base, owner, evacuation) => {
@@ -149,9 +174,24 @@ const capture_base = (game, base, new_owner) => {
 	const economic_victory_state = captured_headquarters
 		? economic_victory.get_base_state(base)
 		: null;
-	const headquarters_evacuation = captured_headquarters
-		? get_headquarters_evacuation(game, base, old_owner, economic_victory_state)
+	const headquarters_evacuation_candidate = captured_headquarters
+		? get_headquarters_evacuation_candidate(
+			game,
+			base,
+			old_owner,
+			economic_victory_state
+		)
 		: null;
+	const headquarters_evacuation = captured_headquarters
+		? get_headquarters_evacuation(game, headquarters_evacuation_candidate)
+		: null;
+	const headquarters_evacuation_offer =
+		headquarters_evacuation_candidate != null &&
+		headquarters_evacuation == null &&
+		#is_defined(old_owner.type) && old_owner.type == 'human' &&
+		#typeof(game.get) == 'Callable'
+			? game.get('f_headquarters_offer_evacuation')
+			: #undefined;
 	let economic_victory_capture = #undefined;
 	if (headquarters_evacuation != null) {
 		apply_headquarters_evacuation(base, old_owner, headquarters_evacuation);
@@ -189,10 +229,13 @@ const capture_base = (game, base, new_owner) => {
 		}
 		game.trigger('economy_updated', {player: old_owner});
 	} else if (#is_defined(economic_victory_capture)) {
-		game.message(
-			new_owner.get_faction().name + ' has captured ' + old_owner.get_faction().name +
-			'\'s Headquarters and foiled its Global Energy Market bid.'
-		);
+		if (#typeof(headquarters_evacuation_offer) != 'Callable') {
+			game.message(
+				new_owner.get_faction().name + ' has captured ' +
+				old_owner.get_faction().name +
+				'\'s Headquarters and foiled its Global Energy Market bid.'
+			);
+		}
 		game.trigger('economic_victory_updated', {player: old_owner});
 		game.trigger('economy_updated', {player: old_owner});
 		game.trigger('economy_updated', {player: new_owner});
@@ -214,7 +257,7 @@ const capture_base = (game, base, new_owner) => {
 	}
 	base.set_production_queue(valid_queue);
 
-	return {
+	const snapshot = {
 		old_owner: old_owner,
 		old_queue: old_queue,
 		rehomed_units: rehomed_units,
@@ -223,9 +266,32 @@ const capture_base = (game, base, new_owner) => {
 		empath_guild_infiltration: empath_guild_infiltration,
 		economic_victory_capture: economic_victory_capture,
 	};
+	if (#typeof(headquarters_evacuation_offer) == 'Callable') {
+		headquarters_evacuation_candidate.new_owner = new_owner;
+		headquarters_evacuation_candidate.economic_victory_capture =
+			economic_victory_capture;
+		headquarters_evacuation_candidate.post_owner_energy =
+			get_energy_credits(old_owner);
+		headquarters_evacuation_candidate.post_new_owner_energy =
+			get_energy_credits(new_owner);
+		snapshot.headquarters_evacuation_offer =
+			headquarters_evacuation_candidate;
+		headquarters_evacuation_offer(headquarters_evacuation_candidate);
+	}
+	return snapshot;
 };
 
-const restore_base = (base, snapshot) => {
+const restore_base = (game, base, snapshot) => {
+	if (
+		#is_defined(snapshot.headquarters_evacuation_offer) &&
+		snapshot.headquarters_evacuation_offer != null &&
+		#typeof(game.get) == 'Callable'
+	) {
+		const cancel_offer = game.get('f_headquarters_cancel_evacuation');
+		if (#typeof(cancel_offer) == 'Callable') {
+			cancel_offer(base);
+		}
+	}
 	if (#is_defined(snapshot.empath_guild_infiltration)) {
 		project_acquisition.rollback_empath_guild(snapshot.empath_guild_infiltration);
 	}

@@ -146,8 +146,10 @@ scenarios, for:
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
   prevent enemy mind control, with relocation by production, faction-wide
-  runtime uniqueness, deterministic 1,000-credit emergency evacuation before
-  enemy capture, active Energy Market bid transfer, and reversible restoration;
+  runtime uniqueness, player-controlled abandon or 1,000-credit emergency
+  evacuation after enemy capture, active Energy Market bid transfer, persistent
+  reconnect-safe choices, and reversible restoration; AI factions evacuate
+  automatically when eligible;
 - original-SMAC ecological damage based on local terraforming, worked squares,
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
@@ -305,10 +307,10 @@ The following original-SMAC systems remain absent or materially incomplete:
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
   Nexus;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
-  of hidden-unit snapshots so concealed information is not present client-side;
-- complete UI workflows, including the interactive abandon-versus-evacuate
-  Headquarters prompt, accessibility review, packaging, upgrade migration, and
-  release documentation;
+  of hidden-unit snapshots and subsequent entity events so concealed information
+  is not present client-side;
+- complete UI workflows, accessibility review, packaging, upgrade migration,
+  and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
   manual playtesting across supported operating systems.
 
@@ -623,6 +625,17 @@ player. Interrogation resubmits the authoritative repatriation action, while
 elimination enters the ordinary combat and diplomacy path. The Release rebuild
 succeeded, and five focused AI, probe, combat, and rollback tests plus the
 installed-asset probe runtime passed together in 35.98 seconds.
+
+After the Headquarters capture workflow gained explicit Abandon and Evacuate
+choices, the complete 108-test isolated native/script suite passed in 240.69
+seconds. Evacuation atomically reverses any captured Global Energy Market
+proceeds, transfers the active bid, and charges the original 1,000 credits;
+abandonment keeps the capture result. Both responses and the outer capture
+remain reversible. The pending choice is stored in the version-tolerant native
+base snapshot tail, reconstructed after reconnect, and reopened for the owning
+player when the UI starts. The final Windows x64 Release rebuild succeeded;
+the installed-asset economic-victory and running-game reconnect scenarios then
+passed together in 73.13 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

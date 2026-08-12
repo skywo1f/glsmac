@@ -3,6 +3,9 @@
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
 	const base_capture = #include('../default/game/base_capture');
+	const respond_evacuation = #include(
+		'../default/game/event/respond_headquarters_evacuation'
+	);
 
 	let runtime_started = false;
 	let runtime_complete = false;
@@ -43,23 +46,37 @@
 				const defender_energy = player.get_energy_credits();
 				const captor_energy = captor.get_energy_credits();
 				const capture = base_capture.capture_base(event.game, headquarters, captor);
-				const evacuated_state = event.game.get('f_economic_victory_get_state')(player);
 				let error = null;
-				if (
-					headquarters.get_owner().id != captor.id ||
-					headquarters.has_facility('Headquarters') ||
-					!destination.has_facility('Headquarters') ||
-					capture.headquarters_evacuation == null ||
-					capture.headquarters_evacuation.destination != destination ||
-					player.get_energy_credits() != defender_energy - 1000 ||
-					captor.get_energy_credits() != captor_energy ||
-					evacuated_state == null || evacuated_state.base != destination ||
-					evacuated_state.turn != event.data.state_turn ||
-					evacuated_state.cost != event.data.state_cost
-				) {
-					error = 'Headquarters evacuation did not preserve the bid, destination, or balances';
+				const response = {
+					caller: player.id,
+					game: event.game,
+					data: {base: headquarters, action: 'evacuate'},
+				};
+				const response_error = respond_evacuation.validate(response);
+				if (#is_defined(response_error)) {
+					error = 'Headquarters evacuation response was rejected: ' + response_error;
+				} else {
+					response.resolved = respond_evacuation.resolve(response);
+					response.applied = respond_evacuation.apply(response);
+					const evacuated_state =
+						event.game.get('f_economic_victory_get_state')(player);
+					if (
+						headquarters.get_owner().id != captor.id ||
+						headquarters.has_facility('Headquarters') ||
+						!destination.has_facility('Headquarters') ||
+						!#is_defined(capture.headquarters_evacuation_offer) ||
+						capture.headquarters_evacuation_offer.destination != destination ||
+						player.get_energy_credits() != defender_energy - 1000 ||
+						captor.get_energy_credits() != captor_energy ||
+						evacuated_state == null || evacuated_state.base != destination ||
+						evacuated_state.turn != event.data.state_turn ||
+						evacuated_state.cost != event.data.state_cost
+					) {
+						error = 'Headquarters evacuation did not preserve the bid, destination, or balances';
+					}
+					respond_evacuation.rollback(response);
 				}
-				base_capture.restore_base(headquarters, capture);
+				base_capture.restore_base(event.game, headquarters, capture);
 				const restored_state = event.game.get('f_economic_victory_get_state')(player);
 				if (
 					headquarters.get_owner().id != player.id ||
@@ -165,6 +182,13 @@
 			});
 			persistence_base.set('economic_victory_turn', 77);
 			persistence_base.set('economic_victory_cost', 1234);
+			persistence_base.set('headquarters_evacuation_player', player.id);
+			persistence_base.set('headquarters_evacuation_destination', headquarters.id);
+			persistence_base.set('headquarters_evacuation_cost', 1000);
+			persistence_base.set('headquarters_evacuation_bid_turn', 77);
+			persistence_base.set('headquarters_evacuation_bid_cost', 1234);
+			persistence_base.set('headquarters_evacuation_owner_delta', 432);
+			persistence_base.set('headquarters_evacuation_conqueror_delta', 567);
 			const persistence_id = persistence_base.id;
 			const snapshot = bm.snapshot_base(persistence_base);
 			bm.despawn_base(persistence_id);
@@ -174,13 +198,31 @@
 				!persistence_base.has('economic_victory_turn') ||
 				!persistence_base.has('economic_victory_cost') ||
 				persistence_base.get('economic_victory_turn') != 77 ||
-				persistence_base.get('economic_victory_cost') != 1234
+				persistence_base.get('economic_victory_cost') != 1234 ||
+				persistence_base.get('headquarters_evacuation_player') != player.id ||
+				persistence_base.get('headquarters_evacuation_destination') != headquarters.id ||
+				persistence_base.get('headquarters_evacuation_cost') != 1000 ||
+				persistence_base.get('headquarters_evacuation_bid_turn') != 77 ||
+				persistence_base.get('headquarters_evacuation_bid_cost') != 1234 ||
+				persistence_base.get('headquarters_evacuation_owner_delta') != 432 ||
+				persistence_base.get('headquarters_evacuation_conqueror_delta') != 567
 			) {
-				fail('economic victory state did not survive native base serialization');
+				fail('economic victory or Headquarters choice did not survive native base serialization');
 				return;
 			}
 			persistence_base.unset('economic_victory_turn');
 			persistence_base.unset('economic_victory_cost');
+			for (key of [
+				'headquarters_evacuation_player',
+				'headquarters_evacuation_destination',
+				'headquarters_evacuation_cost',
+				'headquarters_evacuation_bid_turn',
+				'headquarters_evacuation_bid_cost',
+				'headquarters_evacuation_owner_delta',
+				'headquarters_evacuation_conqueror_delta',
+			]) {
+				persistence_base.unset(key);
+			}
 
 			const expected_cost = game.get('f_economic_victory_get_cost')(player);
 			game.event('corner_global_energy_market', {player: player});

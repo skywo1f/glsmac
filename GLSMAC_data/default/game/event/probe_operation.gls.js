@@ -567,7 +567,7 @@ return {
 			spawn_snapshots(e.game, e.applied.transferred_units, target_player.id, false);
 		}
 		if (#is_defined(e.applied.base_capture)) {
-			base_capture.restore_base(e.data.target, e.applied.base_capture);
+			base_capture.restore_base(e.game, e.data.target, e.applied.base_capture);
 		}
 		if (#is_defined(e.applied.population)) {
 			restore_base_population(e.game, e.data.target, e.applied.population);

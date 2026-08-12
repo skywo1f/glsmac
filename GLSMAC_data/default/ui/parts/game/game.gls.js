@@ -43,6 +43,14 @@ return (m) => {
 			p.modules.popup.show('probe_interception');
 		});
 
+		game.on('headquarters_evacuation_requested', (e) => {
+			if (p == null || game.get_player().id != e.player.id) {
+				return;
+			}
+			p.modules.popup.set('headquarters_evacuation', e);
+			p.modules.popup.show('headquarters_evacuation');
+		});
+
 		game.on('start_ui', (e) => {
 
 			m.root.clear();
@@ -101,6 +109,15 @@ return (m) => {
 				p.process_message(m);
 			}
 			messages_buffer = [];
+			const get_evacuation =
+				game.get('f_headquarters_get_player_evacuation');
+			if (#typeof(get_evacuation) == 'Callable') {
+				const evacuation = get_evacuation(game.get_player());
+				if (evacuation != null) {
+					p.modules.popup.set('headquarters_evacuation', evacuation);
+					p.modules.popup.show('headquarters_evacuation');
+				}
+			}
 			// TODO
 
 		});

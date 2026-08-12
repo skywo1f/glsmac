@@ -1,6 +1,10 @@
 const rules = #include('../default/game/economic_victory_rules');
 const corner_market = #include('../default/game/event/corner_global_energy_market');
 const base_capture = #include('../default/game/base_capture');
+const headquarters_evacuation = #include('../default/game/headquarters_evacuation');
+const respond_evacuation = #include(
+	'../default/game/event/respond_headquarters_evacuation'
+);
 
 const make_player = (id, faction_name, energy, commerce) => {
 	let current_energy = energy;
@@ -9,6 +13,7 @@ const make_player = (id, faction_name, energy, commerce) => {
 	const player = {
 		id: id,
 		name: faction_name,
+		type: 'human',
 		commerce: commerce,
 		get_energy_credits: () => { return current_energy; },
 		set_energy_credits: (value) => { current_energy = value; },
@@ -103,6 +108,7 @@ game = {
 	get_tm: () => { return game.tm; },
 	get_players: () => { return [actor, target]; },
 	get: (key) => { return values[key]; },
+	set: (key, value) => { values[key] = value; },
 	get_turn: () => { return current_turn; },
 	is_game_over: () => { return game_over; },
 	is_turn_complete: (player_id) => { return false; },
@@ -161,7 +167,7 @@ test.assert(rules.get_base_state(actor_headquarters) == null);
 test.assert(actor.get_energy_credits() == 4500);
 test.assert(target.get_energy_credits() == 800);
 test.assert(#is_defined(capture.economic_victory_capture));
-base_capture.restore_base(actor_headquarters, capture);
+base_capture.restore_base(game, actor_headquarters, capture);
 test.assert(actor_headquarters.get_owner() == actor);
 test.assert(actor_headquarters.has_facility('Headquarters'));
 test.assert(actor.get_energy_credits() == 4000);
@@ -180,16 +186,127 @@ test.assert(rules.get_base_state(actor_headquarters) == null);
 test.assert(rules.get_base_state(actor_fallback).turn == 25);
 test.assert(evacuated_capture.headquarters_evacuation.destination == actor_fallback);
 test.assert(!#is_defined(evacuated_capture.economic_victory_capture));
-base_capture.restore_base(actor_headquarters, evacuated_capture);
+base_capture.restore_base(game, actor_headquarters, evacuated_capture);
 test.assert(actor_headquarters.get_owner() == actor);
 test.assert(actor_headquarters.has_facility('Headquarters'));
 test.assert(!actor_fallback.has_facility('Headquarters'));
 test.assert(actor.get_energy_credits() == 4000);
 test.assert(rules.get_state(game, actor).base == actor_headquarters);
 
+headquarters_evacuation(game);
+test.assert(#is_defined(game.get('f_headquarters_offer_evacuation')));
+test.assert(!#is_defined(game.get('f_base_should_evacuate_headquarters')));
+const prompted_capture = base_capture.capture_base(game, actor_headquarters, target);
+test.assert(actor_headquarters.get_owner() == target);
+test.assert(!actor_headquarters.has_facility('Headquarters'));
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4500);
+test.assert(target.get_energy_credits() == 800);
+test.assert(#is_defined(prompted_capture.headquarters_evacuation_offer));
+headquarters_evacuation(game);
+const restored_offer = values.f_headquarters_get_evacuation(actor_headquarters);
+test.assert(restored_offer != null);
+test.assert(restored_offer.base == actor_headquarters);
+test.assert(restored_offer.player == actor);
+test.assert(restored_offer.new_owner == target);
+test.assert(restored_offer.destination == actor_fallback);
+test.assert(restored_offer.cost == 1000);
+test.assert(restored_offer.economic_victory_state.turn == 25);
+test.assert(restored_offer.economic_victory_state.cost == 1000);
+test.assert(restored_offer.owner_capture_delta == 500);
+test.assert(restored_offer.conqueror_capture_delta == 500);
+
+let response = {
+	caller: target.id,
+	game: game,
+	data: {base: actor_headquarters, action: 'evacuate'},
+};
+test.assert(#is_defined(respond_evacuation.validate(response)));
+response.caller = actor.id;
+test.assert(!#is_defined(respond_evacuation.validate(response)));
+response.data.action = 'wait';
+test.assert(#is_defined(respond_evacuation.validate(response)));
+response.data.action = 'evacuate';
+response.resolved = respond_evacuation.resolve(response);
+response.applied = respond_evacuation.apply(response);
+test.assert(actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 3000);
+test.assert(target.get_energy_credits() == 300);
+test.assert(rules.get_state(game, actor).base == actor_fallback);
+test.assert(values.f_headquarters_get_evacuation(actor_headquarters) == null);
+
+respond_evacuation.rollback(response);
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4500);
+test.assert(target.get_energy_credits() == 800);
+test.assert(rules.get_state(game, actor) == null);
+test.assert(values.f_headquarters_get_evacuation(actor_headquarters) != null);
+headquarters_evacuation(game);
+test.assert(
+	values.f_headquarters_get_evacuation(actor_headquarters).owner_capture_delta == 500
+);
+test.assert(
+	values.f_headquarters_get_evacuation(actor_headquarters).conqueror_capture_delta == 500
+);
+
+response.data.action = 'abandon';
+response.resolved = respond_evacuation.resolve(response);
+response.applied = respond_evacuation.apply(response);
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4500);
+test.assert(target.get_energy_credits() == 800);
+test.assert(values.f_headquarters_get_evacuation(actor_headquarters) == null);
+
+base_capture.restore_base(game, actor_headquarters, prompted_capture);
+test.assert(actor_headquarters.get_owner() == actor);
+test.assert(actor_headquarters.has_facility('Headquarters'));
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4000);
+test.assert(target.get_energy_credits() == 300);
+test.assert(rules.get_state(game, actor).base == actor_headquarters);
+
 corner_market.rollback(event);
 test.assert(actor.get_energy_credits() == 5000);
 test.assert(rules.get_state(game, actor) == null);
+
+const ordinary_capture = base_capture.capture_base(game, actor_headquarters, target);
+test.assert(#is_defined(ordinary_capture.headquarters_evacuation_offer));
+test.assert(actor.get_energy_credits() == 5000);
+test.assert(target.get_energy_credits() == 300);
+response.data.action = 'evacuate';
+test.assert(!#is_defined(respond_evacuation.validate(response)));
+response.resolved = respond_evacuation.resolve(response);
+response.applied = respond_evacuation.apply(response);
+test.assert(actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4000);
+test.assert(target.get_energy_credits() == 300);
+test.assert(rules.get_state(game, actor) == null);
+respond_evacuation.rollback(response);
+base_capture.restore_base(game, actor_headquarters, ordinary_capture);
+test.assert(actor_headquarters.has_facility('Headquarters'));
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 5000);
+
+actor.type = 'ai';
+actor_headquarters.set_owner(actor);
+test.assert(actor.type == 'ai');
+test.assert(actor_headquarters.get_owner().type == 'ai');
+test.assert(#typeof(game.get('f_base_should_evacuate_headquarters')) != 'Callable');
+test.assert(actor_fallback.get_owner() == actor);
+test.assert(#typeof(actor.set_energy_credits) == 'Callable');
+test.assert(actor.get_energy_credits() == 5000);
+test.assert(
+	base_capture.get_headquarters_destination(game, actor_headquarters, actor) ==
+		actor_fallback
+);
+const ai_capture = base_capture.capture_base(game, actor_headquarters, target);
+test.assert(ai_capture.headquarters_evacuation.destination == actor_fallback);
+test.assert(actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4000);
+base_capture.restore_base(game, actor_headquarters, ai_capture);
+test.assert(actor_headquarters.has_facility('Headquarters'));
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 5000);
 
 game_over = true;
 test.assert(#is_defined(corner_market.validate(event)));

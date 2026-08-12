@@ -112,7 +112,7 @@ return {
 		}
 		restore_transport();
 		if (e.applied.base_capture != null) {
-			base_capture.restore_base(e.applied.base, e.applied.base_capture);
+			base_capture.restore_base(e.game, e.applied.base, e.applied.base_capture);
 		}
 	},
 

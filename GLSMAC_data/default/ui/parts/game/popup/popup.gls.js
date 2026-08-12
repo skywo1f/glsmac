@@ -10,6 +10,7 @@ return {
 		'diplomacy',
 		'probe_operations',
 		'probe_interception',
+		'headquarters_evacuation',
 		'alien_artifact',
 		'supply_transport',
 		'airdrop',
@@ -329,6 +330,9 @@ return {
 		}
 		this.menu.close_all();
 		if (this.popup != null) {
+			if (#typeof(this.popup_def.on_replace) == 'Callable') {
+				this.popup_def.on_replace();
+			}
 			this.clear();
 		}
 		this.popup = this.popups[popup];

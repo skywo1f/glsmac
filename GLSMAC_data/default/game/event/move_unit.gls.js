@@ -380,7 +380,7 @@ return {
 			unit.embark(e.game.um.get_unit(orig.transport_id));
 		}
 		if (e.applied.base_capture != null) {
-			base_capture.restore_base(e.data.tile.get_base(), e.applied.base_capture);
+			base_capture.restore_base(e.game, e.data.tile.get_base(), e.applied.base_capture);
 		}
 		unit.movement = orig.movement;
 		unit.moved_this_turn = orig.moved_this_turn;

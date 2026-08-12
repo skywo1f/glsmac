@@ -90,7 +90,7 @@ test.assert(attacker.has_contact(third_party) && third_party.has_contact(attacke
 test.assert(#is_defined(capture.empath_guild_infiltration));
 test.assert(capture.empath_guild_infiltration.infiltrated_players == [defender]);
 
-base_capture.restore_base(base, capture);
+base_capture.restore_base(game, base, capture);
 test.assert(current_owner == defender);
 test.assert(!attacker.has_infiltrated(defender));
 test.assert(attacker.has_infiltrated(third_party));

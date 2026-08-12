@@ -60,6 +60,7 @@ return (game) => {
 		'process_diplomatic_loan_payment',
 		'process_diplomatic_sanctions',
 		'probe_operation',
+		'respond_headquarters_evacuation',
 		'study_alien_artifact',
 		'contribute_alien_artifact',
 		'set_supply_convoy',

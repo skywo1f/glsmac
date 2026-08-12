@@ -519,6 +519,57 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	}
 	buf.WriteInt( economic_victory_turn );
 	buf.WriteInt( economic_victory_cost );
+	const std::vector< std::string > headquarters_evacuation_keys = {
+		"headquarters_evacuation_player",
+		"headquarters_evacuation_destination",
+		"headquarters_evacuation_cost",
+		"headquarters_evacuation_bid_turn",
+		"headquarters_evacuation_bid_cost",
+		"headquarters_evacuation_owner_delta",
+		"headquarters_evacuation_conqueror_delta",
+	};
+	std::vector< int64_t > headquarters_evacuation = {};
+	headquarters_evacuation.reserve( headquarters_evacuation_keys.size() );
+	for ( const auto& key : headquarters_evacuation_keys ) {
+		auto* const value = const_cast< Base* >( base )->CustomGet( key );
+		if ( value ) {
+			if ( value->type != gse::VT_INT ) {
+				THROW( "base Headquarters evacuation state must contain integers" );
+			}
+			headquarters_evacuation.push_back( ( (gse::value::Int*)value )->value );
+		}
+	}
+	if (
+		!headquarters_evacuation.empty() &&
+		headquarters_evacuation.size() != headquarters_evacuation_keys.size()
+	) {
+		THROW( "base Headquarters evacuation state is incomplete" );
+	}
+	const bool has_headquarters_evacuation = !headquarters_evacuation.empty();
+	buf.WriteBool( has_headquarters_evacuation );
+	if ( has_headquarters_evacuation ) {
+		const auto player_id = headquarters_evacuation.at( 0 );
+		const auto destination_id = headquarters_evacuation.at( 1 );
+		const auto cost = headquarters_evacuation.at( 2 );
+		const auto bid_turn = headquarters_evacuation.at( 3 );
+		const auto bid_cost = headquarters_evacuation.at( 4 );
+		const auto owner_delta = headquarters_evacuation.at( 5 );
+		const auto conqueror_delta = headquarters_evacuation.at( 6 );
+		if (
+			player_id < 0 || destination_id <= 0 ||
+			cost <= 0 || cost > Player::MAX_ENERGY_CREDITS ||
+			bid_turn < 0 || bid_cost < 0 ||
+			bid_cost > Player::MAX_ENERGY_CREDITS ||
+			( bid_turn == 0 ) != ( bid_cost == 0 ) ||
+			owner_delta < 0 || owner_delta > Player::MAX_ENERGY_CREDITS ||
+			conqueror_delta < 0 || conqueror_delta > Player::MAX_ENERGY_CREDITS
+		) {
+			THROW( "invalid base Headquarters evacuation state" );
+		}
+		for ( const auto value : headquarters_evacuation ) {
+			buf.WriteInt( value );
+		}
+	}
 	return buf;
 }
 
@@ -656,6 +707,40 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			THROW( "invalid serialized base economic victory state" );
 		}
 	}
+	bool has_headquarters_evacuation = false;
+	std::vector< int64_t > headquarters_evacuation = {};
+	if ( buf.GetRemaining() > 0 ) {
+		has_headquarters_evacuation = buf.ReadBool();
+		if ( has_headquarters_evacuation ) {
+			headquarters_evacuation.reserve( 7 );
+			for ( size_t i = 0 ; i < 7 ; i++ ) {
+				headquarters_evacuation.push_back(
+					buf.ReadInt< int64_t >( "Headquarters evacuation value" )
+				);
+			}
+			const auto player_id = headquarters_evacuation.at( 0 );
+			const auto destination_id = headquarters_evacuation.at( 1 );
+			const auto cost = headquarters_evacuation.at( 2 );
+			const auto bid_turn = headquarters_evacuation.at( 3 );
+			const auto bid_cost = headquarters_evacuation.at( 4 );
+			const auto owner_delta = headquarters_evacuation.at( 5 );
+			const auto conqueror_delta = headquarters_evacuation.at( 6 );
+			if (
+				player_id < 0 || static_cast< size_t >( player_id ) >= slots->GetCount() ||
+				slots->GetSlot( static_cast< size_t >( player_id ) ).GetState() !=
+					slot::Slot::SS_PLAYER ||
+				destination_id <= 0 ||
+				cost <= 0 || cost > Player::MAX_ENERGY_CREDITS ||
+				bid_turn < 0 || bid_cost < 0 ||
+				bid_cost > Player::MAX_ENERGY_CREDITS ||
+				( bid_turn == 0 ) != ( bid_cost == 0 ) ||
+				owner_delta < 0 || owner_delta > Player::MAX_ENERGY_CREDITS ||
+				conqueror_delta < 0 || conqueror_delta > Player::MAX_ENERGY_CREDITS
+			) {
+				THROW( "invalid serialized Headquarters evacuation state" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
@@ -693,6 +778,23 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			"economic_victory_cost",
 			VALUE( gse::value::Int, , economic_victory_cost )
 		);
+	}
+	if ( has_headquarters_evacuation ) {
+		const std::vector< std::string > keys = {
+			"headquarters_evacuation_player",
+			"headquarters_evacuation_destination",
+			"headquarters_evacuation_cost",
+			"headquarters_evacuation_bid_turn",
+			"headquarters_evacuation_bid_cost",
+			"headquarters_evacuation_owner_delta",
+			"headquarters_evacuation_conqueror_delta",
+		};
+		for ( size_t i = 0 ; i < keys.size() ; i++ ) {
+			base->CustomSet(
+				keys.at( i ),
+				VALUE( gse::value::Int, , headquarters_evacuation.at( i ) )
+			);
+		}
 	}
 	base->RestoreWorkedTiles( GSE_CALL );
 	return base.release();
