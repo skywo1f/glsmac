@@ -6,6 +6,18 @@ const is_artillery = (def) => {
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };
 
+const is_nerve_gas_attack = (attacker, defender) => {
+	const attacker_def = attacker.get_def();
+	const defender_def = defender.get_def();
+	const is_psi_attack = #is_defined(attacker_def.is_psi_attack)
+		? attacker_def.is_psi_attack
+		: attacker_def.is_native;
+	return (
+		has_ability(attacker_def, 'NerveGasPods') && !is_psi_attack &&
+		(!#is_defined(defender_def.is_native) || !defender_def.is_native)
+	);
+};
+
 const get_reactor_power = (unit_or_def) => {
 	const def = #is_defined(unit_or_def.get_def) ? unit_or_def.get_def() : unit_or_def;
 	return #is_defined(def.reactor_power) ? #max(def.reactor_power, 1) : 1;
@@ -272,6 +284,9 @@ const get_combat_powers = (attacker, defender, game) => {
 
 	let attack_modifier = 1.0;
 	let defence_modifier = 1.0;
+	if (is_nerve_gas_attack(attacker, defender)) {
+		attack_modifier *= 1.5;
+	}
 	const defender_tile = defender.get_tile();
 	if (
 		has_ability(attacker_def, 'AirSuperiority') &&
@@ -346,11 +361,12 @@ const get_combat_powers = (attacker, defender, game) => {
 const get_artillery_powers = (attacker, defender, game) => {
 	const attacker_def = attacker.get_def();
 	const defender_def = defender.get_def();
+	const nerve_gas_multiplier = is_nerve_gas_attack(attacker, defender) ? 1.5 : 1.0;
 	return {
 		attack: #to_float(attacker_def.offense) * get_morale_multiplier(
 			attacker,
 			get_social_morale_bonus(attacker, game, false)
-		) * attacker.health,
+		) * attacker.health * nerve_gas_multiplier,
 		defence: #to_float(
 			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
 		) * get_morale_multiplier(
@@ -399,6 +415,7 @@ const get_best_defender = (attacker, tile, game) => {
 return {
 	is_artillery: is_artillery,
 	has_ability: has_ability,
+	is_nerve_gas_attack: is_nerve_gas_attack,
 	get_reactor_power: get_reactor_power,
 	get_damage: get_damage,
 	is_airbase_tile: is_airbase_tile,

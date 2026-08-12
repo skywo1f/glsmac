@@ -20,8 +20,8 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'COMBAT_ACCESS_RUNTIME_PASS: validated generated amphibious and SAM designs, ' +
-				'transport assault state, airborne targeting, and air-to-air strength'
+				'COMBAT_ACCESS_RUNTIME_PASS: validated generated amphibious, SAM, and nerve gas ' +
+				'designs, transport assault state, airborne targeting, and combat strength'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -77,6 +77,7 @@
 			let sea_sam_def = null;
 			let air_sam_def = null;
 			let bomber_def = null;
+			let nerve_gas_def = null;
 			for (def of um.get_unit_defs()) {
 				if (def.chassis == 'Foil' && def.weapon == 'TroopTransport') {
 					transport_def = def;
@@ -108,10 +109,20 @@
 				) {
 					bomber_def = def;
 				}
+				if (def.offense > 0 && has_ability(def, 'NerveGasPods')) {
+					if (def.is_water || def.is_native || def.weapon == 'PsiAttack') {
+						fail('generated Nerve Gas design has an illegal chassis or weapon');
+						return;
+					}
+					if (def.is_land && nerve_gas_def == null) {
+						nerve_gas_def = def;
+					}
+				}
 			}
 			if (
 				transport_def == null || amphibious_def == null || land_sam_def == null ||
-				sea_sam_def == null || air_sam_def == null || bomber_def == null
+				sea_sam_def == null || air_sam_def == null || bomber_def == null ||
+				nerve_gas_def == null
 			) {
 				fail('generated combat-access unit definitions are incomplete');
 				return;
@@ -288,6 +299,34 @@
 					fail('air interceptor surface-attack penalty is invalid');
 					return;
 				}
+
+				const gas_attacker = spawn(nerve_gas_def.id, player, air_source, 0);
+				const gas_powers = combat_rules.get_combat_powers(
+					gas_attacker,
+					surface_defender,
+					game
+				);
+				const expected_gas_attack = #to_float(nerve_gas_def.offense) *
+					combat_rules.get_morale_multiplier(
+						gas_attacker,
+						combat_rules.get_social_morale_bonus(gas_attacker, game, false)
+					) * gas_attacker.health * 1.5;
+				if (
+					!combat_rules.is_nerve_gas_attack(gas_attacker, surface_defender) ||
+					gas_powers.attack < expected_gas_attack - 0.001 ||
+					gas_powers.attack > expected_gas_attack + 0.001
+				) {
+					fail(
+						'live Nerve Gas combat bonus is invalid: actual=' +
+						#to_string(gas_powers.attack) + ' expected=' +
+						#to_string(expected_gas_attack) + ' movement=' +
+						#to_string(gas_attacker.movement) + ' morale=' +
+						#to_string(gas_attacker.morale) + ' offense=' +
+						#to_string(nerve_gas_def.offense)
+					);
+					return;
+				}
+				um.despawn_unit(gas_attacker);
 
 				um.despawn_unit(bomber_over_land);
 				um.despawn_unit(coastal_defender);

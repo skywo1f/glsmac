@@ -6,7 +6,12 @@ const spawn_unit = #include('../default/game/event/spawn_unit');
 
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
-const defender_tile = {x: 4, y: 4};
+let unit_event_defender_base = null;
+const defender_tile = {
+	x: 4,
+	y: 4,
+	get_base: () => { return unit_event_defender_base; },
+};
 const open_combat_tile = {
 	rockiness: 1,
 	features: {xenofungus: false},
@@ -82,6 +87,97 @@ test.assert(
 		},
 	}) == 'Unit cannot attack a friendly unit'
 );
+
+{
+	let atrocities = 1000000;
+	const source = {
+		is_land: true,
+		is_water: false,
+		is_locked: () => { return false; },
+		is_adjactent_to: (tile) => { return true; },
+	};
+	let stack = [];
+	const target = {
+		is_land: true,
+		is_water: false,
+		rockiness: 1,
+		features: {xenofungus: false},
+		terraforming: {bunker: false},
+		is_locked: () => { return false; },
+		get_base: () => { return null; },
+		get_units: () => { return stack; },
+	};
+	const make_defender = (id, is_native, defense) => {
+		return {
+			id: id,
+			owner: 2,
+			morale: 2,
+			health: 1.0,
+			is_land: true,
+			get_owner: () => { return {id: 2}; },
+			get_tile: () => { return target; },
+			get_def: () => {
+				return {
+					id: 'StackDefender',
+					is_native: is_native,
+					offense: 1,
+					defense: defense,
+					abilities: [],
+				};
+			},
+		};
+	};
+	const clicked_native = make_defender(10, true, 1);
+	const conventional = make_defender(20, false, 8);
+	stack = [clicked_native, conventional];
+	const gas_attacker = {
+		id: 1,
+		owner: 1,
+		morale: 2,
+		health: 1.0,
+		movement: 1.0,
+		moved_this_turn: false,
+		is_land: true,
+		is_immovable: false,
+		terraforming: 'none',
+		get_owner: () => { return {id: 1}; },
+		get_tile: () => { return source; },
+		get_def: () => {
+			return {
+				id: 'NerveGasAttacker',
+				is_native: false,
+				is_psi_attack: false,
+				offense: 2,
+				defense: 1,
+				abilities: ['NerveGasPods'],
+			};
+		},
+	};
+	const gas_event = {
+		caller: 1,
+		game: {
+			is_turn_complete: (id) => { return false; },
+			get_player: (id) => {
+				return {get_major_atrocities: () => { return atrocities; }};
+			},
+			get: (name) => { return #undefined; },
+		},
+		data: {attacker: gas_attacker, defender: clicked_native},
+	};
+	test.assert(
+		attack_unit.validate(gas_event) == 'Major atrocity limit has been reached'
+	);
+	atrocities = 999999;
+	test.assert(!#is_defined(attack_unit.validate(gas_event)));
+	const resolved = attack_unit.resolve({
+		game: {
+			get: (name) => { return #undefined; },
+			random: {get_float: (min, max) => { return min; }},
+		},
+		data: gas_event.data,
+	});
+	test.assert(resolved.defender_id == conventional.id && resolved.nerve_gas);
+}
 
 {
 	let units = [];
@@ -1035,20 +1131,71 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let advance_requests = 0;
 	let advance_data = null;
 	let combat_relation = 'treaty';
+	let major_atrocities = 2;
+	let sanction_turns = 3;
+	let active_gas_base = null;
+	let gas_pops = [];
+	let support_units = [];
 	let attacker_player = null;
 	let defender_player = null;
 	const make_combat_player = (id, other_id) => {
 		return {
 			id: id,
+			name: id == 1 ? 'Attacker' : 'Defender',
+			type: 'ai',
 			get_diplomatic_relation: (other) => { return combat_relation; },
 			set_diplomatic_relation: (other, relation) => { combat_relation = relation; },
 			get_diplomatic_offer: (other) => { return ''; },
 			set_diplomatic_offer: (other, offer) => {},
+			get_major_atrocities: () => { return major_atrocities; },
+			set_major_atrocities: (value) => { major_atrocities = value; },
+			get_sanction_turns: () => { return sanction_turns; },
+			set_sanction_turns: (value) => { sanction_turns = value; },
 		};
 	};
 	attacker_player = make_combat_player(1, 2);
 	defender_player = make_combat_player(2, 1);
 	defender.owner = defender_player.id;
+	const make_gas_pop = (type, worked_tile) => {
+		let tile = worked_tile;
+		return {
+			get_type: () => { return type; },
+			get: (key) => { return key == 'worked_tile' ? tile : #undefined; },
+			set_worked_tile: (value) => { tile = value; },
+		};
+	};
+	const make_gas_base = (id, name, starting_nutrients) => {
+		let nutrients = starting_nutrients;
+		return {
+			id: id,
+			name: name,
+			get_owner: () => { return defender_player; },
+			get_size: () => { return #sizeof(gas_pops); },
+			get_pops: () => { return gas_pops; },
+			create_pop: (data) => {
+				const pop = make_gas_pop(data.type, #undefined);
+				gas_pops :+pop;
+				return pop;
+			},
+			destroy_pop: (doomed) => {
+				let remaining = [];
+				for (pop of gas_pops) {
+					if (pop != doomed) {
+						remaining :+pop;
+					}
+				}
+				gas_pops = remaining;
+			},
+			get: (key) => {
+				return key == 'accumulated_nutrients' ? nutrients : #undefined;
+			},
+			set: (key, value) => {
+				if (key == 'accumulated_nutrients') {
+					nutrients = value;
+				}
+			},
+		};
+	};
 
 	const um = {
 		get_moraleset: (id) => {
@@ -1059,13 +1206,36 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			if (id == attacker.id) {
 				return active_attacker != null;
 			}
+			for (unit of support_units) {
+				if (unit.id == id) {
+					return true;
+				}
+			}
 			return active_defender != null;
 		},
 		get_unit: (id) => {
 			if (id == attacker.id) {
 				return active_attacker;
 			}
+			for (unit of support_units) {
+				if (unit.id == id) {
+					return unit;
+				}
+			}
 			return active_defender;
+		},
+		get_units: () => {
+			let result = [];
+			if (active_attacker != null) {
+				result :+active_attacker;
+			}
+			if (active_defender != null) {
+				result :+active_defender;
+			}
+			for (unit of support_units) {
+				result :+unit;
+			}
+			return result;
 		},
 		despawn_unit: (unit) => {
 			if (unit.id == attacker.id) {
@@ -1103,6 +1273,24 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			return id == attacker_player.id ? attacker_player : defender_player;
 		},
 		get: (name) => {
+			if (name == 'f_council_is_un_charter_repealed') {
+				return () => { return false; };
+			}
+			if (name == 'f_base_reset_nutrients') {
+				return (game, base) => { base.set('accumulated_nutrients', 0); };
+			}
+			if (name == 'f_base_pop_unwork_tile') {
+				return (base, pop) => { pop.set_worked_tile(#undefined); };
+			}
+			if (name == 'f_base_pop_work_tile') {
+				return (base, pop, tile) => { pop.set_worked_tile(tile); };
+			}
+			if (
+				name == 'f_economy_get_base_psych' ||
+				name == 'f_base_process_psych'
+			) {
+				return #undefined;
+			}
 			if (name == 'f_diplomacy_snapshot_pair') {
 				return (player, other) => {
 					return {
@@ -1122,6 +1310,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			if (name == 'f_diplomacy_clear_offers') {
 				return (player, other) => {};
 			}
+			test.assert(name == 'f_diplomacy_restore_pair');
 			return (player, other, snapshot) => {
 				player.set_diplomatic_relation(other, snapshot.player_relation);
 				other.set_diplomatic_relation(player, snapshot.other_relation);
@@ -1135,6 +1324,36 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 					return attacker_tile;
 				}
 				return defender_tile;
+			},
+			get_distance: (from, to) => { return 1; },
+		},
+		bm: {
+			get_bases: () => { return active_gas_base == null ? [] : [active_gas_base]; },
+			snapshot_base: (base) => {
+				let pop_types = [];
+				for (pop of gas_pops) {
+					pop_types :+pop.get_type();
+				}
+				return {
+					id: base.id,
+					name: base.name,
+					nutrients: base.get('accumulated_nutrients'),
+					pop_types: pop_types,
+				};
+			},
+			despawn_base: (id) => {
+				test.assert(active_gas_base != null && active_gas_base.id == id);
+				active_gas_base = null;
+				unit_event_defender_base = null;
+			},
+			restore_base: (snapshot) => {
+				active_gas_base = make_gas_base(snapshot.id, snapshot.name, snapshot.nutrients);
+				unit_event_defender_base = active_gas_base;
+				gas_pops = [];
+				for (type of snapshot.pop_types) {
+					gas_pops :+make_gas_pop(type, #undefined);
+				}
+				return active_gas_base;
 			},
 		},
 		event: (name, data) => {
@@ -1320,4 +1539,82 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(combat_relation == 'treaty');
 	test.assert(!active_defender.native_capture_attempted);
 	defender_player.type = 'ai';
+
+	gas_pops = [
+		make_gas_pop('WORKER', defender_tile),
+		make_gas_pop('TALENT', #undefined),
+		make_gas_pop('DRONE', #undefined),
+	];
+	active_gas_base = make_gas_base(50, 'Gas Target', 12);
+	unit_event_defender_base = active_gas_base;
+	active_attacker.def = 'NerveGasLaser';
+	active_attacker.get_def = () => {
+		return {
+			id: 'NerveGasLaser',
+			is_native: false,
+			is_psi_attack: false,
+			offense: 2,
+			defense: 1,
+			morale_set: 'NATIVE',
+			abilities: ['NerveGasPods'],
+		};
+	};
+	active_defender.def = 'ConventionalDefender';
+	active_defender.get_def = () => {
+		return {
+			id: 'ConventionalDefender',
+			is_native: false,
+			is_psi_defense: false,
+			offense: 1,
+			defense: 1,
+			morale_set: 'NATIVE',
+			abilities: [],
+		};
+	};
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.resolved = {
+		sequence: [[true, 0.9]],
+		attacker_dead: false,
+		defender_dead: true,
+		advance_after_combat: false,
+		nerve_gas: true,
+	};
+	combat_relation = 'treaty';
+	event.applied = attack_unit.apply(event);
+	test.assert(major_atrocities == 3);
+	test.assert(sanction_turns == 13);
+	test.assert(active_gas_base.get_size() == 1);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 0);
+	test.assert(event.applied.nerve_gas.population_loss == 2);
+	attack_unit.rollback(event);
+	test.assert(major_atrocities == 2);
+	test.assert(sanction_turns == 3);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
+	test.assert(gas_pops[0].get_type() == 'WORKER');
+	test.assert(gas_pops[1].get_type() == 'TALENT');
+	test.assert(gas_pops[2].get_type() == 'DRONE');
+
+	gas_pops = [make_gas_pop('WORKER', #undefined)];
+	let supported = null;
+	supported = {
+		id: 99,
+		owner: defender_player.id,
+		home_base_id: active_gas_base.id,
+		get_tile: () => { return defender_tile; },
+		set_home_base_id: (id) => { supported.home_base_id = id; },
+	};
+	support_units = [supported];
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base == null);
+	test.assert(supported.home_base_id == 0);
+	test.assert(event.applied.nerve_gas.population_loss == 1);
+	attack_unit.rollback(event);
+	test.assert(active_gas_base != null && active_gas_base.get_size() == 1);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
+	test.assert(supported.home_base_id == 50);
+	test.assert(major_atrocities == 2 && sanction_turns == 3);
 }

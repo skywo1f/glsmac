@@ -330,3 +330,44 @@ trance_defender.get_def = () => {
 const ability_psi_powers = combat_rules.get_combat_powers(empath_attacker, trance_defender);
 test.assert(ability_psi_powers.attack == 4.5);
 test.assert(ability_psi_powers.defence == 3.75);
+
+const nerve_gas_attacker = make_unit(attack_tile, 1, 2, 1, false, 'land');
+nerve_gas_attacker.get_def = () => {
+	return {
+		id: 'NerveGasLaser',
+		is_native: false,
+		is_psi_attack: false,
+		offense: 2,
+		defense: 1,
+		abilities: ['NerveGasPods'],
+	};
+};
+test.assert(combat_rules.is_nerve_gas_attack(nerve_gas_attacker, defender));
+test.assert(combat_rules.get_combat_powers(nerve_gas_attacker, defender).attack == 3.0);
+test.assert(!combat_rules.is_nerve_gas_attack(nerve_gas_attacker, native_attacker));
+
+const nerve_gas_artillery = make_unit(attack_tile, 1, 2, 1, false, 'land');
+nerve_gas_artillery.get_def = () => {
+	return {
+		id: 'NerveGasArtillery',
+		is_artillery: true,
+		is_native: false,
+		is_psi_attack: false,
+		offense: 2,
+		defense: 1,
+		abilities: ['HeavyArtillery', 'NerveGasPods'],
+	};
+};
+test.assert(combat_rules.get_artillery_powers(nerve_gas_artillery, defender).attack == 3.0);
+
+const illegal_psi_gas = make_unit(attack_tile, 1, 1, 1, false, 'land');
+illegal_psi_gas.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_attack: true,
+		offense: 1,
+		defense: 1,
+		abilities: ['NerveGasPods'],
+	};
+};
+test.assert(!combat_rules.is_nerve_gas_attack(illegal_psi_gas, defender));

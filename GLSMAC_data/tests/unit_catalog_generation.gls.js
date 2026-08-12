@@ -69,6 +69,8 @@ let found_amphibious_unit = false;
 let found_land_sam = false;
 let found_sea_sam = false;
 let found_air_sam = false;
+let found_land_nerve_gas = false;
+let found_air_nerve_gas = false;
 let found_fission = false;
 let found_fusion = false;
 let found_quantum = false;
@@ -142,6 +144,14 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 				found_sea_sam = true;
 			} else if (data.movement_type == 'air') {
 				found_air_sam = true;
+			}
+		} else if (ability == 'NerveGasPods') {
+			test.assert(!data.is_native && data.weapon != 'PsiAttack');
+			test.assert(data.movement_type != 'water');
+			if (data.movement_type == 'land') {
+				found_land_nerve_gas = true;
+			} else if (data.movement_type == 'air') {
+				found_air_nerve_gas = true;
 			}
 		}
 	}
@@ -230,6 +240,8 @@ test.assert(found_amphibious_unit);
 test.assert(found_land_sam);
 test.assert(found_sea_sam);
 test.assert(found_air_sam);
+test.assert(found_land_nerve_gas);
+test.assert(found_air_nerve_gas);
 test.assert(found_fission);
 test.assert(found_fusion);
 test.assert(found_quantum);

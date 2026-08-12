@@ -17,6 +17,7 @@ const SUPPORTED_ABILITIES = {
 	CleanReactor: true,
 	BlinkDisplacer: true,
 	HypnoticTrance: true,
+	NerveGasPods: true,
 	RepairBay: true,
 	NonLethalMethods: true,
 };

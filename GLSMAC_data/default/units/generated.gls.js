@@ -103,6 +103,7 @@ const heavy_artillery = find_component(manifest.abilities, 'HeavyArtillery');
 const carrier_deck = find_component(manifest.abilities, 'CarrierDeck');
 const amphibious_pods = find_component(manifest.abilities, 'AmphibiousPods');
 const air_superiority = find_component(manifest.abilities, 'AirSuperiority');
+const nerve_gas_pods = find_component(manifest.abilities, 'NerveGasPods');
 
 const get_role_abilities = (known, role) => {
 	let result = [];
@@ -301,6 +302,12 @@ const add_milestone_designs = (technology_id) => {
 		}
 		if (is_available(air_superiority, known)) {
 			add(chassis, weapon, armor, 'assault', [air_superiority]);
+		}
+		if (
+			triad != 'sea' && weapon.id != 'PsiAttack' &&
+			is_available(nerve_gas_pods, known)
+		) {
+			add(chassis, weapon, armor, 'assault', [nerve_gas_pods]);
 		}
 	}
 	for (chassis of manifest.chassis) {

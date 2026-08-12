@@ -207,7 +207,11 @@ scenarios, for:
   transport assaults and sea-base crossings, while Air Superiority provides
   cross-triad targeting and the original interceptor combat modifiers; Carrier
   Deck sea transports accept, move, deploy, and refuel aircraft while ordinary
-  troop transports reject them;
+  troop transports reject them; Nerve Gas Pods are available to legal
+  conventional land and air designs, grant +50% offense against non-native
+  units, count as a major atrocity, impose U.N. Charter sanctions, and halve a
+  defeated base's population, destroying size-one bases and rehoming their
+  surviving supported units;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
   AI and native-life controllers retry animation-blocked turn completion and
@@ -220,7 +224,7 @@ The base-game content validator currently reports:
 - 77 technologies;
 - all 38 base facilities represented: 37 complete and 1 partial;
 - all 33 Secret Projects represented: 32 complete and 1 partial;
-- 419 runtime unit definitions, 14 source-manifest predefined units, and 68
+- 476 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
 
 These counts describe implemented definitions and automated coverage. They do
@@ -249,7 +253,7 @@ The following original-SMAC systems remain absent or materially incomplete:
 - the Space Elevator is the only partial Secret Project; it still lacks global
   orbital insertion and its remaining Drop Pod interactions;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
-  abilities such as Drop Pods, Cloaking, Deep Pressure Hull, and Nerve Gas;
+  abilities such as Drop Pods, Cloaking, and Deep Pressure Hull;
 - complete UI workflows, player-facing diagnostics, accessibility review,
   packaging, upgrade migration, and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -263,6 +267,15 @@ development build rather than a finished replacement for the original game.
 The Release CTest matrix contains 127 cases: 97 isolated native/script GSE tests
 and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After Nerve Gas Pods were completed, the Windows x64 Release build succeeded
+and all 97 isolated tests passed in 209.66 seconds. The installed-asset Unit
+Workshop, combat-access, multiplayer, and running-reconnect scenarios passed in
+130.62 seconds. Coverage verifies Workshop legality, 476-definition generation,
+offensive AI valuation, the live faction-adjusted +50% combat bonus, major
+atrocities and sanctions, rounded-up population loss, size-one base destruction,
+support rehoming, and complete event rollback. Full global Council expulsion
+consequences for major atrocities remain a release blocker.
 
 After permanent Unit Workshop retirement was added, all 97 isolated tests passed
 in 202.92 seconds. The focused Workshop runtime passed in 19.53 seconds and now

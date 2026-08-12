@@ -128,6 +128,26 @@ const amphibious_probe = selection(
 );
 test.assert(#is_defined(rules.get_error(player, amphibious_probe)));
 
+known.HighEnergyChemistry = true;
+const nerve_gas = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+);
+preview = rules.get_preview(game, player, nerve_gas);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['NerveGasPods']);
+test.assert(!#is_defined(rules.get_error(player, selection(
+	'Needlejet', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'PsiAttack', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+
 test.assert(
 	#is_defined(rules.get_error(player, selection(
 		'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['EmpathSong', 'EmpathSong']

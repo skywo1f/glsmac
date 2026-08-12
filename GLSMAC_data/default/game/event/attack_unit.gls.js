@@ -1,9 +1,52 @@
 const MIN_DAMAGE_VALUE = 0.1;
 const MAX_DAMAGE_VALUE = 0.3;
 const MIN_BOMBARDMENT_HEALTH = 0.1;
+const NERVE_GAS_SANCTION_YEARS = 10;
+const MAX_MAJOR_ATROCITIES = 1000000;
 const combat_rules = #include('../combat_rules');
 const native_capture = #include('../native_capture');
-const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
+const entity_snapshots = #include('../entity_snapshots');
+const snapshot_unit = entity_snapshots.snapshot_unit;
+
+const is_un_charter_active = (game) => {
+	const is_repealed = game.get('f_council_is_un_charter_repealed');
+	return !#is_defined(is_repealed) || !is_repealed();
+};
+
+const remove_base_population = (game, base, count) => {
+	let removed = [];
+	const old_nutrients = base.get('accumulated_nutrients');
+	game.get('f_base_reset_nutrients')(game, base);
+	for (let i = 0; i < count; i++) {
+		const pops = base.get_pops();
+		const pop = pops[#sizeof(pops) - 1];
+		const worked_tile = pop.get('worked_tile');
+		removed :+{type: pop.get_type(), worked_tile: worked_tile};
+		if (#is_defined(worked_tile)) {
+			game.get('f_base_pop_unwork_tile')(base, pop);
+		}
+		base.destroy_pop(pop);
+	}
+	return {pops: removed, nutrients: old_nutrients};
+};
+
+const restore_base_population = (game, base, snapshot) => {
+	for (let i = #sizeof(snapshot.pops) - 1; i >= 0; i--) {
+		const pop = base.create_pop({type: snapshot.pops[i].type});
+		if (#is_defined(snapshot.pops[i].worked_tile)) {
+			game.get('f_base_pop_work_tile')(base, pop, snapshot.pops[i].worked_tile);
+		}
+	}
+	base.set('accumulated_nutrients', snapshot.nutrients);
+};
+
+const refresh_base_psych = (game, base) => {
+	const get_psych = game.get('f_economy_get_base_psych');
+	const process_psych = game.get('f_base_process_psych');
+	if (#is_defined(get_psych) && #is_defined(process_psych)) {
+		process_psych(game, base, get_psych(game, base));
+	}
+};
 
 const restore_unit = (e, backup) => {
 	let unit = null;
@@ -118,6 +161,25 @@ return {
 		if (attacker_def.offense <= 0) {
 			return 'Noncombat units cannot attack';
 		}
+		if (combat_rules.has_ability(attacker_def, 'NerveGasPods')) {
+			let atrocity_defender = e.data.defender;
+			if (#is_defined(defender_tile.get_units)) {
+				const selected = combat_rules.get_best_defender(
+					e.data.attacker,
+					defender_tile,
+					e.game
+				);
+				if (selected != null) {
+					atrocity_defender = selected;
+				}
+			}
+			if (
+				combat_rules.is_nerve_gas_attack(e.data.attacker, atrocity_defender) &&
+				e.game.get_player(e.caller).get_major_atrocities() >= MAX_MAJOR_ATROCITIES
+			) {
+				return 'Major atrocity limit has been reached';
+			}
+		}
 
 	},
 
@@ -132,6 +194,7 @@ return {
 		const defender = selected_defender == null ? e.data.defender : selected_defender;
 		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
 		const defender_is_artillery = combat_rules.is_artillery(defender.get_def());
+		const nerve_gas = combat_rules.is_nerve_gas_attack(attacker, defender);
 		const capture = native_capture.resolve(e.game, attacker, defender);
 
 		if (capture.captured) {
@@ -145,6 +208,7 @@ return {
 					target_tile
 				),
 				native_capture: capture,
+				nerve_gas: nerve_gas,
 			};
 		}
 
@@ -170,6 +234,7 @@ return {
 				defender_dead: false,
 				advance_after_combat: false,
 				native_capture: capture,
+				nerve_gas: nerve_gas,
 			};
 		}
 
@@ -222,6 +287,7 @@ return {
 					attacker.get_owner().type != 'native'
 				),
 			native_capture: capture,
+			nerve_gas: nerve_gas,
 		};
 	},
 
@@ -239,6 +305,9 @@ return {
 		const attacker_destroyed = e.resolved.attacker_dead || attacker_is_missile;
 		const capture = #is_defined(e.resolved.native_capture)
 			? e.resolved.native_capture : null;
+		const nerve_gas = #is_defined(e.resolved.nerve_gas)
+			? e.resolved.nerve_gas
+			: combat_rules.is_nerve_gas_attack(attacker, defender);
 
 		let applied = {
 			backup: {
@@ -248,6 +317,29 @@ return {
 		};
 		const attacker_owner = e.game.get_player(attacker.owner);
 		const defender_owner = e.game.get_player(defender.owner);
+		if (nerve_gas) {
+			applied.nerve_gas = {
+				actor_atrocities: attacker_owner.get_major_atrocities(),
+				actor_sanction_turns: attacker_owner.get_sanction_turns(),
+				population_loss: 0,
+				rehomed_units: [],
+			};
+			attacker_owner.set_major_atrocities(applied.nerve_gas.actor_atrocities + 1);
+			if (is_un_charter_active(e.game)) {
+				attacker_owner.set_sanction_turns(#min(
+					MAX_MAJOR_ATROCITIES,
+					applied.nerve_gas.actor_sanction_turns + NERVE_GAS_SANCTION_YEARS
+				));
+				e.game.trigger('diplomatic_sanctions_updated', {
+					player: attacker_owner,
+					turns: attacker_owner.get_sanction_turns(),
+				});
+				e.game.message(
+					'Economic sanctions imposed against ' + attacker_owner.name +
+					' for 10 years.'
+				);
+			}
+		}
 		if (
 			attacker_owner.id != defender_owner.id &&
 			attacker_owner.type != 'native' && defender_owner.type != 'native' &&
@@ -381,6 +473,52 @@ return {
 		if (!e.resolved.defender_dead && e.resolved.attacker_dead) {
 			promote_unit(e.game.um, defender);
 		}
+		if (nerve_gas && e.resolved.defender_dead) {
+			const base = defender_tile.get_base();
+			if (base != null && base.get_owner().id == defender.owner) {
+				const size = base.get_size();
+				const population_loss = size - #floor(#to_float(size) / 2.0);
+				applied.nerve_gas.population_loss = population_loss;
+				applied.nerve_gas.base_id = base.id;
+				applied.nerve_gas.base_name = base.name;
+				if (size == 1) {
+					applied.nerve_gas.destroyed_base = e.game.bm.snapshot_base(base);
+					e.game.bm.despawn_base(base.id);
+					applied.nerve_gas.rehomed_units =
+						entity_snapshots.rehome_surviving_units(
+							e.game,
+							[{id: base.id}],
+							defender.id
+						);
+					e.game.message(
+						applied.nerve_gas.base_name + ' was destroyed by nerve gas.'
+					);
+				} else {
+					applied.nerve_gas.base = base;
+					applied.nerve_gas.population = remove_base_population(
+						e.game,
+						base,
+						population_loss
+					);
+					refresh_base_psych(e.game, base);
+					e.game.trigger('update_base', {base: base});
+					e.game.message(
+						base.name + ' lost ' + #to_string(population_loss) +
+						' population to nerve gas.'
+					);
+				}
+			}
+		}
+		if (nerve_gas) {
+			e.game.trigger('nerve_gas_used', {
+				player: attacker_owner,
+				target: defender_owner,
+				attacker: attacker,
+				defender: defender,
+				population_loss: applied.nerve_gas.population_loss,
+			});
+			e.game.message(attacker_owner.name + ' committed a nerve gas atrocity.');
+		}
 		if (e.game.is_master()) {
 			if (attacker_destroyed) {
 				e.game.event('despawn_unit', {unit: attacker});
@@ -401,8 +539,31 @@ return {
 			restore_unit(e, a.backup.attacker);
 			return;
 		}
+		if (#is_defined(a.nerve_gas)) {
+			if (#is_defined(a.nerve_gas.destroyed_base)) {
+				e.game.bm.restore_base(a.nerve_gas.destroyed_base);
+			} else if (#is_defined(a.nerve_gas.population)) {
+				restore_base_population(
+					e.game,
+					a.nerve_gas.base,
+					a.nerve_gas.population
+				);
+				refresh_base_psych(e.game, a.nerve_gas.base);
+				e.game.trigger('update_base', {base: a.nerve_gas.base});
+			}
+		}
 		restore_unit(e, a.backup.attacker);
 		restore_unit(e, a.backup.defender);
+		if (#is_defined(a.nerve_gas)) {
+			entity_snapshots.restore_rehomed_units(e.game, a.nerve_gas.rehomed_units);
+			const attacker_owner = e.game.get_player(a.backup.attacker.owner);
+			attacker_owner.set_major_atrocities(a.nerve_gas.actor_atrocities);
+			attacker_owner.set_sanction_turns(a.nerve_gas.actor_sanction_turns);
+			e.game.trigger('diplomatic_sanctions_updated', {
+				player: attacker_owner,
+				turns: a.nerve_gas.actor_sanction_turns,
+			});
+		}
 		if (#is_defined(a.diplomacy)) {
 			const attacker_owner = e.game.get_player(a.backup.attacker.owner);
 			const defender_owner = e.game.get_player(a.backup.defender.owner);

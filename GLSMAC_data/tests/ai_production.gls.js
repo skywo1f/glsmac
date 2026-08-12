@@ -361,6 +361,15 @@ coastal_assault_context.needs_garrison = true;
 test.assert(
 	production.get_unit_ability_score(amphibious_laser, coastal_assault_context) == 0
 );
+const nerve_gas_laser = unit('NerveGasLaser', 2, 1, 1.0, 25, false, false);
+nerve_gas_laser.abilities = ['NerveGasPods'];
+let offensive_context = context(false, false, false, false, 0);
+test.assert(
+	production.score_unit(nerve_gas_laser, offensive_context) >
+	production.score_unit(laser, offensive_context)
+);
+offensive_context.needs_garrison = true;
+test.assert(production.get_unit_ability_score(nerve_gas_laser, offensive_context) == 0);
 const super_former = unit('SuperFormer', 0, 1, 1.0, 25, false, true);
 super_former.abilities = ['SuperFormer'];
 const fungicidal_former = unit('FungicidalFormer', 0, 1, 1.0, 25, false, true);

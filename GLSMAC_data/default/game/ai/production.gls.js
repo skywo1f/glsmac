@@ -62,6 +62,13 @@ const get_unit_ability_score = (def, context) => {
 			: 1;
 		score += 7000 + #min(targets, 4) * 1500;
 	}
+	if (
+		unit_abilities.has(def, 'NerveGasPods') && #is_defined(context) &&
+		#is_defined(context.needs_military) && context.needs_military &&
+		!context.needs_garrison
+	) {
+		score += 9000;
+	}
 	return score;
 };
 
