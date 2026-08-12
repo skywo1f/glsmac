@@ -14,6 +14,7 @@
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
+	const dust_cloud_duration_stamp = 9;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
@@ -264,6 +265,12 @@
 		};
 
 		const get_base_state_error = () => {
+			if (
+				game.get_tm().get_climate_state().dust_cloud_duration !=
+					dust_cloud_duration_stamp
+			) {
+				return 'global dust-cloud duration was not restored';
+			}
 			if (game.get_player().energy_credits != initial_energy_stamp) {
 				return
 					'energy credits are ' + #to_string(game.get_player().energy_credits) +

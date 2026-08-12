@@ -61,6 +61,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 		int64_t level = 0;
 		int64_t future_change = 0;
 		int64_t progress = 0;
+		int64_t dust_cloud_duration = 0;
 	};
 
 	Map( Game* game );
@@ -132,6 +133,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	std::string ApplyCrater( tile::Tile* center, const size_t radius );
 	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
 	std::string ApplyVolcano( tile::Tile* center );
+	std::string ApplyMajorEruption( tile::Tile* center );
 	void RestoreTerrain( const std::string& snapshot );
 	std::string ApplySeaLevelChange( const tile::elevation_t amount );
 	void RestoreSeaLevel( const std::string& snapshot );

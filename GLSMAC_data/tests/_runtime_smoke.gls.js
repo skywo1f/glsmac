@@ -141,6 +141,167 @@
 		return error;
 	};
 
+	const verify_major_eruption_runtime = (game) => {
+		const tm = game.get_tm();
+		let center = null;
+		for (let y = 4; y < tm.get_map_height() - 4 && center == null; y++) {
+			for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+				const candidate = tm.get_tile(x, y);
+				if (!candidate.is_locked()) {
+					center = candidate;
+					break;
+				}
+			}
+		}
+		if (center == null) {
+			return 'no unlocked center was available for major-eruption verification';
+		}
+
+		let affected = [];
+		let unaffected = [];
+		for (let scan_y = 0; scan_y < tm.get_map_height(); scan_y++) {
+			for (let scan_x = scan_y % 2; scan_x < tm.get_map_width(); scan_x += 2) {
+				const tile = tm.get_tile(scan_x, scan_y);
+				const tile_state = {
+					tile: tile,
+					features: #clone(tile.features),
+					terraforming: #clone(tile.terraforming),
+					rockiness: tile.rockiness + 0,
+				};
+				if (tm.get_distance(center, tile) <= 4) {
+					affected :+tile_state;
+				} else {
+					unaffected :+tile_state;
+				}
+			}
+		}
+		if (#sizeof(affected) == 0 || #sizeof(unaffected) == 0) {
+			return 'major-eruption radius did not partition the smoke map';
+		}
+
+		const original_center_features = #clone(center.features);
+		const original_center_terraforming = #clone(center.terraforming);
+		center.update_features({xenofungus: true});
+		center.update_terraforming({
+			road: true,
+			mag_tube: true,
+			forest: true,
+			farm: true,
+			soil_enricher: true,
+			solar: true,
+			mine: true,
+			condenser: true,
+			mirror: true,
+			borehole: true,
+			sensor: true,
+			bunker: true,
+			airbase: true,
+			remove_fungus: true,
+			plant_fungus: true,
+		});
+
+		const snapshot = tm.apply_major_eruption(center);
+		let error = null;
+		for (affected_state of affected) {
+			const eruption_tile = affected_state.tile;
+			if (eruption_tile.rockiness != 3 || eruption_tile.features.xenofungus) {
+				error = 'major eruption did not make every affected tile rocky and fungus-free';
+				break;
+			}
+			for (id of [
+				'road', 'mag_tube', 'forest', 'farm', 'soil_enricher', 'solar',
+				'mine', 'condenser', 'mirror', 'borehole', 'sensor', 'bunker',
+				'remove_fungus', 'plant_fungus',
+			]) {
+				if (eruption_tile.terraforming[id]) {
+					error = 'major eruption retained destructible terraforming';
+					break;
+				}
+			}
+			if (error != null) { break; }
+		}
+		if (error == null && !center.terraforming.airbase) {
+			error = 'major eruption destroyed an airbase contrary to base-game rules';
+		}
+		if (error == null) {
+			for (outside_state of unaffected) {
+				if (
+					outside_state.tile.rockiness != outside_state.rockiness ||
+					outside_state.tile.features != outside_state.features ||
+					outside_state.tile.terraforming != outside_state.terraforming
+				) {
+					error = 'major eruption changed terrain outside its radius';
+					break;
+				}
+			}
+		}
+
+		tm.restore_terrain(snapshot);
+		if (error == null) {
+			for (restored_state of affected) {
+				if (
+					restored_state.tile.rockiness != restored_state.rockiness ||
+					(restored_state.tile == center
+						? !restored_state.tile.features.xenofungus || !restored_state.tile.terraforming.airbase
+						: restored_state.tile.features != restored_state.features ||
+							restored_state.tile.terraforming != restored_state.terraforming)
+				) {
+					error = 'major-eruption terrain rollback was not exact';
+					break;
+				}
+			}
+		}
+		center.update_features(original_center_features);
+		center.update_terraforming(original_center_terraforming);
+		if (
+			error == null &&
+			(
+				center.features != original_center_features ||
+				center.terraforming != original_center_terraforming
+			)
+		) {
+			error = 'major-eruption verification did not restore its temporary setup';
+		}
+
+		const initial_climate = tm.get_climate_state();
+		let energy_tile = null;
+		let normal_resources = null;
+		for (resource_state of affected) {
+			const resources = resource_state.tile.get_resources();
+			if (resources.ENERGY > 0) {
+				energy_tile = resource_state.tile;
+				normal_resources = resources;
+				break;
+			}
+		}
+		if (error == null && energy_tile == null) {
+			error = 'no producing tile was available for dust-cloud verification';
+		}
+		if (energy_tile != null) {
+			tm.set_dust_cloud_duration(10);
+			const dusty_resources = energy_tile.get_resources();
+			const dusty_climate = tm.get_climate_state();
+			if (
+				dusty_climate.dust_cloud_duration != 10 ||
+				dusty_resources.NUTRIENTS != normal_resources.NUTRIENTS ||
+				dusty_resources.MINERALS != normal_resources.MINERALS ||
+				dusty_resources.ENERGY != normal_resources.ENERGY - 1
+			) {
+				error = 'dust cloud did not reduce live tile energy by exactly one';
+			}
+			tm.set_climate_state(
+				initial_climate.level,
+				initial_climate.future_change,
+				initial_climate.progress
+			);
+			if (tm.get_climate_state().dust_cloud_duration != 10) {
+				error = 'ordinary climate updates did not preserve dust-cloud duration';
+			}
+		}
+		tm.set_dust_cloud_duration(initial_climate.dust_cloud_duration);
+		return error;
+	};
+
 	const finish_if_ready = () => {
 		if (lifecycle_verified && expansion_verified && terraforming_verified && repair_verified && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
@@ -421,6 +582,13 @@
 					return;
 				}
 				#print('RUNTIME_SMOKE_VOLCANO_PASS: live nine-tile eruption and exact rollback verified');
+				const major_eruption_error = verify_major_eruption_runtime(game);
+				if (major_eruption_error != null) {
+					#print('RUNTIME_SMOKE_FAIL: ' + major_eruption_error);
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_MAJOR_ERUPTION_PASS: terrain, rollback, and dust yield verified');
 				const victory_state = game.get_victory_state();
 				if (
 					game.is_game_over() ||

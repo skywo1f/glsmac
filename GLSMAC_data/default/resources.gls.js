@@ -25,6 +25,14 @@ const copy_yields = (values) => {
 	};
 };
 
+const apply_dust_cloud_penalty = (values, duration) => {
+	const result = copy_yields(values);
+	if (duration > 0 && result.ENERGY > 0) {
+		result.ENERGY = result.ENERGY - 1;
+	}
+	return result;
+};
+
 const has_technology = (player, id) => {
 	return #is_defined(player) &&
 		#is_defined(player.has_technology) &&
@@ -226,11 +234,22 @@ const get_tile_yields = (tile, player) => {
 const result = {
 	rules: rules,
 	get_tile_yields: get_tile_yields,
+	apply_dust_cloud_penalty: apply_dust_cloud_penalty,
 
 	configure: (game) => {
 
 		game.get_tm().on('get_tile_resources', (e) => {
-			return get_tile_yields(e.tile, e.player);
+			const tm = game.get_tm();
+			const climate = #typeof(tm.get_climate_state) == 'Callable'
+				? tm.get_climate_state()
+				: {};
+			const duration = #is_defined(climate.dust_cloud_duration)
+				? climate.dust_cloud_duration
+				: 0;
+			return apply_dust_cloud_penalty(
+				get_tile_yields(e.tile, e.player),
+				duration
+			);
 		});
 
 	},

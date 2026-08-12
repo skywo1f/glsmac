@@ -3,6 +3,7 @@ const define_bases = #include('../default/game/bases');
 
 let resource_callback = null;
 const tm = {
+	get_climate_state: () => { return {dust_cloud_duration: 0}; },
 	on: (name, callback) => {
 		test.assert(name == 'get_tile_resources');
 		resource_callback = callback;
@@ -207,6 +208,19 @@ legacy_geothermal.is_land = false;
 legacy_geothermal.is_water = true;
 legacy_geothermal.features.geothermal = true;
 test.assert(resources.get_tile_yields(legacy_geothermal, player).ENERGY == 2);
+
+test.assert(resources.apply_dust_cloud_penalty(
+	{NUTRIENTS: 3, MINERALS: 2, ENERGY: 4},
+	10
+) == {NUTRIENTS: 3, MINERALS: 2, ENERGY: 3});
+test.assert(resources.apply_dust_cloud_penalty(
+	{NUTRIENTS: 3, MINERALS: 2, ENERGY: 0},
+	10
+) == {NUTRIENTS: 3, MINERALS: 2, ENERGY: 0});
+test.assert(resources.apply_dust_cloud_penalty(
+	{NUTRIENTS: 3, MINERALS: 2, ENERGY: 4},
+	0
+) == {NUTRIENTS: 3, MINERALS: 2, ENERGY: 4});
 
 const borehole = make_tile(false);
 borehole.terraforming.borehole = true;

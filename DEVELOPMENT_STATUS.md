@@ -163,7 +163,9 @@ scenarios, for:
   gradual 20-turn altitude steps, deterministic flooding and exposure,
   Pressure Dome protection and emergency construction, population losses,
   unit and transport-cargo destruction, surviving-unit rehoming, live terrain
-  rendering, save/reconnect state, and complete event rollback;
+  rendering, save state, versioned network snapshots that preserve sea level
+  and climate while accepting legacy raw map payloads, and complete event
+  rollback;
 - deterministic physical territory claims use the original eight-tile maximum,
   nearest reachable base on the same landmass or sea without crossing the other
   terrain type, oldest-base tie resolution, and two-tile coastal water claims;
@@ -182,6 +184,14 @@ scenarios, for:
   volcano, clears its surface improvements, and synchronizes the reversible
   terrain snapshot; volcanic farms and forests plus all volcano-center
   terraforming are rejected;
+- the original base-game major Mount Planet eruption from Mission Year 2175:
+  an eligible eight-base faction near explored Mount Planet can suffer the
+  original radius-four improvement and fungus destruction, rocky terrain,
+  Mount Planet unit deaths, half damage elsewhere, ring-scaled population
+  losses, base destruction and unit rehoming, plus a synchronized ten-year
+  global one-energy-per-tile dust-cloud penalty with exact event rollback;
+  original ranking, PBEM, and objective-base scenario exceptions remain
+  unavailable because GLSMAC does not yet expose those underlying models;
 - persistent bilateral faction contact discovered through adjacent units and
   bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
   Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
@@ -292,8 +302,7 @@ The following original-SMAC systems remain absent or materially incomplete:
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
-  Nexus, plus the original major Mount Planet eruption random event, its
-  terrain and population damage, and ten-year dust-cloud energy penalty;
+  Nexus;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots so concealed information is not present client-side;
 - complete UI workflows, including the interactive abandon-versus-evacuate
@@ -307,7 +316,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 136 cases: 105 isolated native/script GSE tests
+The Release CTest matrix contains 138 cases: 107 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -588,6 +597,16 @@ passed in 233.09 seconds. The standard installed-asset runtime passed in 41.32
 seconds and directly verified live nine-tile volcanic uplift, rocky terrain,
 improvement clearing, and exact terrain rollback. The same batch restored
 Nessus Canyon's original +1 mineral yield.
+
+After the major Mount Planet eruption and global dust cloud were added, the
+Windows x64 Release build succeeded and all 107 isolated native/script tests
+passed in 234.78 seconds. The standard installed-asset runtime passed in 42.53
+seconds and directly verified radius-four rocky devastation, improvement and
+fungus removal, exact unaffected terrain, rollback, and the live one-energy
+dust penalty. Ordinary multiplayer passed in 55.28 seconds. Running reconnect
+passed in 50.78 seconds while directly restoring the post-turn dust duration;
+the versioned map payload now carries sea level and every climate field instead
+of terrain tiles alone.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

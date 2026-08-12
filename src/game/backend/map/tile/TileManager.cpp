@@ -174,6 +174,7 @@ WRAPIMPL_BEGIN( TileManager )
 					{ "level", VALUE( gse::value::Int,, state.level ) },
 					{ "future_change", VALUE( gse::value::Int,, state.future_change ) },
 					{ "progress", VALUE( gse::value::Int,, state.progress ) },
+					{ "dust_cloud_duration", VALUE( gse::value::Int,, state.dust_cloud_duration ) },
 				} );
 			} )
 		},
@@ -186,11 +187,28 @@ WRAPIMPL_BEGIN( TileManager )
 				N_GETVALUE( future_change, 1, Int );
 				N_GETVALUE( progress, 2, Int );
 				try {
-					GetMap( GSE_CALL )->SetClimateState( {
-						level,
-						future_change,
-						progress,
-					} );
+					auto state = GetMap( GSE_CALL )->GetClimateState();
+					state.level = level;
+					state.future_change = future_change;
+					state.progress = progress;
+					GetMap( GSE_CALL )->SetClimateState( state );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"set_dust_cloud_duration",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( duration, 0, Int );
+				try {
+					auto state = GetMap( GSE_CALL )->GetClimateState();
+					state.dust_cloud_duration = duration;
+					GetMap( GSE_CALL )->SetClimateState( state );
 					return VALUE( gse::value::Undefined );
 				}
 				catch ( const std::runtime_error& e ) {
@@ -290,6 +308,24 @@ WRAPIMPL_BEGIN( TileManager )
 						gse::value::String,
 						,
 						GetMap( GSE_CALL )->ApplyVolcano( center )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"apply_major_eruption",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyMajorEruption( center )
 					);
 				}
 				catch ( const std::runtime_error& e ) {

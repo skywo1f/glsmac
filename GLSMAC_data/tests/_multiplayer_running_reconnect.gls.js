@@ -19,6 +19,8 @@
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
+	// The first-turn random-event handler advances the seeded duration once.
+	const dust_cloud_duration_stamp = 9;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
@@ -655,6 +657,22 @@
 								return false;
 							}
 						}
+						if (
+							game.get_tm().get_climate_state().dust_cloud_duration !=
+								dust_cloud_duration_stamp
+						) {
+							if (wait_ticks >= 200) {
+								#print(
+									'RUNNING_RECONNECT_FAIL_CLIENT: dust-cloud snapshot is ' +
+									#to_string(
+										game.get_tm().get_climate_state().dust_cloud_duration
+									)
+								);
+								glsmac.exit();
+								return false;
+							}
+							return true;
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
@@ -1030,6 +1048,7 @@
 						),
 						home_base_id: client_base.id,
 					});
+					game.get_tm().set_dust_cloud_duration(dust_cloud_duration_stamp + 1);
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});
 				}

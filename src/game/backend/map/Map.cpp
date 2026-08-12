@@ -227,6 +227,7 @@ const types::Buffer Map::Serialize() const {
 	buf.WriteInt( m_climate_state.level );
 	buf.WriteInt( m_climate_state.future_change );
 	buf.WriteInt( m_climate_state.progress );
+	buf.WriteInt( m_climate_state.dust_cloud_duration );
 
 	return buf;
 }
@@ -300,6 +301,9 @@ void Map::Deserialize( types::Buffer buf ) {
 		serialized_climate_state.level = buf.ReadInt();
 		serialized_climate_state.future_change = buf.ReadInt();
 		serialized_climate_state.progress = buf.ReadInt();
+		if ( buf.GetRemaining() > 0 ) {
+			serialized_climate_state.dust_cloud_duration = buf.ReadInt();
+		}
 	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized map" );
@@ -679,6 +683,9 @@ void Map::SetClimateState( const climate_state_t& state ) {
 	if ( state.progress < 0 || state.progress > 1000000 ) {
 		THROW( "climate progress is outside the supported range" );
 	}
+	if ( state.dust_cloud_duration < 0 || state.dust_cloud_duration > 1000000 ) {
+		THROW( "dust-cloud duration is outside the supported range" );
+	}
 	m_climate_state = state;
 }
 
@@ -965,6 +972,75 @@ std::string Map::ApplyVolcano( tile::Tile* center ) {
 
 	try {
 		RefreshTerrain( volcano_tiles );
+	}
+	catch ( ... ) {
+		m_tiles->Restore( types::Buffer( snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot;
+}
+
+std::string Map::ApplyMajorEruption( tile::Tile* center ) {
+	ASSERT( center, "cannot erupt around a null tile" );
+	ASSERT( GetTile( center->coord.x, center->coord.y ) == center, "eruption center does not belong to map" );
+
+	const auto snapshot = m_tiles->Serialize().ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	static constexpr size_t ERUPTION_RADIUS = 4;
+	std::unordered_map< tile::Tile*, size_t > distance = { { center, 0 } };
+	tiles_t pending = { center };
+	for ( size_t i = 0 ; i < pending.size() ; i++ ) {
+		auto* const current = pending.at( i );
+		const auto current_distance = distance.at( current );
+		if ( current_distance >= ERUPTION_RADIUS ) {
+			continue;
+		}
+		for ( auto* const neighbour : current->neighbours ) {
+			if ( distance.find( neighbour ) == distance.end() ) {
+				distance.insert( { neighbour, current_distance + 1 } );
+				pending.push_back( neighbour );
+			}
+		}
+	}
+
+	static constexpr tile::terraforming_t DESTROYED_TERRAFORMING =
+		tile::TERRAFORMING_ROAD |
+		tile::TERRAFORMING_MAG_TUBE |
+		tile::TERRAFORMING_FOREST |
+		tile::TERRAFORMING_FARM |
+		tile::TERRAFORMING_SOIL_ENRICHER |
+		tile::TERRAFORMING_SOLAR |
+		tile::TERRAFORMING_MINE |
+		tile::TERRAFORMING_CONDENSER |
+		tile::TERRAFORMING_MIRROR |
+		tile::TERRAFORMING_BOREHOLE |
+		tile::TERRAFORMING_SENSOR |
+		tile::TERRAFORMING_BUNKER |
+		tile::TERRAFORMING_REMOVE_FUNGUS |
+		tile::TERRAFORMING_PLANT_FUNGUS;
+	tile_set_t eruption_tiles;
+	for ( const auto& it : distance ) {
+		auto* const eruption_tile = it.first;
+		eruption_tile->terraforming &= static_cast< tile::terraforming_t >( ~DESTROYED_TERRAFORMING );
+		eruption_tile->features &= static_cast< tile::feature_t >( ~tile::FEATURE_XENOFUNGUS );
+		eruption_tile->rockiness = tile::ROCKINESS_ROCKY;
+		eruption_tiles.insert( eruption_tile );
+	}
+
+	const auto all_tiles = GetAllTiles();
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( eruption_tiles );
 	}
 	catch ( ... ) {
 		m_tiles->Restore( types::Buffer( snapshot ) );
@@ -1479,7 +1555,51 @@ const Map::error_code_t Map::LoadFromBuffer( types::Buffer& buffer ) {
 	}
 	NEW( m_tiles, tile::Tiles, this );
 	try {
-		m_tiles->Deserialize( buffer );
+		static const std::string SNAPSHOT_MARKER = "GLSMAC_MAP_SNAPSHOT";
+		static constexpr int64_t SNAPSHOT_VERSION = 1;
+
+		auto snapshot = buffer;
+		std::string marker;
+		bool is_snapshot = false;
+		try {
+			marker = snapshot.ReadString();
+			is_snapshot = true;
+		}
+		catch ( const std::runtime_error& ) {
+			// Legacy map files and snapshots contain the raw tile buffer.
+		}
+
+		if ( !is_snapshot ) {
+			m_tiles->Deserialize( buffer );
+			return EC_NONE;
+		}
+		if ( marker != SNAPSHOT_MARKER ) {
+			THROW( "unsupported serialized map snapshot marker" );
+		}
+		const auto version = snapshot.ReadInt();
+		if ( version != SNAPSHOT_VERSION ) {
+			THROW( "unsupported serialized map snapshot version" );
+		}
+		const auto serialized_tiles = snapshot.ReadString();
+		const auto serialized_sea_level = snapshot.ReadInt();
+		climate_state_t serialized_climate_state = {
+			snapshot.ReadInt(),
+			snapshot.ReadInt(),
+			snapshot.ReadInt(),
+			snapshot.ReadInt(),
+		};
+		if ( snapshot.GetRemaining() != 0 ) {
+			THROW( "unexpected data after serialized map snapshot" );
+		}
+		if (
+			serialized_sea_level < tile::ELEVATION_MIN ||
+			serialized_sea_level > tile::ELEVATION_MAX
+		) {
+			THROW( "invalid serialized map snapshot sea level" );
+		}
+		m_tiles->Deserialize( types::Buffer( serialized_tiles ) );
+		m_sea_level = static_cast< tile::elevation_t >( serialized_sea_level );
+		SetClimateState( serialized_climate_state );
 		return EC_NONE;
 	}
 	catch ( std::runtime_error& e ) {
@@ -1499,7 +1619,19 @@ const Map::error_code_t Map::LoadFromFile( const std::string& path ) {
 }
 
 void Map::SaveToBuffer( types::Buffer& buffer ) const {
-	buffer.WriteString( m_tiles->Serialize().ToString() );
+	static const std::string SNAPSHOT_MARKER = "GLSMAC_MAP_SNAPSHOT";
+	static constexpr int64_t SNAPSHOT_VERSION = 1;
+
+	types::Buffer snapshot;
+	snapshot.WriteString( SNAPSHOT_MARKER );
+	snapshot.WriteInt( SNAPSHOT_VERSION );
+	snapshot.WriteString( m_tiles->Serialize().ToString() );
+	snapshot.WriteInt( m_sea_level );
+	snapshot.WriteInt( m_climate_state.level );
+	snapshot.WriteInt( m_climate_state.future_change );
+	snapshot.WriteInt( m_climate_state.progress );
+	snapshot.WriteInt( m_climate_state.dust_cloud_duration );
+	buffer.WriteString( snapshot.ToString() );
 }
 
 const Map::error_code_t Map::SaveToFile( const std::string& path ) const {
