@@ -138,7 +138,7 @@ return {
 				player.id != this.player.id && player.type != 'native' &&
 				this.player.has_contact(player) && player.has_contact(this.player)
 			) {
-				items :+[#to_string(player.id), player.name];
+				items :+['' + player.id, '' + player.name];
 			}
 		}
 		this.opponent_select.items = #sizeof(items) > 0

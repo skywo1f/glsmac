@@ -36,6 +36,22 @@ const should_accept = (state) => {
 	return get_acceptance_score(state) >= 0.0;
 };
 
+const get_surrender_score = (state) => {
+	if (state.relation != 'vendetta' || state.own_bases > 2 || state.other_bases <= 0) {
+		return 0.0 - 100000.0;
+	}
+	const relative_strength = get_relative_strength(state.own_power, state.other_power);
+	const base_pressure = #to_float(state.other_bases - state.own_bases) * 20.0;
+	const last_colony_pressure = #to_float(#max(0, 2 - state.own_bases)) * 20.0;
+	const integrity_penalty = #to_float(get_other_integrity_blemishes(state)) * 5.0;
+	return relative_strength * 100.0 + base_pressure + last_colony_pressure -
+		integrity_penalty - 70.0;
+};
+
+const should_offer_surrender = (state) => {
+	return get_surrender_score(state) >= 0.0;
+};
+
 const get_proposal = (state) => {
 	if (state.relation == 'vendetta') {
 		const treaty_state = {
@@ -433,6 +449,8 @@ const get_loan_proposal = (state) => {
 return {
 	get_acceptance_score: get_acceptance_score,
 	should_accept: should_accept,
+	get_surrender_score: get_surrender_score,
+	should_offer_surrender: should_offer_surrender,
 	get_proposal: get_proposal,
 	get_trade_acceptance_score: get_trade_acceptance_score,
 	get_trade_proposal: get_trade_proposal,

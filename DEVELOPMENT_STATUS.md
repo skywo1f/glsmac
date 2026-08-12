@@ -203,6 +203,12 @@ scenarios, for:
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
   vendettas, and a player diplomacy screen;
+- original-style AI surrender offers transfer the defeated faction's treasury,
+  known technologies, and world map in exchange for a permanent Pact of
+  Submission; persistent submission state, player acceptance and rejection,
+  AI threat assessment, active-loan settlement, Supreme Leader coalition
+  consistency, conquest resolution, save compatibility, and exact rollback are
+  covered;
 - persistent eight-level diplomatic integrity, with treaty and pact betrayal
   consequences shared by declarations of war, direct attacks, and detected
   covert operations, plus rollback, player diagnostics, and trust-aware AI;
@@ -304,8 +310,8 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including surrender and richer bundled or counteroffers
-  beyond the implemented energy, technology, commlink, and world-map terms;
+- deeper diplomacy with richer bundled and counteroffers beyond the implemented
+  energy, technology, commlink, world-map, loan, and surrender terms;
 - remaining probe-team parity: exact original cost/outcome and probe-combat
   tuning;
 - remaining territory presentation: rendered faction border overlays and
@@ -325,7 +331,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 139 cases: 108 isolated native/script GSE tests
+The Release CTest matrix contains 140 cases: 109 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -671,6 +677,17 @@ defiance decision, coalition pact and vendetta formation, event rollback,
 holdout elimination before victory, and enforcement across conventional combat,
 undefended-base capture, Probe Teams, orbital attacks, diplomatic proposals,
 and Planet Buster blast effects.
+
+After original-style AI surrender and permanent Pacts of Submission were added,
+the final Windows x64 Release rebuild succeeded in 49.8 seconds and all 109
+isolated native/script tests passed in 236.42 seconds. The installed-asset
+diplomacy runtime passed in 28.68 seconds while exercising an authoritative
+surrender response, treasury, technology, map, relation, loan, native victory,
+and terminal conquest state. The installed-asset Planetary Council runtime then
+passed in 32.34 seconds against the integrated submission rules. Windows CI now
+uses the shippable Release configuration while Ubuntu retains Debug coverage;
+this avoids unoptimized Windows content-validation timeouts without reducing
+cross-platform configuration coverage.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

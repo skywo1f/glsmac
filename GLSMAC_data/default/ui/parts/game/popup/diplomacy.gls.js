@@ -79,6 +79,8 @@ return {
 		this.declare_vendetta = null;
 		this.accept_offer = null;
 		this.reject_offer = null;
+		this.accept_surrender = null;
+		this.reject_surrender = null;
 		this.offer_technology_label = null;
 		this.offer_technology = null;
 		this.offer_contact_label = null;
@@ -114,6 +116,10 @@ return {
 			'diplomatic_proposal',
 			'diplomatic_proposal_updated',
 			'diplomatic_proposal_resolved',
+			'diplomatic_surrender_offered',
+			'diplomatic_surrender_updated',
+			'diplomatic_surrender_resolved',
+			'submission_updated',
 			'diplomatic_trade_proposed',
 			'diplomatic_trade_updated',
 			'diplomatic_trade_resolved',
@@ -134,7 +140,8 @@ return {
 				if (
 					(observed_event_name == 'diplomatic_proposal' ||
 						observed_event_name == 'diplomatic_trade_proposed' ||
-						observed_event_name == 'diplomatic_loan_proposed') &&
+						observed_event_name == 'diplomatic_loan_proposed' ||
+						observed_event_name == 'diplomatic_surrender_offered') &&
 					e.target.id == p.game.get_player().id
 				) {
 					p.modules.popup.show('diplomacy');
@@ -196,6 +203,20 @@ return {
 			});
 			this.reject_offer.on('click', (e) => {
 				this.respond_relation(false);
+				return true;
+			});
+			this.accept_surrender = body.button({
+				class: 'game-popup-button', text: 'Accept Surrender', top: 94,
+			});
+			this.accept_surrender.on('click', (e) => {
+				this.respond_surrender(true);
+				return true;
+			});
+			this.reject_surrender = body.button({
+				class: 'game-popup-button', text: 'Reject Surrender', top: 118,
+			});
+			this.reject_surrender.on('click', (e) => {
+				this.respond_surrender(false);
 				return true;
 			});
 
@@ -371,6 +392,14 @@ return {
 		}
 	},
 
+	respond_surrender: (accept) => {
+		if (this.player != null && this.target != null) {
+			this.p.game.event('respond_surrender', {
+				player: this.player, proposer: this.target, accept: accept,
+			});
+		}
+	},
+
 	parse_energy: (value) => {
 		let amount = 0;
 		let valid = true;
@@ -476,7 +505,7 @@ return {
 				source.has_contact(contact) && contact.has_contact(source) &&
 				(!recipient.has_contact(contact) || !contact.has_contact(recipient))
 			) {
-				items :+[#to_string(contact.id), contact.name];
+				items :+['' + contact.id, '' + contact.name];
 			}
 		}
 		return items;
@@ -493,6 +522,7 @@ return {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
 			this.accept_offer, this.reject_offer,
+			this.accept_surrender, this.reject_surrender,
 		];
 		const trade_editor = [
 			this.offer_technology_label, this.offer_technology,
@@ -546,6 +576,10 @@ return {
 		const target_debt = this.target.get_diplomatic_loan(this.player);
 		const player_sanctions = this.player.get_sanction_turns();
 		const target_sanctions = this.target.get_sanction_turns();
+		const player_master = this.player.get_submissive_to_id();
+		const target_master = this.target.get_submissive_to_id();
+		const incoming_surrender = this.target.get_surrender_offer_to_id() == this.player.id;
+		const outgoing_surrender = this.player.get_surrender_offer_to_id() == this.target.id;
 		const integrity_name = this.p.game.get('f_diplomacy_get_integrity_name');
 		let sanction_text = '';
 		if (player_sanctions > 0) {
@@ -555,13 +589,23 @@ return {
 			sanction_text += (player_sanctions > 0 ? ' / them ' : '; sanctions: them ') +
 				#to_string(target_sanctions) + 'y';
 		}
+		let submission_text = '';
+		if (target_master == this.player.id) {
+			submission_text = '; submission: serves you';
+		} else if (player_master == this.target.id) {
+			submission_text = '; submission: you serve them';
+		}
 		this.relation_text.text =
 			'Relation: ' + relation_name(relation) + '; integrity: you ' +
 			integrity_name(this.player.get_integrity_blemishes()) + ' / them ' +
-			integrity_name(this.target.get_integrity_blemishes()) + sanction_text;
-		this.offer_text.text = incoming != ''
+			integrity_name(this.target.get_integrity_blemishes()) + sanction_text + submission_text;
+		this.offer_text.text = incoming_surrender
+			? 'Incoming unconditional surrender offer'
+			: (outgoing_surrender
+				? 'Surrender awaiting response'
+				: (incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
-			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '');
+			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '')));
 		this.trade_text.text = incoming_trade != null
 			? 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)
 			: (outgoing_trade != null
@@ -583,10 +627,14 @@ return {
 						)
 						: '')));
 
-		if (incoming != '') {
+		if (incoming_surrender) {
+			this.accept_surrender.show();
+			this.reject_surrender.show();
+		} else if (incoming != '') {
 			this.accept_offer.show();
 			this.reject_offer.show();
-		} else if (outgoing == '') {
+		} else if (outgoing == '' && !outgoing_surrender && player_master != this.target.id &&
+			target_master != this.player.id) {
 			if (relation != 'treaty' && relation != 'pact') {
 				this.offer_treaty.show();
 			}
@@ -650,7 +698,7 @@ return {
 				player.id != this.player.id &&
 				this.player.has_contact(player) && player.has_contact(this.player)
 			) {
-				items :+[#to_string(player.id), player.name];
+				items :+['' + player.id, '' + player.name];
 			}
 		}
 		this.opponent_select.items = #sizeof(items) > 0 ? items : [['', 'No other factions']];

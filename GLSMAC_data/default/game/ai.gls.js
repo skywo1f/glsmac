@@ -168,6 +168,26 @@ const update_diplomacy = (game, player) => {
 	const own_power = get_player_power(game, player);
 	const own_bases = get_player_base_count(game, player);
 	for (other of game.get_players()) {
+		if (
+			other.id != player.id &&
+			#typeof(other.get_surrender_offer_to_id) == 'Callable' &&
+			other.get_surrender_offer_to_id() == player.id
+		) {
+			game.event_as(player.id, 'respond_surrender', {
+				player: player,
+				proposer: other,
+				accept: true,
+			});
+			return;
+		}
+	}
+	if (
+		#typeof(player.get_submissive_to_id) == 'Callable' &&
+		player.get_submissive_to_id() >= 0
+	) {
+		return;
+	}
+	for (other of game.get_players()) {
 		if (other.id == player.id || !player.has_contact(other)) {
 			continue;
 		}
@@ -259,6 +279,49 @@ const update_diplomacy = (game, player) => {
 					other_integrity_blemishes: other.get_integrity_blemishes(),
 					terms: loan_offer,
 				}) >= 0.0,
+			});
+			return;
+		}
+	}
+
+	if (
+		game.get_turn() >= 20 &&
+		#typeof(player.get_surrender_offer_to_id) == 'Callable' &&
+		player.get_surrender_offer_to_id() < 0
+	) {
+		let surrender_target = null;
+		let surrender_score = 0.0 - 100000.0;
+		for (other of game.get_players()) {
+			if (
+				other.id == player.id || !player.has_contact(other) ||
+				player.get_diplomatic_relation(other) != 'vendetta' ||
+				(#typeof(other.get_submissive_to_id) == 'Callable' &&
+					other.get_submissive_to_id() >= 0)
+			) {
+				continue;
+			}
+			const state = {
+				relation: 'vendetta',
+				own_power: own_power,
+				other_power: get_player_power(game, other),
+				own_bases: own_bases,
+				other_bases: get_player_base_count(game, other),
+				other_integrity_blemishes: other.get_integrity_blemishes(),
+			};
+			const score = diplomacy.get_surrender_score(state);
+			if (
+				diplomacy.should_offer_surrender(state) &&
+				(surrender_target == null || score > surrender_score ||
+					(score == surrender_score && other.id < surrender_target.id))
+			) {
+				surrender_target = other;
+				surrender_score = score;
+			}
+		}
+		if (surrender_target != null) {
+			game.event_as(player.id, 'offer_surrender', {
+				player: player,
+				target: surrender_target,
 			});
 			return;
 		}

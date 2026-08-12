@@ -15,17 +15,17 @@ concurrency:
 
 jobs:
   test-windows:
-    name: Windows Clang Debug
+    name: Windows Clang Release
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - name: Configure
-        run: cmake --preset x64-debug-win-clang
+        run: cmake --preset x64-release-win-clang
       - name: Build
-        run: cmake --build out/build/x64-debug-win-clang --config Debug --parallel 2
+        run: cmake --build out/build/x64-release-win-clang --config Release --parallel 2
       - name: Test
-        run: ctest --test-dir out/build/x64-debug-win-clang -C Debug --output-on-failure
+        run: ctest --test-dir out/build/x64-release-win-clang -C Release --output-on-failure
 
   test-ubuntu:
     name: Ubuntu Debug

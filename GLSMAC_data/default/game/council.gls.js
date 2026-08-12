@@ -178,6 +178,7 @@ return (game) => {
 			process_session();
 			process_supreme();
 		});
+		game.on('submission_updated', (event) => { process_supreme(); });
 		game.on('turn', (e) => {
 			process_session();
 			process_supreme();

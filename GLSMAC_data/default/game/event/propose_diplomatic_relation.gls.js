@@ -14,6 +14,13 @@ return {
 		if (e.data.relation != 'treaty' && e.data.relation != 'pact') {
 			return 'Diplomatic proposal must be a treaty or pact';
 		}
+		const is_submission_pair = e.game.get('f_diplomacy_is_submission_pair');
+		if (
+			#typeof(is_submission_pair) == 'Callable' &&
+			is_submission_pair(e.data.player, e.data.target)
+		) {
+			return 'A Pact of Submission is permanent';
+		}
 		const get_forced_relation = e.game.get('f_council_get_forced_relation');
 		if (
 			#typeof(get_forced_relation) == 'Callable' &&

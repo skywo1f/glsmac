@@ -32,6 +32,7 @@ return (game) => {
 		game.get_um().on('unit_despawn', check_victory);
 		game.get_bm().on('base_despawn', check_victory);
 		game.on('update_base', (event) => { check_victory(); });
+		game.on('submission_updated', (event) => { check_victory(); });
 		game.on('turn', (event) => { check_victory(); });
 	});
 

@@ -72,6 +72,8 @@ Player::Player( const Player* const other ) {
 	m_diplomatic_trades = other->m_diplomatic_trades;
 	m_diplomatic_loan_offers = other->m_diplomatic_loan_offers;
 	m_diplomatic_loans = other->m_diplomatic_loans;
+	m_submissive_to_id = other->m_submissive_to_id;
+	m_surrender_offer_to_id = other->m_surrender_offer_to_id;
 }
 
 Player::~Player() {
@@ -451,6 +453,34 @@ bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relati
 		return true;
 	}
 	return false;
+}
+
+int64_t Player::GetSubmissiveToId() const {
+	return m_submissive_to_id;
+}
+
+void Player::SetSubmissiveToId( const int64_t player_id ) {
+	if (
+		player_id < NO_DIPLOMATIC_PLAYER ||
+		player_id >= static_cast< int64_t >( MAX_DIPLOMATIC_PLAYER_ID )
+	) {
+		THROW( "submission master player ID is out of range" );
+	}
+	m_submissive_to_id = player_id;
+}
+
+int64_t Player::GetSurrenderOfferToId() const {
+	return m_surrender_offer_to_id;
+}
+
+void Player::SetSurrenderOfferToId( const int64_t player_id ) {
+	if (
+		player_id < NO_DIPLOMATIC_PLAYER ||
+		player_id >= static_cast< int64_t >( MAX_DIPLOMATIC_PLAYER_ID )
+	) {
+		THROW( "surrender offer player ID is out of range" );
+	}
+	m_surrender_offer_to_id = player_id;
 }
 
 const Player::contacted_players_t& Player::GetContactedPlayers() const {
@@ -1236,6 +1266,50 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_submissive_to_id",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetSubmissiveToId() );
+				} )
+			},
+			{
+				"set_submissive_to_id",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( player_id, 0, Int );
+					try {
+						SetSubmissiveToId( player_id );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_surrender_offer_to_id",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetSurrenderOfferToId() );
+				} )
+			},
+			{
+				"set_surrender_offer_to_id",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( player_id, 0, Int );
+					try {
+						SetSurrenderOfferToId( player_id );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"has_contact",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -1760,6 +1834,8 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteInt( m_council_state.supreme_leader_id );
 	buf.WriteInt( m_council_state.supreme_response );
 	buf.WriteBool( m_council_state.supreme_resolved );
+	buf.WriteInt( m_submissive_to_id );
+	buf.WriteInt( m_surrender_offer_to_id );
 
 	return buf;
 }
@@ -2147,6 +2223,15 @@ void Player::Deserialize( types::Buffer buf ) {
 		council_state.supreme_response = buf.ReadInt();
 		council_state.supreme_resolved = buf.ReadBool();
 	}
+	int64_t submissive_to_id = NO_DIPLOMATIC_PLAYER;
+	int64_t surrender_offer_to_id = NO_DIPLOMATIC_PLAYER;
+	if ( buf.GetRemaining() > 0 ) {
+		submissive_to_id = buf.ReadInt();
+		surrender_offer_to_id = buf.ReadInt();
+		Player validator( "submission validator", PR_NONE, nullptr, "" );
+		validator.SetSubmissiveToId( submissive_to_id );
+		validator.SetSurrenderOfferToId( surrender_offer_to_id );
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2188,6 +2273,8 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_orbital_facilities = std::move( orbital_facilities );
 	m_orbital_defense_deployments = orbital_defense_deployments;
 	m_council_state = std::move( council_state );
+	m_submissive_to_id = submissive_to_id;
+	m_surrender_offer_to_id = surrender_offer_to_id;
 
 }
 

@@ -43,6 +43,58 @@ const validate_pair = (player, other) => {
 	}
 };
 
+const validate_surrender_direction = (game, proposer, recipient) => {
+	const get_supreme_state = game.get('f_council_get_supreme_state');
+	const get_supreme_response = game.get('f_council_get_supreme_response');
+	if (
+		#typeof(get_supreme_state) != 'Callable' ||
+		#typeof(get_supreme_response) != 'Callable'
+	) {
+		return;
+	}
+	const supreme = get_supreme_state();
+	if (
+		supreme != null && supreme.resolved &&
+		get_supreme_response(proposer) != 3 &&
+		get_supreme_response(recipient) == 3
+	) {
+		return 'A loyal faction cannot surrender to a Supreme Leader defiant';
+	}
+};
+
+const get_submissive_to_id = (player) => {
+	return #typeof(player.get_submissive_to_id) == 'Callable'
+		? player.get_submissive_to_id() : -1;
+};
+
+const get_surrender_offer_to_id = (player) => {
+	return #typeof(player.get_surrender_offer_to_id) == 'Callable'
+		? player.get_surrender_offer_to_id() : -1;
+};
+
+const get_submission_master = (game, player) => {
+	let current = player;
+	let visited = {};
+	while (current != null) {
+		const key = 'p' + #to_string(current.id);
+		if (#is_defined(visited[key])) { return null; }
+		visited[key] = true;
+		const master_id = get_submissive_to_id(current);
+		if (master_id < 0) { return current.id == player.id ? null : current; }
+		current = find_player(game, master_id);
+	}
+	return null;
+};
+
+const is_submission_pair = (game, player, other) => {
+	const player_master = get_submission_master(game, player);
+	const other_master = get_submission_master(game, other);
+	const player_root = player_master == null ? player : player_master;
+	const other_root = other_master == null ? other : other_master;
+	return player_root.id == other_root.id &&
+		(player_master != null || other_master != null);
+};
+
 const snapshot_pair = (player, other) => {
 	return {
 		player_relation: player.get_diplomatic_relation(other),
@@ -57,6 +109,10 @@ const snapshot_pair = (player, other) => {
 		other_loan_offer: other.get_diplomatic_loan_offer(player),
 		player_integrity_blemishes: player.get_integrity_blemishes(),
 		other_integrity_blemishes: other.get_integrity_blemishes(),
+		player_submissive_to_id: get_submissive_to_id(player),
+		other_submissive_to_id: get_submissive_to_id(other),
+		player_surrender_offer_to_id: get_surrender_offer_to_id(player),
+		other_surrender_offer_to_id: get_surrender_offer_to_id(other),
 	};
 };
 
@@ -89,6 +145,14 @@ const restore_pair = (player, other, snapshot) => {
 	restore_loan_offer(other, player, snapshot.other_loan_offer);
 	player.set_integrity_blemishes(snapshot.player_integrity_blemishes);
 	other.set_integrity_blemishes(snapshot.other_integrity_blemishes);
+	if (#typeof(player.set_submissive_to_id) == 'Callable') {
+		player.set_submissive_to_id(snapshot.player_submissive_to_id);
+		player.set_surrender_offer_to_id(snapshot.player_surrender_offer_to_id);
+	}
+	if (#typeof(other.set_submissive_to_id) == 'Callable') {
+		other.set_submissive_to_id(snapshot.other_submissive_to_id);
+		other.set_surrender_offer_to_id(snapshot.other_surrender_offer_to_id);
+	}
 };
 
 const integrity_names = [
@@ -154,6 +218,18 @@ const clear_offers = (player, other) => {
 	other.clear_diplomatic_trade(player);
 	player.clear_diplomatic_loan_offer(other);
 	other.clear_diplomatic_loan_offer(player);
+	if (
+		#typeof(player.get_surrender_offer_to_id) == 'Callable' &&
+		player.get_surrender_offer_to_id() == other.id
+	) {
+		player.set_surrender_offer_to_id(-1);
+	}
+	if (
+		#typeof(other.get_surrender_offer_to_id) == 'Callable' &&
+		other.get_surrender_offer_to_id() == player.id
+	) {
+		other.set_surrender_offer_to_id(-1);
+	}
 };
 
 const get_offer_contact = (terms) => {
@@ -486,10 +562,21 @@ return (game) => {
 	game.on('start', (e) => {
 		game.set('f_diplomacy_validate_players', validate_players);
 		game.set('f_diplomacy_validate_pair', validate_pair);
+		game.set('f_diplomacy_validate_surrender_direction', (proposer, recipient) => {
+			return validate_surrender_direction(game, proposer, recipient);
+		});
 		game.set('f_diplomacy_snapshot_pair', snapshot_pair);
 		game.set('f_diplomacy_restore_pair', restore_pair);
 		game.set('f_diplomacy_get_integrity_name', get_integrity_name);
 		game.set('f_diplomacy_get_betrayal_penalty', get_betrayal_penalty);
+		game.set('f_diplomacy_get_submissive_to_id', get_submissive_to_id);
+		game.set('f_diplomacy_get_surrender_offer_to_id', get_surrender_offer_to_id);
+		game.set('f_diplomacy_is_submission_pair', (player, other) => {
+			return is_submission_pair(game, player, other);
+		});
+		game.set('f_diplomacy_get_submission_master', (player) => {
+			return get_submission_master(game, player);
+		});
 		game.set('f_diplomacy_set_bilateral_relation', (player, other, relation) => {
 			return set_bilateral_relation(game, player, other, relation);
 		});

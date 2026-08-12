@@ -239,3 +239,28 @@ test.assert(diplomacy.get_loan_proposal({
 	own_energy: 150,
 	other_energy: 160,
 }) == null);
+
+test.assert(diplomacy.should_offer_surrender({
+	relation: 'vendetta',
+	own_power: 3.0,
+	other_power: 18.0,
+	own_bases: 1,
+	other_bases: 4,
+	other_integrity_blemishes: 0,
+}));
+test.assert(!diplomacy.should_offer_surrender({
+	relation: 'vendetta',
+	own_power: 12.0,
+	other_power: 14.0,
+	own_bases: 3,
+	other_bases: 4,
+	other_integrity_blemishes: 0,
+}));
+test.assert(!diplomacy.should_offer_surrender({
+	relation: 'treaty',
+	own_power: 1.0,
+	other_power: 30.0,
+	own_bases: 1,
+	other_bases: 6,
+	other_integrity_blemishes: 0,
+}));

@@ -56,6 +56,8 @@ return (game) => {
 		'establish_diplomatic_contact',
 		'propose_diplomatic_relation',
 		'respond_diplomatic_proposal',
+		'offer_surrender',
+		'respond_surrender',
 		'propose_diplomatic_trade',
 		'respond_diplomatic_trade',
 		'propose_diplomatic_loan',

@@ -1370,10 +1370,33 @@ Player* Game::GetConquestWinner() const {
 		}
 	}
 
-	if ( surviving_slots.size() != 1 ) {
+	std::unordered_set< size_t > claimant_slots = {};
+	for ( const auto surviving_slot : surviving_slots ) {
+		size_t claimant_slot = surviving_slot;
+		std::unordered_set< size_t > visited = { surviving_slot };
+		while ( claimant_slot < slots.size() ) {
+			const auto& claimant = slots.at( claimant_slot );
+			if ( claimant.GetState() != slot::Slot::SS_PLAYER || !claimant.GetPlayer() ) {
+				break;
+			}
+			const auto master_id = claimant.GetPlayer()->GetSubmissiveToId();
+			if (
+				master_id < 0 ||
+				master_id >= static_cast< int64_t >( slots.size() ) ||
+				surviving_slots.find( static_cast< size_t >( master_id ) ) == surviving_slots.end() ||
+				!visited.insert( static_cast< size_t >( master_id ) ).second
+			) {
+				break;
+			}
+			claimant_slot = static_cast< size_t >( master_id );
+		}
+		claimant_slots.insert( claimant_slot );
+	}
+
+	if ( claimant_slots.size() != 1 ) {
 		return nullptr;
 	}
-	const auto winner_slot = *surviving_slots.begin();
+	const auto winner_slot = *claimant_slots.begin();
 	if ( winner_slot >= slots.size() ) {
 		return nullptr;
 	}

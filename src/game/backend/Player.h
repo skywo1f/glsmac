@@ -202,6 +202,12 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetDiplomaticOffer( const size_t player_id, const diplomatic_relation_t relation );
 	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
 	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
+	static constexpr int64_t NO_DIPLOMATIC_PLAYER = -1;
+	static constexpr size_t MAX_DIPLOMATIC_PLAYER_ID = 64;
+	int64_t GetSubmissiveToId() const;
+	void SetSubmissiveToId( const int64_t player_id );
+	int64_t GetSurrenderOfferToId() const;
+	void SetSurrenderOfferToId( const int64_t player_id );
 
 	using contacted_players_t = std::set< size_t >;
 	static constexpr size_t MAX_CONTACTED_PLAYERS = 64;
@@ -340,6 +346,8 @@ private:
 	diplomatic_trades_t m_diplomatic_trades = {};
 	diplomatic_loan_offers_t m_diplomatic_loan_offers = {};
 	diplomatic_loans_t m_diplomatic_loans = {};
+	int64_t m_submissive_to_id = NO_DIPLOMATIC_PLAYER;
+	int64_t m_surrender_offer_to_id = NO_DIPLOMATIC_PLAYER;
 
 	void ReleaseOwnedFaction();
 	static bool ValidateResearchState(

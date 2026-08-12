@@ -190,6 +190,10 @@ const clear_supreme_state = (game) => {
 };
 
 const get_forced_relation = (game, player, other) => {
+	const is_submission_pair = game.get('f_diplomacy_is_submission_pair');
+	if (#typeof(is_submission_pair) == 'Callable' && is_submission_pair(player, other)) {
+		return 'pact';
+	}
 	const supreme = get_supreme_state(game);
 	if (supreme == null || !supreme.resolved) { return ''; }
 	const player_response = get_supreme_response(player);
@@ -220,6 +224,13 @@ const get_supreme_defiance_winner = (game) => {
 	for (player of game.get_players()) {
 		if (get_supreme_response(player) != SUPREME_RESPONSE_DEFY) { continue; }
 		found_defiant = true;
+		const get_submission_master = game.get('f_diplomacy_get_submission_master');
+		if (#typeof(get_submission_master) == 'Callable') {
+			const master = get_submission_master(player);
+			if (master != null && get_supreme_response(master) == SUPREME_RESPONSE_ACCEDE) {
+				continue;
+			}
+		}
 		if (has_surviving_faction(game, player)) { return null; }
 	}
 	return found_defiant ? supreme.leader : null;

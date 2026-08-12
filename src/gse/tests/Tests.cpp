@@ -358,6 +358,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				const Player::diplomatic_loan_t loan = { 120, 6 };
 				source.SetDiplomaticLoanOffer( 6, loan_offer );
 				source.SetDiplomaticLoan( 7, loan );
+				source.SetSubmissiveToId( 4 );
+				source.SetSurrenderOfferToId( 6 );
 				Player cloned( &source );
 				GT_ASSERT(
 					cloned.GetCleanMineralFacilities() == 3,
@@ -443,6 +445,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					cloned.GetDiplomaticLoan( 7 ) && *cloned.GetDiplomaticLoan( 7 ) == loan,
 					"diplomatic loan was not cloned"
 				);
+				GT_ASSERT(
+					cloned.GetSubmissiveToId() == 4 && cloned.GetSurrenderOfferToId() == 6,
+					"diplomatic submission state was not cloned"
+				);
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
@@ -526,6 +532,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				player_extension.WriteInt( source.GetCouncilState().supreme_leader_id );
 				player_extension.WriteInt( source.GetCouncilState().supreme_response );
 				player_extension.WriteBool( source.GetCouncilState().supreme_resolved );
+				player_extension.WriteInt( source.GetSubmissiveToId() );
+				player_extension.WriteInt( source.GetSurrenderOfferToId() );
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
@@ -539,9 +547,24 @@ void AddTests( task::gsetests::GSETests* task ) {
 				supreme_state_fields.WriteInt( source.GetCouncilState().supreme_response );
 				supreme_state_fields.WriteBool( source.GetCouncilState().supreme_resolved );
 				const auto supreme_state_fields_size = supreme_state_fields.ToString().size();
+				types::Buffer submission_state_fields;
+				submission_state_fields.WriteInt( source.GetSubmissiveToId() );
+				submission_state_fields.WriteInt( source.GetSurrenderOfferToId() );
+				const auto submission_state_fields_size = submission_state_fields.ToString().size();
+				auto pre_submission_data = source.Serialize().ToString();
+				pre_submission_data.resize(
+					pre_submission_data.size() - submission_state_fields_size
+				);
+				Player pre_submission( pre_submission_data );
+				GT_ASSERT(
+					pre_submission.GetSubmissiveToId() == Player::NO_DIPLOMATIC_PLAYER &&
+					pre_submission.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER,
+					"older player data did not default diplomatic submission state"
+				);
 				auto pre_supreme_data = source.Serialize().ToString();
 				pre_supreme_data.resize(
-					pre_supreme_data.size() - supreme_state_fields_size
+					pre_supreme_data.size() - submission_state_fields_size -
+						supreme_state_fields_size
 				);
 				Player pre_supreme( pre_supreme_data );
 				GT_ASSERT(
@@ -555,7 +578,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				auto pre_expulsion_data = source.Serialize().ToString();
 				pre_expulsion_data.resize(
 					pre_expulsion_data.size() - council_expulsion_field_size -
-						supreme_state_fields_size
+						supreme_state_fields_size - submission_state_fields_size
 				);
 				Player pre_expulsion( pre_expulsion_data );
 				GT_ASSERT(
@@ -566,7 +589,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				auto pre_clean_mineral_data = source.Serialize().ToString();
 				pre_clean_mineral_data.resize(
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
-						council_expulsion_field_size - supreme_state_fields_size
+						council_expulsion_field_size - supreme_state_fields_size -
+						submission_state_fields_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(
@@ -681,6 +705,22 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetDiplomaticLoan( 7 ) && *roundtrip.GetDiplomaticLoan( 7 ) == loan,
 					"diplomatic loan was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetSubmissiveToId() == 4 &&
+						roundtrip.GetSurrenderOfferToId() == 6,
+					"diplomatic submission state was not serialized"
+				);
+				bool rejected_invalid_submission_player = false;
+				try {
+					roundtrip.SetSubmissiveToId( 64 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_submission_player = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_submission_player && roundtrip.GetSubmissiveToId() == 4,
+					"out-of-range submission player ID was accepted or partially mutated"
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				roundtrip.ClearDiplomaticTrade( 4 );
