@@ -165,10 +165,11 @@ scenarios, for:
   unit and transport-cargo destruction, surviving-unit rehoming, live terrain
   rendering, save/reconnect state, and complete event rollback;
 - deterministic physical territory claims use the original eight-tile maximum,
-  nearest-base ownership, oldest-base tie resolution, and coastal workable
-  water claims; supported combat units outside friendly territory now apply
-  the original POLICE -3, -4, and -5 pacifism-drone rules, including the air
-  superiority exception and base-screen diagnostics;
+  nearest reachable base on the same landmass or sea without crossing the other
+  terrain type, oldest-base tie resolution, and two-tile coastal water claims;
+  supported combat units outside friendly territory now apply the original
+  POLICE -3, -4, and -5 pacifism-drone rules, including the air superiority
+  exception and base-screen diagnostics;
 - persistent bilateral faction contact discovered through adjacent units and
   bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
   Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
@@ -276,8 +277,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
   Council expulsion consequences for major atrocities;
-- remaining territory parity: connected-region claim boundaries, rendered
-  faction border overlays, and treaty-aware foreign-border visibility;
+- remaining territory presentation: rendered faction border overlays and
+  treaty-aware foreign-border visibility;
 - volcanoes;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots so concealed information is not present client-side;
@@ -544,6 +545,12 @@ verified one ordinary ground unit detected in fungus by adjacent Deep Radar,
 one ability-concealed unit remaining hidden from Radar, both units revealed by
 an owned Sensor Array, and the original split restored when the Sensor was
 disabled. Embarked units no longer contribute exploration or live sight.
+
+After connected-region territory claims were added, all eight territory,
+visibility, combat, pacifism, exploration, and air-drop rule tests passed in
+9.67 seconds. The standard installed-asset runtime completed in 51.29 seconds,
+covering live base intake, AI evaluation, Sensor ownership, and tile previews
+against the new bounded path search.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
