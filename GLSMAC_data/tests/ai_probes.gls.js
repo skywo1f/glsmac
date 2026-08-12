@@ -15,6 +15,9 @@ let base_size = 3;
 let base_minerals = 20;
 let sanction_turns = 0;
 let commerce = 0;
+let map_data = 0;
+let is_headquarters = false;
+let subversion_error = '';
 
 const player = {
 	id: 0,
@@ -32,6 +35,7 @@ const base = {
 	get_size: () => { return base_size; },
 	get_accumulated_minerals: () => { return base_minerals; },
 	get_tile: () => { return base_tile; },
+	has_facility: (id) => { return id == 'Headquarters' && is_headquarters; },
 };
 const unit = {
 	id: 20,
@@ -51,8 +55,17 @@ const game = {
 		if (key == 'f_probe_get_unknown_technologies') {
 			return (actor, target) => { return unknown_technologies; };
 		}
+		if (key == 'f_probe_get_map_data_count') {
+			return (actor, target) => { return map_data; };
+		}
+		if (key == 'f_probe_get_energy_drain_limit') {
+			return (target) => { return target_player.energy_credits > 0 ? 40 : 0; };
+		}
 		if (key == 'f_probe_get_subversion_cost') {
 			return (actor, target) => { return subversion_cost; };
+		}
+		if (key == 'f_probe_get_subversion_error') {
+			return (actor, target) => { return subversion_error; };
 		}
 		if (key == 'f_probe_can_incite_drone_riots') {
 			return (target) => { return can_riot; };
@@ -101,6 +114,9 @@ player.energy_credits = 75;
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'steal_technology');
 unknown_technologies = [];
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'drain_energy');
+map_data = 20;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'steal_technology');
+map_data = 0;
 
 player.energy_credits = 1000;
 hunter_seeker = true;
@@ -108,6 +124,9 @@ test.assert(probes.get_base_action(game, player, probe, base) == null);
 hunter_seeker = false;
 
 test.assert(probes.get_unit_action(game, player, probe, unit).operation == 'subvert_unit');
+subversion_error = 'A unit in a stack cannot be individually subverted';
+test.assert(probes.get_unit_action(game, player, probe, unit) == null);
+subversion_error = '';
 relation = 'neutral';
 test.assert(probes.get_unit_action(game, player, probe, unit) == null);
 relation = 'vendetta';
@@ -126,7 +145,10 @@ can_sabotage = false;
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'incite_drone_riots');
 probe.morale = 3;
 research_loss = 40;
+test.assert(probes.get_base_action(game, player, probe, base).operation == 'incite_drone_riots');
+is_headquarters = true;
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'assassinate_researchers');
+is_headquarters = false;
 research_loss = 0;
 has_retroviral_engineering = true;
 base_size = 6;

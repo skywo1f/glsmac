@@ -262,14 +262,22 @@ scenarios, for:
   combat and diplomacy enforcement, save compatibility, and reversible
   nonterminal events are covered;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
-  immunity, infiltration, technology theft, production/facility sabotage,
-  energy drain, drone riots, researcher assassination, genetic plague, unit
-  subversion, base mind control, resident Probe Team defense, neutral/treaty
-  Probe Team interception with leave/interrogate/eliminate player controls and
+  immunity, original morale/difficulty/survival formulas, general and targeted
+  research theft with world-map fallback, repeat-raid security, general and
+  targeted production/facility sabotage, population-scaled energy drain, drone
+  riots, Headquarters researcher assassination, technology- and facility-aware
+  genetic plague damage, unit subversion, and base mind control; subversion and
+  mind-control prices include original energy reserves, Headquarters distance,
+  garrison, population, social PROBE, encryption, pact, Children's Creche,
+  Genejack Factory, and Punishment Sphere modifiers; paid operations expose
+  standard and untraceable approaches, unit targeting rejects native life,
+  stacks, cargo, and inaccessible air units, and base capture resets prior-owner
+  research-raid state; resident Probe Team defense, neutral/treaty Probe Team
+  interception with leave/interrogate/eliminate player controls and
   domain-compatible repatriation, infiltration- or Planetary Governor-gated
   intelligence reports for rival research, economy, bases, social model, and
   force composition, and relationship-, value-, affordability-, and
-  distance-aware AI policies;
+  distance-aware AI policies are also covered;
 - land and sea colonization, terraforming, conventional and psi combat, and
   conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -312,8 +320,9 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining probe-team parity: exact original cost/outcome and probe-combat
-  tuning;
+- remaining probe-team parity: third-faction framing, exact resident
+  Probe-versus-Probe combat resolution, and uncommon mind-control modifiers for
+  former ownership, revenge state, drone riots, Golden Ages, and prior captures;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -688,6 +697,17 @@ passed in 32.34 seconds against the integrated submission rules. Windows CI now
 uses the shippable Release configuration while Ubuntu retains Debug coverage;
 this avoids unoptimized Windows content-validation timeouts without reducing
 cross-platform configuration coverage.
+
+After the original Probe operation formulas and advanced mission choices were
+added, the Windows x64 Release rebuild succeeded in 50.7 seconds and all 109
+isolated native/script tests passed in 249.82 seconds. Coverage includes exact
+rollback of technology, map, facility, production, energy, population, unit
+health, ownership, diplomacy, atrocity, and per-base security state. The
+installed-asset Probe, economic-capture, multiplayer, and running-reconnect
+scenarios passed together in 163.86 seconds against the rebuilt executable.
+The live Probe scenario also caught an obsolete stacked-unit setup after the
+original individual-subversion restriction was added; its replacement uses a
+legal three-tile arrangement and now fails immediately if setup legality drifts.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

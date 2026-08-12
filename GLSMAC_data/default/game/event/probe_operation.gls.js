@@ -1,6 +1,9 @@
 const base_capture = #include('../base_capture');
 const snapshots = #include('../entity_snapshots');
 const snapshot_unit = snapshots.snapshot_unit;
+const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
+const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
+const GENETIC_PLAGUE_KEY = 'probe_genetic_plague_introduced';
 
 const is_un_charter_active = (game) => {
 	const is_repealed = game.get('f_council_is_un_charter_repealed');
@@ -13,14 +16,31 @@ const get_target_player = (game, operation, target) => {
 		: target.get_owner();
 };
 
-const get_sabotage_facilities = (base) => {
-	let result = [];
-	for (facility of base.get_facilities()) {
-		if (!facility.is_project && facility.id != 'Headquarters') {
-			result :+facility.id;
+const get_sabotage_facilities = (game, base) => {
+	return game.get('f_probe_get_sabotage_facilities')(base);
+};
+
+const has_value = (values, value) => {
+	for (candidate of values) {
+		if (candidate == value) {
+			return true;
 		}
 	}
-	return result;
+	return false;
+};
+
+const snapshot_base_value = (base, key) => {
+	return base.has(key)
+		? {key: key, defined: true, value: base.get(key)}
+		: {key: key, defined: false, value: null};
+};
+
+const restore_base_value = (base, snapshot) => {
+	if (snapshot.defined) {
+		base.set(snapshot.key, snapshot.value);
+	} else if (base.has(snapshot.key)) {
+		base.unset(snapshot.key);
+	}
 };
 
 const spawn_snapshot = (game, snapshot, owner_id, transferred) => {
@@ -154,11 +174,15 @@ const get_result_message = (game, operation, target, resolved) => {
 	} else if (operation == 'infiltrate') {
 		message = 'Datalinks infiltrated.';
 	} else if (operation == 'steal_technology') {
-		const resolver = game.get('f_technology_get_definition');
-		const definition = #is_defined(resolver) ? resolver(resolved.technology_id) : null;
-		message = 'Acquired ' + (
-			definition == null ? resolved.technology_id : definition.name
-		) + '.';
+		if (#is_defined(resolved.stole_map) && resolved.stole_map) {
+			message = 'Downloaded the target faction world map.';
+		} else {
+			const resolver = game.get('f_technology_get_definition');
+			const definition = #is_defined(resolver) ? resolver(resolved.technology_id) : null;
+			message = 'Acquired ' + (
+				definition == null ? resolved.technology_id : definition.name
+			) + '.';
+		}
 	} else if (operation == 'sabotage') {
 		message = resolved.sabotage_facility_id == ''
 			? 'Destroyed accumulated minerals at ' + target.name + '.'
@@ -211,18 +235,54 @@ const validate_base_operation = (e, actor, target_player) => {
 	}
 	if (
 		operation == 'steal_technology' &&
-		#sizeof(e.game.get('f_probe_get_unknown_technologies')(actor, target_player)) == 0
+		#sizeof(e.game.get('f_probe_get_unknown_technologies')(actor, target_player)) == 0 &&
+		e.game.get('f_probe_get_map_data_count')(actor, target_player) == 0
 	) {
-		return 'Target faction has no technology available to steal';
+		return 'Target faction has no research or map data available to steal';
+	}
+	if (operation == 'steal_technology' && #is_defined(e.data.target_technology_id)) {
+		if (#typeof(e.data.target_technology_id) != 'String') {
+			return 'Target technology must be a technology identifier';
+		}
+		if (
+			e.data.target_technology_id != '' &&
+			!has_value(
+				e.game.get('f_probe_get_unknown_technologies')(actor, target_player),
+				e.data.target_technology_id
+			)
+		) {
+			return 'Target technology is not available to steal';
+		}
 	}
 	if (
 		operation == 'sabotage' && !e.game.get('f_probe_can_sabotage')(base)
 	) {
 		return 'Target base has nothing available to sabotage';
 	}
+	if (operation == 'sabotage' && #is_defined(e.data.sabotage_target_id)) {
+		if (#typeof(e.data.sabotage_target_id) != 'String') {
+			return 'Sabotage target must be a facility or production';
+		}
+		if (
+			e.data.sabotage_target_id == 'production' &&
+			base.get_accumulated_minerals() <= 0
+		) {
+			return 'Target base has no accumulated production to sabotage';
+		}
+		if (
+			e.data.sabotage_target_id != '' &&
+			e.data.sabotage_target_id != 'production' &&
+			!has_value(get_sabotage_facilities(e.game, base), e.data.sabotage_target_id)
+		) {
+			return 'Target facility is not available to sabotage';
+		}
+	}
 	if (
 		operation == 'drain_energy' &&
-		(target_player.energy_credits <= 0 || actor.energy_credits >= 1000000000)
+		(
+			target_player.energy_credits <= 0 || actor.energy_credits >= 1000000000 ||
+			e.game.get('f_probe_get_energy_drain_limit')(base) <= 0
+		)
 	) {
 		return 'No energy credits can be drained from the target';
 	}
@@ -233,8 +293,8 @@ const validate_base_operation = (e, actor, target_player) => {
 		return 'Target base has no population available to incite';
 	}
 	if (operation == 'assassinate_researchers') {
-		if (e.data.unit.morale < 3) {
-			return 'Probe Team lacks the experience to assassinate researchers';
+		if (!base.has_facility('Headquarters')) {
+			return 'Prominent researchers can only be targeted at faction headquarters';
 		}
 		if (e.game.get('f_probe_get_assassination_research_loss')(target_player) <= 0) {
 			return 'Target faction has no active research to disrupt';
@@ -294,6 +354,14 @@ return {
 		if (#typeof(operation) != 'String' || !#is_defined(operations[operation])) {
 			return 'Unknown probe operation';
 		}
+		if (#is_defined(e.data.untraceable)) {
+			if (#typeof(e.data.untraceable) != 'Bool') {
+				return 'Untraceable probe option must be a boolean';
+			}
+			if (e.data.untraceable && !operations[operation].cost) {
+				return 'Only capture operations can be made untraceable';
+			}
+		}
 		const target = e.data.target;
 		if (#typeof(target) != 'Object' || #typeof(target.get_tile) != 'Callable') {
 			return 'Probe operation requires a target';
@@ -326,14 +394,9 @@ return {
 		if (operations[operation].target == 'base') {
 			return validate_base_operation(e, actor, target_player);
 		}
-		if (
-			#typeof(target.get_def) != 'Callable' || target.health <= 0.0 ||
-			(#is_defined(target.transport_id) && target.transport_id > 0)
-		) {
-			return 'Probe subversion target must be an active, unembarked unit';
-		}
-		if (#is_defined(target.get_cargo) && #sizeof(target.get_cargo()) > 0) {
-			return 'A transport carrying units cannot be subverted';
+		const subversion_error = e.game.get('f_probe_get_subversion_error')(probe, target);
+		if (subversion_error != '') {
+			return subversion_error;
 		}
 		const cost = e.game.get('f_probe_get_subversion_cost')(actor, target);
 		if (cost == null) {
@@ -356,27 +419,37 @@ return {
 			e.data.unit,
 			target_player,
 			operation,
-			e.data.target
+			e.data.target,
+			e.data
+		);
+		const intercepted = defender != null;
+		const success = e.game.random.get_int(1, 100) <= chance;
+		const survival_chance = e.game.get('f_probe_get_survival_chance')(
+			e.data.unit,
+			target_player,
+			operation,
+			e.data.target,
+			e.data
 		);
 		const paid = operation == 'subvert_unit' || operation == 'mind_control_base';
-		const intercepted = defender != null;
-		const success = (paid && !intercepted) || e.game.random.get_int(1, 100) <= chance;
-		const detected = operation == 'genetic_plague' || intercepted || paid || !success ||
-			e.game.random.get_int(1, 100) <= 35;
-		const survives = intercepted && !success
-			? false
-			: paid || e.game.random.get_int(1, 100) <= (success ? 85 : 35);
+		const untraceable = paid && #is_defined(e.data.untraceable) && e.data.untraceable;
+		const detected = operation == 'genetic_plague' || intercepted || !success ||
+			(!untraceable && (paid || e.game.random.get_int(1, 100) <= 35));
+		const survives = success && e.game.random.get_int(1, 100) <= survival_chance;
 		let result = {
 			success: success,
 			detected: detected,
 			survives: survives,
 			chance: chance,
+			survival_chance: survival_chance,
 			cost: 0,
 			technology_id: '',
+			stole_map: false,
 			sabotage_facility_id: '',
 			drain_amount: 0,
 			research_loss: 0,
 			population_loss: 0,
+			unit_damage: [],
 			defender_id: defender == null ? 0 : defender.id,
 		};
 		if (operation == 'subvert_unit') {
@@ -385,10 +458,20 @@ return {
 			result.cost = e.game.get('f_probe_get_mind_control_cost')(actor, e.data.target);
 		} else if (success && operation == 'steal_technology') {
 			const unknown = e.game.get('f_probe_get_unknown_technologies')(actor, target_player);
-			result.technology_id = unknown[e.game.random.get_int(0, #sizeof(unknown) - 1)];
+			if (#sizeof(unknown) == 0) {
+				result.stole_map = true;
+			} else {
+				result.technology_id = #is_defined(e.data.target_technology_id) &&
+					e.data.target_technology_id != ''
+					? e.data.target_technology_id
+					: unknown[e.game.random.get_int(0, #sizeof(unknown) - 1)];
+			}
 		} else if (success && operation == 'sabotage') {
-			const facilities = get_sabotage_facilities(e.data.target);
-			if (
+			const facilities = get_sabotage_facilities(e.game, e.data.target);
+			if (#is_defined(e.data.sabotage_target_id) && e.data.sabotage_target_id != '') {
+				result.sabotage_facility_id = e.data.sabotage_target_id == 'production'
+					? '' : e.data.sabotage_target_id;
+			} else if (
 				#sizeof(facilities) > 0 &&
 				(e.data.target.get_accumulated_minerals() <= 0 || e.game.random.get_int(0, 1) == 1)
 			) {
@@ -398,20 +481,32 @@ return {
 			}
 		} else if (success && operation == 'drain_energy') {
 			const room = 1000000000 - actor.energy_credits;
+			const limit = e.game.get('f_probe_get_energy_drain_limit')(e.data.target);
+			const morale = e.game.get('f_probe_get_morale')(e.data.unit);
+			const minimum = #floor(#to_float(limit * morale) / 6.0);
+			const spread = #max(0, limit - minimum);
+			const random_bonus = spread == 0
+				? 0
+				: #floor(#to_float(e.game.random.get_int(0, spread - 1)) / 2.0);
 			result.drain_amount = #min(
 				room,
-				#min(
-					target_player.energy_credits,
-					#max(1, #floor(#to_float(target_player.energy_credits) / 4.0))
-				)
+				#min(target_player.energy_credits, minimum + random_bonus)
 			);
+			if (result.drain_amount == 1) {
+				result.drain_amount = 0;
+			}
 		} else if (success && operation == 'assassinate_researchers') {
 			result.research_loss = e.game.get('f_probe_get_assassination_research_loss')(
-				target_player
+				target_player,
+				e.game.random
 			);
 		} else if (success && operation == 'genetic_plague') {
 			result.population_loss = e.game.get('f_probe_get_plague_population_loss')(
 				e.data.target
+			);
+			result.unit_damage = e.game.get('f_probe_get_plague_unit_damage')(
+				e.data.target,
+				e.game.random
 			);
 		}
 		return result;
@@ -455,25 +550,41 @@ return {
 		if (e.resolved.success && operation == 'infiltrate') {
 			actor.set_infiltrated(target_player, true);
 		} else if (e.resolved.success && operation == 'steal_technology') {
-			applied.research = actor.get_research_state();
-			let technologies = [];
-			for (id of applied.research.technologies) {
-				technologies :+id;
-			}
-			technologies :+e.resolved.technology_id;
-			let target = applied.research.target;
-			let progress = applied.research.progress;
-			if (target == e.resolved.technology_id) {
-				target = e.game.get('f_technology_get_next_target')(technologies, actor);
-				if (target == '') {
-					progress = 0;
+			applied.research_data_stolen = snapshot_base_value(
+				e.data.target,
+				RESEARCH_DATA_STOLEN_KEY
+			);
+			e.data.target.set(RESEARCH_DATA_STOLEN_KEY, true);
+			if (#is_defined(e.resolved.stole_map) && e.resolved.stole_map) {
+				applied.map_reveal = e.game.get('f_exploration_apply_map_share')(
+					target_player,
+					actor
+				);
+			} else {
+				applied.research = actor.get_research_state();
+				let technologies = [];
+				for (id of applied.research.technologies) {
+					technologies :+id;
 				}
-			}
-			actor.set_research_state({technologies: technologies, target: target, progress: progress});
-			e.game.trigger('research_updated', {player: actor});
-			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
-			if (#is_defined(queue_datalinks)) {
-				queue_datalinks();
+				technologies :+e.resolved.technology_id;
+				let target = applied.research.target;
+				let progress = applied.research.progress;
+				if (target == e.resolved.technology_id) {
+					target = e.game.get('f_technology_get_next_target')(technologies, actor);
+					if (target == '') {
+						progress = 0;
+					}
+				}
+				actor.set_research_state({
+					technologies: technologies,
+					target: target,
+					progress: progress,
+				});
+				e.game.trigger('research_updated', {player: actor});
+				const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
+				if (#is_defined(queue_datalinks)) {
+					queue_datalinks();
+				}
 			}
 		} else if (e.resolved.success && operation == 'sabotage') {
 			const base = e.data.target;
@@ -487,6 +598,11 @@ return {
 			}
 			e.game.trigger('update_base', {base: base});
 		} else if (e.resolved.success && operation == 'drain_energy') {
+			applied.energy_reserves_drained = snapshot_base_value(
+				e.data.target,
+				ENERGY_RESERVES_DRAINED_KEY
+			);
+			e.data.target.set(ENERGY_RESERVES_DRAINED_KEY, true);
 			actor.set_energy_credits(actor.energy_credits + e.resolved.drain_amount);
 			target_player.set_energy_credits(target_player.energy_credits - e.resolved.drain_amount);
 		} else if (e.resolved.success && operation == 'incite_drone_riots') {
@@ -504,6 +620,19 @@ return {
 			e.game.trigger('research_updated', {player: target_player});
 		} else if (e.resolved.success && operation == 'genetic_plague') {
 			const base = e.data.target;
+			applied.genetic_plague = snapshot_base_value(base, GENETIC_PLAGUE_KEY);
+			base.set(GENETIC_PLAGUE_KEY, true);
+			applied.plague_units = [];
+			if (#is_defined(e.resolved.unit_damage)) {
+				for (damage of e.resolved.unit_damage) {
+					if (!e.game.um.has_unit(damage.unit_id)) {
+						continue;
+					}
+					const unit = e.game.um.get_unit(damage.unit_id);
+					applied.plague_units :+{unit_id: unit.id, health: unit.health};
+					unit.health = damage.health;
+				}
+			}
 			applied.pop_types = snapshot_surviving_pop_types(base, e.resolved.population_loss);
 			applied.population = remove_base_population(e.game, base, e.resolved.population_loss);
 			actor.set_major_atrocities(applied.actor_atrocities + 1);
@@ -579,6 +708,17 @@ return {
 		if (#is_defined(e.applied.population)) {
 			restore_base_population(e.game, e.data.target, e.applied.population);
 		}
+		if (#is_defined(e.applied.genetic_plague)) {
+			restore_base_value(e.data.target, e.applied.genetic_plague);
+		}
+		if (#is_defined(e.applied.plague_units)) {
+			for (snapshot of e.applied.plague_units) {
+				if (e.game.um.has_unit(snapshot.unit_id)) {
+					const unit = e.game.um.get_unit(snapshot.unit_id);
+					unit.health = snapshot.health;
+				}
+			}
+		}
 		if (#is_defined(e.applied.defending_probe)) {
 			restore_unit(e.game, e.applied.defending_probe);
 		}
@@ -597,6 +737,15 @@ return {
 		if (#is_defined(e.applied.research)) {
 			actor.set_research_state(e.applied.research);
 			e.game.trigger('research_updated', {player: actor});
+		}
+		if (#is_defined(e.applied.map_reveal)) {
+			e.game.get('f_exploration_rollback_reveal')(e.applied.map_reveal);
+		}
+		if (#is_defined(e.applied.research_data_stolen)) {
+			restore_base_value(e.data.target, e.applied.research_data_stolen);
+		}
+		if (#is_defined(e.applied.energy_reserves_drained)) {
+			restore_base_value(e.data.target, e.applied.energy_reserves_drained);
 		}
 		if (#is_defined(e.applied.target_research)) {
 			target_player.set_research_state(e.applied.target_research);

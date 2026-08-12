@@ -46,19 +46,22 @@ const get_base_action = (game, player, probe, base) => {
 		});
 	}
 	const unknown = game.get('f_probe_get_unknown_technologies')(player, target_player);
-	if (#sizeof(unknown) > 0) {
+	const map_data = game.get('f_probe_get_map_data_count')(player, target_player);
+	if (#sizeof(unknown) > 0 || map_data > 0) {
 		best = consider(best, {
-			operation: 'steal_technology', target: base, score: 120000 + #sizeof(unknown) * 1000,
+			operation: 'steal_technology', target: base,
+			score: 120000 + #sizeof(unknown) * 1000 + #min(map_data, 1000),
 		});
 	}
-	if (target_player.energy_credits >= 40 && player.energy_credits < 1000000000) {
+	const drain_limit = game.get('f_probe_get_energy_drain_limit')(base);
+	if (drain_limit > 0 && player.energy_credits < 1000000000) {
 		best = consider(best, {
 			operation: 'drain_energy', target: base,
-			score: 90000 + #min(target_player.energy_credits, 500) * 50,
+			score: 90000 + #min(drain_limit, 500) * 50,
 		});
 	}
 	const research_loss = game.get('f_probe_get_assassination_research_loss')(target_player);
-	if (probe.morale >= 3 && research_loss > 0) {
+	if (base.has_facility('Headquarters') && research_loss > 0) {
 		best = consider(best, {
 			operation: 'assassinate_researchers', target: base,
 			score: 100000 + research_loss * 200,
@@ -99,8 +102,7 @@ const get_unit_action = (game, player, probe, unit) => {
 	if (
 		player.get_diplomatic_relation(target_player) != 'vendetta' ||
 		game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm') ||
-		(#is_defined(unit.transport_id) && unit.transport_id > 0) ||
-		(#is_defined(unit.get_cargo) && #sizeof(unit.get_cargo()) > 0)
+		game.get('f_probe_get_subversion_error')(probe, unit) != ''
 	) {
 		return null;
 	}

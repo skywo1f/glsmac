@@ -2,6 +2,27 @@ const project_acquisition = #include('./project_acquisition');
 const economic_victory = #include('./economic_victory_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
+const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
+
+const snapshot_base_value = (base, key) => {
+	if (#typeof(base.has) != 'Callable') {
+		return {key: key, supported: false, defined: false, value: null};
+	}
+	return base.has(key)
+		? {key: key, supported: true, defined: true, value: base.get(key)}
+		: {key: key, supported: true, defined: false, value: null};
+};
+
+const restore_base_value = (base, snapshot) => {
+	if (#is_defined(snapshot.supported) && !snapshot.supported) {
+		return;
+	}
+	if (snapshot.defined) {
+		base.set(snapshot.key, snapshot.value);
+	} else if (base.has(snapshot.key)) {
+		base.unset(snapshot.key);
+	}
+};
 
 const get_base_manager = (game) => {
 	return #typeof(game.get_bm) == 'Callable' ? game.get_bm() : game.bm;
@@ -169,6 +190,10 @@ const get_queue_specs = (base) => {
 const capture_base = (game, base, new_owner) => {
 	const old_owner = base.get_owner();
 	const old_queue = get_queue_specs(base);
+	const research_data_stolen = snapshot_base_value(base, RESEARCH_DATA_STOLEN_KEY);
+	if (research_data_stolen.defined && #typeof(base.unset) == 'Callable') {
+		base.unset(RESEARCH_DATA_STOLEN_KEY);
+	}
 	const rehomed_units = rehome_units(game, base, old_owner.id);
 	const captured_headquarters = base.has_facility('Headquarters');
 	const economic_victory_state = captured_headquarters
@@ -260,6 +285,7 @@ const capture_base = (game, base, new_owner) => {
 	const snapshot = {
 		old_owner: old_owner,
 		old_queue: old_queue,
+		research_data_stolen: research_data_stolen,
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
 		headquarters_evacuation: headquarters_evacuation,
@@ -332,6 +358,9 @@ const restore_base = (game, base, snapshot) => {
 		economic_victory.set_base_state(base, state.turn, state.cost);
 	}
 	base.set_production_queue(snapshot.old_queue);
+	if (#is_defined(snapshot.research_data_stolen)) {
+		restore_base_value(base, snapshot.research_data_stolen);
+	}
 	restore_units(snapshot.rehomed_units);
 };
 

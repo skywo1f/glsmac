@@ -1,20 +1,37 @@
-const STANDARD_MORALE = 2;
 const MAX_ENERGY_CREDITS = 1000000000;
+const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
+const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
+const GENETIC_PLAGUE_KEY = 'probe_genetic_plague_introduced';
+const PROBE_MORALE_TECHNOLOGIES = [
+	'PolymorphicSoftware',
+	'PreSentientAlgorithms',
+	'DigitalSentience',
+	'SelfAwareMachines',
+	'MindMachineInterface',
+];
+const GENETIC_DEFENSE_TECHNOLOGIES = [
+	'Biogenetics',
+	'GeneSplicing',
+	'BioEngineering',
+	'Biomachinery',
+	'MatterEditation',
+	'RetroviralEngineering',
+];
 
 const operations = {
-	infiltrate: {name: 'Infiltrate Datalinks', target: 'base', chance: 85, cost: false},
-	steal_technology: {name: 'Procure Research Data', target: 'base', chance: 70, cost: false},
-	sabotage: {name: 'Activate Sabotage Virus', target: 'base', chance: 65, cost: false},
-	drain_energy: {name: 'Drain Energy Reserves', target: 'base', chance: 75, cost: false},
-	incite_drone_riots: {name: 'Incite Drone Riots', target: 'base', chance: 60, cost: false},
+	infiltrate: {name: 'Infiltrate Datalinks', target: 'base', difficulty: 0, cost: false},
+	steal_technology: {name: 'Procure Research Data', target: 'base', difficulty: 0, cost: false},
+	sabotage: {name: 'Activate Sabotage Virus', target: 'base', difficulty: 0, cost: false},
+	drain_energy: {name: 'Drain Energy Reserves', target: 'base', difficulty: 0, cost: false},
+	incite_drone_riots: {name: 'Incite Drone Riots', target: 'base', difficulty: 0, cost: false},
 	assassinate_researchers: {
-		name: 'Assassinate Prominent Researchers', target: 'base', chance: 50, cost: false,
+		name: 'Assassinate Prominent Researchers', target: 'base', difficulty: 1, cost: false,
 	},
 	genetic_plague: {
-		name: 'Introduce Genetic Plague (Atrocity)', target: 'base', chance: 40, cost: false,
+		name: 'Introduce Genetic Plague (Atrocity)', target: 'base', difficulty: 0, cost: false,
 	},
-	subvert_unit: {name: 'Subvert Unit', target: 'unit', chance: 100, cost: true},
-	mind_control_base: {name: 'Mind Control Base', target: 'base', chance: 100, cost: true},
+	subvert_unit: {name: 'Subvert Unit', target: 'unit', difficulty: 0, cost: true},
+	mind_control_base: {name: 'Mind Control Base', target: 'base', difficulty: 0, cost: true},
 };
 
 const is_probe = (unit) => {
@@ -49,8 +66,7 @@ const get_effective_rating = (game, player) => {
 	);
 };
 
-const get_cost_multiplier = (game, player) => {
-	const rating = get_effective_rating(game, player);
+const get_rating_cost_multiplier = (rating) => {
 	if (rating <= 0 - 2) { return 0.5; }
 	if (rating == 0 - 1) { return 0.75; }
 	if (rating == 1) { return 1.5; }
@@ -59,7 +75,23 @@ const get_cost_multiplier = (game, player) => {
 	return 1.0;
 };
 
+const apply_rating_cost = (cost, rating) => {
+	if (rating <= 0 - 2) { return #floor(#to_float(cost) / 2.0); }
+	if (rating == 0 - 1) { return cost - #floor(#to_float(cost) / 4.0); }
+	if (rating == 1) { return cost + #floor(#to_float(cost) / 2.0); }
+	if (rating == 2) { return cost * 2; }
+	if (rating >= 3) { return null; }
+	return cost;
+};
+
+const get_cost_multiplier = (game, player) => {
+	return get_rating_cost_multiplier(get_effective_rating(game, player));
+};
+
 const has_ability = (def, id) => {
+	if (!#is_defined(def.abilities)) {
+		return false;
+	}
 	for (ability of def.abilities) {
 		if (ability == id) {
 			return true;
@@ -86,60 +118,132 @@ const get_headquarters_distance = (game, player, tile) => {
 
 const get_subversion_cost = (game, actor, target) => {
 	const target_player = game.get_player(target.owner);
-	const multiplier = get_cost_multiplier(game, target_player);
-	if (multiplier == null) {
+	const rating = get_effective_rating(game, target_player);
+	if (get_rating_cost_multiplier(rating) == null) {
 		return null;
 	}
-	const distance = get_headquarters_distance(game, target_player, target.get_tile());
+	let distance = get_headquarters_distance(game, target_player, target.get_tile());
+	if (#is_defined(target.home_base_id) && target.home_base_id > 0) {
+		for (base of game.get_bm().get_bases()) {
+			if (
+				base.id == target.home_base_id &&
+				base.get_owner().id == target_player.id &&
+				base.has_facility('PunishmentSphere')
+			) {
+				distance = #floor(#to_float(distance) / 2.0);
+				break;
+			}
+		}
+	}
 	const def = target.get_def();
-	let cost = #to_float(def.mineral_cost) *
-		#to_float(target_player.energy_credits + 80) /
-		#to_float((distance + 2) * 10);
-	if (!def.can_found_base && !def.can_terraform) {
-		cost *= 0.5;
-	}
+	let cost = #max(1, #floor(#to_float(def.mineral_cost) / 10.0)) *
+		#floor(#to_float(target_player.energy_credits + 800) / #to_float(distance + 2));
+	cost = apply_rating_cost(cost, rating);
 	if (has_ability(def, 'PolymorphicEncryption')) {
-		cost *= 2.0;
+		cost *= 2;
 	}
-	return #max(10, #ceil(cost * multiplier));
+	if (!def.can_found_base && !def.can_terraform) {
+		cost = #floor(#to_float(cost) / 2.0);
+	}
+	return cost;
+};
+
+const get_subversion_error = (probe, target) => {
+	if (
+		#typeof(target) != 'Object' || #typeof(target.get_def) != 'Callable' ||
+		target.health <= 0.0 ||
+		(#is_defined(target.transport_id) && target.transport_id > 0)
+	) {
+		return 'Probe subversion target must be an active, unembarked unit';
+	}
+	if (#is_defined(target.get_cargo) && #sizeof(target.get_cargo()) > 0) {
+		return 'A transport carrying units cannot be subverted';
+	}
+	if (#is_defined(target.get_def().is_native) && target.get_def().is_native) {
+		return 'Native life cannot be subverted by Probe Teams';
+	}
+	const tile = target.get_tile();
+	if (#typeof(tile.get_units) == 'Callable') {
+		let active_units = 0;
+		for (unit of tile.get_units()) {
+			if (unit.health > 0.0) {
+				active_units++;
+			}
+		}
+		if (active_units > 1) {
+			return 'A unit in a stack cannot be individually subverted';
+		}
+	}
+	if (
+		#is_defined(target.is_air) && target.is_air &&
+		!has_ability(probe.get_def(), 'AirSuperiority')
+	) {
+		return 'Air Superiority is required to subvert an air unit';
+	}
+	return '';
 };
 
 const get_base_garrison_value = (game, base) => {
-	let value = 0;
+	let combat_units = 0;
+	let encrypted_units = 0;
 	for (unit of game.get_um().get_units()) {
 		if (unit.owner == base.get_owner().id && unit.get_tile() == base.get_tile()) {
-			value += #max(unit.get_def().mineral_cost, 10);
+			const def = unit.get_def();
+			if (#is_defined(def.offense) && def.offense > 0) {
+				combat_units++;
+				if (has_ability(def, 'PolymorphicEncryption')) {
+					encrypted_units++;
+				}
+			}
 		}
 	}
-	return value;
+	return combat_units * (encrypted_units + 1);
 };
 
 const get_mind_control_cost = (game, actor, base) => {
 	const target_player = base.get_owner();
-	const multiplier = get_cost_multiplier(game, target_player);
-	if (multiplier == null || base.has_facility('Headquarters')) {
+	let rating = get_effective_rating(game, target_player);
+	if (base.has_facility('GenejackFactory')) {
+		rating--;
+	}
+	if (get_rating_cost_multiplier(rating) == null || base.has_facility('Headquarters')) {
 		return null;
 	}
-	const distance = get_headquarters_distance(game, target_player, base.get_tile());
-	const population_value = base.get_size() * 10;
-	const garrison_value = get_base_garrison_value(game, base);
-	let cost = #to_float(#max(population_value + garrison_value, 20)) *
-		#to_float(target_player.energy_credits + 120) /
-		#to_float((distance + 4) * 10);
+	let distance = get_headquarters_distance(game, target_player, base.get_tile());
 	if (base.has_facility('GenejackFactory')) {
-		cost *= 0.5;
+		distance *= 2;
 	}
 	if (base.has_facility('ChildrenSCreche')) {
-		cost *= 2.0;
+		distance = #floor(#to_float(distance) / 2.0);
 	}
 	if (base.has_facility('PunishmentSphere')) {
-		cost *= 2.0;
+		distance = #floor(#to_float(distance) / 2.0);
 	}
+	const population_value = base.get_size();
+	const garrison_value = get_base_garrison_value(game, base);
+	let cost = (population_value + garrison_value) * #floor(
+		#to_float(target_player.energy_credits + 1200) / #to_float(distance + 4)
+	);
+	cost = apply_rating_cost(cost, rating);
 	const relation = actor.get_diplomatic_relation(target_player);
-	if (relation == 'treaty' || relation == 'pact') {
-		cost *= 2.0;
+	if (relation == 'pact') {
+		cost *= 2;
 	}
-	return #max(20, #ceil(cost * multiplier));
+	return cost;
+};
+
+const get_energy_drain_limit = (game, base) => {
+	const target_player = base.get_owner();
+	let population = 0;
+	for (candidate of game.get_bm().get_bases()) {
+		if (candidate.get_owner().id == target_player.id) {
+			population += candidate.get_size();
+		}
+	}
+	return #max(0, #floor(
+		#to_float(target_player.energy_credits * base.get_size()) /
+		#to_float(#max(1, population + 1))
+	));
 };
 
 const can_incite_drone_riots = (base) => {
@@ -151,23 +255,38 @@ const can_incite_drone_riots = (base) => {
 	return false;
 };
 
+const get_sabotage_facilities = (base) => {
+	let result = [];
+	const base_tile = base.get_tile();
+	for (facility of base.get_facilities()) {
+		if (
+			!facility.is_project && facility.id != 'Headquarters' &&
+			!(
+				facility.id == 'PressureDome' &&
+				#is_defined(base_tile.is_water) && base_tile.is_water
+			)
+		) {
+			result :+facility.id;
+		}
+	}
+	return result;
+};
+
 const can_sabotage = (base) => {
 	if (base.get_accumulated_minerals() > 0) {
 		return true;
 	}
-	for (facility of base.get_facilities()) {
-		if (!facility.is_project && facility.id != 'Headquarters') {
-			return true;
-		}
-	}
-	return false;
+	return #sizeof(get_sabotage_facilities(base)) > 0;
 };
 
-const get_assassination_research_loss = (player) => {
+const get_assassination_research_loss = (player, random) => {
 	const research = player.get_research_state();
-	return research.target == '' || research.progress <= 0
-		? 0
-		: #max(1, #ceil(#to_float(research.progress) * 0.25));
+	if (research.target == '' || research.progress <= 0) {
+		return 0;
+	}
+	return !#is_defined(random) || research.progress == 1
+		? research.progress
+		: random.get_int(0, research.progress - 1);
 };
 
 const get_plague_population_loss = (base) => {
@@ -175,10 +294,63 @@ const get_plague_population_loss = (base) => {
 	if (size <= 1) {
 		return 0;
 	}
-	let protection = 0;
-	if (base.has_facility('ResearchHospital')) { protection += 1; }
-	if (base.has_facility('Nanohospital')) { protection += 1; }
-	return #min(size - 1, #max(1, #ceil(#to_float(size) / 2.0) - protection));
+	const player = base.get_owner();
+	let known_defenses = 0;
+	if (#typeof(player.has_technology) == 'Callable') {
+		for (technology_id of GENETIC_DEFENSE_TECHNOLOGIES) {
+			if (player.has_technology(technology_id)) {
+				known_defenses++;
+			}
+		}
+	}
+	known_defenses = #max(1, #min(#sizeof(GENETIC_DEFENSE_TECHNOLOGIES), known_defenses));
+	let loss = #floor(
+		#to_float(size * (#sizeof(GENETIC_DEFENSE_TECHNOLOGIES) - known_defenses)) /
+		#to_float(#sizeof(GENETIC_DEFENSE_TECHNOLOGIES))
+	);
+	if (
+		#typeof(base.has) == 'Callable' && base.has(GENETIC_PLAGUE_KEY) &&
+		base.get(GENETIC_PLAGUE_KEY) == true
+	) {
+		loss = #floor(#to_float(loss) / 2.0);
+	}
+	if (base.has_facility('ResearchHospital')) {
+		loss = #floor(#to_float(loss) / 2.0);
+	}
+	if (base.has_facility('Nanohospital')) {
+		loss = #floor(#to_float(loss) / 2.0);
+	}
+	return #min(size - 1, loss + 1);
+};
+
+const get_plague_unit_damage = (game, base, random) => {
+	let result = [];
+	for (unit of game.get_um().get_units()) {
+		if (unit.get_tile() != base.get_tile() || unit.health <= 0.0) {
+			continue;
+		}
+		const health = #max(1, #ceil(unit.health * 1000.0));
+		const spread = #floor(#to_float(health + 1) / 2.0);
+		let damage = #floor(#to_float(health) / 2.0) +
+			(spread <= 0 ? 0 : random.get_int(0, spread - 1));
+		if (base.has_facility('ResearchHospital')) {
+			damage = #floor(#to_float(damage) / 2.0);
+		}
+		if (base.has_facility('Nanohospital')) {
+			damage = #floor(#to_float(damage) / 2.0);
+		}
+		if (
+			#typeof(base.has) == 'Callable' && base.has(GENETIC_PLAGUE_KEY) &&
+			base.get(GENETIC_PLAGUE_KEY) == true
+		) {
+			damage = #floor(#to_float(damage) / 2.0);
+		}
+		result :+{
+			unit_id: unit.id,
+			health: #to_float(#max(1, health - damage)) / 1000.0,
+		};
+	}
+	return result;
 };
 
 const get_defending_probe = (game, target_player, base) => {
@@ -201,23 +373,120 @@ const get_defending_probe = (game, target_player, base) => {
 	return defender;
 };
 
-const get_success_chance = (game, probe, target_player, operation, target) => {
+const get_probe_morale = (game, probe) => {
+	let morale = #max(2, probe.morale);
+	if (#is_defined(probe.owner)) {
+		const player = game.get_player(probe.owner);
+		morale += #max(0, get_rating(game, player));
+		if (has_project(game, player, 'TheTelepathicMatrix')) {
+			morale += 2;
+		}
+		if (#typeof(player.has_technology) == 'Callable') {
+			for (technology_id of PROBE_MORALE_TECHNOLOGIES) {
+				if (player.has_technology(technology_id)) {
+					morale++;
+				}
+			}
+		}
+	}
+	return #max(2, #min(6, morale));
+};
+
+const get_probe_defense = (game, target_player) => {
+	return #max(0 - 2, #min(0, get_rating(game, target_player)));
+};
+
+const get_operation_difficulty = (operation, target, options) => {
 	const definition = operations[operation];
 	if (!#is_defined(definition)) {
+		return null;
+	}
+	let difficulty = definition.difficulty;
+	if (
+		operation == 'steal_technology' && #is_defined(options) &&
+		#is_defined(options.target_technology_id) && options.target_technology_id != ''
+	) {
+		difficulty++;
+	}
+	if (
+		operation == 'steal_technology' && #typeof(target) == 'Object' &&
+		#typeof(target.has) == 'Callable' && target.has(RESEARCH_DATA_STOLEN_KEY) &&
+		target.get(RESEARCH_DATA_STOLEN_KEY) == true
+	) {
+		difficulty++;
+	}
+	if (
+		operation == 'drain_energy' && #typeof(target) == 'Object' &&
+		#typeof(target.has) == 'Callable' && target.has(ENERGY_RESERVES_DRAINED_KEY) &&
+		target.get(ENERGY_RESERVES_DRAINED_KEY) == true
+	) {
+		difficulty++;
+	}
+	if (
+		operation == 'sabotage' && #is_defined(options) &&
+		#is_defined(options.sabotage_target_id) && options.sabotage_target_id != ''
+	) {
+		difficulty = 1;
+		if (
+			#typeof(target) == 'Object' &&
+			(
+				target.has_facility('Headquarters') ||
+				options.sabotage_target_id == 'PerimeterDefense' ||
+				options.sabotage_target_id == 'TachyonField'
+			)
+		) {
+			difficulty = 2;
+		}
+	}
+	if (
+		definition.cost && #is_defined(options) &&
+		#is_defined(options.untraceable) && options.untraceable == true
+	) {
+		difficulty++;
+	}
+	return difficulty;
+};
+
+const get_success_chance = (game, probe, target_player, operation, target, options) => {
+	const difficulty = get_operation_difficulty(operation, target, options);
+	if (difficulty == null) {
 		return 0;
 	}
+	const morale = get_probe_morale(game, probe);
+	const defense = get_probe_defense(game, target_player);
+	const attempts = #max(1, #floor(#to_float(morale) / 2.0) - defense + 1);
+	let chance = #max(0, #min(100, 100 - #floor(
+		#to_float(difficulty * 100) / #to_float(attempts)
+	)));
+	const definition = operations[operation];
 	const defending_probe = definition.target == 'base' && #typeof(target) == 'Object'
 		? get_defending_probe(game, target_player, target)
 		: null;
-	if (definition.cost && defending_probe == null) {
+	if (defending_probe != null) {
+		const defender_morale = get_probe_morale(game, defending_probe);
+		const interception_chance = #max(5, #min(
+			95,
+			65 + (morale - defender_morale) * 5
+		));
+		chance = #min(chance, interception_chance);
+	}
+	return chance;
+};
+
+const get_survival_chance = (game, probe, target_player, operation, target, options) => {
+	const difficulty = get_operation_difficulty(operation, target, options);
+	if (difficulty == null) {
+		return 0;
+	}
+	if (operation == 'subvert_unit') {
 		return 100;
 	}
-	const morale_bonus = (probe.morale - STANDARD_MORALE) * 5;
-	let defender_penalty = get_effective_rating(game, target_player) * 10;
-	if (defending_probe != null) {
-		defender_penalty += 20 + (defending_probe.morale - STANDARD_MORALE) * 5;
-	}
-	return #max(5, #min(95, definition.chance + morale_bonus - defender_penalty));
+	const morale = get_probe_morale(game, probe);
+	const defense = get_probe_defense(game, target_player);
+	return #max(0, #min(100, 100 - #floor(
+		#to_float((difficulty + 1) * 100) /
+		#to_float(#max(1, morale - defense))
+	)));
 };
 
 const get_unknown_technologies = (actor, target_player) => {
@@ -232,6 +501,11 @@ const get_unknown_technologies = (actor, target_player) => {
 		}
 	}
 	return result;
+};
+
+const get_map_data_count = (game, actor, target_player) => {
+	const resolver = game.get('f_exploration_count_shareable_tiles');
+	return #typeof(resolver) == 'Callable' ? resolver(target_player, actor) : 0;
 };
 
 const get_intelligence_source = (game, actor, target_player) => {
@@ -381,20 +655,36 @@ return (game) => {
 		game.set('f_probe_get_subversion_cost', (actor, target) => {
 			return get_subversion_cost(game, actor, target);
 		});
+		game.set('f_probe_get_subversion_error', get_subversion_error);
 		game.set('f_probe_get_mind_control_cost', (actor, base) => {
 			return get_mind_control_cost(game, actor, base);
 		});
+		game.set('f_probe_get_energy_drain_limit', (base) => {
+			return get_energy_drain_limit(game, base);
+		});
 		game.set('f_probe_can_incite_drone_riots', can_incite_drone_riots);
 		game.set('f_probe_can_sabotage', can_sabotage);
+		game.set('f_probe_get_sabotage_facilities', get_sabotage_facilities);
 		game.set('f_probe_get_assassination_research_loss', get_assassination_research_loss);
 		game.set('f_probe_get_plague_population_loss', get_plague_population_loss);
+		game.set('f_probe_get_plague_unit_damage', (base, random) => {
+			return get_plague_unit_damage(game, base, random);
+		});
 		game.set('f_probe_get_defending_probe', (target_player, base) => {
 			return get_defending_probe(game, target_player, base);
 		});
-		game.set('f_probe_get_success_chance', (probe, target_player, operation, target) => {
-			return get_success_chance(game, probe, target_player, operation, target);
+		game.set('f_probe_get_success_chance', (probe, target_player, operation, target, options) => {
+			return get_success_chance(game, probe, target_player, operation, target, options);
 		});
+		game.set('f_probe_get_survival_chance', (probe, target_player, operation, target, options) => {
+			return get_survival_chance(game, probe, target_player, operation, target, options);
+		});
+		game.set('f_probe_get_operation_difficulty', get_operation_difficulty);
+		game.set('f_probe_get_morale', (probe) => { return get_probe_morale(game, probe); });
 		game.set('f_probe_get_unknown_technologies', get_unknown_technologies);
+		game.set('f_probe_get_map_data_count', (actor, target_player) => {
+			return get_map_data_count(game, actor, target_player);
+		});
 		game.set('f_probe_get_intelligence_source', (actor, target_player) => {
 			return get_intelligence_source(game, actor, target_player);
 		});

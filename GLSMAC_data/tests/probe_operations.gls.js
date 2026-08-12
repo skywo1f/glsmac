@@ -109,6 +109,7 @@ const make_fixture = (charter_repealed) => {
 	let callbacks = {};
 	let values = {};
 	let datalinks_queues = 0;
+	let map_shares = 0;
 
 	const probe_tile = {x: 1, y: 1};
 	const target_tile = {x: 2, y: 1};
@@ -132,6 +133,13 @@ const make_fixture = (charter_repealed) => {
 		},
 	};
 	let units = [];
+	target_tile.get_units = () => {
+		let result = [];
+		for (unit of units) {
+			if (unit.get_tile() == target_tile) { result :+unit; }
+		}
+		return result;
+	};
 	const make_unit = (data) => {
 		let unit = {
 			id: data.id,
@@ -181,7 +189,7 @@ const make_fixture = (charter_repealed) => {
 		let current_owner = owner;
 		let current_facilities = facilities;
 		let minerals = 30;
-		let nutrients = 18;
+		let values = {accumulated_nutrients: 18};
 		let queue = [{production_kind: 'unit', id: 'Defender'}];
 		const make_pop = (type, worked_tile) => {
 			let pop = {type: type, worked_tile: worked_tile};
@@ -213,8 +221,10 @@ const make_fixture = (charter_repealed) => {
 				for (pop of pops) { if (pop != doomed) { remaining :+pop; } }
 				pops = remaining;
 			},
-			get: (key) => { return key == 'accumulated_nutrients' ? nutrients : null; },
-			set: (key, value) => { if (key == 'accumulated_nutrients') { nutrients = value; } },
+			has: (key) => { return #is_defined(values[key]); },
+			get: (key) => { return values[key]; },
+			set: (key, value) => { values[key] = value; },
+			unset: (key) => { values[key] = #undefined; },
 			get_facilities: () => { return current_facilities; },
 			has_facility: (facility_id) => {
 				for (facility of current_facilities) {
@@ -283,6 +293,12 @@ const make_fixture = (charter_repealed) => {
 	values.f_social_get_ratings = (player) => { return {probe: player.probe_rating}; };
 	values.f_technology_get_next_target = (known, player) => { return ''; };
 	values.f_project_queue_planetary_datalinks = () => { datalinks_queues++; };
+	values.f_exploration_count_shareable_tiles = (sender, recipient) => { return 1; };
+	values.f_exploration_apply_map_share = (sender, recipient) => {
+		map_shares++;
+		return {sender: sender, recipient: recipient};
+	};
+	values.f_exploration_rollback_reveal = (snapshot) => { map_shares--; };
 	values.f_economy_get_base_psych = (game_value, base) => { return 0; };
 	values.f_base_process_psych = (game_value, base, psych) => {};
 	values.f_base_reset_nutrients = (game_value, base) => {
@@ -309,6 +325,7 @@ const make_fixture = (charter_repealed) => {
 		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um, triggers: triggers,
 		read_message: () => { return last_message; },
 		read_datalinks_queues: () => { return datalinks_queues; },
+		read_map_shares: () => { return map_shares; },
 	};
 };
 
@@ -324,7 +341,7 @@ const result = (success, detected, survives) => {
 	return {
 		success: success, detected: detected, survives: survives, chance: 85, cost: 0,
 		technology_id: '', sabotage_facility_id: '', drain_amount: 0,
-		research_loss: 0, population_loss: 0, defender_id: 0,
+		research_loss: 0, population_loss: 0, unit_damage: [], defender_id: 0,
 	};
 };
 
@@ -363,6 +380,45 @@ test.assert(f.read_datalinks_queues() == 1);
 probe_operation.rollback(e);
 test.assert(f.actor.get_research_state().technologies == []);
 test.assert(f.actor.get_research_state().target == 'PlanetaryNetworks');
+test.assert(!f.target_base.has('probe_research_data_stolen'));
+
+f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'steal_technology',
+	target: f.target_base,
+	target_technology_id: 'PlanetaryNetworks',
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(e.resolved.success && e.resolved.technology_id == 'PlanetaryNetworks');
+e.applied = probe_operation.apply(e);
+test.assert(f.target_base.get('probe_research_data_stolen') == true);
+probe_operation.rollback(e);
+test.assert(!f.target_base.has('probe_research_data_stolen'));
+
+e.data.unit = f.um.get_unit(1);
+e.data.target_technology_id = 'IndustrialBase';
+test.assert(
+	probe_operation.validate(e) == 'Target technology is not available to steal'
+);
+
+f = make_fixture();
+f.actor.set_research_state({
+	technologies: ['PlanetaryNetworks'], target: 'IndustrialBase', progress: 9,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'steal_technology',
+	target: f.target_base,
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(e.resolved.success && e.resolved.stole_map && e.resolved.technology_id == '');
+e.applied = probe_operation.apply(e);
+test.assert(f.read_map_shares() == 1);
+probe_operation.rollback(e);
+test.assert(f.read_map_shares() == 0);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'sabotage', target: f.target_base}};
@@ -382,6 +438,19 @@ probe_operation.rollback(e);
 test.assert(f.target_base.has_facility('RecyclingTanks'));
 
 f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'sabotage',
+	target: f.target_base,
+	sabotage_target_id: 'RecyclingTanks',
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(e.resolved.success && e.resolved.sabotage_facility_id == 'RecyclingTanks');
+e.data.sabotage_target_id = 'Headquarters';
+test.assert(probe_operation.validate(e) == 'Target facility is not available to sabotage');
+
+f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'drain_energy', target: f.target_base}};
 e.resolved = result(true, false, true);
 e.resolved.drain_amount = 50;
@@ -390,7 +459,9 @@ test.assert(
 	f.actor.read_energy_credits() == 1050 &&
 	f.target_player.read_energy_credits() == 150
 );
+test.assert(f.target_base.get('probe_energy_reserves_drained') == true);
 probe_operation.rollback(e);
+test.assert(!f.target_base.has('probe_energy_reserves_drained'));
 test.assert(
 	f.actor.read_energy_credits() == 1000 &&
 	f.target_player.read_energy_credits() == 200
@@ -414,8 +485,11 @@ f.target_player.set_research_state({
 e = {caller: 1, game: f.game, data: {
 	unit: f.probe, operation: 'assassinate_researchers', target: f.target_base,
 }};
-test.assert(#is_defined(probe_operation.validate(e)));
-f.probe.morale = 3;
+test.assert(
+	probe_operation.validate(e) ==
+	'Prominent researchers can only be targeted at faction headquarters'
+);
+f.target_base.add_facility('Headquarters');
 test.assert(!#is_defined(probe_operation.validate(e)));
 e.resolved = result(true, false, true);
 e.resolved.research_loss = 25;
@@ -435,13 +509,20 @@ f.actor.set_research_state({
 test.assert(!#is_defined(probe_operation.validate(e)));
 e.resolved = result(true, true, true);
 e.resolved.population_loss = 2;
+e.resolved.unit_damage = [{unit_id: f.defender.id, health: 0.5}];
 e.applied = probe_operation.apply(e);
 test.assert(f.target_base.get_size() == 2);
+const plagued_defender = f.um.get_unit(f.defender.id);
+test.assert(plagued_defender.health == 0.5);
+test.assert(f.target_base.get('probe_genetic_plague_introduced') == true);
 test.assert(f.actor.get_major_atrocities() == 1);
 test.assert(f.actor.get_sanction_turns() == 10);
 test.assert(f.target_base.get('accumulated_nutrients') == 0);
 probe_operation.rollback(e);
 test.assert(f.target_base.get_size() == 4);
+const restored_plague_defender = f.um.get_unit(f.defender.id);
+test.assert(restored_plague_defender.health == 1.0);
+test.assert(!f.target_base.has('probe_genetic_plague_introduced'));
 test.assert(f.actor.get_major_atrocities() == 0);
 test.assert(f.actor.get_sanction_turns() == 0);
 test.assert(f.target_base.get('accumulated_nutrients') == 18);
@@ -474,6 +555,35 @@ e.applied = probe_operation.apply(e);
 test.assert(f.um.get_unit(2).owner == 1 && f.actor.read_energy_credits() == 900);
 probe_operation.rollback(e);
 test.assert(f.um.get_unit(2).owner == 2 && f.actor.read_energy_credits() == 1000);
+
+f = make_fixture();
+const stacked_defender = f.um.spawn_unit({
+	id: 6, def: 'Defender', owner: f.target_player, tile: f.target_base.get_tile(),
+	morale: 2, health: 1.0, movement: 1.0,
+});
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'subvert_unit', target: f.defender,
+}};
+test.assert(
+	probe_operation.validate(e) == 'A unit in a stack cannot be individually subverted'
+);
+
+f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'subvert_unit',
+	target: f.defender,
+	untraceable: true,
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(e.resolved.success && !e.resolved.detected && e.resolved.survives);
+e.applied = probe_operation.apply(e);
+test.assert(f.um.get_unit(2).owner == 1);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
+probe_operation.rollback(e);
+test.assert(f.um.get_unit(2).owner == 2);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'mind_control_base', target: f.target_base}};

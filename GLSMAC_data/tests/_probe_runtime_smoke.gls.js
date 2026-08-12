@@ -106,22 +106,49 @@
 			}
 
 			let probe_tile = null;
+			let target_unit_tile = null;
 			let subversion_probe_tile = null;
+			let available_tiles = [];
 			for (tile of target_base.get_tile().get_surrounding_tiles()) {
 				if (
 					tile != target_base.get_tile() && tile.is_land &&
 					tile.get_base() == null && #sizeof(tile.get_units()) == 0 && !tile.is_locked()
 				) {
-					if (probe_tile == null) {
-						probe_tile = tile;
-					} else {
-						subversion_probe_tile = tile;
+					available_tiles :+tile;
+				}
+			}
+			for (candidate_probe_tile of available_tiles) {
+				for (candidate_target_tile of available_tiles) {
+					if (
+						candidate_probe_tile == candidate_target_tile ||
+						!candidate_probe_tile.is_adjactent_to(candidate_target_tile)
+					) {
+						continue;
+					}
+					for (candidate_subversion_tile of available_tiles) {
+						if (
+							candidate_subversion_tile != candidate_probe_tile &&
+							candidate_subversion_tile != candidate_target_tile &&
+							candidate_subversion_tile.is_adjactent_to(candidate_target_tile)
+						) {
+							probe_tile = candidate_probe_tile;
+							target_unit_tile = candidate_target_tile;
+							subversion_probe_tile = candidate_subversion_tile;
+							break;
+						}
+					}
+					if (probe_tile != null) {
 						break;
 					}
 				}
+				if (probe_tile != null) {
+					break;
+				}
 			}
-			if (probe_tile == null || subversion_probe_tile == null) {
-				fail('opponent base has fewer than two adjacent land probe tiles');
+			if (
+				probe_tile == null || target_unit_tile == null || subversion_probe_tile == null
+			) {
+				fail('opponent base has no three-tile clear land test arrangement');
 				return;
 			}
 
@@ -157,7 +184,7 @@
 				morale: 2, health: 1.0,
 			});
 			const target = game.get_um().spawn_unit({
-				def: 'ScoutPatrol', owner: target_player, tile: target_base.get_tile(),
+				def: 'ScoutPatrol', owner: target_player, tile: target_unit_tile,
 				morale: 2, health: 1.0, home_base_id: target_base.id,
 			});
 			runtime_probe_id = probe.id;
@@ -196,6 +223,11 @@
 				return;
 			}
 			actor.set_infiltrated(target_player, false);
+			const subversion_error = game.get('f_probe_get_subversion_error')(probe, target);
+			if (subversion_error != '') {
+				fail('live unit subversion setup is illegal: ' + subversion_error);
+				return;
+			}
 			let energy_before = game.get_player(actor.id).energy_credits;
 			let expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 			if (expected_cost == null || expected_cost <= 0 || expected_cost > energy_before) {

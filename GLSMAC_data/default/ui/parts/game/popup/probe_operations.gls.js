@@ -5,12 +5,14 @@ return {
 		this.targets = {};
 		this.target = null;
 		this.operation = null;
+		this.option = '';
 		this.target_select = null;
 		this.operation_select = null;
+		this.option_select = null;
 		this.status_text = null;
 		this.execute_button = null;
 
-		return p.create('PROBE OPERATIONS', 500, 196, (body, cb) => {
+		return p.create('PROBE OPERATIONS', 500, 254, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Target:', left: 10, top: 12});
 			this.target_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -28,31 +30,54 @@ return {
 			});
 			this.operation_select.on('select', (e) => {
 				this.operation = e.value;
+				this.refresh_operation_options();
+				this.refresh_status();
+				return true;
+			});
+
+			body.text({class: 'game-popup-text', text: 'Approach:', left: 10, top: 88});
+			this.option_select = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 84,
+				width: 350, items: [['', 'Standard operation']], value: '',
+			});
+			this.option_select.on('select', (e) => {
+				this.option = e.value;
 				this.refresh_status();
 				return true;
 			});
 
 			this.status_text = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 88,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 126,
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Cancel', top: 148, is_cancel: true,
+				class: 'game-popup-button', text: 'Cancel', top: 206, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
 			});
 
 			this.execute_button = body.button({
-				class: 'game-popup-button', text: 'Execute Operation', top: 172, is_ok: true,
+				class: 'game-popup-button', text: 'Execute Operation', top: 230, is_ok: true,
 			});
 			this.execute_button.on('click', (e) => {
 				if (this.unit != null && this.target != null && this.operation != null) {
-					p.game.event('probe_operation', {
+					const data = {
 						unit: this.unit,
 						operation: this.operation,
 						target: this.target,
-					});
+					};
+					if (this.operation == 'steal_technology') {
+						data.target_technology_id = this.option;
+					} else if (this.operation == 'sabotage') {
+						data.sabotage_target_id = this.option;
+					} else if (
+						this.operation == 'subvert_unit' ||
+						this.operation == 'mind_control_base'
+					) {
+						data.untraceable = this.option == 'untraceable';
+					}
+					p.game.event('probe_operation', data);
 					cb(true);
 				}
 				return true;
@@ -71,9 +96,10 @@ return {
 	},
 
 	is_valid_unit_target: (unit) => {
-		return unit.health > 0.0 &&
+		return this.unit != null && unit.health > 0.0 &&
 			(!#is_defined(unit.transport_id) || unit.transport_id == 0) &&
-			(!#is_defined(unit.get_cargo) || #sizeof(unit.get_cargo()) == 0);
+			(!#is_defined(unit.get_cargo) || #sizeof(unit.get_cargo()) == 0) &&
+			this.p.game.get('f_probe_get_subversion_error')(this.unit, unit) == '';
 	},
 
 	get_operation_items: () => {
@@ -107,23 +133,29 @@ return {
 			: actor.has_infiltrated(target_player))) {
 			items :+['infiltrate', definitions.infiltrate.name];
 		}
-		if (#sizeof(this.p.game.get('f_probe_get_unknown_technologies')(
-			actor,
-			target_player
-		)) > 0) {
+		if (
+			#sizeof(this.p.game.get('f_probe_get_unknown_technologies')(
+				actor,
+				target_player
+			)) > 0 ||
+			this.p.game.get('f_probe_get_map_data_count')(actor, target_player) > 0
+		) {
 			items :+['steal_technology', definitions.steal_technology.name];
 		}
 		if (this.p.game.get('f_probe_can_sabotage')(this.target)) {
 			items :+['sabotage', definitions.sabotage.name];
 		}
-		if (target_player.energy_credits > 0 && actor.energy_credits < 1000000000) {
+		if (
+			this.p.game.get('f_probe_get_energy_drain_limit')(this.target) > 0 &&
+			actor.energy_credits < 1000000000
+		) {
 			items :+['drain_energy', definitions.drain_energy.name];
 		}
 		if (this.p.game.get('f_probe_can_incite_drone_riots')(this.target)) {
 			items :+['incite_drone_riots', definitions.incite_drone_riots.name];
 		}
 		if (
-			this.unit.morale >= 3 &&
+			this.target.has_facility('Headquarters') &&
 			this.p.game.get('f_probe_get_assassination_research_loss')(target_player) > 0
 		) {
 			items :+['assassinate_researchers', definitions.assassinate_researchers.name];
@@ -142,6 +174,78 @@ return {
 		return items;
 	},
 
+	get_operation_option_items: () => {
+		if (this.target == null || this.operation == null || this.operation == '') {
+			return [['', 'Standard operation']];
+		}
+		if (this.operation == 'steal_technology') {
+			let items = [['', 'Quick general search']];
+			const actor = this.p.game.get_player();
+			const target_player = this.get_target_player();
+			const resolver = this.p.game.get('f_technology_get_definition');
+			for (id of this.p.game.get('f_probe_get_unknown_technologies')(
+				actor,
+				target_player
+			)) {
+				const definition = #is_defined(resolver) ? resolver(id) : null;
+				items :+[id, 'Target ' + (definition == null ? id : definition.name)];
+			}
+			if (#sizeof(items) == 1 && this.p.game.get('f_probe_get_map_data_count')(
+				actor,
+				target_player
+			) > 0) {
+				items[0][1] = 'Download world map';
+			}
+			return items;
+		}
+		if (this.operation == 'sabotage') {
+			let items = [['', 'Widespread havoc']];
+			if (this.target.get_accumulated_minerals() > 0) {
+				items :+['production', 'Target current production'];
+			}
+			const allowed = this.p.game.get('f_probe_get_sabotage_facilities')(this.target);
+			for (facility of this.target.get_facilities()) {
+				let can_target = false;
+				for (id of allowed) {
+					if (id == facility.id) { can_target = true; }
+				}
+				if (can_target) {
+					items :+[facility.id, 'Target ' + facility.name];
+				}
+			}
+			return items;
+		}
+		if (this.operation == 'subvert_unit' || this.operation == 'mind_control_base') {
+			return [
+				['', 'Standard operation'],
+				['untraceable', 'Attempt untraceable capture'],
+			];
+		}
+		return [['', 'Standard operation']];
+	},
+
+	refresh_operation_options: () => {
+		const items = this.get_operation_option_items();
+		this.option_select.items = items;
+		this.option_select.readonly = #sizeof(items) <= 1;
+		this.option_select.value = items[0][0];
+		this.option = this.option_select.value;
+	},
+
+	get_operation_options: () => {
+		let options = {};
+		if (this.operation == 'steal_technology') {
+			options.target_technology_id = this.option;
+		} else if (this.operation == 'sabotage') {
+			options.sabotage_target_id = this.option;
+		} else if (
+			this.operation == 'subvert_unit' || this.operation == 'mind_control_base'
+		) {
+			options.untraceable = this.option == 'untraceable';
+		}
+		return options;
+	},
+
 	select_target: (key) => {
 		this.target = key == '' || !#is_defined(this.targets[key]) ? null : this.targets[key];
 		const items = this.get_operation_items();
@@ -151,6 +255,7 @@ return {
 		this.operation_select.readonly = #sizeof(items) == 0;
 		this.operation_select.value = #sizeof(items) > 0 ? items[0][0] : '';
 		this.operation = this.operation_select.value;
+		this.refresh_operation_options();
 		this.refresh_status();
 	},
 
@@ -188,11 +293,21 @@ return {
 			this.unit,
 			target_player,
 			this.operation,
-			this.target
+			this.target,
+			this.get_operation_options()
+		);
+		const survival_chance = this.p.game.get('f_probe_get_survival_chance')(
+			this.unit,
+			target_player,
+			this.operation,
+			this.target,
+			this.get_operation_options()
 		);
 		this.status_text.text = cost > 0
-			? 'Cost: ' + #to_string(cost) + ' energy credits.'
-			: 'Success chance: ' + #to_string(chance) + '%.';
+			? 'Cost: ' + #to_string(cost) + ' energy credits. Success: ' +
+				#to_string(chance) + '%. Survival: ' + #to_string(survival_chance) + '%.'
+			: 'Success: ' + #to_string(chance) + '%. Survival: ' +
+				#to_string(survival_chance) + '%.';
 		this.execute_button.show();
 	},
 
@@ -230,6 +345,7 @@ return {
 		this.unit = null;
 		this.target = null;
 		this.operation = null;
+		this.option = '';
 		this.targets = {};
 	},
 };

@@ -30,13 +30,14 @@ const make_player = (id, energy, rating, technologies) => {
 	let infiltrated = false;
 	let research_target = '';
 	let research_progress = 0;
+	let known_technologies = technologies;
 	return {
 		id: id,
 		energy_credits: energy,
 		probe_rating: rating,
 		get_research_state: () => {
 			return {
-				technologies: technologies,
+				technologies: known_technologies,
 				target: research_target,
 				progress: research_progress,
 			};
@@ -46,6 +47,13 @@ const make_player = (id, energy, rating, technologies) => {
 			research_target = target;
 			research_progress = progress;
 		},
+		has_technology: (technology_id) => {
+			for (known of known_technologies) {
+				if (known == technology_id) { return true; }
+			}
+			return false;
+		},
+		set_test_technologies: (value) => { known_technologies = value; },
 		get_social_engineering: () => {
 			return {
 				politics: 'Democratic', economics: 'Green',
@@ -86,9 +94,15 @@ const target_base = {
 		{get_type: () => { return 'DRONE'; }},
 	]; },
 };
+let target_base_values = {};
+target_base.has = (key) => { return #is_defined(target_base_values[key]); };
+target_base.get = (key) => { return target_base_values[key]; };
+target_base.set = (key, value) => { target_base_values[key] = value; };
+target_base.unset = (key) => { target_base_values[key] = #undefined; };
 bases = [headquarters, target_base];
 
 const probe = {
+	owner: 1,
 	morale: 2,
 	get_def: () => { return {weapon: 'ProbeTeam'}; },
 };
@@ -110,16 +124,99 @@ const target_unit = {
 	get_def: () => { return target_def; },
 };
 units = [target_unit];
+target_tile.get_units = () => { return units; };
 
 test.assert(values.f_probe_is_unit(probe));
-test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 85);
-test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate', target_base) == 85);
-test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 94);
+test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 100);
+test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate', target_base) == 100);
+test.assert(values.f_probe_get_survival_chance(probe, target_player, 'infiltrate') == 50);
+test.assert(values.f_probe_get_success_chance(
+	probe, target_player, 'assassinate_researchers', target_base
+) == 50);
+test.assert(values.f_probe_get_survival_chance(
+	probe, target_player, 'assassinate_researchers', target_base
+) == 0);
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'steal_technology',
+	target_base,
+	{target_technology_id: 'PlanetaryNetworks'}
+) == 50);
+target_base.set('probe_research_data_stolen', true);
+test.assert(values.f_probe_get_success_chance(
+	probe, target_player, 'steal_technology', target_base
+) == 50);
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'steal_technology',
+	target_base,
+	{target_technology_id: 'PlanetaryNetworks'}
+) == 0);
+target_base.unset('probe_research_data_stolen');
+target_base.set('probe_energy_reserves_drained', true);
+test.assert(values.f_probe_get_success_chance(
+	probe, target_player, 'drain_energy', target_base
+) == 50);
+test.assert(values.f_probe_get_survival_chance(
+	probe, target_player, 'drain_energy', target_base
+) == 0);
+target_base.unset('probe_energy_reserves_drained');
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'sabotage',
+	target_base,
+	{sabotage_target_id: 'RecyclingTanks'}
+) == 50);
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'sabotage',
+	target_base,
+	{sabotage_target_id: 'PerimeterDefense'}
+) == 0);
+test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 332);
+test.assert(values.f_probe_get_subversion_error(probe, target_unit) == '');
+const stacked_unit = #clone(target_unit);
+stacked_unit.health = 1.0;
+units :+stacked_unit;
+test.assert(
+	values.f_probe_get_subversion_error(probe, target_unit) ==
+	'A unit in a stack cannot be individually subverted'
+);
+units = [target_unit];
+target_def.is_native = true;
+test.assert(
+	values.f_probe_get_subversion_error(probe, target_unit) ==
+	'Native life cannot be subverted by Probe Teams'
+);
+target_def.is_native = false;
+target_unit.is_air = true;
+test.assert(
+	values.f_probe_get_subversion_error(probe, target_unit) ==
+	'Air Superiority is required to subvert an air unit'
+);
+target_unit.is_air = false;
+test.assert(values.f_probe_get_success_chance(
+	probe, target_player, 'subvert_unit', target_unit, {untraceable: true}
+) == 50);
+test.assert(values.f_probe_get_survival_chance(
+	probe, target_player, 'subvert_unit', target_unit, {untraceable: true}
+) == 100);
+test.assert(values.f_probe_get_energy_drain_limit(target_base) == 80);
 test.assert(values.f_probe_can_incite_drone_riots(target_base));
 test.assert(values.f_probe_get_assassination_research_loss({
 	get_research_state: () => { return {target: 'IndustrialBase', progress: 100}; },
-}) == 25);
-test.assert(values.f_probe_get_plague_population_loss(target_base) == 2);
+}, {get_int: (minimum, maximum) => { return 37; }}) == 37);
+test.assert(values.f_probe_get_plague_population_loss(target_base) == 3);
+const plague_damage = values.f_probe_get_plague_unit_damage(
+	target_base,
+	{get_int: (minimum, maximum) => { return minimum; }}
+);
+test.assert(#sizeof(plague_damage) == 1);
+test.assert(plague_damage[0].health == 0.5);
 
 const defending_probe = {
 	id: 7, owner: 2, morale: 2, health: 1.0, transport_id: 0,
@@ -134,31 +231,33 @@ test.assert(values.f_probe_get_success_chance(
 units = [target_unit];
 
 target_def.abilities = ['PolymorphicEncryption'];
-test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 187);
+test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 664);
 target_def.abilities = [];
 
 target_player.probe_rating = 2;
-test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 65);
-test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 187);
+test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 100);
+test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == 664);
 target_player.probe_rating = 3;
 test.assert(values.f_probe_get_subversion_cost(actor, target_unit) == null);
 target_player.probe_rating = 0;
 
 test.assert(values.f_probe_get_mind_control_cost(actor, headquarters) == null);
 const base_cost = values.f_probe_get_mind_control_cost(actor, target_base);
-test.assert(base_cost > 20);
+test.assert(base_cost == 875);
 target_base.has_facility = (id) => { return id == 'GenejackFactory'; };
-test.assert(
-	values.f_probe_get_mind_control_cost(actor, target_base) ==
-	#ceil(#to_float(base_cost) * 0.5)
-);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 435);
 target_base.has_facility = (id) => { return id == 'ChildrenSCreche'; };
-test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == base_cost * 2);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1165);
 target_base.has_facility = (id) => { return id == 'PunishmentSphere'; };
-test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == base_cost * 2);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1165);
 target_base.has_facility = (id) => { return id == 'ResearchHospital'; };
-test.assert(values.f_probe_get_plague_population_loss(target_base) == 1);
+test.assert(values.f_probe_get_plague_population_loss(target_base) == 2);
 target_base.has_facility = (id) => { return false; };
+
+actor.set_test_technologies(['InformationNetworks', 'PolymorphicSoftware']);
+test.assert(values.f_probe_get_morale(probe) == 3);
+test.assert(values.f_probe_get_survival_chance(probe, target_player, 'infiltrate') == 67);
+actor.set_test_technologies(['InformationNetworks']);
 
 const unknown = values.f_probe_get_unknown_technologies(actor, target_player);
 test.assert(unknown == ['PlanetaryNetworks']);
