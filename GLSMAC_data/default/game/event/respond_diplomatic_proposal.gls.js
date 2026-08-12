@@ -30,6 +30,15 @@ return {
 				relation
 			);
 			e.game.get('f_diplomacy_clear_relation_offers')(e.data.player, e.data.proposer);
+			if (relation == 'pact') {
+				const share_map = e.game.get('f_exploration_apply_map_share');
+				if (#is_defined(share_map)) {
+					snapshot.pact_map_shares = [
+						share_map(e.data.player, e.data.proposer),
+						share_map(e.data.proposer, e.data.player),
+					];
+				}
+			}
 		}
 		e.game.trigger('diplomatic_proposal_resolved', {
 			player: e.data.player,
@@ -48,6 +57,12 @@ return {
 	},
 
 	rollback: (e) => {
+		if (#is_defined(e.applied.pact_map_shares)) {
+			const rollback_reveal = e.game.get('f_exploration_rollback_reveal');
+			for (let i = #sizeof(e.applied.pact_map_shares) - 1; i >= 0; i--) {
+				rollback_reveal(e.applied.pact_map_shares[i]);
+			}
+		}
 		e.game.get('f_diplomacy_restore_pair')(e.data.player, e.data.proposer, e.applied);
 		e.game.trigger('diplomatic_proposal_updated', {
 			player: e.data.proposer,

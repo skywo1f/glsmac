@@ -135,7 +135,16 @@ const result = {
 			}
 			let is_still_terraforming = false;
 			if (e.unit.terraforming != 'none') {
+				const terraforming_type = '' + e.unit.terraforming;
+				const terraforming_tile = e.unit.get_tile();
 				is_still_terraforming = terraforming.advance_order(e.unit);
+				if (!is_still_terraforming) {
+					game.trigger('terraforming_completed', {
+						unit: e.unit,
+						tile: terraforming_tile,
+						type: terraforming_type,
+					});
+				}
 			}
 			if (!def.is_immovable && !is_still_terraforming) {
 				e.unit.movement = get_movement(e.unit, def, project_effects);

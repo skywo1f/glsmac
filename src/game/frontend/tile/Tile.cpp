@@ -214,6 +214,10 @@ const bool Tile::IsCurrentlyVisible() const {
 	return m_is_currently_visible;
 }
 
+const bool Tile::HasSensor() const {
+	return m_has_sensor;
+}
+
 const std::unordered_map< size_t, unit::Unit* >& Tile::GetUnits() const {
 	return m_units;
 }
@@ -308,6 +312,7 @@ const Tile::render_data_t& Tile::GetRenderData() const {
 void Tile::Update( const tile_render_snapshot_t& snapshot ) {
 
 	m_is_water = snapshot.is_water;
+	m_has_sensor = snapshot.terraforming & backend::map::tile::TERRAFORMING_SENSOR;
 
 	backend::map::tile::tile_layer_type_t lt = ( snapshot.is_water
 		? backend::map::tile::LAYER_WATER

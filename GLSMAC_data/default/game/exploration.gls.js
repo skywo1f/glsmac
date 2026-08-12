@@ -39,7 +39,7 @@ const get_unexplored_tiles = (player, tiles) => {
 	return result;
 };
 
-const apply_reveal = (game, player, tiles) => {
+const apply_reveal_one = (game, player, tiles) => {
 	const revealed = get_unexplored_tiles(player, tiles);
 	for (tile of revealed) {
 		player.set_explored(tile, true);
@@ -50,7 +50,32 @@ const apply_reveal = (game, player, tiles) => {
 	return {player: player, tiles: revealed};
 };
 
-const rollback_reveal = (game, snapshot) => {
+const is_bilateral_pact = (player, other) => {
+	return (
+		#typeof(player.get_diplomatic_relation) == 'Callable' &&
+		#typeof(other.get_diplomatic_relation) == 'Callable' &&
+		player.get_diplomatic_relation(other) == 'pact' &&
+		other.get_diplomatic_relation(player) == 'pact'
+	);
+};
+
+const apply_reveal = (game, player, tiles) => {
+	const snapshot = apply_reveal_one(game, player, tiles);
+	snapshot.shared = [];
+	if (#typeof(game.get_players) == 'Callable') {
+		for (other of game.get_players()) {
+			if (other.id != player.id && is_bilateral_pact(player, other)) {
+				const shared = apply_reveal_one(game, other, tiles);
+				if (#sizeof(shared.tiles) > 0) {
+					snapshot.shared :+shared;
+				}
+			}
+		}
+	}
+	return snapshot;
+};
+
+const rollback_reveal_one = (game, snapshot) => {
 	for (let i = #sizeof(snapshot.tiles) - 1; i >= 0; i--) {
 		snapshot.player.set_explored(snapshot.tiles[i], false);
 	}
@@ -60,6 +85,15 @@ const rollback_reveal = (game, snapshot) => {
 			tiles: snapshot.tiles,
 		});
 	}
+};
+
+const rollback_reveal = (game, snapshot) => {
+	if (#is_defined(snapshot.shared)) {
+		for (let i = #sizeof(snapshot.shared) - 1; i >= 0; i--) {
+			rollback_reveal_one(game, snapshot.shared[i]);
+		}
+	}
+	rollback_reveal_one(game, snapshot);
 };
 
 const count_shareable_tiles = (sender, recipient) => {
@@ -103,6 +137,23 @@ const queue_at_base = (game, base) => {
 	queue_reveal(game, base.get_owner(), tiles);
 };
 
+const queue_sensor_at_tile = (game, tile) => {
+	if (
+		tile == null || #typeof(tile.terraforming) != 'Object' ||
+		!#is_defined(tile.terraforming.sensor) || !tile.terraforming.sensor
+	) {
+		return;
+	}
+	const get_owner = game.get('f_territory_get_owner');
+	if (!#is_defined(get_owner)) {
+		return;
+	}
+	const owner = get_owner(tile);
+	if (owner != null) {
+		queue_reveal(game, owner, get_tiles_in_radius(tile, 2));
+	}
+};
+
 const scan_entities = (game) => {
 	if (#typeof(game.is_master) != 'Callable' || !game.is_master()) {
 		return;
@@ -138,6 +189,14 @@ return (game) => {
 		});
 		game.set('f_exploration_queue_at_tile', (player, tile) => {
 			return queue_at_tile(game, player, tile);
+		});
+		game.set('f_exploration_queue_sensor_at_tile', (tile) => {
+			return queue_sensor_at_tile(game, tile);
+		});
+		game.on('terraforming_completed', (event) => {
+			if (#is_defined(event.type) && event.type == 'sensor') {
+				queue_sensor_at_tile(game, event.tile);
+			}
 		});
 		scan_entities(game);
 		game.on('turn', (e) => { scan_entities(game); });

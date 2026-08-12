@@ -1359,6 +1359,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 
 	if ( request ) {
 		switch ( request->type ) {
+			case FrontendRequest::FR_UPDATE_TILES:
 			case FrontendRequest::FR_UNIT_SPAWN:
 			case FrontendRequest::FR_UNIT_DESPAWN:
 			case FrontendRequest::FR_UNIT_UPDATE:
@@ -1523,6 +1524,60 @@ void Game::AddBaseVisibleTiles(
 	f_add( nw->NW );
 }
 
+const size_t Game::GetTileDistance( const tile::Tile* first, const tile::Tile* second ) const {
+	const auto& first_coords = first->GetCoords();
+	const auto& second_coords = second->GetCoords();
+	const int64_t y_distance = std::abs(
+		static_cast< int64_t >( first_coords.y ) - static_cast< int64_t >( second_coords.y )
+	);
+	const auto f_distance = [ &first_coords, &second_coords, &y_distance ]( const int64_t x_offset ) {
+		return static_cast< size_t >(
+			(
+				std::abs(
+					static_cast< int64_t >( first_coords.x ) + x_offset -
+					static_cast< int64_t >( second_coords.x )
+				) + y_distance
+			) / 2
+		);
+	};
+	return std::min(
+		f_distance( 0 ),
+		std::min(
+			f_distance( -static_cast< int64_t >( m_map_data.width ) ),
+			f_distance( static_cast< int64_t >( m_map_data.width ) )
+		)
+	);
+}
+
+const base::Base* Game::GetClaimingBase( const tile::Tile* tile ) const {
+	static constexpr size_t max_claim_distance = 8;
+	static constexpr size_t coastal_claim_distance = 2;
+	const base::Base* result = nullptr;
+	size_t result_distance = max_claim_distance + 1;
+	for ( const auto& it : m_bm->GetBases() ) {
+		const auto* const candidate = it.second;
+		const auto* const candidate_tile = candidate->GetTile();
+		const auto distance = GetTileDistance( candidate_tile, tile );
+		if ( distance > max_claim_distance ) {
+			continue;
+		}
+		const bool can_claim =
+			candidate_tile->IsWater() == tile->IsWater() ||
+			( !candidate_tile->IsWater() && tile->IsWater() && distance <= coastal_claim_distance );
+		if ( !can_claim ) {
+			continue;
+		}
+		if (
+			!result || distance < result_distance ||
+			( distance == result_distance && candidate->GetId() < result->GetId() )
+		) {
+			result = candidate;
+			result_distance = distance;
+		}
+	}
+	return result;
+}
+
 void Game::RefreshMapVisibility() {
 	if ( !m_map_visibility_dirty || !m_actors.fog ) {
 		return;
@@ -1539,6 +1594,17 @@ void Game::RefreshMapVisibility() {
 			if ( unit.second->IsOwned() ) {
 				AddVisibleTilesInRadius( tile, 1, visible_tiles );
 				break;
+			}
+		}
+	}
+	size_t owned_sensor_count = 0;
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		if ( tile->HasSensor() ) {
+			const auto* const owner = GetClaimingBase( tile );
+			if ( owner && owner->IsOwned() ) {
+				owned_sensor_count++;
+				AddVisibleTilesInRadius( tile, 2, visible_tiles );
 			}
 		}
 	}
@@ -1584,7 +1650,8 @@ void Game::RefreshMapVisibility() {
 	Log(
 		"Map visibility: " + std::to_string( m_currently_visible_tiles.size() ) +
 		" visible, " + std::to_string( m_explored_tiles.size() ) +
-		" explored of " + std::to_string( m_tm->GetTiles().size() ) + " tiles"
+		" explored of " + std::to_string( m_tm->GetTiles().size() ) + " tiles, " +
+		std::to_string( owned_sensor_count ) + " owned sensors"
 	);
 	RefreshSelectedTile( selected_unit );
 	if ( m_exploration_changed ) {

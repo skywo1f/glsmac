@@ -249,6 +249,10 @@ test.assert(beta.get_diplomatic_relation(alpha) == 'neutral');
 test.assert(beta.get_diplomatic_offer(alpha) == 'treaty');
 response.applied = respond_proposal.apply(response);
 
+const alpha_pact_tile = {x: 8, y: 2};
+const beta_pact_tile = {x: 10, y: 2};
+alpha.set_explored(alpha_pact_tile, true);
+beta.set_explored(beta_pact_tile, true);
 let pact = {
 	caller: 1,
 	game: game,
@@ -264,6 +268,12 @@ let pact_response = {
 pact_response.applied = respond_proposal.apply(pact_response);
 test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
 test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
+test.assert(alpha.has_explored(beta_pact_tile) && beta.has_explored(alpha_pact_tile));
+respond_proposal.rollback(pact_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'treaty');
+test.assert(beta.get_diplomatic_relation(alpha) == 'treaty');
+test.assert(!alpha.has_explored(beta_pact_tile) && !beta.has_explored(alpha_pact_tile));
+pact_response.applied = respond_proposal.apply(pact_response);
 
 let vendetta = {
 	caller: 1,

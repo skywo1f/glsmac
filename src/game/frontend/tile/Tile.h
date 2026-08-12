@@ -63,6 +63,7 @@ public:
 	void Render( size_t selected_unit_id = 0 );
 	void SetCurrentlyVisible( const bool is_visible );
 	const bool IsCurrentlyVisible() const;
+	const bool HasSensor() const;
 
 	const std::unordered_map< size_t, unit::Unit* >& GetUnits() const;
 	const std::vector< unit::Unit* >& GetOrderedUnits();
@@ -111,6 +112,7 @@ private:
 	bool m_is_objects_reorder_needed = true;
 
 	bool m_is_water = false;
+	bool m_has_sensor = false;
 	bool m_is_currently_visible = false;
 
 	base::Base* m_base = nullptr;

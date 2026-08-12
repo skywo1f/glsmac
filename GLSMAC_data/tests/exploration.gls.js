@@ -22,6 +22,7 @@ const game = {
 	get_um: () => { return um; },
 	get_bm: () => { return bm; },
 	get_player: (id) => { return players[id]; },
+	get_players: () => { return players; },
 };
 
 const center = {x: 2, y: 2, neighbours: []};
@@ -39,8 +40,16 @@ far.neighbours = [];
 
 const make_player = (id) => {
 	let explored = {};
+	let relations = {};
 	return {
 		id: id,
+		get_diplomatic_relation: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(relations[key]) ? relations[key] : 'neutral';
+		},
+		set_diplomatic_relation: (other, relation) => {
+			relations['p' + #to_string(other.id)] = relation;
+		},
 		has_explored: (tile) => {
 			return #is_defined(explored[#to_string(tile.x) + '_' + #to_string(tile.y)]);
 		},
@@ -65,6 +74,12 @@ const beta = make_player(1);
 players = [alpha, beta];
 define_exploration(game);
 callbacks.start({});
+
+center.terraforming = {sensor: true};
+values.f_territory_get_owner = (tile) => { return alpha; };
+callbacks.terraforming_completed({type: 'sensor', tile: center});
+test.assert(#sizeof(events) == 1 && #sizeof(events[0].data.tiles) == 4);
+events = [];
 
 test.assert(#sizeof(values.f_exploration_get_tiles_in_radius(center, 1)) == 3);
 test.assert(#sizeof(values.f_exploration_get_tiles_in_radius(center, 2)) == 4);
@@ -99,5 +114,12 @@ const shared = values.f_exploration_apply_map_share(alpha, beta);
 test.assert(beta.has_explored(west) && beta.has_explored(east));
 values.f_exploration_rollback_reveal(shared);
 test.assert(beta.has_explored(center) && !beta.has_explored(west));
+
+alpha.set_diplomatic_relation(beta, 'pact');
+beta.set_diplomatic_relation(alpha, 'pact');
+const pact_reveal = values.f_exploration_apply_reveal(alpha, [far]);
+test.assert(alpha.has_explored(far) && beta.has_explored(far));
+values.f_exploration_rollback_reveal(pact_reveal);
+test.assert(!alpha.has_explored(far) && !beta.has_explored(far));
 
 test.assert(true);

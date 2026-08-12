@@ -263,3 +263,65 @@ air_state = turns.get_air_turn_state(
 	{is_air: true, operational_range: 0, chassis: 'Gravship'}
 );
 test.assert(air_state == {fuel: 0, damage: 0.0, crash: false, refueling: false});
+
+let unit_turn_handler = #undefined;
+let terraforming_completed = #undefined;
+let sensor_present = false;
+const sensor_tile = {
+	test_id: 73,
+	terraforming: {airbase: false, sensor: false},
+	get_base: () => { return null; },
+	update_terraforming: (changes) => {
+		sensor_present = changes.sensor;
+	},
+};
+let former = #undefined;
+former = {
+	id: 74,
+	owner: owner.id,
+	health: 1.0,
+	moved_this_turn: false,
+	terraforming: 'sensor',
+	terraforming_turns_remaining: 1,
+	movement: 0.0,
+	fuel: 0,
+	is_water: false,
+	get_def: () => {
+		return {
+			health_max: 1.0,
+			health_per_turn: 0.1,
+			is_land: true,
+			is_water: false,
+			is_air: false,
+			is_native: false,
+			is_immovable: false,
+			movement_per_turn: 1.0,
+		};
+	},
+	get_owner: () => { return owner; },
+	get_tile: () => { return sensor_tile; },
+	set_fuel: (fuel) => { former.fuel = fuel; },
+	set_terraforming_order: (type, turns_remaining) => {
+		former.terraforming = type;
+		former.terraforming_turns_remaining = turns_remaining;
+	},
+};
+turns.configure({
+	get_um: () => {
+		return {on: (event, handler) => {
+			test.assert(event == 'unit_turn');
+			unit_turn_handler = handler;
+		}};
+	},
+	trigger: (event, payload) => {
+		test.assert(event == 'terraforming_completed');
+		terraforming_completed = payload;
+	},
+});
+test.assert(#is_defined(unit_turn_handler));
+unit_turn_handler({unit: former});
+test.assert(sensor_present);
+test.assert(former.terraforming == 'none');
+test.assert(terraforming_completed.unit.id == former.id);
+test.assert(terraforming_completed.tile.test_id == sensor_tile.test_id);
+test.assert(terraforming_completed.type == 'sensor');

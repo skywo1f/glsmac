@@ -52,6 +52,10 @@ base::Base* BaseManager::GetBaseById( const size_t id ) const {
 		: nullptr;
 }
 
+const std::unordered_map< size_t, base::Base* >& BaseManager::GetBases() const {
+	return m_bases;
+}
+
 void BaseManager::DefinePop( const backend::base::PopDef* def ) {
 	ASSERT( m_popdefs.find( def->m_id ) == m_popdefs.end(), "popdef already defined: " + def->m_id );
 	m_popdefs_order.push_back( def->m_id );
