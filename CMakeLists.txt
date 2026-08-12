@@ -111,6 +111,8 @@ IF ( BUILD_TESTING )
 			)
 		ENDIF ()
 	ENDFOREACH ()
+	# The generated unit catalog is substantially slower under Windows Debug CI.
+	SET_TESTS_PROPERTIES( gse_script_content_validation_units PROPERTIES TIMEOUT 600 )
 
 	SET( GLSMAC_SMAC_PATH "" CACHE PATH "SMAC installation used by the optional runtime smoke test" )
 	IF ( GLSMAC_SMAC_PATH )
