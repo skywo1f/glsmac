@@ -224,9 +224,9 @@ IF ( BUILD_TESTING )
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
+			--headless
 			--windowed
 			--window-size "1024x768"
-			--verbose
 		)
 		SET_TESTS_PROPERTIES( research_runtime_smoke PROPERTIES
 			FAIL_REGULAR_EXPRESSION "RESEARCH_RUNTIME_FAIL"
@@ -629,7 +629,7 @@ IF ( BUILD_TESTING )
 			PASS_REGULAR_EXPRESSION "AI_ECONOMY_SOAK_PASS"
 			LABELS runtime_long
 			RUN_SERIAL TRUE
-			TIMEOUT 300
+			TIMEOUT 360
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 

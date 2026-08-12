@@ -14,6 +14,8 @@
 	let saw_improvement = false;
 	let saw_facility = false;
 	let success_wait_ticks = 0;
+	let current_turn = 0;
+	let stall_ticks = 0;
 
 	const fail = (message) => {
 		#print('AI_ECONOMY_SOAK_FAIL: ' + message);
@@ -21,9 +23,62 @@
 	};
 
 	const complete_human_turn = () => {
+		if (game.is_game_over() || exit_scheduled) {
+			return false;
+		}
 		if (!game.is_game_over() && !game.is_turn_complete(game.get_player().id)) {
 			game.event('complete_turn', {});
 		}
+		return true;
+	};
+
+	const monitor_turn_progress = () => {
+		if (!ui_started || exit_scheduled || game.is_game_over()) {
+			return true;
+		}
+		stall_ticks++;
+		if (stall_ticks < 300) {
+			return true;
+		}
+		let player_states = '';
+		for (player of game.get_players()) {
+			if (player_states != '') {
+				player_states += ';';
+			}
+			player_states += #to_string(player.id) + ':' + player.type + ':' +
+				#to_string(game.is_turn_complete(player.id));
+		}
+		let unit_states = '';
+		for (unit of game.get_um().get_units()) {
+			const tile = unit.get_tile();
+			if (unit_states != '') {
+				unit_states += ';';
+			}
+			unit_states += #to_string(unit.id) + ':' + #to_string(unit.owner) + ':' +
+				unit.def + ':movement=' + #to_string(unit.movement) +
+				':terraforming=' + unit.terraforming + ':tile=' +
+				#to_string(tile.x) + ',' + #to_string(tile.y) +
+				':locked=' + #to_string(tile.is_locked());
+		}
+		let locked_tiles = '';
+		const tm = game.get_tm();
+		for (let y = 0; y < tm.get_map_height(); y++) {
+			for (let x = 0; x < tm.get_map_width(); x++) {
+				if (x % 2 == y % 2 && tm.get_tile(x, y).is_locked()) {
+					if (locked_tiles != '') {
+						locked_tiles += ';';
+					}
+					locked_tiles += #to_string(x) + ',' + #to_string(y);
+				}
+			}
+		}
+		fail(
+			'turn ' + #to_string(current_turn) + ' stalled for 30 seconds' +
+			'; players=[' + player_states + ']' +
+			'; locked_tiles=[' + locked_tiles + ']' +
+			'; units=[' + unit_states + ']'
+		);
+		return false;
 	};
 
 	const finish_success = () => {
@@ -147,6 +202,7 @@
 
 		game.on('start_ui', (e) => {
 			ui_started = true;
+			#async(100, monitor_turn_progress);
 			#async(250, complete_human_turn);
 		});
 
@@ -167,6 +223,8 @@
 			}
 			ai_id = ai.id;
 			const turn = e.year - 2100;
+			current_turn = turn;
+			stall_ticks = 0;
 			const snapshot = get_snapshot(ai);
 			if (turn == 1 || turn % 5 == 0 || turn >= FINAL_TURN) {
 				print_snapshot(turn, snapshot);
@@ -200,7 +258,6 @@
 					return;
 				}
 			}
-			#async(250, complete_human_turn);
 		});
 	});
 

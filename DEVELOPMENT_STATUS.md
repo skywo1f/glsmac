@@ -275,16 +275,16 @@ After Drop Pods were completed, the Windows x64 Release build succeeded and all
 99 isolated tests passed in 213.14 seconds. Focused installed-asset Workshop,
 combat-access, and running-reconnect scenarios passed together in 80.46 seconds;
 the multiplayer synchronization harness passed in 52.17 seconds. Across bounded
-batches, 28 of 30 asset-backed scenarios passed. Coverage verifies 488-definition
+batches, all 30 asset-backed scenarios now have green runs. Coverage verifies 488-definition
 generation, Workshop legality, eight-square and orbital insertion, interceptor
 denial, reactor-scaled landing damage, the same-turn attack penalty, cargo and
 rollback behavior, AI production and destination choice, native persistence,
-turn reset, and reconnect restoration. The unchanged research runtime still
-fails to replicate its test-only energy seed, while the long AI economy soak
-deterministically stops advancing after its turn-15 trace. Neither scenario
-reaches a Drop-capable design or unit; both remain runtime blockers rather than
-being reported as passing. The air logic scenario now runs headlessly and passed
-in 16.02 seconds; the AI hurry scenario passed in 60.16 seconds after its
+turn reset, and reconnect restoration. The long AI economy soak now retries a
+transiently animation-blocked human turn completion and passed at turn 20 in
+287.69 seconds. The research runtime now waits for normal turn-start economy
+settlement before seeding its social-engineering budget, runs headlessly, and
+passed in 26.11 seconds. The air logic scenario runs headlessly and passed in
+16.02 seconds; the AI hurry scenario passed in 60.16 seconds after its
 post-success shutdown delay and CTest teardown allowance were corrected.
 
 After Nerve Gas Pods were completed, the Windows x64 Release build succeeded
@@ -401,9 +401,9 @@ Most logic-heavy runtime scenarios use the test-only `--headless` mode. It
 retains the real asset loaders, UI scripts, frontend/backend game modules,
 scheduler, networking, and ordinary unit-movement ordering while replacing
 graphics, input, and audio with null modules and immediately acknowledging
-animation requests. Research, air, transport, and sea-colony scenarios remain
-rendered to cover the graphics-coupled paths. Headless mode does not bypass game
-logic or force synchronous movement.
+animation requests. Transport and sea-colony scenarios remain rendered to cover
+graphics-coupled paths. Headless mode does not bypass game logic or force
+synchronous movement.
 
 The long economy soak keeps engine verbosity disabled so CTest does not retain
 enough diagnostic output to destabilize later GPU-backed runtime processes;

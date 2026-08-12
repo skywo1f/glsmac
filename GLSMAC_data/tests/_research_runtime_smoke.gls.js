@@ -47,23 +47,6 @@
 		const game = e.game;
 		let last_unit_upgrade = null;
 		let victory_projects_unlocked = null;
-		game.register_event('research_runtime_seed_energy', {
-			validate: (e) => {
-				if (e.caller != 0 && e.caller != e.data.player.id) {
-					return 'Only the runtime test player may seed its energy balance';
-				}
-			},
-			apply: (e) => {
-				const previous = e.data.player.energy_credits;
-				e.data.player.set_energy_credits(e.data.energy_credits);
-				e.game.trigger('economy_updated', {player: e.data.player});
-				return {energy_credits: previous};
-			},
-			rollback: (e) => {
-				e.data.player.set_energy_credits(e.applied.energy_credits);
-				e.game.trigger('economy_updated', {player: e.data.player});
-			},
-		});
 		game.register_event('research_runtime_complete_projects', {
 			validate: (e) => {
 				if (e.caller != 0 && e.caller != e.data.base.get_owner().id) {
@@ -197,20 +180,28 @@
 				});
 				let funding_requested = false;
 				let funding_wait_ticks = 0;
+				game.on('economy_updated', (update) => {
+					if (
+						funding_requested || !#is_defined(update.player) ||
+						update.player.id != player.id
+					) {
+						return;
+					}
+					funding_requested = true;
+					game.event('process_player_economy', {
+						player: game.get_player(),
+						energy_credits: 1000,
+					});
+				});
 				#async(100, () => {
 					if (!ui_started) {
 						return true;
 					}
 					funding_wait_ticks++;
-					const funded_player = game.get_player();
 					if (!funding_requested) {
-						funding_requested = true;
-						game.event('research_runtime_seed_energy', {
-							player: funded_player,
-							energy_credits: 1000,
-						});
 						return true;
 					}
+					const funded_player = game.get_player();
 					if (funded_player.get_energy_credits() != 1000) {
 						if (funding_wait_ticks >= 100) {
 							fail('social engineering test funding timed out');
