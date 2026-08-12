@@ -26,6 +26,7 @@ tile = {
 	features: {
 		monolith: false,
 		xenofungus: false,
+		volcano: false,
 	},
 	terraforming: {
 		road: false,
@@ -45,6 +46,7 @@ tile = {
 		plant_fungus: false,
 	},
 	rockiness: 1,
+	elevation: 0,
 	is_locked: () => {
 		return tile_state.is_locked;
 	},
@@ -183,6 +185,20 @@ event.data.type = 'farm';
 tile.rockiness = 3;
 test.assert(#is_defined(terraform_tile.validate(event)));
 tile.rockiness = 1;
+
+tile.features.volcano = true;
+tile.elevation = 1000;
+tile_state.nearby_tiles = [{features: {volcano: true}, elevation: 2000}];
+event.data.type = 'farm';
+test.assert(#is_defined(terraform_tile.validate(event)));
+event.data.type = 'forest';
+test.assert(#is_defined(terraform_tile.validate(event)));
+event.data.type = 'road';
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile.elevation = 3000;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.features.volcano = false;
+tile_state.nearby_tiles = [];
 
 event.data.type = 'soil_enricher';
 known_technologies.AdvancedEcologicalEngineering = true;

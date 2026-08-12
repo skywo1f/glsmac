@@ -893,6 +893,89 @@ std::string Map::ApplyEarthquake( tile::Tile* center, const size_t elevation_ste
 	return snapshot;
 }
 
+std::string Map::ApplyVolcano( tile::Tile* center ) {
+	ASSERT( center, "cannot create a volcano around a null tile" );
+	ASSERT( GetTile( center->coord.x, center->coord.y ) == center, "volcano center does not belong to map" );
+	ASSERT( center->is_water_tile, "new volcano center must be at sea" );
+
+	const auto snapshot = m_tiles->Serialize().ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	tile_set_t volcano_tiles = { center };
+	for ( auto* const neighbour : center->neighbours ) {
+		volcano_tiles.insert( neighbour );
+	}
+	for ( auto* const volcano_tile : volcano_tiles ) {
+		if ( volcano_tile->base || !volcano_tile->units.empty() ) {
+			THROW( "new volcano area must not contain bases or units" );
+		}
+		if ( volcano_tile->landmarks != tile::LANDMARK_NONE ) {
+			THROW( "new volcano area must not overlap a named landmark" );
+		}
+	}
+
+	std::unordered_map< tile::elevation_t*, tile::elevation_t > minimum_elevations;
+	const auto register_minimum = [ &minimum_elevations ](
+		tile::elevation_t* vertex,
+		const tile::elevation_t elevation
+	) {
+		const auto it = minimum_elevations.find( vertex );
+		if ( it == minimum_elevations.end() ) {
+			minimum_elevations.insert( { vertex, elevation } );
+		}
+		else {
+			it->second = std::max( it->second, elevation );
+		}
+	};
+	const auto center_elevation = std::min(
+		tile::ELEVATION_MAX,
+		m_sea_level + static_cast< tile::elevation_t >( 3000 )
+	);
+	const auto slope_elevation = std::min(
+		tile::ELEVATION_MAX,
+		m_sea_level + static_cast< tile::elevation_t >( 1000 )
+	);
+	for ( auto* const vertex : center->elevation.corners ) {
+		register_minimum( vertex, center_elevation );
+	}
+	for ( auto* const volcano_tile : volcano_tiles ) {
+		if ( volcano_tile == center ) {
+			continue;
+		}
+		for ( auto* const vertex : volcano_tile->elevation.corners ) {
+			register_minimum( vertex, slope_elevation );
+		}
+	}
+	for ( const auto& it : minimum_elevations ) {
+		*it.first = std::max( *it.first, it.second );
+	}
+
+	for ( auto* const volcano_tile : volcano_tiles ) {
+		volcano_tile->features = tile::FEATURE_VOLCANO;
+		volcano_tile->terraforming = tile::TERRAFORMING_NONE;
+		volcano_tile->rockiness = tile::ROCKINESS_ROCKY;
+	}
+	const auto all_tiles = GetAllTiles();
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( volcano_tiles );
+	}
+	catch ( ... ) {
+		m_tiles->Restore( types::Buffer( snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot;
+}
+
 void Map::RestoreTerrain( const std::string& snapshot ) {
 	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
 		THROW( "serialized terrain snapshot size is invalid" );

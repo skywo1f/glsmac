@@ -280,6 +280,24 @@ WRAPIMPL_BEGIN( TileManager )
 			} )
 		},
 		{
+			"apply_volcano",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyVolcano( center )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
 			"restore_terrain",
 			NATIVE_CALL( this ) {
 				m_game->CheckRW( GSE_CALL );

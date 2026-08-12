@@ -68,6 +68,7 @@ return (game) => {
 		'upgrade_unit',
 		'upgrade_unit_design',
 		'fungal_bloom',
+		'create_volcano',
 		'declare_victory',
 		'complete_turn',
 		'uncomplete_turn',

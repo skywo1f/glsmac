@@ -176,6 +176,7 @@ const runtime_base = {
 values.f_social_get_ratings = (owner) => { return {planet: 0 - 3}; };
 game.is_master = () => { return is_master; };
 game.get_bm = () => { return {get_bases: () => { return [runtime_base]; }}; };
+game.get_players = () => { return [runtime_owner]; };
 game.get_settings = () => {
 	return {global: {difficulty_level: 'Transcend', map: {native_lifeforms: 0.75}}};
 };
@@ -207,6 +208,43 @@ test.assert(submitted_events[0].data.base == runtime_base);
 test.assert(submitted_events[0].data.tile == runtime_tile);
 test.assert(submitted_events[0].data.damage >= 100);
 
+let volcano_tile = null;
+volcano_tile = {
+	x: 0,
+	y: 0,
+	is_water: true,
+	features: {volcano: false},
+	landmarks: {mount_planet: false},
+	get_surrounding_tiles: () => { return [volcano_tile]; },
+	get_base: () => { return null; },
+	get_units: (include_embarked) => { return []; },
+	is_locked: () => { return false; },
+};
+game.get_tm = () => {
+	return {
+		get_sea_level: () => { return sea_level; },
+		get_climate_state: () => { return #clone(climate_state); },
+		set_climate_state: (level, future_change, progress) => {
+			climate_state = {
+				level: level,
+				future_change: future_change,
+				progress: progress,
+			};
+		},
+		get_map_width: () => { return 1; },
+		get_map_height: () => { return 1; },
+		get_tile: (x, y) => { return volcano_tile; },
+	};
+};
+runtime_ecological_damage_events = 10;
+callbacks.turn({});
+test.assert(#sizeof(submitted_events) == 3);
+test.assert(submitted_events[2].name == 'create_volcano');
+test.assert(submitted_events[2].data.tile == volcano_tile);
+volcano_tile.features.volcano = true;
+test.assert(values.f_ecology_has_dynamic_volcano());
+test.assert(!values.f_ecology_can_create_volcano());
+
 is_master = false;
 callbacks.turn({});
-test.assert(#sizeof(submitted_events) == 1);
+test.assert(#sizeof(submitted_events) == 3);

@@ -207,6 +207,9 @@ const get_tile_yields = (tile, player) => {
 	if (#is_defined(tile.landmarks) && tile.landmarks.pholus_ridge && tile.is_land) {
 		result.ENERGY = result.ENERGY + 1;
 	}
+	if (#is_defined(tile.landmarks) && tile.landmarks.nessus_canyon && tile.is_land) {
+		result.MINERALS = result.MINERALS + 1;
+	}
 	add_resource_bonus(result, tile);
 	if (tile.get_base() != null) {
 		result.NUTRIENTS = #max(result.NUTRIENTS, rules.base_yields.NUTRIENTS);

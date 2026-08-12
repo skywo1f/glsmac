@@ -11,6 +11,8 @@ const CLEAN_MINERAL_FACILITIES = {
 const CLIMATE_BASE_TRIGGER = 12;
 const CLIMATE_PROGRESS_TARGET = 20;
 const CLIMATE_SEA_LEVEL_STEP = 100;
+const VOLCANO_DAMAGE_THRESHOLD = 10;
+const VOLCANO_CLEAR_RADIUS = 3;
 
 const has_facility = (facilities, id) => {
 	return #is_defined(facilities[id]) && facilities[id];
@@ -185,6 +187,105 @@ const get_tile_key = (tile) => {
 	return #to_string(tile.x) + '_' + #to_string(tile.y);
 };
 
+const get_tiles_in_radius = (center, radius) => {
+	let result = [center];
+	let frontier = [center];
+	let seen = {};
+	const center_key = get_tile_key(center);
+	seen[center_key] = true;
+	for (let distance = 0; distance < radius; distance++) {
+		let next = [];
+		for (tile of frontier) {
+			for (nearby of tile.get_surrounding_tiles()) {
+				const key = get_tile_key(nearby);
+				if (!#is_defined(seen[key])) {
+					seen[key] = true;
+					result :+nearby;
+					next :+nearby;
+				}
+			}
+		}
+		frontier = next;
+	}
+	return result;
+};
+
+const get_all_tiles = (tm) => {
+	let result = [];
+	for (let y = 0; y < tm.get_map_height(); y++) {
+		for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+			result :+tm.get_tile(x, y);
+		}
+	}
+	return result;
+};
+
+const has_landmark = (tile) => {
+	for (id in tile.landmarks) {
+		if (tile.landmarks[id]) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const has_dynamic_volcano = (tm) => {
+	for (tile of get_all_tiles(tm)) {
+		if (
+			tile.features.volcano &&
+			(!#is_defined(tile.landmarks) || !tile.landmarks.mount_planet)
+		) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const is_clear_volcano_site = (tile) => {
+	if (!tile.is_water) {
+		return false;
+	}
+	for (nearby of get_tiles_in_radius(tile, VOLCANO_CLEAR_RADIUS)) {
+		if (
+			nearby.is_locked() || nearby.get_base() != null ||
+			#sizeof(nearby.get_units(true)) > 0
+		) {
+			return false;
+		}
+	}
+	for (nearby of get_tiles_in_radius(tile, 1)) {
+		if (has_landmark(nearby)) {
+			return false;
+		}
+	}
+	return true;
+};
+
+const select_volcano_tile = (game) => {
+	let candidates = [];
+	for (tile of get_all_tiles(game.get_tm())) {
+		if (is_clear_volcano_site(tile)) {
+			candidates :+tile;
+		}
+	}
+	if (#sizeof(candidates) == 0) {
+		return null;
+	}
+	const index = game.random.get_int(0, #sizeof(candidates) - 1);
+	return candidates[index];
+};
+
+const can_create_volcano = (game) => {
+	let threshold_reached = false;
+	for (player of game.get_players()) {
+		if (player.get_ecological_damage_events() >= VOLCANO_DAMAGE_THRESHOLD) {
+			threshold_reached = true;
+			break;
+		}
+	}
+	return threshold_reached && !has_dynamic_volcano(game.get_tm());
+};
+
 const select_bloom_tile = (game, base, reserved_tiles) => {
 	let candidates = [];
 	for (tile of base.get_workable_tiles()) {
@@ -287,6 +388,16 @@ return (game) => {
 		game.set('f_ecology_advance_pending_climate', () => {
 			return advance_pending_climate(game);
 		});
+		game.set('f_ecology_has_dynamic_volcano', () => {
+			return has_dynamic_volcano(game.get_tm());
+		});
+		game.set('f_ecology_is_clear_volcano_site', is_clear_volcano_site);
+		game.set('f_ecology_select_volcano_tile', () => {
+			return select_volcano_tile(game);
+		});
+		game.set('f_ecology_can_create_volcano', () => {
+			return can_create_volcano(game);
+		});
 
 		game.on('turn', (e) => {
 			const sea_level_change = advance_pending_climate(game);
@@ -313,6 +424,12 @@ return (game) => {
 							damage: damage.percent,
 						});
 					}
+				}
+			}
+			if (can_create_volcano(game)) {
+				const volcano_tile = select_volcano_tile(game);
+				if (volcano_tile != null) {
+					game.event('create_volcano', {tile: volcano_tile});
 				}
 			}
 		});

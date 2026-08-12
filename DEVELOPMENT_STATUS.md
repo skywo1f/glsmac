@@ -175,8 +175,13 @@ scenarios, for:
   Crater, Mount Planet, Monsoon Jungle, Uranium Flats, New Sargasso, The Ruins,
   Great Dunes, Freshwater Sea, Sunny Mesa, Nessus Canyon, Geothermal Shallows,
   and Pholus Ridge; persistent landmark metadata, physical terrain, tile
-  information, and old feature-only snapshots are covered, while all seven
+  information, and old feature-only snapshots are covered, while all eight
   landmarks with intrinsic resource effects apply their original bonuses;
+- the original one-time ecological volcano creation after ten fungal blooms:
+  the host selects a clear ocean region, raises a rocky nine-tile unnamed
+  volcano, clears its surface improvements, and synchronizes the reversible
+  terrain snapshot; volcanic farms and forests plus all volcano-center
+  terraforming are rejected;
 - persistent bilateral faction contact discovered through adjacent units and
   bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
   Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
@@ -287,8 +292,8 @@ The following original-SMAC systems remain absent or materially incomplete:
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
-  Nexus, plus original volcano creation and eruption events and their
-  terrain-improvement destruction;
+  Nexus, plus the original major Mount Planet eruption random event, its
+  terrain and population damage, and ten-year dust-cloud energy penalty;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots so concealed information is not present client-side;
 - complete UI workflows, including the interactive abandon-versus-evacuate
@@ -302,7 +307,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 135 cases: 104 isolated native/script GSE tests
+The Release CTest matrix contains 136 cases: 105 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -576,6 +581,13 @@ landmark types, their physical terrain, and the absence of generic random
 jungles. Running reconnect passed in 50.57 seconds and directly verified that
 six compact-map landmark regions and their terrain survived host snapshot
 transfer. Resource and tile-preview tests also cover old feature-only maps.
+
+After ecological volcano creation and original volcanic terraforming limits
+were added, the Windows x64 Release build succeeded and all 105 isolated tests
+passed in 233.09 seconds. The standard installed-asset runtime passed in 41.32
+seconds and directly verified live nine-tile volcanic uplift, rocky terrain,
+improvement clearing, and exact terrain rollback. The same batch restored
+Nessus Canyon's original +1 mineral yield.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

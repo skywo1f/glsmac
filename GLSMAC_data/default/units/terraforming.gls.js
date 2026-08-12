@@ -173,6 +173,21 @@ const has_technology = (player, technology_id) => {
 	);
 };
 
+const is_volcano_center = (tile) => {
+	if (!#is_defined(tile.features.volcano) || !tile.features.volcano) {
+		return false;
+	}
+	for (nearby of tile.get_surrounding_tiles()) {
+		if (
+			#is_defined(nearby.features.volcano) && nearby.features.volcano &&
+			nearby.elevation > tile.elevation
+		) {
+			return false;
+		}
+	}
+	return true;
+};
+
 const get_unavailable_reason = (tile, player, type) => {
 	const order = get_order(type);
 	if (order == null) {
@@ -186,6 +201,15 @@ const get_unavailable_reason = (tile, player, type) => {
 	}
 	if (tile.features.monolith) {
 		return 'Monoliths cannot be terraformed';
+	}
+	if (is_volcano_center(tile)) {
+		return 'The center of a volcano cannot be terraformed';
+	}
+	if (
+		#is_defined(tile.features.volcano) && tile.features.volcano &&
+		(type == 'farm' || type == 'forest')
+	) {
+		return 'This improvement cannot be built in a volcanic area';
 	}
 	if (!has_technology(player, order.required_technology)) {
 		return 'Required technology has not been discovered';

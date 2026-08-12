@@ -20,7 +20,7 @@ const legacy_land_tile = {
 		garland_crater: false,
 	},
 };
-test.assert(preview.get_feature_name(legacy_land_tile, 'volcano') == 'Mount Planet');
+test.assert(preview.get_feature_name(legacy_land_tile, 'volcano') == 'Volcano');
 test.assert(preview.get_feature_name(legacy_land_tile, 'sunny_mesa') == 'Sunny Mesa');
 test.assert(preview.get_feature_name(legacy_land_tile, 'garland_crater') == 'Garland Crater');
 legacy_land_tile.landmarks.mount_planet = true;

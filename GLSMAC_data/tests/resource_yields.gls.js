@@ -185,6 +185,9 @@ test.assert(resources.get_tile_yields(freshwater, player).NUTRIENTS == 2);
 const ridge = make_tile(false);
 ridge.landmarks.pholus_ridge = true;
 test.assert(resources.get_tile_yields(ridge, player).ENERGY == 1);
+const canyon = make_tile(false);
+canyon.landmarks.nessus_canyon = true;
+test.assert(resources.get_tile_yields(canyon, player).MINERALS == 1);
 
 const legacy_volcano = make_tile(false);
 legacy_volcano.features.volcano = true;

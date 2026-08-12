@@ -24,6 +24,123 @@
 	const lifecycle_base_name = 'Runtime Smoke Base';
 	const expansion_base_name = 'Runtime Expansion Base';
 
+	const tile_key = (tile) => {
+		return #to_string(tile.x) + ':' + #to_string(tile.y);
+	};
+
+	const get_tiles_in_radius = (center, radius) => {
+		let result = [center];
+		let frontier = [center];
+		let seen = {};
+		const center_key = tile_key(center);
+		seen[center_key] = true;
+		for (let distance = 0; distance < radius; distance++) {
+			let next = [];
+			for (tile of frontier) {
+				for (nearby of tile.get_surrounding_tiles()) {
+					const key = tile_key(nearby);
+					if (!#is_defined(seen[key])) {
+						seen[key] = true;
+						result :+nearby;
+						next :+nearby;
+					}
+				}
+			}
+			frontier = next;
+		}
+		return result;
+	};
+
+	const has_landmark = (tile) => {
+		for (id in tile.landmarks) {
+			if (tile.landmarks[id]) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	const has_terraforming = (tile) => {
+		for (id in tile.terraforming) {
+			if (tile.terraforming[id]) {
+				return true;
+			}
+		}
+		return false;
+	};
+
+	const verify_volcano_runtime = (game) => {
+		const tm = game.get_tm();
+		let center = null;
+		for (let y = 4; y < tm.get_map_height() - 4 && center == null; y++) {
+			for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+				const candidate = tm.get_tile(x, y);
+				if (!candidate.is_water || candidate.features.volcano) {
+					continue;
+				}
+				let clear = true;
+				for (tile of get_tiles_in_radius(candidate, 1)) {
+					if (
+						tile.is_locked() || tile.get_base() != null ||
+						#sizeof(tile.get_units(true)) > 0 || has_landmark(tile)
+					) {
+						clear = false;
+						break;
+					}
+				}
+				if (clear) {
+					center = candidate;
+					break;
+				}
+			}
+		}
+		if (center == null) {
+			return 'no clear ocean site was available for volcano verification';
+		}
+
+		const previous = {
+			elevation: center.elevation + 0,
+			rockiness: center.rockiness + 0,
+			features: #clone(center.features),
+			terraforming: #clone(center.terraforming),
+		};
+		const snapshot = tm.apply_volcano(center);
+		let error = null;
+		if (!center.is_land || !center.features.volcano || center.elevation <= previous.elevation) {
+			error = 'volcano center did not rise into valid land';
+		}
+		const volcano_tiles = get_tiles_in_radius(center, 1);
+		if (error == null && #sizeof(volcano_tiles) != 9) {
+			error = 'volcano did not cover nine tiles';
+		}
+		if (error == null) {
+			for (tile of volcano_tiles) {
+				if (!tile.features.volcano || tile.rockiness != 3 || has_landmark(tile)) {
+					error = 'volcanic terrain state is inconsistent';
+					break;
+				}
+				if (has_terraforming(tile)) {
+					error = 'a volcanic tile retained terraforming';
+					break;
+				}
+			}
+		}
+
+		tm.restore_terrain(snapshot);
+		if (
+			error == null &&
+			(
+				!center.is_water || center.elevation != previous.elevation ||
+				center.rockiness != previous.rockiness ||
+				center.features != previous.features ||
+				center.terraforming != previous.terraforming
+			)
+		) {
+			error = 'terrain rollback did not restore the ocean site';
+		}
+		return error;
+	};
+
 	const finish_if_ready = () => {
 		if (lifecycle_verified && expansion_verified && terraforming_verified && repair_verified && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
@@ -297,6 +414,13 @@
 					'RUNTIME_SMOKE_LANDMARKS_PASS: all 12 types across ' +
 					#to_string(generated_landmark_tiles) + ' separated tiles'
 				);
+				const volcano_error = verify_volcano_runtime(game);
+				if (volcano_error != null) {
+					#print('RUNTIME_SMOKE_FAIL: ' + volcano_error);
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_VOLCANO_PASS: live nine-tile eruption and exact rollback verified');
 				const victory_state = game.get_victory_state();
 				if (
 					game.is_game_over() ||

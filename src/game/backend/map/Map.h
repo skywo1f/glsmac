@@ -131,6 +131,7 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	void RefreshTile( tile::Tile* tile );
 	std::string ApplyCrater( tile::Tile* center, const size_t radius );
 	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
+	std::string ApplyVolcano( tile::Tile* center );
 	void RestoreTerrain( const std::string& snapshot );
 	std::string ApplySeaLevelChange( const tile::elevation_t amount );
 	void RestoreSeaLevel( const std::string& snapshot );

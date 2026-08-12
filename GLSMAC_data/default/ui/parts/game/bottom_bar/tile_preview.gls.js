@@ -39,7 +39,7 @@ return {
 				}
 				case 'volcano': {
 					if (!#is_defined(tile.landmarks) || !tile.landmarks.mount_planet) {
-						return 'Mount Planet';
+						return 'Volcano';
 					}
 					return #undefined;
 				}
