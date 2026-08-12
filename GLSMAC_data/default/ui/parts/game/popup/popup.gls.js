@@ -8,6 +8,7 @@ return {
 		'economic_victory',
 		'orbital_attack',
 		'diplomacy',
+		'intelligence_report',
 		'probe_operations',
 		'probe_interception',
 		'headquarters_evacuation',

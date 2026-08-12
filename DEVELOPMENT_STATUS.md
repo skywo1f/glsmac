@@ -254,8 +254,10 @@ scenarios, for:
   energy drain, drone riots, researcher assassination, genetic plague, unit
   subversion, base mind control, resident Probe Team defense, neutral/treaty
   Probe Team interception with leave/interrogate/eliminate player controls and
-  domain-compatible repatriation, and relationship-, value-, affordability-,
-  and distance-aware AI policies;
+  domain-compatible repatriation, infiltration- or Planetary Governor-gated
+  intelligence reports for rival research, economy, bases, social model, and
+  force composition, and relationship-, value-, affordability-, and
+  distance-aware AI policies;
 - land and sea colonization, terraforming, conventional and psi combat, and
   conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -300,8 +302,7 @@ The following original-SMAC systems remain absent or materially incomplete:
   bundled or counteroffers beyond the implemented energy, technology, commlink,
   and world-map terms;
 - remaining probe-team parity: exact original cost/outcome and probe-combat
-  tuning, richer intelligence displays, and full global Council expulsion
-  consequences for major atrocities;
+  tuning, and full global Council expulsion consequences for major atrocities;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -636,6 +637,14 @@ base snapshot tail, reconstructed after reconnect, and reopened for the owning
 player when the UI starts. The final Windows x64 Release rebuild succeeded;
 the installed-asset economic-victory and running-game reconnect scenarios then
 passed together in 73.13 seconds.
+
+After the Probe Team intelligence report was added, the Windows x64 Release
+build succeeded in 59.3 seconds and all 108 isolated native/script tests passed
+in 243.36 seconds. The installed-asset probe runtime passed in 29.73 seconds and
+verified live infiltration-gated research, economy, base, social-model, and
+force-composition aggregation before continuing through the existing
+interrogation and subversion workflow. The Intelligence menu popup also has
+isolated initialization and event-refresh coverage.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -27,6 +27,12 @@ return {
 					p.modules.popup.show('diplomacy');
 				},
 			},
+			{
+				label: 'INTELLIGENCE',
+				open: () => {
+					p.modules.popup.show('intelligence_report');
+				},
+			},
 		]);
 	},
 

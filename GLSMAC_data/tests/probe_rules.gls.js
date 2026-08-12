@@ -27,14 +27,34 @@ for (callback of callbacks.start) {
 }
 
 const make_player = (id, energy, rating, technologies) => {
+	let infiltrated = false;
+	let research_target = '';
+	let research_progress = 0;
 	return {
 		id: id,
 		energy_credits: energy,
 		probe_rating: rating,
 		get_research_state: () => {
-			return {technologies: technologies, target: '', progress: 0};
+			return {
+				technologies: technologies,
+				target: research_target,
+				progress: research_progress,
+			};
+		},
+		get_energy_credits: () => { return energy; },
+		set_test_research: (target, progress) => {
+			research_target = target;
+			research_progress = progress;
+		},
+		get_social_engineering: () => {
+			return {
+				politics: 'Democratic', economics: 'Green',
+				values: 'Knowledge', future_society: 'None',
+			};
 		},
 		get_diplomatic_relation: (other) => { return 'neutral'; },
+		has_infiltrated: (other) => { return infiltrated; },
+		set_test_infiltrated: (value) => { infiltrated = value; },
 	};
 };
 
@@ -44,13 +64,18 @@ players.p1 = actor;
 players.p2 = target_player;
 
 const headquarters = {
+	id: 1,
+	name: 'Target Headquarters',
 	get_owner: () => { return target_player; },
 	get_facilities: () => { return [{id: 'Headquarters', is_project: false}]; },
 	has_facility: (id) => { return id == 'Headquarters'; },
 	get_tile: () => { return {id: 'headquarters'}; },
+	get_size: () => { return 5; },
 };
 const target_tile = {id: 'target'};
 const target_base = {
+	id: 2,
+	name: 'Target Outpost',
 	get_owner: () => { return target_player; },
 	get_facilities: () => { return []; },
 	has_facility: (id) => { return false; },
@@ -69,12 +94,18 @@ const probe = {
 };
 const target_def = {
 	mineral_cost: 40,
+	offense: 2,
+	weapon: 'Laser',
 	can_found_base: false,
 	can_terraform: false,
 	abilities: [],
 };
 const target_unit = {
 	owner: 2,
+	health: 1.0,
+	is_land: true,
+	is_water: false,
+	is_air: false,
 	get_tile: () => { return target_base.get_tile(); },
 	get_def: () => { return target_def; },
 };
@@ -131,6 +162,50 @@ target_base.has_facility = (id) => { return false; };
 
 const unknown = values.f_probe_get_unknown_technologies(actor, target_player);
 test.assert(unknown == ['PlanetaryNetworks']);
+
+target_player.set_test_research('PlanetaryNetworks', 17);
+values.f_technology_get_definition = (id) => {
+	return id == 'PlanetaryNetworks'
+		? {id: id, name: 'Planetary Networks', cost: 60}
+		: null;
+};
+values.f_social_get_categories = () => { return [
+	{id: 'politics', choices: [{id: 'Democratic', name: 'Democratic'}]},
+	{id: 'economics', choices: [{id: 'Green', name: 'Green'}]},
+	{id: 'values', choices: [{id: 'Knowledge', name: 'Knowledge'}]},
+	{id: 'future_society', choices: [{id: 'None', name: 'None'}]},
+]; };
+values.f_council_has_intelligence = (source, target) => { return false; };
+test.assert(values.f_probe_get_intelligence_source(actor, target_player) == '');
+test.assert(values.f_probe_get_intelligence_report(actor, target_player) == null);
+
+actor.set_test_infiltrated(true);
+const report = values.f_probe_get_intelligence_report(actor, target_player);
+test.assert(report.source == 'infiltrated_datalinks');
+test.assert(report.relation == 'neutral');
+test.assert(report.energy_credits == 200);
+test.assert(report.research.target_name == 'Planetary Networks');
+test.assert(report.research.progress == 17);
+test.assert(report.research.cost == 60);
+test.assert(report.research.known_technologies == 2);
+test.assert(report.social_choices == ['Democratic', 'Green', 'Knowledge', 'None']);
+test.assert(report.bases.count == 2);
+test.assert(report.bases.population == 9);
+test.assert(report.bases.facilities == 1);
+test.assert(report.bases.projects == 0);
+test.assert(report.bases.headquarters == 'Target Headquarters');
+test.assert(report.units.total == 1);
+test.assert(report.units.combat == 1);
+test.assert(report.units.probes == 0);
+test.assert(report.units.land == 1);
+
+actor.set_test_infiltrated(false);
+values.f_council_has_intelligence = (source, target) => {
+	return source == actor && target == target_player;
+};
+const governor_report = values.f_probe_get_intelligence_report(actor, target_player);
+test.assert(governor_report.source == 'planetary_governor');
+test.assert(values.f_probe_get_intelligence_report(actor, actor) == null);
 
 const hunter_seeker_base = {
 	get_owner: () => { return target_player; },

@@ -87,11 +87,17 @@
 
 			let actor_base = null;
 			let target_base = null;
+			let target_base_count = 0;
+			let target_population = 0;
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == actor.id && actor_base == null) {
 					actor_base = base;
-				} else if (base.get_owner().id == target_player.id && target_base == null) {
-					target_base = base;
+				} else if (base.get_owner().id == target_player.id) {
+					target_base_count++;
+					target_population += base.get_size();
+					if (target_base == null) {
+						target_base = base;
+					}
 				}
 			}
 			if (actor_base == null || target_base == null) {
@@ -159,6 +165,37 @@
 			let probe_morale_expected = 0;
 			actor.set_energy_credits(10000);
 			target_player.set_energy_credits(200);
+			actor.set_infiltrated(target_player, true);
+			const report = game.get('f_probe_get_intelligence_report')(
+				actor,
+				target_player
+			);
+			if (report == null) {
+				fail('live probe intelligence report returned null');
+				return;
+			}
+			if (
+				report.source != 'infiltrated_datalinks' ||
+				report.energy_credits != target_player.get_energy_credits() ||
+				report.bases.count != target_base_count ||
+				report.bases.population != target_population ||
+				report.units.total <= 0 ||
+				#sizeof(report.social_choices) != 4
+			) {
+				fail(
+					'live probe intelligence report is incomplete: source=' + report.source +
+					' energy=' + #to_string(report.energy_credits) +
+					' expected_energy=' + #to_string(target_player.get_energy_credits()) +
+					' bases=' + #to_string(report.bases.count) +
+					' expected_bases=' + #to_string(target_base_count) +
+					' population=' + #to_string(report.bases.population) +
+					' expected_population=' + #to_string(target_population) +
+					' units=' + #to_string(report.units.total) +
+					' social_choices=' + #to_string(#sizeof(report.social_choices))
+				);
+				return;
+			}
+			actor.set_infiltrated(target_player, false);
 			let energy_before = game.get_player(actor.id).energy_credits;
 			let expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 			if (expected_cost == null || expected_cost <= 0 || expected_cost > energy_before) {
@@ -226,7 +263,7 @@
 					}
 					finished = true;
 					#print(
-						'PROBE_RUNTIME_PASS: validated probe catalog, neutral probe interrogation/repatriation, subversion, promotion, diplomacy, and notification'
+						'PROBE_RUNTIME_PASS: validated probe catalog, intelligence, neutral probe interrogation/repatriation, subversion, promotion, diplomacy, and notification'
 					);
 					#async(2500, () => { glsmac.exit(); });
 					return false;
