@@ -2,6 +2,13 @@ const MAX_ENERGY_CREDITS = 1000000000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
 const GENETIC_PLAGUE_KEY = 'probe_genetic_plague_introduced';
+const FRAMEABLE_OPERATIONS = {
+	steal_technology: true,
+	sabotage: true,
+	drain_energy: true,
+	incite_drone_riots: true,
+	assassinate_researchers: true,
+};
 const PROBE_MORALE_TECHNOLOGIES = [
 	'PolymorphicSoftware',
 	'PreSentientAlgorithms',
@@ -396,6 +403,30 @@ const get_probe_defense = (game, target_player) => {
 	return #max(0 - 2, #min(0, get_rating(game, target_player)));
 };
 
+const is_frameable_operation = (operation) => {
+	return #is_defined(FRAMEABLE_OPERATIONS[operation]);
+};
+
+const get_frame_candidates = (game, actor, target_player, operation) => {
+	if (
+		!is_frameable_operation(operation) ||
+		!#is_defined(target_player.type) || target_player.type != 'ai'
+	) {
+		return [];
+	}
+	let candidates = [];
+	for (candidate of game.get_players()) {
+		if (
+			candidate.id != actor.id && candidate.id != target_player.id &&
+			(!#is_defined(candidate.type) || candidate.type != 'native') &&
+			actor.has_contact(candidate)
+		) {
+			candidates :+candidate;
+		}
+	}
+	return candidates;
+};
+
 const get_operation_difficulty = (operation, target, options) => {
 	const definition = operations[operation];
 	if (!#is_defined(definition)) {
@@ -441,6 +472,12 @@ const get_operation_difficulty = (operation, target, options) => {
 	if (
 		definition.cost && #is_defined(options) &&
 		#is_defined(options.untraceable) && options.untraceable == true
+	) {
+		difficulty++;
+	}
+	if (
+		is_frameable_operation(operation) && #is_defined(options) &&
+		#is_defined(options.frame_player_id) && options.frame_player_id >= 0
 	) {
 		difficulty++;
 	}
@@ -680,6 +717,10 @@ return (game) => {
 			return get_survival_chance(game, probe, target_player, operation, target, options);
 		});
 		game.set('f_probe_get_operation_difficulty', get_operation_difficulty);
+		game.set('f_probe_is_frameable_operation', is_frameable_operation);
+		game.set('f_probe_get_frame_candidates', (actor, target_player, operation) => {
+			return get_frame_candidates(game, actor, target_player, operation);
+		});
 		game.set('f_probe_get_morale', (probe) => { return get_probe_morale(game, probe); });
 		game.set('f_probe_get_unknown_technologies', get_unknown_technologies);
 		game.set('f_probe_get_map_data_count', (actor, target_player) => {

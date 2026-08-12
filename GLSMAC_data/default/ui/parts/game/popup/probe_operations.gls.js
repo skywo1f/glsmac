@@ -6,13 +6,15 @@ return {
 		this.target = null;
 		this.operation = null;
 		this.option = '';
+		this.frame_player_id = 0 - 1;
 		this.target_select = null;
 		this.operation_select = null;
 		this.option_select = null;
+		this.frame_select = null;
 		this.status_text = null;
 		this.execute_button = null;
 
-		return p.create('PROBE OPERATIONS', 500, 254, (body, cb) => {
+		return p.create('PROBE OPERATIONS', 500, 292, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Target:', left: 10, top: 12});
 			this.target_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -31,6 +33,7 @@ return {
 			this.operation_select.on('select', (e) => {
 				this.operation = e.value;
 				this.refresh_operation_options();
+				this.refresh_frame_options();
 				this.refresh_status();
 				return true;
 			});
@@ -46,19 +49,30 @@ return {
 				return true;
 			});
 
+			body.text({class: 'game-popup-text', text: 'Cover story:', left: 10, top: 126});
+			this.frame_select = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 122,
+				width: 350, items: [['', 'Make a clean getaway']], value: '',
+			});
+			this.frame_select.on('select', (e) => {
+				this.frame_player_id = e.value == '' ? 0 - 1 : #to_int(e.value);
+				this.refresh_status();
+				return true;
+			});
+
 			this.status_text = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 126,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 164,
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Cancel', top: 206, is_cancel: true,
+				class: 'game-popup-button', text: 'Cancel', top: 244, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
 			});
 
 			this.execute_button = body.button({
-				class: 'game-popup-button', text: 'Execute Operation', top: 230, is_ok: true,
+				class: 'game-popup-button', text: 'Execute Operation', top: 268, is_ok: true,
 			});
 			this.execute_button.on('click', (e) => {
 				if (this.unit != null && this.target != null && this.operation != null) {
@@ -76,6 +90,9 @@ return {
 						this.operation == 'mind_control_base'
 					) {
 						data.untraceable = this.option == 'untraceable';
+					}
+					if (this.frame_player_id >= 0) {
+						data.frame_player_id = this.frame_player_id;
 					}
 					p.game.event('probe_operation', data);
 					cb(true);
@@ -232,6 +249,40 @@ return {
 		this.option = this.option_select.value;
 	},
 
+	get_frame_items: () => {
+		let items = [['', 'Make a clean getaway']];
+		if (this.target == null || this.operation == null || this.operation == '') {
+			return items;
+		}
+		const actor = this.p.game.get_player();
+		for (candidate of this.p.game.get('f_probe_get_frame_candidates')(
+			actor,
+			this.get_target_player(),
+			this.operation
+		)) {
+			let options = this.get_operation_options();
+			options.frame_player_id = candidate.id;
+			if (this.p.game.get('f_probe_get_success_chance')(
+				this.unit,
+				this.get_target_player(),
+				this.operation,
+				this.target,
+				options
+			) > 0) {
+				items :+['' + candidate.id, 'Implicate ' + candidate.name];
+			}
+		}
+		return items;
+	},
+
+	refresh_frame_options: () => {
+		const items = this.get_frame_items();
+		this.frame_select.items = items;
+		this.frame_select.readonly = #sizeof(items) <= 1;
+		this.frame_select.value = '';
+		this.frame_player_id = 0 - 1;
+	},
+
 	get_operation_options: () => {
 		let options = {};
 		if (this.operation == 'steal_technology') {
@@ -242,6 +293,9 @@ return {
 			this.operation == 'subvert_unit' || this.operation == 'mind_control_base'
 		) {
 			options.untraceable = this.option == 'untraceable';
+		}
+		if (this.frame_player_id >= 0) {
+			options.frame_player_id = this.frame_player_id;
 		}
 		return options;
 	},
@@ -256,6 +310,7 @@ return {
 		this.operation_select.value = #sizeof(items) > 0 ? items[0][0] : '';
 		this.operation = this.operation_select.value;
 		this.refresh_operation_options();
+		this.refresh_frame_options();
 		this.refresh_status();
 	},
 
@@ -346,6 +401,7 @@ return {
 		this.target = null;
 		this.operation = null;
 		this.option = '';
+		this.frame_player_id = 0 - 1;
 		this.targets = {};
 	},
 };

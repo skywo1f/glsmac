@@ -272,7 +272,11 @@ scenarios, for:
   Genejack Factory, and Punishment Sphere modifiers; paid operations expose
   standard and untraceable approaches, unit targeting rejects native life,
   stacks, cargo, and inaccessible air units, and base capture resets prior-owner
-  research-raid state; resident Probe Team defense, neutral/treaty Probe Team
+  research-raid state; eligible operations can frame a contacted third faction
+  against an AI target at the original +1 difficulty, redirect blame on success,
+  expose failed attempts to AI scapegoats, and roll every changed relationship
+  back exactly; elite AI probes use the same framing rules; resident Probe Team
+  defense, neutral/treaty Probe Team
   interception with leave/interrogate/eliminate player controls and
   domain-compatible repatriation, infiltration- or Planetary Governor-gated
   intelligence reports for rival research, economy, bases, social model, and
@@ -320,9 +324,10 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining probe-team parity: third-faction framing, exact resident
-  Probe-versus-Probe combat resolution, and uncommon mind-control modifiers for
-  former ownership, revenge state, drone riots, Golden Ages, and prior captures;
+- remaining probe-team parity: the human framed-faction excuse response, exact
+  resident Probe-versus-Probe combat resolution, and uncommon mind-control
+  modifiers for former ownership, revenge state, drone riots, Golden Ages, and
+  prior captures;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -708,6 +713,14 @@ scenarios passed together in 163.86 seconds against the rebuilt executable.
 The live Probe scenario also caught an obsolete stacked-unit setup after the
 original individual-subversion restriction was added; its replacement uses a
 legal three-tile arrangement and now fails immediately if setup legality drifts.
+
+After third-faction Probe framing was added, all 109 isolated native/script
+tests passed in 258.81 seconds. Focused coverage verifies framing eligibility,
+the original +1 difficulty, human and elite-AI selection, redirected blame,
+failed-frame exposure, AI retaliation, preservation of a human scapegoat's
+response choice, and exact rollback across both affected diplomatic pairs. The
+installed-asset Probe scenario passed in 41.96 seconds against the existing
+Windows x64 Release executable and live SMAC data.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

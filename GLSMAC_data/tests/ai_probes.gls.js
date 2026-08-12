@@ -18,16 +18,26 @@ let commerce = 0;
 let map_data = 0;
 let is_headquarters = false;
 let subversion_error = '';
+let frame_candidates = [];
 
 const player = {
 	id: 0,
+	type: 'ai',
 	energy_credits: 1000,
+	has_contact: (other) => { return true; },
 	has_infiltrated: (other) => { return infiltrated; },
 	get_diplomatic_relation: (other) => { return relation; },
 	has_technology: (id) => { return id == 'RetroviralEngineering' && has_retroviral_engineering; },
 	get_sanction_turns: () => { return sanction_turns; },
 };
-const target_player = {id: 1, energy_credits: 200};
+const target_player = {
+	id: 1,
+	type: 'ai',
+	energy_credits: 200,
+	has_contact: (other) => { return true; },
+	get_diplomatic_relation: (other) => { return 'neutral'; },
+};
+const frame_player = {id: 3, type: 'human', energy_credits: 300};
 const base_tile = {};
 const base = {
 	id: 10,
@@ -81,6 +91,15 @@ const game = {
 		}
 		if (key == 'f_economy_get_player_commerce') {
 			return (current_game, current_player) => { return commerce; };
+		}
+		if (key == 'f_probe_get_morale') {
+			return (current_probe) => { return current_probe.morale; };
+		}
+		if (key == 'f_probe_get_operation_difficulty') {
+			return (operation, target, options) => { return 0; };
+		}
+		if (key == 'f_probe_get_frame_candidates') {
+			return (actor, target, operation) => { return frame_candidates; };
 		}
 	},
 	get_player: (id) => { return target_player; },
@@ -136,6 +155,12 @@ subversion_cost = 50;
 mind_control_cost = null;
 
 test.assert(probes.choose_adjacent_action(game, player, probe).operation == 'drain_energy');
+probe.morale = 5;
+frame_candidates = [frame_player];
+const framed_action = probes.choose_adjacent_action(game, player, probe);
+test.assert(framed_action.operation == 'drain_energy' && framed_action.frame_player_id == 3);
+probe.morale = 2;
+frame_candidates = [];
 const destination = probes.choose_target_base(game, player, probe, [base]);
 test.assert(destination.base == base);
 test.assert(destination.action.operation == 'drain_energy');

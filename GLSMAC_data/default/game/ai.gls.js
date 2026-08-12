@@ -1525,11 +1525,15 @@ const move_probe = (game, player, unit, all_bases) => {
 	}
 	const action = probes.choose_adjacent_action(game, player, unit);
 	if (action != null) {
-		game.event_as(player.id, 'probe_operation', {
+		let data = {
 			unit: unit,
 			operation: action.operation,
 			target: action.target,
-		});
+		};
+		if (#is_defined(action.frame_player_id)) {
+			data.frame_player_id = action.frame_player_id;
+		}
+		game.event_as(player.id, 'probe_operation', data);
 		return true;
 	}
 	const destination = probes.choose_target_base(game, player, unit, all_bases);

@@ -120,6 +120,46 @@ const get_unit_action = (game, player, probe, unit) => {
 	};
 };
 
+const add_ai_framing = (game, player, probe, action) => {
+	if (
+		action == null || !#is_defined(player.type) || player.type != 'ai' ||
+		#typeof(action.target.get_owner) != 'Callable' ||
+		game.get('f_probe_get_morale')(probe) < 5 ||
+		game.get('f_probe_get_operation_difficulty')(
+			action.operation,
+			action.target,
+			{}
+		) != 0
+	) {
+		return action;
+	}
+	const target_player = action.target.get_owner();
+	let framed_player = null;
+	for (candidate of game.get('f_probe_get_frame_candidates')(
+		player,
+		target_player,
+		action.operation
+	)) {
+		if (
+			candidate.type == 'human' && target_player.has_contact(candidate) &&
+			target_player.get_diplomatic_relation(candidate) != 'vendetta' &&
+			(
+				framed_player == null || candidate.energy_credits > framed_player.energy_credits ||
+				(
+					candidate.energy_credits == framed_player.energy_credits &&
+					candidate.id < framed_player.id
+				)
+			)
+		) {
+			framed_player = candidate;
+		}
+	}
+	if (framed_player != null) {
+		action.frame_player_id = framed_player.id;
+	}
+	return action;
+};
+
 const choose_adjacent_action = (game, player, probe) => {
 	let best = null;
 	for (tile of probe.get_tile().get_surrounding_tiles()) {
@@ -131,7 +171,7 @@ const choose_adjacent_action = (game, player, probe) => {
 			best = consider(best, get_unit_action(game, player, probe, unit));
 		}
 	}
-	return best;
+	return add_ai_framing(game, player, probe, best);
 };
 
 const choose_target_base = (game, player, probe, bases) => {

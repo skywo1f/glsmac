@@ -206,7 +206,12 @@ const get_result_message = (game, operation, target, resolved) => {
 		message = 'Mind controlled ' + target.name + ' for ' +
 			#to_string(resolved.cost) + ' energy credits.';
 	}
-	if (resolved.detected) {
+	if (#is_defined(resolved.frame_player_id) && resolved.frame_player_id >= 0) {
+		const framed_player = game.get_player(resolved.frame_player_id);
+		message += resolved.success
+			? ' Evidence implicated ' + framed_player.name + '.'
+			: ' The attempt to implicate ' + framed_player.name + ' was exposed.';
+	} else if (resolved.detected) {
 		message += ' The operation was detected.';
 	}
 	if (!resolved.survives) {
@@ -390,6 +395,36 @@ return {
 		if (e.game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')) {
 			return 'The Hunter-Seeker Algorithm blocks this probe operation';
 		}
+		if (#is_defined(e.data.frame_player_id)) {
+			if (#typeof(e.data.frame_player_id) != 'Int') {
+				return 'Framed faction must be a player identifier';
+			}
+			if (!e.game.get('f_probe_is_frameable_operation')(operation)) {
+				return 'This probe operation cannot be used to frame another faction';
+			}
+			let valid_frame = false;
+			for (candidate of e.game.get('f_probe_get_frame_candidates')(
+				actor,
+				target_player,
+				operation
+			)) {
+				if (candidate.id == e.data.frame_player_id) {
+					valid_frame = true;
+				}
+			}
+			if (!valid_frame) {
+				return 'Selected faction cannot be framed for this operation';
+			}
+			if (e.game.get('f_probe_get_success_chance')(
+				probe,
+				target_player,
+				operation,
+				target,
+				e.data
+			) <= 0) {
+				return 'Probe Team morale is too low to frame another faction';
+			}
+		}
 
 		if (operations[operation].target == 'base') {
 			return validate_base_operation(e, actor, target_player);
@@ -451,6 +486,8 @@ return {
 			population_loss: 0,
 			unit_damage: [],
 			defender_id: defender == null ? 0 : defender.id,
+			frame_player_id: #is_defined(e.data.frame_player_id)
+				? e.data.frame_player_id : 0 - 1,
 		};
 		if (operation == 'subvert_unit') {
 			result.cost = e.game.get('f_probe_get_subversion_cost')(actor, e.data.target);
@@ -517,6 +554,8 @@ return {
 		const probe = e.data.unit;
 		const actor = e.game.get_player(e.caller);
 		const target_player = get_target_player(e.game, operation, e.data.target);
+		const frame_player_id = #is_defined(e.resolved.frame_player_id)
+			? e.resolved.frame_player_id : 0 - 1;
 		const result_message = get_result_message(
 			e.game,
 			operation,
@@ -531,6 +570,7 @@ return {
 			infiltrated: actor.has_infiltrated(target_player),
 			actor_atrocities: actor.get_major_atrocities(),
 			actor_sanction_turns: actor.get_sanction_turns(),
+			frame_player_id: frame_player_id,
 		};
 
 		if (e.resolved.cost > 0) {
@@ -670,7 +710,41 @@ return {
 			e.game.um.despawn_unit(probe);
 		}
 
-		if (e.resolved.detected) {
+		if (frame_player_id >= 0) {
+			const framed_player = e.game.get_player(frame_player_id);
+			applied.framed_diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
+				framed_player,
+				target_player
+			);
+			e.game.get('f_diplomacy_set_bilateral_relation')(
+				framed_player,
+				target_player,
+				'vendetta'
+			);
+			e.game.get('f_diplomacy_clear_offers')(framed_player, target_player);
+			e.game.trigger('diplomacy_updated', {
+				player: target_player,
+				target: framed_player,
+				relation: 'vendetta',
+			});
+			if (!e.resolved.success && framed_player.type == 'ai') {
+				applied.exposed_diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
+					actor,
+					framed_player
+				);
+				e.game.get('f_diplomacy_set_bilateral_relation')(
+					actor,
+					framed_player,
+					'vendetta'
+				);
+				e.game.get('f_diplomacy_clear_offers')(actor, framed_player);
+				e.game.trigger('diplomacy_updated', {
+					player: actor,
+					target: framed_player,
+					relation: 'vendetta',
+				});
+			}
+		} else if (e.resolved.detected) {
 			applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(actor, target_player);
 			e.game.get('f_diplomacy_set_bilateral_relation')(actor, target_player, 'vendetta');
 			e.game.get('f_diplomacy_clear_offers')(actor, target_player);
@@ -688,6 +762,8 @@ return {
 			operation: operation,
 			success: e.resolved.success,
 			detected: e.resolved.detected,
+			frame_player_id: frame_player_id,
+			framing_exposed: frame_player_id >= 0 && !e.resolved.success,
 			atrocity: operation == 'genetic_plague' && e.resolved.success,
 		});
 		e.game.message(result_message);
@@ -767,6 +843,32 @@ return {
 				player: actor,
 				target: target_player,
 				relation: e.applied.diplomacy.player_relation,
+			});
+		}
+		if (#is_defined(e.applied.exposed_diplomacy)) {
+			const framed_player = e.game.get_player(e.applied.frame_player_id);
+			e.game.get('f_diplomacy_restore_pair')(
+				actor,
+				framed_player,
+				e.applied.exposed_diplomacy
+			);
+			e.game.trigger('diplomacy_updated', {
+				player: actor,
+				target: framed_player,
+				relation: e.applied.exposed_diplomacy.player_relation,
+			});
+		}
+		if (#is_defined(e.applied.framed_diplomacy)) {
+			const framed_player = e.game.get_player(e.applied.frame_player_id);
+			e.game.get('f_diplomacy_restore_pair')(
+				framed_player,
+				target_player,
+				e.applied.framed_diplomacy
+			);
+			e.game.trigger('diplomacy_updated', {
+				player: target_player,
+				target: framed_player,
+				relation: e.applied.framed_diplomacy.other_relation,
 			});
 		}
 		e.game.trigger('economy_updated', {player: actor});

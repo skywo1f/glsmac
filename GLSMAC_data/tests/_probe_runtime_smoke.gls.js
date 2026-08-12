@@ -72,7 +72,9 @@
 			if (
 				!#is_defined(operations.incite_drone_riots) ||
 				!#is_defined(operations.assassinate_researchers) ||
-				!#is_defined(operations.genetic_plague)
+				!#is_defined(operations.genetic_plague) ||
+				!game.get('f_probe_is_frameable_operation')('sabotage') ||
+				game.get('f_probe_is_frameable_operation')('infiltrate')
 			) {
 				fail('advanced base-game probe operations are unavailable');
 				return;

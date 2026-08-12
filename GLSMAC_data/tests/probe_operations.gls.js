@@ -2,7 +2,7 @@ const define_probes = #include('../default/game/probes');
 const define_diplomacy = #include('../default/game/diplomacy');
 const probe_operation = #include('../default/game/event/probe_operation');
 
-const make_player = (id, energy, technologies, target) => {
+const make_player = (id, energy, technologies, target, type) => {
 	let infiltrated = {};
 	let relations = {};
 	let offers = {};
@@ -17,6 +17,7 @@ const make_player = (id, energy, technologies, target) => {
 	let player = {
 		id: id,
 		name: 'Player ' + #to_string(id),
+		type: #is_defined(type) ? type : 'ai',
 		energy_credits: energy,
 		probe_rating: 0,
 	};
@@ -98,12 +99,21 @@ const make_player = (id, energy, technologies, target) => {
 	return player;
 };
 
-const make_fixture = (charter_repealed) => {
-	const actor = make_player(1, 1000, [], 'PlanetaryNetworks');
-	const target_player = make_player(2, 200, ['PlanetaryNetworks'], '');
+const make_fixture = (charter_repealed, framed_type) => {
+	const actor = make_player(1, 1000, [], 'PlanetaryNetworks', 'human');
+	const target_player = make_player(2, 200, ['PlanetaryNetworks'], '', 'ai');
+	const framed_player = make_player(
+		3,
+		500,
+		[],
+		'',
+		#is_defined(framed_type) ? framed_type : 'ai'
+	);
 	actor.set_contact(target_player, true);
 	target_player.set_contact(actor, true);
-	let players = {p1: actor, p2: target_player};
+	actor.set_contact(framed_player, true);
+	framed_player.set_contact(actor, true);
+	let players = {p1: actor, p2: target_player, p3: framed_player};
 	let triggers = [];
 	let last_message = '';
 	let callbacks = {};
@@ -286,6 +296,7 @@ const make_fixture = (charter_repealed) => {
 		get_tm: () => { return tm; },
 		get_bm: () => { return bm; },
 		get_player: (id) => { return players['p' + #to_string(id)]; },
+		get_players: () => { return [actor, target_player, framed_player]; },
 		is_turn_complete: (id) => { return false; },
 		trigger: (name, data) => { triggers :+{name: name, data: data}; },
 		message: (text) => { last_message = text; },
@@ -321,7 +332,8 @@ const make_fixture = (charter_repealed) => {
 		morale: 2, health: 1.0, movement: 1.0, home_base_id: target_base.id,
 	});
 	return {
-		game: game, actor: actor, target_player: target_player, target_base: target_base,
+		game: game, actor: actor, target_player: target_player,
+		framed_player: framed_player, target_base: target_base,
 		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um, triggers: triggers,
 		read_message: () => { return last_message; },
 		read_datalinks_queues: () => { return datalinks_queues; },
@@ -342,6 +354,7 @@ const result = (success, detected, survives) => {
 		success: success, detected: detected, survives: survives, chance: 85, cost: 0,
 		technology_id: '', sabotage_facility_id: '', drain_amount: 0,
 		research_loss: 0, population_loss: 0, unit_damage: [], defender_id: 0,
+		frame_player_id: 0 - 1,
 	};
 };
 
@@ -381,6 +394,112 @@ probe_operation.rollback(e);
 test.assert(f.actor.get_research_state().technologies == []);
 test.assert(f.actor.get_research_state().target == 'PlanetaryNetworks');
 test.assert(!f.target_base.has('probe_research_data_stolen'));
+
+f = make_fixture();
+f.actor.set_diplomatic_relation(f.target_player, 'treaty');
+f.target_player.set_diplomatic_relation(f.actor, 'treaty');
+f.framed_player.set_diplomatic_relation(f.target_player, 'treaty');
+f.target_player.set_diplomatic_relation(f.framed_player, 'treaty');
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'sabotage',
+	target: f.target_base,
+	frame_player_id: 3,
+}};
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = result(true, true, true);
+e.resolved.frame_player_id = 3;
+e.applied = probe_operation.apply(e);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
+test.assert(f.framed_player.get_integrity_blemishes() == 1);
+test.assert(
+	f.read_message() == 'Destroyed accumulated minerals at Base 10. Evidence implicated Player 3.'
+);
+probe_operation.rollback(e);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.framed_player.get_integrity_blemishes() == 0);
+
+f = make_fixture();
+f.actor.set_diplomatic_relation(f.target_player, 'treaty');
+f.target_player.set_diplomatic_relation(f.actor, 'treaty');
+f.actor.set_diplomatic_relation(f.framed_player, 'treaty');
+f.framed_player.set_diplomatic_relation(f.actor, 'treaty');
+f.framed_player.set_diplomatic_relation(f.target_player, 'treaty');
+f.target_player.set_diplomatic_relation(f.framed_player, 'treaty');
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'drain_energy',
+	target: f.target_base,
+	frame_player_id: 3,
+}};
+e.resolved = result(false, true, false);
+e.resolved.frame_player_id = 3;
+e.applied = probe_operation.apply(e);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
+test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'vendetta');
+test.assert(f.framed_player.get_integrity_blemishes() == 1);
+test.assert(f.actor.get_integrity_blemishes() == 1);
+test.assert(
+	f.read_message() ==
+	'Probe operation failed. The attempt to implicate Player 3 was exposed. Probe Team lost.'
+);
+probe_operation.rollback(e);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.framed_player.get_integrity_blemishes() == 0);
+test.assert(f.actor.get_integrity_blemishes() == 0);
+
+f = make_fixture(false, 'human');
+f.actor.set_diplomatic_relation(f.framed_player, 'treaty');
+f.framed_player.set_diplomatic_relation(f.actor, 'treaty');
+test.assert(f.framed_player.type == 'human');
+test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'drain_energy',
+	target: f.target_base,
+	frame_player_id: 3,
+}};
+e.resolved = result(false, true, false);
+e.resolved.frame_player_id = 3;
+e.applied = probe_operation.apply(e);
+test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
+probe_operation.rollback(e);
+test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'neutral');
+
+f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'infiltrate', target: f.target_base, frame_player_id: 3,
+}};
+test.assert(
+	probe_operation.validate(e) ==
+	'This probe operation cannot be used to frame another faction'
+);
+e.data.operation = 'sabotage';
+e.data.frame_player_id = 99;
+test.assert(
+	probe_operation.validate(e) == 'Selected faction cannot be framed for this operation'
+);
+e.data.frame_player_id = '3';
+test.assert(probe_operation.validate(e) == 'Framed faction must be a player identifier');
+
+f = make_fixture();
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'steal_technology',
+	target: f.target_base,
+	target_technology_id: 'PlanetaryNetworks',
+	frame_player_id: 3,
+}};
+test.assert(
+	probe_operation.validate(e) == 'Probe Team morale is too low to frame another faction'
+);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {

@@ -143,6 +143,20 @@ test.assert(values.f_probe_get_success_chance(
 	target_base,
 	{target_technology_id: 'PlanetaryNetworks'}
 ) == 50);
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'steal_technology',
+	target_base,
+	{frame_player_id: 3}
+) == 50);
+test.assert(values.f_probe_get_success_chance(
+	probe,
+	target_player,
+	'steal_technology',
+	target_base,
+	{target_technology_id: 'PlanetaryNetworks', frame_player_id: 3}
+) == 0);
 target_base.set('probe_research_data_stolen', true);
 test.assert(values.f_probe_get_success_chance(
 	probe, target_player, 'steal_technology', target_base
