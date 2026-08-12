@@ -17,7 +17,7 @@ const contact_name = (game, id) => {
 	return id < 0 ? '' : game.get_player(id).name;
 };
 
-const trade_side_text = (game, energy, technology, contact) => {
+const trade_side_text = (game, energy, technology, contact, world_map) => {
 	let parts = [];
 	if (energy > 0) {
 		parts :+(#to_string(energy) + ' EC');
@@ -27,6 +27,9 @@ const trade_side_text = (game, energy, technology, contact) => {
 	}
 	if (#typeof(contact) == 'Int' && contact >= 0) {
 		parts :+('Commlink: ' + contact_name(game, contact));
+	}
+	if (#typeof(world_map) == 'Bool' && world_map) {
+		parts :+'World map';
 	}
 	if (#sizeof(parts) == 0) {
 		return 'nothing';
@@ -41,9 +44,11 @@ const trade_side_text = (game, energy, technology, contact) => {
 const trade_text = (game, terms) => {
 	return (
 		'Offers ' + trade_side_text(
-			game, terms.offer_energy, terms.offer_technology, terms.offer_contact
+			game, terms.offer_energy, terms.offer_technology, terms.offer_contact,
+			terms.offer_map
 		) + '; requests ' + trade_side_text(
-			game, terms.request_energy, terms.request_technology, terms.request_contact
+			game, terms.request_energy, terms.request_technology, terms.request_contact,
+			terms.request_map
 		)
 	);
 };
@@ -80,12 +85,14 @@ return {
 		this.offer_contact = null;
 		this.offer_energy_label = null;
 		this.offer_energy = null;
+		this.offer_map = null;
 		this.request_technology_label = null;
 		this.request_technology = null;
 		this.request_contact_label = null;
 		this.request_contact = null;
 		this.request_energy_label = null;
 		this.request_energy = null;
+		this.request_map = null;
 		this.propose_trade_button = null;
 		this.accept_trade = null;
 		this.reject_trade = null;
@@ -117,6 +124,7 @@ return {
 			'diplomatic_integrity_updated',
 			'diplomatic_contact_established',
 			'diplomatic_contact_updated',
+			'map_visibility_updated',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -212,8 +220,12 @@ return {
 				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 254,
 			});
 			this.offer_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 250,
-				width: 160, value: '0',
+				class: 'popup-input', align: 'top right', right: 210, top: 250,
+				width: 120, value: '0',
+			});
+			this.offer_map = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 250,
+				width: 190, items: [['0', 'No world map'], ['1', 'World map']], value: '0',
 			});
 			this.request_technology_label = body.text({
 				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 282,
@@ -233,8 +245,12 @@ return {
 				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 338,
 			});
 			this.request_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 334,
-				width: 160, value: '0',
+				class: 'popup-input', align: 'top right', right: 210, top: 334,
+				width: 120, value: '0',
+			});
+			this.request_map = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 334,
+				width: 190, items: [['0', 'No world map'], ['1', 'World map']], value: '0',
 			});
 			this.trade_error = body.text({
 				class: 'game-popup-text', text: '', left: 10, right: 10, top: 366,
@@ -332,6 +348,8 @@ return {
 		this.request_energy.value = '0';
 		this.offer_contact.value = '-1';
 		this.request_contact.value = '-1';
+		this.offer_map.value = '0';
+		this.request_map.value = '0';
 		this.trade_error.text = '';
 		this.loan_error.text = '';
 		this.refresh();
@@ -385,6 +403,8 @@ return {
 				request_technology: this.request_technology.value,
 				offer_contact: #to_int(this.offer_contact.value),
 				request_contact: #to_int(this.request_contact.value),
+				offer_map: this.offer_map.value == '1',
+				request_map: this.request_map.value == '1',
 			},
 		});
 	},
@@ -462,6 +482,13 @@ return {
 		return items;
 	},
 
+	get_map_items: (source, recipient) => {
+		const count_shareable = this.p.game.get('f_exploration_count_shareable_tiles');
+		return #is_defined(count_shareable) && count_shareable(source, recipient) > 0
+			? [['0', 'No world map'], ['1', 'World map']]
+			: [['0', 'No world map']];
+	},
+
 	refresh: () => {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
@@ -471,9 +498,11 @@ return {
 			this.offer_technology_label, this.offer_technology,
 			this.offer_contact_label, this.offer_contact,
 			this.offer_energy_label, this.offer_energy,
+			this.offer_map,
 			this.request_technology_label, this.request_technology,
 			this.request_contact_label, this.request_contact,
 			this.request_energy_label, this.request_energy,
+			this.request_map,
 			this.propose_trade_button,
 		];
 		const loan_editor = [
@@ -585,10 +614,14 @@ return {
 		this.request_technology.items = this.get_technology_items(this.target, this.player);
 		this.offer_contact.items = this.get_contact_items(this.player, this.target);
 		this.request_contact.items = this.get_contact_items(this.target, this.player);
+		this.offer_map.items = this.get_map_items(this.player, this.target);
+		this.request_map.items = this.get_map_items(this.target, this.player);
 		this.offer_technology.value = '';
 		this.request_technology.value = '';
 		this.offer_contact.value = '-1';
 		this.request_contact.value = '-1';
+		this.offer_map.value = '0';
+		this.request_map.value = '0';
 		for (control of trade_editor) {
 			control.show();
 		}

@@ -226,6 +226,12 @@
 			if (!game.get_player().has_contact(lender) || !lender.has_contact(game.get_player())) {
 				return 'bilateral diplomatic contact was not restored';
 			}
+			if (
+				#sizeof(game.get_player().get_explored_tiles()) !=
+					game.get_tm().get_map_width() * game.get_tm().get_map_height() / 2
+			) {
+				return 'explored world-map state was not restored';
+			}
 			if (game.get_player().get_sanction_turns() != sanction_turns_stamp) {
 				return 'economic sanction duration was not restored';
 			}

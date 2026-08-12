@@ -203,6 +203,17 @@ const update_diplomacy = (game, player) => {
 			const request_contact = (
 				#typeof(trade.request_contact) != 'Int' || trade.request_contact < 0
 			) ? null : game.get_player(trade.request_contact);
+			const count_shareable = game.get('f_exploration_count_shareable_tiles');
+			const map_area = #max(
+				1,
+				#floor(#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0)
+			);
+			const offer_map_tiles = #is_defined(count_shareable)
+				? count_shareable(other, player)
+				: 0;
+			const request_map_tiles = #is_defined(count_shareable)
+				? count_shareable(player, other)
+				: 0;
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
@@ -216,6 +227,10 @@ const update_diplomacy = (game, player) => {
 					request_technology_cost: request_definition == null ? 0 : request_definition.cost,
 					offer_contact_value: offer_contact == null ? 0 : get_contact_value(game, offer_contact),
 					request_contact_value: request_contact == null ? 0 : get_contact_value(game, request_contact),
+					offer_map_value: offer_map_tiles == 0
+						? 0 : 20 + #ceil(#to_float(offer_map_tiles * 160) / #to_float(map_area)),
+					request_map_value: request_map_tiles == 0
+						? 0 : 20 + #ceil(#to_float(request_map_tiles * 160) / #to_float(map_area)),
 				}) >= 0.0,
 			});
 			return;
@@ -310,6 +325,24 @@ const update_diplomacy = (game, player) => {
 			other_technologies: get_tradeable_technologies(game, other, player),
 			own_contacts: get_tradeable_contacts(game, player, other),
 			other_contacts: get_tradeable_contacts(game, other, player),
+			own_map_value: (() => {
+				const count_shareable = game.get('f_exploration_count_shareable_tiles');
+				if (!#is_defined(count_shareable)) { return 0; }
+				const count = count_shareable(player, other);
+				const area = #max(1, #floor(
+					#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0
+				));
+				return count == 0 ? 0 : 20 + #ceil(#to_float(count * 160) / #to_float(area));
+			})(),
+			other_map_value: (() => {
+				const count_shareable = game.get('f_exploration_count_shareable_tiles');
+				if (!#is_defined(count_shareable)) { return 0; }
+				const count = count_shareable(other, player);
+				const area = #max(1, #floor(
+					#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0
+				));
+				return count == 0 ? 0 : 20 + #ceil(#to_float(count * 160) / #to_float(area));
+			})(),
 		});
 		if (
 			proposal != null &&

@@ -83,8 +83,27 @@ return {
 		}
 	},
 
+	is_explored: (tile) => {
+		if (
+			!#is_defined(this.p) || !#is_defined(this.p.game) ||
+			#typeof(this.p.game.get_player) != 'Callable'
+		) {
+			return true;
+		}
+		const player = this.p.game.get_player();
+		return player == null || #typeof(player.has_explored) != 'Callable'
+			? true
+			: player.has_explored(tile);
+	},
+
 	set_image: () => {
 		const tile = this.tile;
+		if (!this.is_explored(tile)) {
+			if (#is_defined(this.preview)) {
+				this.preview.hide();
+			}
+			return;
+		}
 		if (!#is_defined(this.preview)) {
 			this.preview = this.frame.widget({
 				type: 'tile-preview',
@@ -97,6 +116,7 @@ return {
 				height: 52,
 			});
 		} else {
+			this.preview.show();
 			this.preview.data = {
 				tile: tile,
 			};
@@ -123,8 +143,14 @@ return {
 			bottom: 3,
 			itemsize: 16,
 		});
+		const explored = this.is_explored(tile);
+		if (!explored) {
+			this.line('Unexplored');
+		}
 
-		if (this.show_resources) {
+		if (!explored) {
+			// Coordinates remain visible so orders can still target unknown terrain.
+		} else if (this.show_resources) {
 
 			const resources = tile.get_resources();
 			this.line('Nutrients: ' + #to_string(resources.NUTRIENTS));
@@ -179,7 +205,7 @@ return {
 			}
 
 		}
-		if (#is_defined(this.p.game)) {
+		if (explored && #is_defined(this.p.game)) {
 			const get_owner = this.p.game.get('f_territory_get_owner');
 			if (#is_defined(get_owner)) {
 				const owner = get_owner(tile);
@@ -229,6 +255,12 @@ return {
 			this.tile = e.tile;
 			this.set_image();
 			this.set_lines();
+		});
+		p.game.on('map_visibility_updated', (e) => {
+			if (#is_defined(this.tile)) {
+				this.set_image();
+				this.set_lines();
+			}
 		});
 
 		frame_outer.on('mousedown', (e) => {

@@ -38,6 +38,7 @@ return {
 			player_research: player.get_research_state(),
 			proposer_research: proposer.get_research_state(),
 			contacts: [],
+			maps: [],
 		};
 		player.clear_diplomatic_trade(proposer);
 		if (e.data.accept) {
@@ -56,6 +57,12 @@ return {
 				if (#is_defined(contact)) {
 					snapshot.contacts :+contact;
 				}
+			}
+			if (#is_defined(terms.offer_map) && terms.offer_map) {
+				snapshot.maps :+e.game.get('f_exploration_apply_map_share')(proposer, player);
+			}
+			if (#is_defined(terms.request_map) && terms.request_map) {
+				snapshot.maps :+e.game.get('f_exploration_apply_map_share')(player, proposer);
 			}
 			if (terms.offer_energy > 0 || terms.request_energy > 0) {
 				e.game.trigger('economy_updated', {player: player});
@@ -87,6 +94,9 @@ return {
 		proposer.set_research_state(e.applied.proposer_research);
 		for (let i = #sizeof(e.applied.contacts) - 1; i >= 0; i--) {
 			e.game.get('f_diplomacy_restore_contact')(e.applied.contacts[i]);
+		}
+		for (let map_index = #sizeof(e.applied.maps) - 1; map_index >= 0; map_index--) {
+			e.game.get('f_exploration_rollback_reveal')(e.applied.maps[map_index]);
 		}
 		player.set_diplomatic_trade(proposer, e.applied.terms);
 		e.game.trigger('economy_updated', {player: player});

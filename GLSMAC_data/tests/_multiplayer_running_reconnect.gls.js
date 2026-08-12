@@ -178,6 +178,7 @@
 					sky_hydroponics: borrower.get_orbital_facility_count('SkyHydroponicsLab'),
 					orbital_defense_pods: borrower.get_orbital_facility_count('OrbitalDefensePod'),
 					orbital_defense_deployments: borrower.get_orbital_defense_deployments(),
+					explored_tiles: borrower.get_explored_tiles(),
 				};
 				borrower.set_diplomatic_loan(e.data.lender, {
 					balance: loan_balance_stamp,
@@ -191,6 +192,12 @@
 				borrower.set_orbital_facility_count('SkyHydroponicsLab', sky_hydroponics_stamp);
 				borrower.set_orbital_facility_count('OrbitalDefensePod', orbital_defense_pods_stamp);
 				borrower.set_orbital_defense_deployments(orbital_defense_deployments_stamp);
+				const tm = e.game.get_tm();
+				for (let y = 0; y < tm.get_map_height(); y++) {
+					for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+						borrower.set_explored(tm.get_tile(x, y), true);
+					}
+				}
 				return previous;
 			},
 			rollback: (e) => {
@@ -216,6 +223,12 @@
 				borrower.set_orbital_defense_deployments(
 					e.applied.orbital_defense_deployments
 				);
+				for (tile of borrower.get_explored_tiles()) {
+					borrower.set_explored(tile, false);
+				}
+				for (tile of e.applied.explored_tiles) {
+					borrower.set_explored(tile, true);
+				}
 			},
 		});
 
@@ -524,7 +537,9 @@
 							game.get_player().get_orbital_facility_count('OrbitalDefensePod') !=
 								orbital_defense_pods_stamp ||
 							game.get_player().get_orbital_defense_deployments() !=
-								orbital_defense_deployments_stamp
+								orbital_defense_deployments_stamp ||
+							#sizeof(game.get_player().get_explored_tiles()) !=
+								game.get_tm().get_map_width() * game.get_tm().get_map_height() / 2
 						) {
 							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial diplomatic stamp is invalid');
 							glsmac.exit();

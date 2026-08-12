@@ -166,7 +166,7 @@
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology trade, loan repayment, betrayal integrity, and vendetta debt'
+									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology and world-map trade, loan repayment, betrayal integrity, and vendetta debt'
 								);
 								glsmac.exit();
 							}
@@ -331,6 +331,24 @@
 								fail('players did not start with tradeable technologies');
 								return;
 							}
+							let player_map_tile = null;
+							for (tile of player.get_explored_tiles()) {
+								if (!other.has_explored(tile)) {
+									player_map_tile = tile;
+									break;
+								}
+							}
+							let other_map_tile = null;
+							for (tile of other.get_explored_tiles()) {
+								if (!player.has_explored(tile)) {
+									other_map_tile = tile;
+									break;
+								}
+							}
+							if (player_map_tile == null || other_map_tile == null) {
+								fail('players did not start with tradeable exploration data');
+								return;
+							}
 							game.event('propose_diplomatic_trade', {
 								player: player,
 								target: other,
@@ -339,6 +357,8 @@
 									offer_technology: offered_technology,
 									request_energy: 0,
 									request_technology: requested_technology,
+									offer_map: true,
+									request_map: true,
 								},
 							});
 							wait_for(
@@ -355,10 +375,12 @@
 											return (
 												other.get_diplomatic_trade(player) == null &&
 												player.has_technology(requested_technology) &&
-												other.has_technology(offered_technology)
+												other.has_technology(offered_technology) &&
+												player.has_explored(other_map_tile) &&
+												other.has_explored(player_map_tile)
 											);
 										},
-									'accepted trade did not transfer its technologies',
+									'accepted trade did not transfer its technologies and world maps',
 									() => { exercise_loan(); }
 									);
 								}

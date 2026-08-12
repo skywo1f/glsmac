@@ -284,6 +284,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
 				source.SetContacted( 6, true );
+				source.SetExploredTile( 4, 2, true );
 				source.SetInfiltrated( 4, true );
 				const Player::diplomatic_trade_t trade = {
 					25,
@@ -292,6 +293,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"IndustrialBase",
 					6,
 					-1,
+					true,
+					false,
 				};
 				source.SetDiplomaticTrade( 5, trade );
 				const Player::diplomatic_trade_t commlink_trade = {
@@ -367,6 +370,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT( cloned.HasContacted( 6 ), "player contact was not cloned" );
 				GT_ASSERT( !cloned.HasContacted( 5 ), "missing player contact was cloned" );
+				GT_ASSERT( cloned.HasExploredTile( 4, 2 ), "explored tile was not cloned" );
+				GT_ASSERT( !cloned.HasExploredTile( 6, 2 ), "unexplored tile was cloned" );
 				GT_ASSERT(
 					cloned.GetDiplomaticTrade( 4 ) &&
 						*cloned.GetDiplomaticTrade( 4 ) == commlink_trade,
@@ -436,21 +441,53 @@ void AddTests( task::gsetests::GSETests* task ) {
 					retired_designs_field.WriteString( id );
 				}
 				const auto retired_designs_field_size = retired_designs_field.ToString().size();
-				types::Buffer contact_extension;
-				contact_extension.WriteInt( 1 );
-				contact_extension.WriteBool( false );
-				contact_extension.WriteInt( source.GetContactedPlayers().size() );
+				types::Buffer player_extension;
+				player_extension.WriteInt( 2 );
+				player_extension.WriteBool( false );
+				player_extension.WriteInt( source.GetContactedPlayers().size() );
 				for ( const auto player_id : source.GetContactedPlayers() ) {
-					contact_extension.WriteInt( player_id );
+					player_extension.WriteInt( player_id );
 				}
-				contact_extension.WriteInt( 1 );
-				contact_extension.WriteInt( 5 );
-				contact_extension.WriteInt( trade.offer_contact );
-				contact_extension.WriteInt( trade.request_contact );
-				const auto contact_extension_size = contact_extension.ToString().size();
+				player_extension.WriteInt( 1 );
+				player_extension.WriteInt( 5 );
+				player_extension.WriteInt( trade.offer_contact );
+				player_extension.WriteInt( trade.request_contact );
+				player_extension.WriteBool( trade.offer_map );
+				player_extension.WriteBool( trade.request_map );
+				player_extension.WriteBool( false );
+				player_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					player_extension.WriteInt( x );
+					player_extension.WriteInt( y );
+				}
+				const auto player_extension_size = player_extension.ToString().size();
+				types::Buffer version_one_extension;
+				version_one_extension.WriteInt( 1 );
+				version_one_extension.WriteBool( false );
+				version_one_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_one_extension.WriteInt( player_id );
+				}
+				version_one_extension.WriteInt( 1 );
+				version_one_extension.WriteInt( 5 );
+				version_one_extension.WriteInt( trade.offer_contact );
+				version_one_extension.WriteInt( trade.request_contact );
+				auto version_one_data = source.Serialize().ToString();
+				version_one_data.resize( version_one_data.size() - player_extension_size );
+				version_one_data += version_one_extension.ToString();
+				Player version_one( version_one_data );
+				GT_ASSERT(
+					version_one.HasExploredTile( 100, 100 ),
+					"version-one player data did not preserve legacy map visibility"
+				);
+				GT_ASSERT(
+					version_one.GetDiplomaticTrade( 5 ) &&
+					!version_one.GetDiplomaticTrade( 5 )->offer_map,
+					"version-one diplomatic trade unexpectedly gained a map term"
+				);
 				auto pre_retirement_data = source.Serialize().ToString();
 				pre_retirement_data.resize(
-					pre_retirement_data.size() - contact_extension_size - retired_designs_field_size
+					pre_retirement_data.size() - player_extension_size - retired_designs_field_size
 				);
 				Player pre_retirement( pre_retirement_data );
 				GT_ASSERT(
@@ -464,7 +501,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto trade_only_council_data = source.Serialize().ToString();
 				trade_only_council_data.resize(
-					trade_only_council_data.size() - contact_extension_size - retired_designs_field_size -
+					trade_only_council_data.size() - player_extension_size - retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 2
 				);
@@ -477,7 +514,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - contact_extension_size - retired_designs_field_size -
+					legacy_council_data.size() - player_extension_size - retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 3
 				);
@@ -508,6 +545,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( !roundtrip.HasInfiltrated( 5 ), "missing player infiltration was present" );
 				GT_ASSERT( roundtrip.HasContacted( 6 ), "player contact was not serialized" );
 				GT_ASSERT( !roundtrip.HasContacted( 5 ), "missing player contact was serialized" );
+				GT_ASSERT( roundtrip.HasExploredTile( 4, 2 ), "explored tile was not serialized" );
+				GT_ASSERT( !roundtrip.HasExploredTile( 6, 2 ), "unexplored tile was serialized" );
 				GT_ASSERT(
 					roundtrip.GetDiplomaticTrade( 5 ) && *roundtrip.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not serialized"

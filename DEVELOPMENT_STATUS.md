@@ -133,8 +133,8 @@ scenarios, for:
   deterministic events; supported rewards cover energy, rivers, earthquakes,
   production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
   technologies, random-faction commlinks, terraforming, unit cloning, and
-  resource bonuses, while AI explorers and combat units route toward reachable
-  pods;
+  resource bonuses; cartographic and sonar pods reveal a four-tile-radius map
+  region, while AI explorers and combat units route toward reachable pods;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -175,6 +175,12 @@ scenarios, for:
 - persistent structured energy, technology, and commlink trade offers, atomic
   reversible settlement, human negotiation controls, and relation-, strength-,
   opponent-, and value-aware AI proposals and responses;
+- persistent faction-specific explored-tile state discovered around units and
+  bases, through movement, air drops, combat advances, and Psi Gates; unexplored
+  tile details and objects are concealed in the inspector, old saves preserve
+  their formerly unrestricted map view, and reciprocal or one-way world-map
+  trades have reversible settlement, human controls, AI valuation, and
+  running-game reconnect coverage;
 - persistent energy loans with player-authored lending and borrowing terms,
   atomic principal transfer, yearly repayment, partial-payment handling,
   wartime balance growth, human controls, and relationship-, reserve-, risk-,
@@ -244,9 +250,13 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map exchanges, surrender, the Council defiance
-  path, and richer bundled or counteroffers; map exchange first requires a
-  persistent explored-tile and faction-visibility subsystem;
+- rendered fog of war and current-vision tracking: persistent exploration and
+  inspector concealment are authoritative, but unexplored terrain is not yet
+  covered on the graphical map and previously explored enemy objects are not
+  hidden when they leave present sensor range;
+- deeper diplomacy including surrender, the Council defiance path, and richer
+  bundled or counteroffers beyond the implemented energy, technology, commlink,
+  and world-map terms;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
@@ -257,8 +267,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   player-facing inefficiency diagnostics;
 - volcanoes and the original engine's undocumented post-bloom clean-mineral
   facility bonus;
-- remaining Unity Pod parity: map-survey rewards, dimensional-gate
-  teleportation, and once-per-unit monolith visit tracking;
+- remaining Unity Pod parity: dimensional-gate teleportation and once-per-unit
+  monolith visit tracking;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
@@ -273,9 +283,19 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 129 cases: 99 isolated native/script GSE tests
+The Release CTest matrix contains 130 cases: 100 isolated native/script GSE tests
 and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After persistent exploration and world-map exchange were added, the Windows
+x64 Release build succeeded and all 100 isolated tests passed in 217.28
+seconds. The installed-asset diplomacy scenario passed in 29.59 seconds with a
+reciprocal map exchange. Running reconnect initially exposed an access violation
+while colony founding notified exploration about a partially constructed base;
+removing that unsafe spawn callback and relying on completed movement plus
+start/turn entity scans fixed the defect. Focused exploration, movement, and
+rollback tests passed in 3.66 seconds, and the full installed-asset running
+reconnect then passed in 49.52 seconds with explored-map state restored.
 
 After persistent faction contact and commlink exchange were added, the Windows
 x64 Release build succeeded. In the broad isolated run, 98 unaffected cases

@@ -15,6 +15,13 @@ return {
 		}
 	},
 
+	is_tile_explored: (tile) => {
+		const player = this.p.game.get_player();
+		return player == null || #typeof(player.has_explored) != 'Callable'
+			? true
+			: player.has_explored(tile);
+	},
+
 	add_object: (object, left) => {
 		const cls = #classof(object);
 		let type = null;
@@ -118,16 +125,19 @@ return {
 
 		this.list_width = 0;
 
-		const base = tile.get_base();
+		const explored = this.is_tile_explored(tile);
+		const base = explored ? tile.get_base() : null;
 
 		if (base != null) {
 			this.add_object(base, this.list_width);
 			this.list_width = this.list_width + this.object_width;
 		}
 
-		for (unit of tile.get_units(true)) {
-			this.add_object(unit, this.list_width);
-			this.list_width = this.list_width + this.object_width;
+		if (explored) {
+			for (unit of tile.get_units(true)) {
+				this.add_object(unit, this.list_width);
+				this.list_width = this.list_width + this.object_width;
+			}
 		}
 
 		this.selected_tile = tile;
@@ -186,6 +196,9 @@ return {
 				const tile = e.unit.get_tile();
 				if (tile != this.selected_tile) {
 					this.update_tile(tile);
+				}
+				if (!this.is_tile_explored(tile)) {
+					return;
 				}
 				const key = #to_string(e.unit.id);
 				if (!#is_defined(this.units[key])) {
@@ -266,6 +279,11 @@ return {
 
 		this.frame.listen(p.game, 'turn_status', (e) => {
 			this.is_turn_active = e.status == 'active';
+		});
+		this.frame.listen(p.game, 'map_visibility_updated', (e) => {
+			if (this.selected_tile != null) {
+				this.update_tile(this.selected_tile);
+			}
 		});
 
 		this.frame.on('keydown', (e) => {

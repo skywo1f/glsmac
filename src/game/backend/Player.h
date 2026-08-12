@@ -5,6 +5,7 @@
 #include <map>
 #include <set>
 #include <string>
+#include <utility>
 
 #include "types/Serializable.h"
 #include "gse/Wrappable.h"
@@ -20,6 +21,12 @@ class Faction;
 
 namespace slot {
 class Slot;
+}
+
+namespace map {
+namespace tile {
+class Tile;
+}
 }
 
 CLASS2( Player, types::Serializable, gse::Wrappable )
@@ -187,6 +194,14 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	bool HasContacted( const size_t player_id ) const;
 	void SetContacted( const size_t player_id, const bool contacted );
 
+	using explored_tile_t = std::pair< size_t, size_t >;
+	using explored_tiles_t = std::set< explored_tile_t >;
+	static constexpr size_t MAX_EXPLORED_TILES = 180 * 90;
+	static constexpr size_t MAX_EXPLORED_TILE_COORDINATE = MAX_EXPLORED_TILES;
+	const explored_tiles_t& GetExploredTiles() const;
+	bool HasExploredTile( const size_t x, const size_t y ) const;
+	void SetExploredTile( const size_t x, const size_t y, const bool explored );
+
 	struct diplomatic_trade_t {
 		int64_t offer_energy = 0;
 		std::string offer_technology = "";
@@ -194,6 +209,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		std::string request_technology = "";
 		int64_t offer_contact = -1;
 		int64_t request_contact = -1;
+		bool offer_map = false;
+		bool request_map = false;
 
 		bool operator==( const diplomatic_trade_t& other ) const {
 			return
@@ -202,7 +219,9 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				request_energy == other.request_energy &&
 				request_technology == other.request_technology &&
 				offer_contact == other.offer_contact &&
-				request_contact == other.request_contact;
+				request_contact == other.request_contact &&
+				offer_map == other.offer_map &&
+				request_map == other.request_map;
 		}
 	};
 	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
@@ -299,6 +318,8 @@ private:
 	diplomatic_relations_t m_diplomatic_offers = {};
 	contacted_players_t m_contacted_players = {};
 	bool m_legacy_unrestricted_contact = false;
+	explored_tiles_t m_explored_tiles = {};
+	bool m_legacy_full_map_visibility = false;
 	infiltrated_players_t m_infiltrated_players = {};
 	diplomatic_trades_t m_diplomatic_trades = {};
 	diplomatic_loan_offers_t m_diplomatic_loan_offers = {};

@@ -108,6 +108,20 @@ trade_proposal = diplomacy.get_trade_proposal({
 	own_power: 10.0,
 	other_power: 10.0,
 	own_energy: 200,
+	other_energy: 200,
+	own_technologies: [],
+	other_technologies: [],
+	own_map_value: 80,
+	other_map_value: 75,
+});
+test.assert(trade_proposal != null);
+test.assert(trade_proposal.terms.offer_map && trade_proposal.terms.request_map);
+
+trade_proposal = diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 200,
 	other_energy: 20,
 	own_technologies: [],
 	other_technologies: [{id: 'IndustrialBase', cost: 50}],

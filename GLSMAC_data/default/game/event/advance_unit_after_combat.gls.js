@@ -64,6 +64,18 @@ return {
 			unit.disembark();
 		}
 		unit.move_to_tile(e.data.tile, () => {});
+		let queue_contacts = #undefined;
+		let queue_exploration = #undefined;
+		if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+			queue_contacts = e.game.get('f_diplomacy_queue_contacts_at_tile');
+			queue_exploration = e.game.get('f_exploration_queue_at_tile');
+		}
+		if (#is_defined(queue_contacts)) {
+			queue_contacts(unit.get_owner(), e.data.tile);
+		}
+		if (#is_defined(queue_exploration)) {
+			queue_exploration(unit.get_owner(), e.data.tile);
+		}
 		if (
 			base != null && applied.orig_base_owner.id != unit.owner &&
 			(

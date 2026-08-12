@@ -312,6 +312,13 @@ return {
 			if (#is_defined(queue_contacts)) {
 				queue_contacts(unit.get_owner(), dst_tile);
 			}
+			let queue_exploration = #undefined;
+			if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+				queue_exploration = e.game.get('f_exploration_queue_at_tile');
+			}
+			if (#is_defined(queue_exploration)) {
+				queue_exploration(unit.get_owner(), dst_tile);
+			}
 			if (
 				get_transport_id(unit) == 0 && dst_base != null &&
 				dst_base.get_owner().id != unit.owner

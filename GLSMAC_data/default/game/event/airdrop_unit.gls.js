@@ -83,6 +83,13 @@ return {
 		if (#is_defined(queue_contacts) && e.game.get_um().has_unit(e.data.unit.id)) {
 			queue_contacts(e.data.unit.get_owner(), e.data.destination);
 		}
+		let queue_exploration = #undefined;
+		if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+			queue_exploration = e.game.get('f_exploration_queue_at_tile');
+		}
+		if (#is_defined(queue_exploration) && e.game.get_um().has_unit(e.data.unit.id)) {
+			queue_exploration(e.data.unit.get_owner(), e.data.destination);
+		}
 
 		if (e.game.is_master()) {
 			for (let i = #sizeof(destroyed) - 1; i >= 0; i--) {

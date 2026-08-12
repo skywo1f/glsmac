@@ -6,6 +6,8 @@
 #include "game/backend/slot/Slot.h"
 #include "game/backend/State.h"
 #include "game/backend/slot/Slots.h"
+#include "game/backend/map/Map.h"
+#include "game/backend/map/tile/Tile.h"
 
 #include "gse/value/String.h"
 #include "gse/value/Bool.h"
@@ -63,6 +65,8 @@ Player::Player( const Player* const other ) {
 	m_diplomatic_offers = other->m_diplomatic_offers;
 	m_contacted_players = other->m_contacted_players;
 	m_legacy_unrestricted_contact = other->m_legacy_unrestricted_contact;
+	m_explored_tiles = other->m_explored_tiles;
+	m_legacy_full_map_visibility = other->m_legacy_full_map_visibility;
 	m_infiltrated_players = other->m_infiltrated_players;
 	m_diplomatic_trades = other->m_diplomatic_trades;
 	m_diplomatic_loan_offers = other->m_diplomatic_loan_offers;
@@ -457,6 +461,41 @@ void Player::SetContacted( const size_t player_id, const bool contacted ) {
 	}
 }
 
+const Player::explored_tiles_t& Player::GetExploredTiles() const {
+	return m_explored_tiles;
+}
+
+bool Player::HasExploredTile( const size_t x, const size_t y ) const {
+	return
+		m_legacy_full_map_visibility ||
+		m_explored_tiles.find( { x, y } ) != m_explored_tiles.end();
+}
+
+void Player::SetExploredTile( const size_t x, const size_t y, const bool explored ) {
+	if (
+		x >= MAX_EXPLORED_TILE_COORDINATE ||
+		y >= MAX_EXPLORED_TILE_COORDINATE ||
+		( x & 1 ) != ( y & 1 )
+	) {
+		THROW( "explored tile coordinate is invalid" );
+	}
+	if ( m_legacy_full_map_visibility ) {
+		return;
+	}
+	if ( explored ) {
+		if (
+			m_explored_tiles.find( { x, y } ) == m_explored_tiles.end() &&
+			m_explored_tiles.size() >= MAX_EXPLORED_TILES
+		) {
+			THROW( "too many explored tiles" );
+		}
+		m_explored_tiles.insert( { x, y } );
+	}
+	else {
+		m_explored_tiles.erase( { x, y } );
+	}
+}
+
 const Player::diplomatic_trades_t& Player::GetDiplomaticTrades() const {
 	return m_diplomatic_trades;
 }
@@ -506,7 +545,8 @@ void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_
 	if (
 		trade.offer_energy == 0 && trade.offer_technology.empty() &&
 		trade.request_energy == 0 && trade.request_technology.empty() &&
-		trade.offer_contact < 0 && trade.request_contact < 0
+		trade.offer_contact < 0 && trade.request_contact < 0 &&
+		!trade.offer_map && !trade.request_map
 	) {
 		THROW( "diplomatic trade cannot be empty" );
 	}
@@ -1186,6 +1226,45 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"has_explored",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
+					return VALUE(
+						gse::value::Bool,
+						,
+						HasExploredTile( tile->coord.x, tile->coord.y )
+					);
+				} )
+			},
+			{
+				"set_explored",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
+					N_GETVALUE( explored, 1, Bool );
+					SetExploredTile( tile->coord.x, tile->coord.y, explored );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_explored_tiles",
+				NATIVE_CALL( this, game ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t tiles = {};
+					const auto* const game_map = game->GetMap();
+					for ( size_t y = 0 ; y < game_map->GetHeight() ; y++ ) {
+						for ( size_t x = y & 1 ; x < game_map->GetWidth() ; x += 2 ) {
+							if ( HasExploredTile( x, y ) ) {
+								tiles.push_back( game_map->GetTile( x, y )->Wrap( GSE_CALL ) );
+							}
+						}
+					}
+					return VALUE( gse::value::Array, , tiles );
+				} )
+			},
+			{
 				"get_diplomatic_trade",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -1204,6 +1283,8 @@ WRAPIMPL_BEGIN( Player )
 						{ "request_technology", VALUE( gse::value::String, , trade->request_technology ) },
 						{ "offer_contact", VALUE( gse::value::Int, , trade->offer_contact ) },
 						{ "request_contact", VALUE( gse::value::Int, , trade->request_contact ) },
+						{ "offer_map", VALUE( gse::value::Bool, , trade->offer_map ) },
+						{ "request_map", VALUE( gse::value::Bool, , trade->request_map ) },
 					} );
 				} )
 			},
@@ -1223,6 +1304,8 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP( request_technology, terms, "request_technology", String );
 					N_GETPROP_OPT( int64_t, offer_contact, terms, "offer_contact", Int, -1 );
 					N_GETPROP_OPT( int64_t, request_contact, terms, "request_contact", Int, -1 );
+					N_GETPROP_OPT( bool, offer_map, terms, "offer_map", Bool, false );
+					N_GETPROP_OPT( bool, request_map, terms, "request_map", Bool, false );
 					try {
 						SetDiplomaticTrade( other->m_slotnum, {
 							offer_energy,
@@ -1231,6 +1314,8 @@ WRAPIMPL_BEGIN( Player )
 							request_technology,
 							offer_contact,
 							request_contact,
+							offer_map,
+							request_map,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1560,7 +1645,7 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_retired_unit_designs ) {
 		buf.WriteString( id );
 	}
-	buf.WriteInt( 1 );
+	buf.WriteInt( 2 );
 	buf.WriteBool( m_legacy_unrestricted_contact );
 	buf.WriteInt( m_contacted_players.size() );
 	for ( const auto player_id : m_contacted_players ) {
@@ -1568,18 +1653,32 @@ const types::Buffer Player::Serialize() const {
 	}
 	size_t extended_trade_count = 0;
 	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
-		if ( trade.offer_contact >= 0 || trade.request_contact >= 0 ) {
+		if (
+			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
+			trade.offer_map || trade.request_map
+		) {
 			extended_trade_count++;
 		}
 	}
 	buf.WriteInt( extended_trade_count );
 	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
-		if ( trade.offer_contact < 0 && trade.request_contact < 0 ) {
+		if (
+			trade.offer_contact < 0 && trade.request_contact < 0 &&
+			!trade.offer_map && !trade.request_map
+		) {
 			continue;
 		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( trade.offer_contact );
 		buf.WriteInt( trade.request_contact );
+		buf.WriteBool( trade.offer_map );
+		buf.WriteBool( trade.request_map );
+	}
+	buf.WriteBool( m_legacy_full_map_visibility );
+	buf.WriteInt( m_explored_tiles.size() );
+	for ( const auto& [ x, y ] : m_explored_tiles ) {
+		buf.WriteInt( x );
+		buf.WriteInt( y );
 	}
 
 	return buf;
@@ -1884,9 +1983,11 @@ void Player::Deserialize( types::Buffer buf ) {
 	}
 	contacted_players_t contacted_players = {};
 	bool legacy_unrestricted_contact = true;
+	explored_tiles_t explored_tiles = {};
+	bool legacy_full_map_visibility = true;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto contact_version = buf.ReadInt();
-		if ( contact_version != 1 ) {
+		if ( contact_version != 1 && contact_version != 2 ) {
 			THROW( "unsupported serialized player contact version" );
 		}
 		legacy_unrestricted_contact = buf.ReadBool();
@@ -1912,6 +2013,8 @@ void Player::Deserialize( types::Buffer buf ) {
 			const auto player_id = buf.ReadInt< size_t >( "extended diplomatic trade player ID" );
 			const auto offer_contact = buf.ReadInt();
 			const auto request_contact = buf.ReadInt();
+			const auto offer_map = contact_version >= 2 ? buf.ReadBool() : false;
+			const auto request_map = contact_version >= 2 ? buf.ReadBool() : false;
 			auto trade_it = diplomatic_trades.find( player_id );
 			if (
 				trade_it == diplomatic_trades.end() ||
@@ -1921,8 +2024,29 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 			trade_it->second.offer_contact = offer_contact;
 			trade_it->second.request_contact = request_contact;
+			trade_it->second.offer_map = offer_map;
+			trade_it->second.request_map = request_map;
 			Player validator( "extended trade validator", PR_NONE, nullptr, "" );
 			validator.SetDiplomaticTrade( player_id, trade_it->second );
+		}
+		if ( contact_version >= 2 ) {
+			legacy_full_map_visibility = buf.ReadBool();
+			const auto explored_count = buf.ReadCollectionSize( "player explored tile" );
+			if ( explored_count > MAX_EXPLORED_TILES ) {
+				THROW( "invalid serialized player explored tile count" );
+			}
+			for ( size_t i = 0 ; i < explored_count ; i++ ) {
+				const auto x = buf.ReadInt< size_t >( "explored tile x coordinate" );
+				const auto y = buf.ReadInt< size_t >( "explored tile y coordinate" );
+				if (
+					x >= MAX_EXPLORED_TILE_COORDINATE ||
+					y >= MAX_EXPLORED_TILE_COORDINATE ||
+					( x & 1 ) != ( y & 1 ) ||
+					!explored_tiles.insert( { x, y } ).second
+				) {
+					THROW( "invalid or duplicate serialized explored tile" );
+				}
+			}
 		}
 	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
@@ -1950,6 +2074,8 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_diplomatic_offers = std::move( diplomatic_offers );
 	m_contacted_players = std::move( contacted_players );
 	m_legacy_unrestricted_contact = legacy_unrestricted_contact;
+	m_explored_tiles = std::move( explored_tiles );
+	m_legacy_full_map_visibility = legacy_full_map_visibility;
 	m_infiltrated_players = std::move( infiltrated_players );
 	m_major_atrocities = major_atrocities;
 	m_diplomatic_trades = std::move( diplomatic_trades );

@@ -153,7 +153,7 @@ unit = {
 };
 source.set_units([unit]);
 
-let rolls = [91, 2];
+let rolls = [96, 2];
 let roll_index = 0;
 let messages = [];
 let triggers = [];

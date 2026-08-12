@@ -67,6 +67,7 @@ const make_player = (id, name) => {
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
+	let explored_tiles = [];
 	let player = null;
 	player = {
 		id: id,
@@ -139,6 +140,27 @@ const make_player = (id, name) => {
 		},
 		get_energy_credits: () => { return player.energy_credits; },
 		set_energy_credits: (energy) => { player.energy_credits = energy; },
+		has_explored: (tile) => {
+			for (explored of explored_tiles) {
+				if (explored.x == tile.x && explored.y == tile.y) {
+					return true;
+				}
+			}
+			return false;
+		},
+		set_explored: (tile, explored) => {
+			let remaining = [];
+			for (known of explored_tiles) {
+				if (known.x != tile.x || known.y != tile.y) {
+					remaining :+known;
+				}
+			}
+			explored_tiles = remaining;
+			if (explored) {
+				explored_tiles :+tile;
+			}
+		},
+		get_explored_tiles: () => { return explored_tiles; },
 	};
 	return player;
 };
@@ -148,6 +170,30 @@ const beta = make_player(2, 'Beta');
 const gamma = make_player(3, 'Gamma');
 const delta = make_player(4, 'Delta');
 players = [alpha, beta, gamma, delta];
+values.f_exploration_count_shareable_tiles = (sender, recipient) => {
+	let count = 0;
+	for (tile of sender.get_explored_tiles()) {
+		if (!recipient.has_explored(tile)) {
+			count++;
+		}
+	}
+	return count;
+};
+values.f_exploration_apply_map_share = (sender, recipient) => {
+	let added = [];
+	for (tile of sender.get_explored_tiles()) {
+		if (!recipient.has_explored(tile)) {
+			recipient.set_explored(tile, true);
+			added :+tile;
+		}
+	}
+	return {player: recipient, tiles: added};
+};
+values.f_exploration_rollback_reveal = (snapshot) => {
+	for (tile of snapshot.tiles) {
+		snapshot.player.set_explored(tile, false);
+	}
+};
 const contact_tile = {
 	get_units: () => { return [{owner: beta.id}]; },
 	get_base: () => { return null; },
@@ -275,6 +321,10 @@ alpha.set_contact(gamma, true);
 gamma.set_contact(alpha, true);
 beta.set_contact(delta, true);
 delta.set_contact(beta, true);
+const alpha_map_tile = {x: 2, y: 2};
+const beta_map_tile = {x: 4, y: 2};
+alpha.set_explored(alpha_map_tile, true);
+beta.set_explored(beta_map_tile, true);
 
 let trade = {
 	caller: 1,
@@ -289,6 +339,8 @@ let trade = {
 			request_technology: 'IndustrialBase',
 			offer_contact: gamma.id,
 			request_contact: delta.id,
+			offer_map: true,
+			request_map: true,
 		},
 	},
 };
@@ -311,6 +363,8 @@ test.assert(alpha.has_technology('IndustrialBase'));
 test.assert(beta.has_technology('CentauriEcology'));
 test.assert(beta.has_contact(gamma) && gamma.has_contact(beta));
 test.assert(alpha.has_contact(delta) && delta.has_contact(alpha));
+test.assert(beta.has_explored(alpha_map_tile));
+test.assert(alpha.has_explored(beta_map_tile));
 test.assert(alpha.get_research_state().target == 'Biogenetics');
 test.assert(alpha.get_research_state().progress == 12);
 test.assert(beta.get_research_state().target == 'Biogenetics');
@@ -325,6 +379,8 @@ test.assert(!alpha.has_technology('IndustrialBase'));
 test.assert(!beta.has_technology('CentauriEcology'));
 test.assert(!beta.has_contact(gamma) && !gamma.has_contact(beta));
 test.assert(!alpha.has_contact(delta) && !delta.has_contact(alpha));
+test.assert(!beta.has_explored(alpha_map_tile));
+test.assert(!alpha.has_explored(beta_map_tile));
 
 trade_response.data.accept = false;
 trade_response.applied = respond_trade.apply(trade_response);

@@ -296,6 +296,18 @@ const make_resolution = (game, unit, tile, kind) => {
 		const index = game.random.get_int(0, #sizeof(candidates) - 1);
 		return {kind: kind, contact_id: candidates[index].id};
 	}
+	if (kind == 'survey') {
+		const get_tiles = game.get('f_exploration_get_tiles_in_radius');
+		const get_unexplored = game.get('f_exploration_get_unexplored_tiles');
+		if (!#is_defined(get_tiles) || !#is_defined(get_unexplored)) {
+			return null;
+		}
+		const tiles = get_unexplored(
+			game.get_player(unit.owner),
+			get_tiles(tile, 4)
+		);
+		return #sizeof(tiles) == 0 ? null : {kind: kind, tiles: tiles};
+	}
 	if (kind == 'terraforming') {
 		const tiles = get_improvement_tiles(tile);
 		if (#sizeof(tiles) == 0) {
@@ -365,6 +377,7 @@ const get_weighted_kind = (roll) => {
 	if (roll < 82) { return 'terraforming'; }
 	if (roll < 83) { return 'clone'; }
 	if (roll < 91) { return 'native'; }
+	if (roll < 96) { return 'survey'; }
 	return 'resource';
 };
 
@@ -387,6 +400,7 @@ const resolve = (game, unit, tile) => {
 		'technology',
 		'terraforming',
 		'native',
+		'survey',
 		'resource',
 	];
 	for (kind of fallbacks) {
@@ -452,6 +466,7 @@ const apply = (game, unit, tile, resolved) => {
 		terrain_snapshot: null,
 		unit_state: null,
 		contact: null,
+		map_reveal: null,
 	};
 	tile.update_features({unity_pod: false});
 
@@ -549,6 +564,13 @@ const apply = (game, unit, tile, resolved) => {
 		contact.set_contact(player, true);
 		game.trigger('diplomatic_contact_established', {player: player, target: contact});
 		game.message(player.name + ' recovered the commlink frequency for ' + contact.name + '.');
+	} else if (resolved.kind == 'survey') {
+		applied.map_reveal = game.get('f_exploration_apply_reveal')(player, resolved.tiles);
+		game.message(
+			player.name + ' recovered a ' +
+			(tile.is_water ? 'sonar' : 'cartographic') +
+			' pod containing data on the surrounding area.'
+		);
 	} else if (resolved.kind == 'terraforming') {
 		const changes = get_terraforming_changes(resolved.improvement);
 		for (improved_tile of resolved.tiles) {
@@ -590,6 +612,9 @@ const rollback = (game, applied) => {
 	if (applied.contact != null) {
 		applied.player.set_contact(applied.contact.player, applied.contact.owner_contact);
 		applied.contact.player.set_contact(applied.player, applied.contact.contact_owner);
+	}
+	if (applied.map_reveal != null) {
+		game.get('f_exploration_rollback_reveal')(applied.map_reveal);
 	}
 	if (applied.spawned_unit_id > 0 && game.um.has_unit(applied.spawned_unit_id)) {
 		game.um.despawn_unit(game.um.get_unit(applied.spawned_unit_id));

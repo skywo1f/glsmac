@@ -164,6 +164,14 @@ const get_request_contact = (terms) => {
 	return #typeof(terms.request_contact) == 'Int' ? terms.request_contact : 0 - 1;
 };
 
+const get_offer_map = (terms) => {
+	return #typeof(terms.offer_map) == 'Bool' ? terms.offer_map : false;
+};
+
+const get_request_map = (terms) => {
+	return #typeof(terms.request_map) == 'Bool' ? terms.request_map : false;
+};
+
 const find_player = (game, player_id) => {
 	if (#typeof(game.get_players) != 'Callable') {
 		return null;
@@ -202,7 +210,9 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		#typeof(terms.request_energy) != 'Int' ||
 		#typeof(terms.request_technology) != 'String' ||
 		(#is_defined(terms.offer_contact) && #typeof(terms.offer_contact) != 'Int') ||
-		(#is_defined(terms.request_contact) && #typeof(terms.request_contact) != 'Int')
+		(#is_defined(terms.request_contact) && #typeof(terms.request_contact) != 'Int') ||
+		(#is_defined(terms.offer_map) && #typeof(terms.offer_map) != 'Bool') ||
+		(#is_defined(terms.request_map) && #typeof(terms.request_map) != 'Bool')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
 	}
@@ -217,6 +227,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	}
 	const offer_contact = get_offer_contact(terms);
 	const request_contact = get_request_contact(terms);
+	const offer_map = get_offer_map(terms);
+	const request_map = get_request_map(terms);
 	if (
 		offer_contact < -1 || offer_contact >= 64 ||
 		request_contact < -1 || request_contact >= 64
@@ -229,7 +241,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (
 		terms.offer_energy == 0 && terms.offer_technology == '' &&
 		terms.request_energy == 0 && terms.request_technology == '' &&
-		offer_contact < 0 && request_contact < 0
+		offer_contact < 0 && request_contact < 0 &&
+		!offer_map && !request_map
 	) {
 		return 'Diplomatic trade cannot be empty';
 	}
@@ -284,9 +297,24 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (#is_defined(offer_contact_error)) {
 		return offer_contact_error;
 	}
-	return validate_contact_transfer(
+	const request_contact_error = validate_contact_transfer(
 		game, recipient, proposer, request_contact, 'requested'
 	);
+	if (#is_defined(request_contact_error)) {
+		return request_contact_error;
+	}
+	if (offer_map || request_map) {
+		const count_shareable = game.get('f_exploration_count_shareable_tiles');
+		if (!#is_defined(count_shareable)) {
+			return 'World map trading is unavailable';
+		}
+		if (offer_map && count_shareable(proposer, recipient) == 0) {
+			return 'The offered world map contains no new exploration data';
+		}
+		if (request_map && count_shareable(recipient, proposer) == 0) {
+			return 'The requested world map contains no new exploration data';
+		}
+	}
 };
 
 const grant_contact = (game, player, contact_id) => {

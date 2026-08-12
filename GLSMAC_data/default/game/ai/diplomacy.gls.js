@@ -92,6 +92,15 @@ const get_shared_contact_multiplier = (relation) => {
 	return 1.25;
 };
 
+const has_map_term = (terms, key) => {
+	return #typeof(terms[key]) == 'Bool' && terms[key];
+};
+
+const get_map_value = (state, key) => {
+	const value = state[key];
+	return #typeof(value) == 'Int' ? value : 0;
+};
+
 const get_trade_acceptance_score = (state) => {
 	if (state.relation == 'vendetta') {
 		return 0.0 - 100000.0;
@@ -116,6 +125,13 @@ const get_trade_acceptance_score = (state) => {
 		given += #to_float(get_contact_value(state, 'request_contact_value')) *
 			get_shared_contact_multiplier(state.relation);
 	}
+	if (has_map_term(state.terms, 'offer_map')) {
+		received += #to_float(get_map_value(state, 'offer_map_value')) * 1.5;
+	}
+	if (has_map_term(state.terms, 'request_map')) {
+		given += #to_float(get_map_value(state, 'request_map_value')) *
+			get_shared_contact_multiplier(state.relation);
+	}
 	return received - given - 5.0;
 };
 
@@ -127,6 +143,8 @@ const reverse_terms = (terms) => {
 		request_technology: terms.offer_technology,
 		offer_contact: get_contact_id(terms, 'request_contact'),
 		request_contact: get_contact_id(terms, 'offer_contact'),
+		offer_map: has_map_term(terms, 'request_map'),
+		request_map: has_map_term(terms, 'offer_map'),
 	};
 };
 
@@ -147,6 +165,8 @@ const score_trade_proposal = (
 		request_technology_cost: request_cost,
 		offer_contact_value: offer_contact_value,
 		request_contact_value: request_contact_value,
+		offer_map_value: get_map_value(state, 'own_map_value'),
+		request_map_value: get_map_value(state, 'other_map_value'),
 	});
 	if (recipient_score < 0.0) {
 		return null;
@@ -160,6 +180,8 @@ const score_trade_proposal = (
 		request_technology_cost: offer_cost,
 		offer_contact_value: request_contact_value,
 		request_contact_value: offer_contact_value,
+		offer_map_value: get_map_value(state, 'other_map_value'),
+		request_map_value: get_map_value(state, 'own_map_value'),
 	});
 	if (proposer_score < 0.0) {
 		return null;
@@ -271,6 +293,49 @@ const get_trade_proposal = (state) => {
 				offer_contact: own_contact.id,
 				request_contact: 0 - 1,
 			}, 0, 0, own_contact.value, 0);
+		}
+	}
+
+	const own_map_value = get_map_value(state, 'own_map_value');
+	const other_map_value = get_map_value(state, 'other_map_value');
+	if (own_map_value > 0 && other_map_value > 0) {
+		consider({
+			offer_energy: 0,
+			offer_technology: '',
+			request_energy: 0,
+			request_technology: '',
+			offer_contact: 0 - 1,
+			request_contact: 0 - 1,
+			offer_map: true,
+			request_map: true,
+		}, 0, 0, 0, 0);
+	}
+	if (own_map_value > 0) {
+		for (other_technology of state.other_technologies) {
+			consider({
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: other_technology.id,
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+				offer_map: true,
+				request_map: false,
+			}, 0, other_technology.cost, 0, 0);
+		}
+	}
+	if (other_map_value > 0) {
+		for (own_technology of state.own_technologies) {
+			consider({
+				offer_energy: 0,
+				offer_technology: own_technology.id,
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+				offer_map: false,
+				request_map: true,
+			}, own_technology.cost, 0, 0, 0);
 		}
 	}
 

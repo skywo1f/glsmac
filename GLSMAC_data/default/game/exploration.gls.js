@@ -1,0 +1,145 @@
+const tile_key = (tile) => {
+	return #to_string(tile.x) + '_' + #to_string(tile.y);
+};
+
+const get_tiles_in_radius = (center, radius) => {
+	let tiles = [center];
+	let frontier = [center];
+	let seen = {};
+	const center_key = tile_key(center);
+	seen[center_key] = true;
+	for (let distance = 0; distance < radius; distance++) {
+		let next = [];
+		for (tile of frontier) {
+			for (candidate of tile.get_surrounding_tiles()) {
+				const key = tile_key(candidate);
+				if (#is_defined(seen[key])) {
+					continue;
+				}
+				seen[key] = true;
+				tiles :+candidate;
+				next :+candidate;
+			}
+		}
+		frontier = next;
+	}
+	return tiles;
+};
+
+const get_unexplored_tiles = (player, tiles) => {
+	let result = [];
+	let seen = {};
+	for (tile of tiles) {
+		const key = tile_key(tile);
+		if (!#is_defined(seen[key]) && !player.has_explored(tile)) {
+			seen[key] = true;
+			result :+tile;
+		}
+	}
+	return result;
+};
+
+const apply_reveal = (game, player, tiles) => {
+	const revealed = get_unexplored_tiles(player, tiles);
+	for (tile of revealed) {
+		player.set_explored(tile, true);
+	}
+	if (#sizeof(revealed) > 0) {
+		game.trigger('map_visibility_updated', {player: player, tiles: revealed});
+	}
+	return {player: player, tiles: revealed};
+};
+
+const rollback_reveal = (game, snapshot) => {
+	for (let i = #sizeof(snapshot.tiles) - 1; i >= 0; i--) {
+		snapshot.player.set_explored(snapshot.tiles[i], false);
+	}
+	if (#sizeof(snapshot.tiles) > 0) {
+		game.trigger('map_visibility_updated', {
+			player: snapshot.player,
+			tiles: snapshot.tiles,
+		});
+	}
+};
+
+const count_shareable_tiles = (sender, recipient) => {
+	let count = 0;
+	for (tile of sender.get_explored_tiles()) {
+		if (!recipient.has_explored(tile)) {
+			count++;
+		}
+	}
+	return count;
+};
+
+const apply_map_share = (game, sender, recipient) => {
+	return apply_reveal(game, recipient, sender.get_explored_tiles());
+};
+
+const queue_reveal = (game, player, tiles) => {
+	if (
+		#typeof(game.is_master) != 'Callable' || !game.is_master() ||
+		player == null
+	) {
+		return;
+	}
+	const unexplored = get_unexplored_tiles(player, tiles);
+	if (#sizeof(unexplored) > 0) {
+		game.event('reveal_map_tiles', {player: player, tiles: unexplored});
+	}
+};
+
+const queue_at_tile = (game, player, tile) => {
+	if (tile != null) {
+		queue_reveal(game, player, get_tiles_in_radius(tile, 1));
+	}
+};
+
+const queue_at_base = (game, base) => {
+	let tiles = [base.get_tile()];
+	for (tile of base.get_workable_tiles()) {
+		tiles :+tile;
+	}
+	queue_reveal(game, base.get_owner(), tiles);
+};
+
+const scan_entities = (game) => {
+	if (#typeof(game.is_master) != 'Callable' || !game.is_master()) {
+		return;
+	}
+	if (#typeof(game.get_um) == 'Callable') {
+		for (unit of game.get_um().get_units()) {
+			queue_at_tile(game, game.get_player(unit.owner), unit.get_tile());
+		}
+	}
+	if (#typeof(game.get_bm) == 'Callable') {
+		for (base of game.get_bm().get_bases()) {
+			queue_at_base(game, base);
+		}
+	}
+};
+
+return (game) => {
+	game.on('start', (e) => {
+		game.set('f_exploration_get_tiles_in_radius', get_tiles_in_radius);
+		game.set('f_exploration_get_unexplored_tiles', get_unexplored_tiles);
+		game.set('f_exploration_apply_reveal', (player, tiles) => {
+			return apply_reveal(game, player, tiles);
+		});
+		game.set('f_exploration_rollback_reveal', (snapshot) => {
+			return rollback_reveal(game, snapshot);
+		});
+		game.set('f_exploration_count_shareable_tiles', count_shareable_tiles);
+		game.set('f_exploration_apply_map_share', (sender, recipient) => {
+			return apply_map_share(game, sender, recipient);
+		});
+		game.set('f_exploration_queue_reveal', (player, tiles) => {
+			return queue_reveal(game, player, tiles);
+		});
+		game.set('f_exploration_queue_at_tile', (player, tile) => {
+			return queue_at_tile(game, player, tile);
+		});
+		scan_entities(game);
+		game.on('turn', (e) => { scan_entities(game); });
+	});
+};

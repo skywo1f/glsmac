@@ -101,6 +101,7 @@ const run_case = (kind, verify_resolve) => {
 	let energy_credits = 100;
 	let player_contacts = {};
 	let other_contacts = {};
+	let explored = false;
 	const other_player = {
 		id: 2,
 		name: 'Sparta',
@@ -141,6 +142,8 @@ const run_case = (kind, verify_resolve) => {
 			}
 			research = {technologies: technologies, target: value.target, progress: value.progress};
 		},
+		has_explored: (tile) => { return explored; },
+		set_explored: (tile, value) => { explored = value; },
 	};
 
 	let base_minerals = 10;
@@ -208,6 +211,18 @@ const run_case = (kind, verify_resolve) => {
 		get_players: () => { return [player, other_player]; },
 		get_native_player: () => { return native_player; },
 		get: (key) => {
+			if (key == 'f_exploration_apply_reveal') {
+				return (owner, tiles) => {
+					const was_explored = explored;
+					explored = true;
+					return {player: owner, tiles: was_explored ? [] : tiles};
+				};
+			}
+			if (key == 'f_exploration_rollback_reveal') {
+				return (snapshot) => {
+					if (#sizeof(snapshot.tiles) > 0) { explored = false; }
+				};
+			}
 			if (key == 'f_base_get_production_cost') {
 				return (base, item) => { return item.mineral_cost; };
 			}
@@ -323,6 +338,8 @@ const run_case = (kind, verify_resolve) => {
 		};
 	} else if (kind == 'resource') {
 		resolution.bonus = 'minerals';
+	} else if (kind == 'survey') {
+		resolution.tiles = [center];
 	}
 
 	const applied = unity_pods.apply(game, unit, center, resolution);
@@ -359,6 +376,8 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(spawned_native.owner == native_player);
 	} else if (kind == 'resource') {
 		test.assert(bonus_state.minerals);
+	} else if (kind == 'survey') {
+		test.assert(explored && #sizeof(applied.map_reveal.tiles) == 1);
 	}
 
 	unity_pods.rollback(game, applied);
@@ -393,13 +412,15 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(!game.um.has_unit(applied.native_outbreak.unit_ids[0]));
 	} else if (kind == 'resource') {
 		test.assert(!bonus_state.minerals);
+	} else if (kind == 'survey') {
+		test.assert(!explored);
 	}
 };
 
 run_case('energy', true);
 for (kind of [
 	'river', 'earthquake', 'production', 'artifact', 'fungus', 'monolith',
-	'vehicle', 'commlink', 'technology', 'terraforming', 'clone', 'native', 'resource'
+	'vehicle', 'commlink', 'technology', 'terraforming', 'clone', 'native', 'survey', 'resource'
 ]) {
 	run_case(kind, false);
 }
