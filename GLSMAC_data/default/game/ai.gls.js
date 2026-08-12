@@ -699,7 +699,11 @@ const interrogate_adjacent_probe = (game, player, unit) => {
 	if (target == null) {
 		return false;
 	}
-	game.event_as(player.id, 'attack_unit', {attacker: unit, defender: target});
+	game.event_as(player.id, 'attack_unit', {
+		attacker: unit,
+		defender: target,
+		probe_interception_action: 'interrogate',
+	});
 	return true;
 };
 

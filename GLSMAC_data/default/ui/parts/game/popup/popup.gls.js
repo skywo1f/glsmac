@@ -9,6 +9,7 @@ return {
 		'orbital_attack',
 		'diplomacy',
 		'probe_operations',
+		'probe_interception',
 		'alien_artifact',
 		'supply_transport',
 		'airdrop',

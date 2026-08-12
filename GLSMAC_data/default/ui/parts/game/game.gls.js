@@ -35,6 +35,14 @@ return (m) => {
 			}
 		});
 
+		game.on('probe_interception_requested', (e) => {
+			if (p == null || game.get_player().id != e.player.id) {
+				return;
+			}
+			p.modules.popup.set('probe_interception', e);
+			p.modules.popup.show('probe_interception');
+		});
+
 		game.on('start_ui', (e) => {
 
 			m.root.clear();

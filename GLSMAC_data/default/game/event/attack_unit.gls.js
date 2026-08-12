@@ -161,12 +161,25 @@ return {
 		if (attacker_def.offense <= 0) {
 			return 'Noncombat units cannot attack';
 		}
-		if (probe_interception.get_interception(
+		const interception = probe_interception.get_interception(
 			e.game,
 			e.data.attacker,
 			e.data.defender
-		) != null) {
+		);
+		const interception_action = #is_defined(e.data.probe_interception_action)
+			? '' + e.data.probe_interception_action : '';
+		if (interception != null) {
+			if (
+				interception_action != '' &&
+				interception_action != 'interrogate' &&
+				interception_action != 'eliminate'
+			) {
+				return 'Unknown Probe Team interception action';
+			}
 			return;
+		}
+		if (interception_action != '') {
+			return 'Probe Team interception is no longer available';
 		}
 		if (combat_rules.has_ability(attacker_def, 'NerveGasPods')) {
 			let atrocity_defender = e.data.defender;
@@ -197,8 +210,16 @@ return {
 			attacker,
 			e.data.defender
 		);
-		if (interception != null) {
-			return {probe_interception: interception};
+		if (
+			interception != null &&
+			(
+				!#is_defined(e.data.probe_interception_action) ||
+				e.data.probe_interception_action != 'eliminate'
+			)
+		) {
+			return #is_defined(e.data.probe_interception_action)
+				? {probe_interception: interception}
+				: {probe_interception_prompt: interception};
 		}
 		const target_tile = #is_defined(e.data.defender.get_tile)
 			? e.data.defender.get_tile()
@@ -308,6 +329,17 @@ return {
 
 	apply: (e) => {
 		const attacker = e.data.attacker;
+		if (
+			#is_defined(e.resolved.probe_interception_prompt) &&
+			e.resolved.probe_interception_prompt != null
+		) {
+			e.game.trigger('probe_interception_requested', {
+				player: attacker.get_owner(),
+				attacker: attacker,
+				unit: e.data.defender,
+			});
+			return {probe_interception_prompt: true};
+		}
 		if (
 			#is_defined(e.resolved.probe_interception) &&
 			e.resolved.probe_interception != null
@@ -560,6 +592,9 @@ return {
 
 	rollback: (e) => {
 		const a = e.applied;
+		if (#is_defined(a.probe_interception_prompt)) {
+			return;
+		}
 		if (#is_defined(a.probe_interception)) {
 			probe_interception.rollback(e.game, a.probe_interception);
 			return;

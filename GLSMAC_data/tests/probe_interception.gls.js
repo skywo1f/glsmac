@@ -86,6 +86,7 @@ const far_base = {
 let bases = [far_base, near_base];
 let territory_owner = actor;
 let notified = false;
+let prompted = false;
 let message = '';
 const distances = {t4: 2, t5: 5};
 const um = {
@@ -113,8 +114,13 @@ const game = {
 	um: um,
 	tm: tm,
 	trigger: (name, data) => {
-		notified = name == 'probe_interrogated' && data.player == actor &&
-			data.target == target_player && data.unit == probe && data.base == near_base;
+		if (name == 'probe_interception_requested') {
+			prompted = data.player == actor && data.attacker == interceptor &&
+				data.unit == probe;
+		} else if (name == 'probe_interrogated') {
+			notified = data.player == actor && data.target == target_player &&
+				data.unit == probe && data.base == near_base;
+		}
 	},
 	message: (text) => { message = text; },
 };
@@ -123,9 +129,26 @@ let interception = interception_rules.get_interception(game, interceptor, probe)
 test.assert(interception != null);
 test.assert(interception.return_base == near_base);
 
-const event = {
+const prompt_event = {
 	game: game,
 	data: {attacker: interceptor, defender: probe},
+};
+prompt_event.resolved = attack_unit.resolve(prompt_event);
+test.assert(prompt_event.resolved.probe_interception_prompt.probe_id == probe.id);
+prompt_event.applied = attack_unit.apply(prompt_event);
+test.assert(prompt_event.applied.probe_interception_prompt);
+test.assert(prompted);
+test.assert(probe_tile == target);
+test.assert(interceptor.get_tile() == source);
+attack_unit.rollback(prompt_event);
+
+const event = {
+	game: game,
+	data: {
+		attacker: interceptor,
+		defender: probe,
+		probe_interception_action: 'interrogate',
+	},
 };
 event.resolved = attack_unit.resolve(event);
 test.assert(event.resolved.probe_interception.probe_id == probe.id);

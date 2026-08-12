@@ -256,6 +256,7 @@
 				game.event('attack_unit', {
 					attacker: interceptor,
 					defender: intercepted_probe,
+					probe_interception_action: 'interrogate',
 				});
 				let interrogation_ticks = 0;
 				#async(50, () => {
