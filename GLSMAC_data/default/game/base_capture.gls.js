@@ -1,15 +1,101 @@
 const project_acquisition = #include('./project_acquisition');
 const economic_victory = #include('./economic_victory_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
+const HEADQUARTERS_EVACUATION_COST = 1000;
+
+const get_base_manager = (game) => {
+	return #typeof(game.get_bm) == 'Callable' ? game.get_bm() : game.bm;
+};
+
+const get_unit_manager = (game) => {
+	return #typeof(game.get_um) == 'Callable' ? game.get_um() : game.um;
+};
+
+const get_tile_manager = (game) => {
+	return #typeof(game.get_tm) == 'Callable' ? game.get_tm() : game.tm;
+};
+
+const get_energy_credits = (player) => {
+	if (#typeof(player.get_energy_credits) == 'Callable') {
+		return player.get_energy_credits();
+	}
+	return #typeof(player.energy_credits) == 'Int' ? player.energy_credits : 0;
+};
+
+const get_headquarters_destination = (game, lost_base, owner) => {
+	let best = null;
+	let best_distance = 0;
+	for (candidate of get_base_manager(game).get_bases()) {
+		if (candidate.id == lost_base.id || candidate.get_owner().id != owner.id) {
+			continue;
+		}
+		const distance = get_tile_manager(game).get_distance(
+			lost_base.get_tile(),
+			candidate.get_tile()
+		);
+		if (
+			best == null ||
+			distance < best_distance ||
+			(distance == best_distance && candidate.id < best.id)
+		) {
+			best = candidate;
+			best_distance = distance;
+		}
+	}
+	return best;
+};
+
+const get_headquarters_evacuation = (game, base, owner, economic_victory_state) => {
+	const destination = get_headquarters_destination(game, base, owner);
+	if (
+		destination == null ||
+		#typeof(owner.set_energy_credits) != 'Callable' ||
+		get_energy_credits(owner) < HEADQUARTERS_EVACUATION_COST
+	) {
+		return null;
+	}
+	const resolver = #typeof(game.get) == 'Callable'
+		? game.get('f_base_should_evacuate_headquarters')
+		: #undefined;
+	if (
+		#is_defined(resolver) &&
+		!resolver(base, destination, owner, HEADQUARTERS_EVACUATION_COST)
+	) {
+		return null;
+	}
+	return {
+		destination: destination,
+		energy_credits: get_energy_credits(owner),
+		cost: HEADQUARTERS_EVACUATION_COST,
+		economic_victory_state: economic_victory_state,
+	};
+};
+
+const apply_headquarters_evacuation = (base, owner, evacuation) => {
+	base.remove_facility('Headquarters');
+	evacuation.destination.add_facility('Headquarters');
+	owner.set_energy_credits(evacuation.energy_credits - evacuation.cost);
+	if (evacuation.economic_victory_state != null) {
+		economic_victory.clear_base_state(base);
+		economic_victory.set_base_state(
+			evacuation.destination,
+			evacuation.economic_victory_state.turn,
+			evacuation.economic_victory_state.cost
+		);
+	}
+};
 
 const get_rehome_base = (game, unit, owner_id, lost_base) => {
 	let best = null;
 	let best_distance = 0;
-	for (candidate of game.bm.get_bases()) {
+	for (candidate of get_base_manager(game).get_bases()) {
 		if (candidate.id == lost_base.id || candidate.get_owner().id != owner_id) {
 			continue;
 		}
-		const distance = game.tm.get_distance(unit.get_tile(), candidate.get_tile());
+		const distance = get_tile_manager(game).get_distance(
+			unit.get_tile(),
+			candidate.get_tile()
+		);
 		if (
 			best == null ||
 			distance < best_distance ||
@@ -24,7 +110,7 @@ const get_rehome_base = (game, unit, owner_id, lost_base) => {
 
 const rehome_units = (game, lost_base, owner_id) => {
 	let snapshots = [];
-	for (unit of game.um.get_units()) {
+	for (unit of get_unit_manager(game).get_units()) {
 		if (unit.owner != owner_id || unit.home_base_id != lost_base.id) {
 			continue;
 		}
@@ -63,11 +149,16 @@ const capture_base = (game, base, new_owner) => {
 	const economic_victory_state = captured_headquarters
 		? economic_victory.get_base_state(base)
 		: null;
+	const headquarters_evacuation = captured_headquarters
+		? get_headquarters_evacuation(game, base, old_owner, economic_victory_state)
+		: null;
 	let economic_victory_capture = #undefined;
-	if (captured_headquarters) {
+	if (headquarters_evacuation != null) {
+		apply_headquarters_evacuation(base, old_owner, headquarters_evacuation);
+	} else if (captured_headquarters) {
 		base.remove_facility('Headquarters');
 	}
-	if (economic_victory_state != null) {
+	if (economic_victory_state != null && headquarters_evacuation == null) {
 		economic_victory_capture = {
 			state: economic_victory_state,
 			old_owner_energy: old_owner.get_energy_credits(),
@@ -87,7 +178,17 @@ const capture_base = (game, base, new_owner) => {
 	}
 
 	base.set_owner(new_owner);
-	if (#is_defined(economic_victory_capture)) {
+	if (headquarters_evacuation != null) {
+		game.message(
+			old_owner.get_faction().name + ' has safely evacuated its Headquarters to ' +
+			headquarters_evacuation.destination.name + ' for ' +
+			#to_string(headquarters_evacuation.cost) + ' energy credits.'
+		);
+		if (economic_victory_state != null) {
+			game.trigger('economic_victory_updated', {player: old_owner});
+		}
+		game.trigger('economy_updated', {player: old_owner});
+	} else if (#is_defined(economic_victory_capture)) {
 		game.message(
 			new_owner.get_faction().name + ' has captured ' + old_owner.get_faction().name +
 			'\'s Headquarters and foiled its Global Energy Market bid.'
@@ -118,6 +219,7 @@ const capture_base = (game, base, new_owner) => {
 		old_queue: old_queue,
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
+		headquarters_evacuation: headquarters_evacuation,
 		empath_guild_infiltration: empath_guild_infiltration,
 		economic_victory_capture: economic_victory_capture,
 	};
@@ -129,6 +231,19 @@ const restore_base = (base, snapshot) => {
 	}
 	if (base.get_owner().id != snapshot.old_owner.id) {
 		base.set_owner(snapshot.old_owner);
+	}
+	if (
+		#is_defined(snapshot.headquarters_evacuation) &&
+		snapshot.headquarters_evacuation != null
+	) {
+		const evacuation = snapshot.headquarters_evacuation;
+		if (evacuation.destination.has_facility('Headquarters')) {
+			evacuation.destination.remove_facility('Headquarters');
+		}
+		if (evacuation.economic_victory_state != null) {
+			economic_victory.clear_base_state(evacuation.destination);
+		}
+		snapshot.old_owner.set_energy_credits(evacuation.energy_credits);
 	}
 	if (snapshot.captured_headquarters && !base.has_facility('Headquarters')) {
 		base.add_facility('Headquarters');
@@ -142,12 +257,21 @@ const restore_base = (base, snapshot) => {
 			capture.state.turn,
 			capture.state.cost
 		);
+	} else if (
+		#is_defined(snapshot.headquarters_evacuation) &&
+		snapshot.headquarters_evacuation != null &&
+		snapshot.headquarters_evacuation.economic_victory_state != null
+	) {
+		const state = snapshot.headquarters_evacuation.economic_victory_state;
+		economic_victory.set_base_state(base, state.turn, state.cost);
 	}
 	base.set_production_queue(snapshot.old_queue);
 	restore_units(snapshot.rehomed_units);
 };
 
 return {
+	headquarters_evacuation_cost: HEADQUARTERS_EVACUATION_COST,
+	get_headquarters_destination: get_headquarters_destination,
 	rehome_units: rehome_units,
 	restore_units: restore_units,
 	capture_base: capture_base,

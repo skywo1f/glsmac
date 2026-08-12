@@ -1,7 +1,13 @@
 const move_unit = #include('../default/game/event/move_unit');
 
 const attacker_owner = {id: 1};
-const defender_owner = {id: 2};
+let defender_energy = 1500;
+const defender_owner = {
+	id: 2,
+	get_energy_credits: () => { return defender_energy; },
+	set_energy_credits: (value) => { defender_energy = value; },
+	get_faction: () => { return {name: 'Defenders'}; },
+};
 
 const make_base = (id, owner, distance, initial_queue, initial_headquarters) => {
 	let current_owner = owner;
@@ -9,6 +15,7 @@ const make_base = (id, owner, distance, initial_queue, initial_headquarters) => 
 	let has_headquarters = initial_headquarters;
 	return {
 		id: id,
+		name: 'Base ' + #to_string(id),
 		get_owner: () => { return current_owner; },
 		set_owner: (value) => { current_owner = value; },
 		has_facility: (id) => { return id == 'Headquarters' && has_headquarters; },
@@ -86,11 +93,25 @@ const unrelated_unit = {
 };
 
 let bases = [captured_base, higher_id_base, lower_id_base];
+let allow_evacuation = true;
 const game = {
 	um: {get_units: () => { return [supported_unit, unrelated_unit]; }},
 	bm: {get_bases: () => { return bases; }},
 	tm: {
 		get_distance: (unit_tile, base_tile) => { return base_tile.distance; },
+	},
+	message: (text) => {},
+	trigger: (name, data) => {},
+	get: (key) => {
+		return key == 'f_base_should_evacuate_headquarters'
+			? (base, destination, owner, cost) => {
+				test.assert(base == captured_base);
+				test.assert(destination == lower_id_base);
+				test.assert(owner == defender_owner);
+				test.assert(cost == 1000);
+				return allow_evacuation;
+			}
+			: #undefined;
 	},
 };
 
@@ -103,6 +124,10 @@ event.applied = move_unit.apply(event);
 test.assert(current_tile == destination);
 test.assert(captured_base.get_owner() == attacker_owner);
 test.assert(!captured_base.has_facility('Headquarters'));
+test.assert(lower_id_base.has_facility('Headquarters'));
+test.assert(!higher_id_base.has_facility('Headquarters'));
+test.assert(defender_energy == 500);
+test.assert(event.applied.base_capture.headquarters_evacuation.destination == lower_id_base);
 let captured_queue = captured_base.get_production_queue();
 test.assert(#sizeof(captured_queue) == 1);
 test.assert(captured_queue[0].id == 'AvailableUnit');
@@ -114,6 +139,8 @@ move_unit.rollback(event);
 test.assert(current_tile == source);
 test.assert(captured_base.get_owner() == defender_owner);
 test.assert(captured_base.has_facility('Headquarters'));
+test.assert(!lower_id_base.has_facility('Headquarters'));
+test.assert(defender_energy == 1500);
 captured_queue = captured_base.get_production_queue();
 test.assert(#sizeof(captured_queue) == 2);
 test.assert(captured_queue[0].id == 'LockedUnit');
@@ -123,8 +150,28 @@ bases = [captured_base];
 event.applied = move_unit.apply(event);
 test.assert(captured_base.get_owner() == attacker_owner);
 test.assert(!captured_base.has_facility('Headquarters'));
+test.assert(defender_energy == 1500);
 test.assert(supported_unit.home_base_id == 0);
 move_unit.rollback(event);
 test.assert(captured_base.get_owner() == defender_owner);
 test.assert(captured_base.has_facility('Headquarters'));
 test.assert(supported_unit.home_base_id == captured_base.id);
+
+bases = [captured_base, higher_id_base, lower_id_base];
+defender_energy = 999;
+event.applied = move_unit.apply(event);
+test.assert(!captured_base.has_facility('Headquarters'));
+test.assert(!lower_id_base.has_facility('Headquarters'));
+test.assert(defender_energy == 999);
+move_unit.rollback(event);
+test.assert(captured_base.has_facility('Headquarters'));
+test.assert(defender_energy == 999);
+
+defender_energy = 1500;
+allow_evacuation = false;
+event.applied = move_unit.apply(event);
+test.assert(!captured_base.has_facility('Headquarters'));
+test.assert(!lower_id_base.has_facility('Headquarters'));
+test.assert(defender_energy == 1500);
+move_unit.rollback(event);
+test.assert(captured_base.has_facility('Headquarters'));

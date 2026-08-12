@@ -2,12 +2,15 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const base_capture = #include('../default/game/base_capture');
 
 	let runtime_started = false;
 	let runtime_complete = false;
 	let ui_started = false;
 	let exit_scheduled = false;
 	let observed_bid = null;
+	let headquarters_capture_complete = false;
+	let headquarters_capture_error = null;
 
 	const fail = (message) => {
 		#print('ECONOMIC_VICTORY_RUNTIME_FAIL: ' + message);
@@ -18,7 +21,7 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'ECONOMIC_VICTORY_RUNTIME_PASS: installed assets, market event, base persistence, countdown, and terminal victory verified'
+				'ECONOMIC_VICTORY_RUNTIME_PASS: installed assets, Headquarters evacuation, market persistence, countdown, and terminal victory verified'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -26,6 +29,56 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.register_event('economic_victory_runtime_capture_headquarters', {
+			validate: (event) => {
+				if (event.caller != 0 && event.caller != event.data.player.id) {
+					return 'Only the runtime player may test Headquarters capture';
+				}
+			},
+			apply: (event) => {
+				const player = event.data.player;
+				const captor = event.data.captor;
+				const headquarters = event.data.headquarters;
+				const destination = event.data.destination;
+				const defender_energy = player.get_energy_credits();
+				const captor_energy = captor.get_energy_credits();
+				const capture = base_capture.capture_base(event.game, headquarters, captor);
+				const evacuated_state = event.game.get('f_economic_victory_get_state')(player);
+				let error = null;
+				if (
+					headquarters.get_owner().id != captor.id ||
+					headquarters.has_facility('Headquarters') ||
+					!destination.has_facility('Headquarters') ||
+					capture.headquarters_evacuation == null ||
+					capture.headquarters_evacuation.destination != destination ||
+					player.get_energy_credits() != defender_energy - 1000 ||
+					captor.get_energy_credits() != captor_energy ||
+					evacuated_state == null || evacuated_state.base != destination ||
+					evacuated_state.turn != event.data.state_turn ||
+					evacuated_state.cost != event.data.state_cost
+				) {
+					error = 'Headquarters evacuation did not preserve the bid, destination, or balances';
+				}
+				base_capture.restore_base(headquarters, capture);
+				const restored_state = event.game.get('f_economic_victory_get_state')(player);
+				if (
+					headquarters.get_owner().id != player.id ||
+					!headquarters.has_facility('Headquarters') ||
+					destination.has_facility('Headquarters') ||
+					player.get_energy_credits() != defender_energy ||
+					captor.get_energy_credits() != captor_energy ||
+					restored_state == null || restored_state.base != headquarters ||
+					restored_state.turn != event.data.state_turn ||
+					restored_state.cost != event.data.state_cost
+				) {
+					error = 'Headquarters evacuation did not roll back cleanly';
+				}
+				headquarters_capture_error = error;
+				headquarters_capture_complete = true;
+				return {verified: error == null};
+			},
+			rollback: (event) => {},
+		});
 		game.on('economic_victory_updated', (event) => {
 			if (event.player.id != game.get_player().id) {
 				return;
@@ -132,10 +185,11 @@
 			const expected_cost = game.get('f_economic_victory_get_cost')(player);
 			game.event('corner_global_energy_market', {player: player});
 			let wait_ticks = 0;
+			let capture_requested = false;
 			let victory_requested = false;
 			#async(100, () => {
 				wait_ticks++;
-				if (!victory_requested) {
+				if (!capture_requested) {
 					const state = game.get('f_economic_victory_get_state')(player);
 					if (state == null || observed_bid == null) {
 						if (wait_ticks >= 100) {
@@ -155,6 +209,41 @@
 						fail('market event produced the wrong cost, target, deadline, or reserve balance');
 						return false;
 					}
+					let captor = null;
+					for (candidate of game.get_players()) {
+						if (candidate.id != player.id && candidate.type != 'native') {
+							captor = candidate;
+							break;
+						}
+					}
+					if (captor == null) {
+						fail('quickstart game has no opposing faction for Headquarters capture');
+						return false;
+					}
+					game.event('economic_victory_runtime_capture_headquarters', {
+						player: player,
+						captor: captor,
+						headquarters: headquarters,
+						destination: persistence_base,
+						state_turn: state.turn,
+						state_cost: state.cost,
+					});
+					capture_requested = true;
+					return true;
+				}
+				if (!headquarters_capture_complete) {
+					if (wait_ticks >= 100) {
+						fail('Headquarters evacuation event timed out');
+						return false;
+					}
+					return true;
+				}
+				if (headquarters_capture_error != null) {
+					fail(headquarters_capture_error);
+					return false;
+				}
+				if (!victory_requested) {
+					#print('ECONOMIC_VICTORY_RUNTIME_HEADQUARTERS_EVACUATION_PASS');
 					headquarters.set('economic_victory_turn', game.get_turn());
 					game.get('f_check_economic_victory')();
 					victory_requested = true;

@@ -157,13 +157,12 @@ return {
 			bottom: 3,
 			height: 20,
 		});
-		info.area({
+		this.inefficiency = info.area({
 			align: 'left',
 			width: 442,
 		})
 			.text({
 				class: 'base-screen-frame-info-text',
-				text: 'INTAKE - CONSUMPTION',
 				align: 'center',
 			})
 		;
@@ -222,6 +221,14 @@ return {
 				l.right.text = '-' + this._pad(d.loss - d.profit);
 			}
 		}
+		const energy = data.energy_inefficiency;
+		const efficiency = energy.efficiency >= 0
+			? '+' + #to_string(energy.efficiency)
+			: #to_string(energy.efficiency);
+		this.inefficiency.text =
+			'INEFFICIENCY: ' + #to_string(energy.inefficiency) +
+			'  HQ DISTANCE: ' + #to_string(energy.distance) +
+			'  EFFIC: ' + efficiency;
 	},
 
 };

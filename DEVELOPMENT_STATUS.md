@@ -112,7 +112,7 @@ scenarios, for:
   ECONOMY, PSYCH, and exact terraforming-damage reductions;
 - original-SMAC distance-based energy inefficiency, including EFFIC modifiers,
   the Children's Creche exact +2 local EFFIC bonus, no-headquarters fallback,
-  and starting capitals;
+  starting capitals, and base-screen loss, distance, and EFFIC diagnostics;
 - Stockpile Energy is a repeatable base-production mode that preserves stored
   minerals and converts each turn's mineral surplus directly to reserves at
   the original two-to-one rate, with player UI and conservative AI fallback;
@@ -142,7 +142,8 @@ scenarios, for:
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
   prevent enemy mind control, with relocation by production, faction-wide
-  runtime uniqueness, destruction on enemy capture, and reversible restoration;
+  runtime uniqueness, deterministic 1,000-credit emergency evacuation before
+  enemy capture, active Energy Market bid transfer, and reversible restoration;
 - original-SMAC ecological damage based on local terraforming, worked squares,
   mineral production, ecology facilities, difficulty, discovered technology,
   PLANET rating, native-life setting, and perihelion;
@@ -266,16 +267,15 @@ The following original-SMAC systems remain absent or materially incomplete:
   Council expulsion consequences for major atrocities;
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
-- paid emergency Headquarters evacuation before capture and explicit
-  player-facing inefficiency diagnostics;
 - volcanoes and the original engine's undocumented post-bloom clean-mineral
   facility bonus;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
   abilities such as Cloaking and Deep Pressure Hull;
-- complete UI workflows, player-facing diagnostics, accessibility review,
-  packaging, upgrade migration, and release documentation;
+- complete UI workflows, including the interactive abandon-versus-evacuate
+  Headquarters prompt, accessibility review, packaging, upgrade migration, and
+  release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
   manual playtesting across supported operating systems.
 
@@ -487,6 +487,19 @@ passed in 21.11 seconds against the installed Planetary Pack. Ordinary
 multiplayer passed in 63.92 seconds, and running-game reconnect passed in 56.45
 seconds while verifying that monolith upgrade state survives network
 replication, snapshot serialization, process restart, reload, and turn reset.
+
+After paid emergency Headquarters evacuation and explicit base-screen
+inefficiency diagnostics were added, the Windows x64 Release build succeeded
+and 15 focused capture, combat, movement, probe, native, economy, and AI tests
+passed in 18.31 seconds. Full-game runtime initially exposed an invalid nested
+GSE assignment in the new UI and then a pre-existing real-game capture defect:
+the central capture module used manager aliases available in mocks but not the
+configured runtime. Explicit UI assignment and accessor-backed manager lookup
+fixed both failures. The installed-asset full-game scenario then passed in
+55.95 seconds, and economic victory passed in 25.09 seconds while directly
+capturing and rolling back an active-bid Headquarters, its 1,000-credit charge,
+destination, facility, ownership, balances, and transferred market state. The
+synchronized multiplayer capture scenario passed in 62.18 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -168,6 +168,25 @@ test.assert(actor.get_energy_credits() == 4000);
 test.assert(target.get_energy_credits() == 300);
 test.assert(rules.get_state(game, actor).turn == 25);
 
+const actor_fallback = make_base(actor, 12, 2, []);
+bases :+actor_fallback;
+const evacuated_capture = base_capture.capture_base(game, actor_headquarters, target);
+test.assert(actor_headquarters.get_owner() == target);
+test.assert(!actor_headquarters.has_facility('Headquarters'));
+test.assert(actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 3000);
+test.assert(target.get_energy_credits() == 300);
+test.assert(rules.get_base_state(actor_headquarters) == null);
+test.assert(rules.get_base_state(actor_fallback).turn == 25);
+test.assert(evacuated_capture.headquarters_evacuation.destination == actor_fallback);
+test.assert(!#is_defined(evacuated_capture.economic_victory_capture));
+base_capture.restore_base(actor_headquarters, evacuated_capture);
+test.assert(actor_headquarters.get_owner() == actor);
+test.assert(actor_headquarters.has_facility('Headquarters'));
+test.assert(!actor_fallback.has_facility('Headquarters'));
+test.assert(actor.get_energy_credits() == 4000);
+test.assert(rules.get_state(game, actor).base == actor_headquarters);
+
 corner_market.rollback(event);
 test.assert(actor.get_energy_credits() == 5000);
 test.assert(rules.get_state(game, actor) == null);

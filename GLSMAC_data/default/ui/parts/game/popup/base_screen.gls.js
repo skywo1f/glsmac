@@ -178,6 +178,10 @@ return {
 				loss: consumption.ENERGY,
 			},
 		};
+		const energy_diagnostics = game.get('f_economy_get_base_energy')(base);
+		resource_data.energy.loss =
+			resource_data.energy.loss + energy_diagnostics.inefficiency;
+		resource_data.energy_inefficiency = energy_diagnostics;
 		this.sections.resources.set(resource_data);
 
 		this.sections.energy.set(game.get('f_economy_get_base_allocation')(game, base));
