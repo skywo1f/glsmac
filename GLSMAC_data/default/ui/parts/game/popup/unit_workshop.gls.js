@@ -58,13 +58,28 @@ return {
 	_refresh_existing_action: () => {
 		const id = this.existing_design.value;
 		if (id == '' || !#is_defined(this.existing_designs[id])) {
+			this.retire_confirmation_id = '';
 			this.obsolete_button.hide();
+			this.retire_button.hide();
 			return;
 		}
-		this.obsolete_button.text = this.existing_designs[id].obsolete
+		const obsolete = this.existing_designs[id].obsolete;
+		this.obsolete_button.text = obsolete
 			? 'Reactivate Selected Design'
 			: 'Make Selected Design Obsolete';
 		this.obsolete_button.show();
+		if (!obsolete) {
+			this.retire_confirmation_id = '';
+			this.retire_button.hide();
+			return;
+		}
+		if (this.retire_confirmation_id != id) {
+			this.retire_confirmation_id = '';
+		}
+		this.retire_button.text = this.retire_confirmation_id == id
+			? 'Confirm Permanent Retirement'
+			: 'Retire Selected Design Permanently';
+		this.retire_button.show();
 	},
 
 	_refresh_abilities: () => {
@@ -149,7 +164,9 @@ return {
 			? (waiver ? 'Prototype cost waived at this base.' : 'New prototype components included.')
 			: 'Components already prototyped.';
 		if (preview.exists) {
-			this.status.text = this.player.is_unit_design_obsolete(preview.id)
+			this.status.text = this.player.is_unit_design_retired(preview.id)
+				? 'This design was permanently retired and cannot be recreated.'
+				: this.player.is_unit_design_obsolete(preview.id)
 				? 'This design is obsolete. Reactivate it below to resume production.'
 				: 'This component combination already exists for your faction.';
 			this.prototype_status.text = '';
@@ -165,6 +182,7 @@ return {
 		this.preview = null;
 		this.base = null;
 		this.existing_designs = {};
+		this.retire_confirmation_id = '';
 
 		p.game.on('unit_design_obsolescence_changed', (e) => {
 			if (this.player != null && e.player.id == this.player.id) {
@@ -172,8 +190,15 @@ return {
 				this._refresh(false);
 			}
 		});
+		p.game.on('unit_design_retirement_changed', (e) => {
+			if (this.player != null && e.player.id == this.player.id) {
+				this.retire_confirmation_id = '';
+				this._refresh_existing(e.id);
+				this._refresh(false);
+			}
+		});
 
-		return p.create('UNIT WORKSHOP', 620, 470, (body, cb) => {
+		return p.create('UNIT WORKSHOP', 620, 510, (body, cb) => {
 			const add_label = (text, top) => {
 				body.text({class: 'game-popup-text', text: text, left: 12, top: top + 4});
 			};
@@ -219,11 +244,33 @@ return {
 			this.obsolete_button.on('click', (e) => {
 				const id = this.existing_design.value;
 				if (id != '' && #is_defined(this.existing_designs[id])) {
+					this.retire_confirmation_id = '';
 					this.p.game.event('set_unit_design_obsolete', {
 						id: id,
 						obsolete: !this.existing_designs[id].obsolete,
 					});
 				}
+				return true;
+			});
+			this.retire_button = body.button({
+				class: 'game-popup-button', text: '', top: 410,
+			});
+			this.retire_button.on('click', (e) => {
+				const id = this.existing_design.value;
+				if (
+					id == '' || !#is_defined(this.existing_designs[id]) ||
+					!this.existing_designs[id].obsolete
+				) {
+					return true;
+				}
+				if (this.retire_confirmation_id != id) {
+					this.retire_confirmation_id = id;
+					this._refresh_existing_action();
+					return true;
+				}
+				this.retire_confirmation_id = '';
+				this.retire_button.hide();
+				this.p.game.event('retire_unit_design', {id: id});
 				return true;
 			});
 
@@ -254,13 +301,13 @@ return {
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Cancel', top: 418, is_cancel: true,
+				class: 'game-popup-button', text: 'Cancel', top: 450, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
 			});
 			this.create_button = body.button({
-				class: 'game-popup-button', text: 'Create Design', top: 442, is_ok: true,
+				class: 'game-popup-button', text: 'Create Design', top: 474, is_ok: true,
 			});
 			this.create_button.on('click', (e) => {
 				if (this.preview == null || #is_defined(this.preview.error) || this.preview.exists) {
@@ -306,5 +353,6 @@ return {
 		this.player = null;
 		this.options = null;
 		this.existing_designs = {};
+		this.retire_confirmation_id = '';
 	},
 };

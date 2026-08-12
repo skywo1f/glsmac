@@ -271,6 +271,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetObsoleteUnitDesigns( {
 					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 				} );
+				source.SetRetiredUnitDesigns( {
+					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+				} );
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
@@ -304,6 +307,40 @@ void AddTests( task::gsetests::GSETests* task ) {
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
 					"obsolete unit design state was not cloned"
+				);
+				GT_ASSERT(
+					cloned.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"retired unit design state was not cloned"
+				);
+				bool rejected_retired_reactivation = false;
+				try {
+					cloned.SetObsoleteUnitDesigns( {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_retired_reactivation = true;
+				}
+				GT_ASSERT(
+					rejected_retired_reactivation &&
+						cloned.IsUnitDesignObsolete(
+							"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+						),
+					"retired unit design was reactivated or partially mutated"
+				);
+				Player active_design( "Designer", Player::PR_SINGLE, nullptr, "Citizen" );
+				bool rejected_active_retirement = false;
+				try {
+					active_design.SetRetiredUnitDesigns( {
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_active_retirement = true;
+				}
+				GT_ASSERT(
+					rejected_active_retirement && active_design.GetRetiredUnitDesigns().empty(),
+					"active unit design was retired or partially mutated"
 				);
 				GT_ASSERT(
 					cloned.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
@@ -352,6 +389,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"obsolete unit design state was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"retired unit design state was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
 					"player orbital facilities were not serialized"
 				);
@@ -372,9 +415,28 @@ void AddTests( task::gsetests::GSETests* task ) {
 					obsolete_designs_field.WriteString( id );
 				}
 				const auto obsolete_designs_field_size = obsolete_designs_field.ToString().size();
+				types::Buffer retired_designs_field;
+				retired_designs_field.WriteInt( source.GetRetiredUnitDesigns().size() );
+				for ( const auto& id : source.GetRetiredUnitDesigns() ) {
+					retired_designs_field.WriteString( id );
+				}
+				const auto retired_designs_field_size = retired_designs_field.ToString().size();
+				auto pre_retirement_data = source.Serialize().ToString();
+				pre_retirement_data.resize( pre_retirement_data.size() - retired_designs_field_size );
+				Player pre_retirement( pre_retirement_data );
+				GT_ASSERT(
+					pre_retirement.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					) &&
+					!pre_retirement.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"pre-retirement player data did not preserve obsolete design state"
+				);
 				auto trade_only_council_data = source.Serialize().ToString();
 				trade_only_council_data.resize(
-					trade_only_council_data.size() - obsolete_designs_field_size -
+					trade_only_council_data.size() - retired_designs_field_size -
+						obsolete_designs_field_size -
 						bool_field_size * 2
 				);
 				Player trade_only_council( trade_only_council_data );
@@ -386,7 +448,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - obsolete_designs_field_size -
+					legacy_council_data.size() - retired_designs_field_size -
+						obsolete_designs_field_size -
 						bool_field_size * 3
 				);
 				Player legacy_council( legacy_council_data );

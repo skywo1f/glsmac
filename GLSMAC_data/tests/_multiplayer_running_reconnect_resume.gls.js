@@ -156,6 +156,7 @@
 			let own_base = null;
 			let other_base = null;
 			let upgraded_unit_found = false;
+			let visible_in_workshop = false;
 			for (candidate of game.get_um().get_unit_defs()) {
 				if (candidate.id == id) {
 					def = candidate;
@@ -176,6 +177,12 @@
 					break;
 				}
 			}
+			for (existing of game.get('f_unit_design_get_existing')(player)) {
+				if (existing.id == id) {
+					visible_in_workshop = true;
+					break;
+				}
+			}
 			if (
 				def == null || def.name != workshop_design_name ||
 				def.owner_player_id != player.id || def.chassis != 'Infantry' ||
@@ -185,6 +192,8 @@
 				own_base == null || other_base == null ||
 				!upgraded_unit_found ||
 				!player.is_unit_design_obsolete(id) ||
+				!player.is_unit_design_retired(id) ||
+				visible_in_workshop ||
 				own_base.can_set_production('unit', id) ||
 				other_base.can_set_production('unit', id)
 			) {

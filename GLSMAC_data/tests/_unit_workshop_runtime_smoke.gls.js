@@ -17,7 +17,8 @@
 			exit_scheduled = true;
 			#print(
 				'UNIT_WORKSHOP_RUNTIME_PASS: faction design synchronized, remained private, ' +
-				'entered production, completed an obsolescence cycle, and bulk-upgraded units'
+				'entered production, completed an obsolescence cycle, bulk-upgraded units, ' +
+				'and retired permanently without invalidating field units'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -212,6 +213,54 @@
 					}
 					if (player.get_energy_credits() != bulk_energy - bulk_cost) {
 						fail('bulk upgrade energy charge is invalid');
+						return false;
+					}
+					phase = 6;
+					game.event('set_unit_design_obsolete', {
+						id: preview.id,
+						obsolete: true,
+					});
+					return true;
+				}
+				if (phase == 6 && player.is_unit_design_obsolete(preview.id)) {
+					const production = own_base.get_production();
+					if (
+						own_base.can_set_production('unit', preview.id) ||
+						(#is_defined(production) && production.id == preview.id)
+					) {
+						fail('design remained available or queued before retirement');
+						return false;
+					}
+					phase = 7;
+					game.event('retire_unit_design', {id: preview.id});
+					return true;
+				}
+				if (phase == 7 && player.is_unit_design_retired(preview.id)) {
+					if (
+						!player.is_unit_design_obsolete(preview.id) ||
+						own_base.can_set_production('unit', preview.id)
+					) {
+						fail('retired design did not remain unavailable and obsolete');
+						return false;
+					}
+					for (snapshot of bulk_units) {
+						if (
+							!game.get_um().has_unit(snapshot.id) ||
+							game.get_um().get_unit(snapshot.id).get_def().id != preview.id
+						) {
+							fail('retirement invalidated an existing field unit');
+							return false;
+						}
+					}
+					for (existing of game.get('f_unit_design_get_existing')(player)) {
+						if (existing.id == preview.id) {
+							fail('retired design remains visible in the Workshop list');
+							return false;
+						}
+					}
+					const retired_preview = game.get('f_unit_design_get_preview')(player, selection);
+					if (!retired_preview.exists || retired_preview.id != preview.id) {
+						fail('retired component combination can be recreated');
 						return false;
 					}
 					runtime_complete = true;

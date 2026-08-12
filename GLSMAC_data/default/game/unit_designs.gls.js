@@ -21,7 +21,10 @@ return (game) => {
 	game.set('f_unit_design_get_existing', (player) => {
 		let result = [];
 		for (definition of game.get_um().get_unit_defs()) {
-			if (definition.owner_player_id == player.id) {
+			if (
+				definition.owner_player_id == player.id &&
+				!player.is_unit_design_retired(definition.id)
+			) {
 				result :+{
 					id: definition.id,
 					name: definition.name,

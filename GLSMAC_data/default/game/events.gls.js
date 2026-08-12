@@ -8,6 +8,7 @@ return (game) => {
 		'define_unit',
 		'create_unit_design',
 		'set_unit_design_obsolete',
+		'retire_unit_design',
 		'game_settings',
 		'select_faction',
 		'ready_or_not',

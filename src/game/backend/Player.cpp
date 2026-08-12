@@ -54,6 +54,7 @@ Player::Player( const Player* const other ) {
 	m_integrity_blemishes = other->m_integrity_blemishes;
 	m_prototyped_components = other->m_prototyped_components;
 	m_obsolete_unit_designs = other->m_obsolete_unit_designs;
+	m_retired_unit_designs = other->m_retired_unit_designs;
 	m_orbital_facilities = other->m_orbital_facilities;
 	m_orbital_defense_deployments = other->m_orbital_defense_deployments;
 	m_council_state = other->m_council_state;
@@ -274,7 +275,35 @@ void Player::SetObsoleteUnitDesigns( const obsolete_unit_designs_t& designs ) {
 			THROW( "obsolete unit design ID is invalid" );
 		}
 	}
+	for ( const auto& id : m_retired_unit_designs ) {
+		if ( designs.find( id ) == designs.end() ) {
+			THROW( "retired unit designs must remain obsolete" );
+		}
+	}
 	m_obsolete_unit_designs = designs;
+}
+
+const Player::retired_unit_designs_t& Player::GetRetiredUnitDesigns() const {
+	return m_retired_unit_designs;
+}
+
+bool Player::IsUnitDesignRetired( const std::string& id ) const {
+	return !id.empty() && m_retired_unit_designs.find( id ) != m_retired_unit_designs.end();
+}
+
+void Player::SetRetiredUnitDesigns( const retired_unit_designs_t& designs ) {
+	if ( designs.size() > MAX_RETIRED_UNIT_DESIGNS ) {
+		THROW( "too many retired unit designs" );
+	}
+	for ( const auto& id : designs ) {
+		if ( id.empty() || id.size() > MAX_UNIT_DESIGN_ID_LENGTH ) {
+			THROW( "retired unit design ID is invalid" );
+		}
+		if ( m_obsolete_unit_designs.find( id ) == m_obsolete_unit_designs.end() ) {
+			THROW( "retired unit designs must be obsolete" );
+		}
+	}
+	m_retired_unit_designs = designs;
 }
 
 const Player::orbital_facilities_t& Player::GetOrbitalFacilities() const {
@@ -892,6 +921,51 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_retired_unit_designs",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					gse::value::array_elements_t result = {};
+					result.reserve( m_retired_unit_designs.size() );
+					for ( const auto& id : m_retired_unit_designs ) {
+						result.push_back( VALUE( gse::value::String, , id ) );
+					}
+					return VALUE( gse::value::Array, , result );
+				} )
+			},
+			{
+				"is_unit_design_retired",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( id, 0, String );
+					return VALUE( gse::value::Bool, , IsUnitDesignRetired( id ) );
+				} )
+			},
+			{
+				"set_retired_unit_designs",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( values, 0, Array );
+					retired_unit_designs_t designs = {};
+					for ( size_t i = 0 ; i < values.size() ; i++ ) {
+						N_GETELEMENT( id, values, i, String );
+						if ( !designs.insert( id ).second ) {
+							GSE_ERROR(
+								gse::EC.INVALID_CALL,
+								"Retired unit design IDs must be unique"
+							);
+						}
+					}
+					try {
+						SetRetiredUnitDesigns( designs );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_orbital_facilities",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
@@ -1416,6 +1490,10 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_obsolete_unit_designs ) {
 		buf.WriteString( id );
 	}
+	buf.WriteInt( m_retired_unit_designs.size() );
+	for ( const auto& id : m_retired_unit_designs ) {
+		buf.WriteString( id );
+	}
 
 	return buf;
 }
@@ -1702,6 +1780,23 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	retired_unit_designs_t retired_unit_designs = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto retired_count = buf.ReadCollectionSize( "retired unit design" );
+		if ( retired_count > MAX_RETIRED_UNIT_DESIGNS ) {
+			THROW( "invalid serialized retired unit design count" );
+		}
+		for ( size_t i = 0 ; i < retired_count ; i++ ) {
+			const auto id = buf.ReadString();
+			if (
+				id.empty() || id.size() > MAX_UNIT_DESIGN_ID_LENGTH ||
+				obsolete_unit_designs.find( id ) == obsolete_unit_designs.end() ||
+				!retired_unit_designs.insert( id ).second
+			) {
+				THROW( "invalid or duplicate serialized retired unit design" );
+			}
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1730,6 +1825,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_integrity_blemishes = integrity_blemishes;
 	m_prototyped_components = std::move( prototyped_components );
 	m_obsolete_unit_designs = std::move( obsolete_unit_designs );
+	m_retired_unit_designs = std::move( retired_unit_designs );
 	m_orbital_facilities = std::move( orbital_facilities );
 	m_orbital_defense_deployments = orbital_defense_deployments;
 	m_council_state = std::move( council_state );

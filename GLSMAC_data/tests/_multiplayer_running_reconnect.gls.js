@@ -402,6 +402,7 @@
 			let workshop_requested = false;
 			let workshop_bulk_requested = false;
 			let workshop_obsolete_requested = false;
+			let workshop_retire_requested = false;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -601,6 +602,20 @@
 							glsmac.exit();
 							return false;
 						}
+						if (!game.get_player().is_unit_design_retired(workshop_id)) {
+							if (!workshop_retire_requested) {
+								workshop_retire_requested = true;
+								game.event('retire_unit_design', {id: workshop_id});
+							}
+							return true;
+						}
+						for (existing of game.get('f_unit_design_get_existing')(game.get_player())) {
+							if (existing.id == workshop_id) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: retired Workshop design remains visible');
+								glsmac.exit();
+								return false;
+							}
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
@@ -609,6 +624,7 @@
 						#print('RUNNING_RECONNECT_UNIT_DEF_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_BULK_UPGRADE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_OBSOLETE_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_UNIT_RETIRED_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;
 					}

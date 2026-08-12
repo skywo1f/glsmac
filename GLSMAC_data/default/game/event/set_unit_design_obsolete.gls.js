@@ -49,6 +49,9 @@ return {
 		if (!definition.buildable || definition.is_native) {
 			return 'This unit design cannot be managed by the Workshop';
 		}
+		if (player.is_unit_design_retired(e.data.id)) {
+			return 'Retired unit designs cannot be reactivated or managed';
+		}
 	},
 
 	apply: (e) => {
