@@ -312,13 +312,16 @@
 					return;
 				}
 				player.set_ecological_damage_events(3);
+				player.set_clean_mineral_facilities(4);
 				if (
-					game.get('f_ecology_get_base_damage')(base).clean_allowance != 19
+					game.get('f_ecology_get_base_damage')(base).clean_allowance != 23 ||
+					player.get_clean_mineral_facilities() != 4
 				) {
-					fail('fungal bloom clean-mineral allowance did not update');
+					fail('persistent clean-mineral allowance did not update');
 					return;
 				}
 				player.set_ecological_damage_events(0);
+				player.set_clean_mineral_facilities(0);
 				const unit_defs = game.get_um().get_unit_defs();
 				let found_late_land_unit = false;
 				let found_sea_unit = false;

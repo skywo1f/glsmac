@@ -80,6 +80,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr size_t MAX_TECHNOLOGIES = 1024;
 	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
 	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
+	static constexpr int64_t MAX_CLEAN_MINERAL_FACILITIES = 1000000;
 	static constexpr int64_t MAX_MAJOR_ATROCITIES = 1000000;
 	static constexpr int64_t MAX_SANCTION_TURNS = 1000000;
 	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
@@ -105,6 +106,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetEnergyCredits( const int64_t energy_credits );
 	int64_t GetEcologicalDamageEvents() const;
 	void SetEcologicalDamageEvents( const int64_t ecological_damage_events );
+	int64_t GetCleanMineralFacilities() const;
+	void SetCleanMineralFacilities( const int64_t clean_mineral_facilities );
 	int64_t GetMajorAtrocities() const;
 	void SetMajorAtrocities( const int64_t major_atrocities );
 	int64_t GetSanctionTurns() const;
@@ -302,6 +305,7 @@ private:
 	int64_t m_research_progress = 0;
 	int64_t m_energy_credits = 0;
 	int64_t m_ecological_damage_events = 0;
+	int64_t m_clean_mineral_facilities = 0;
 	int64_t m_major_atrocities = 0;
 	int64_t m_sanction_turns = 0;
 	int64_t m_integrity_blemishes = 0;

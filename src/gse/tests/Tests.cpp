@@ -265,6 +265,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetResearchState( { "CentauriEcology" }, "", 0 );
 				source.SetEnergyCredits( 73 );
 				source.SetEcologicalDamageEvents( 4 );
+				source.SetCleanMineralFacilities( 3 );
 				source.SetMajorAtrocities( 2 );
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
@@ -306,6 +307,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetDiplomaticLoanOffer( 6, loan_offer );
 				source.SetDiplomaticLoan( 7, loan );
 				Player cloned( &source );
+				GT_ASSERT(
+					cloned.GetCleanMineralFacilities() == 3,
+					"player clean mineral facility count was not cloned"
+				);
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
 				GT_ASSERT( cloned.GetSanctionTurns() == 10, "player sanction duration was not cloned" );
 				GT_ASSERT(
@@ -395,6 +400,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					roundtrip.GetEcologicalDamageEvents() == 4,
 					"player ecological damage event count was not serialized"
 				);
+				GT_ASSERT(
+					roundtrip.GetCleanMineralFacilities() == 3,
+					"player clean mineral facility count was not serialized"
+				);
 				GT_ASSERT( roundtrip.GetMajorAtrocities() == 2, "player major atrocity count was not serialized" );
 				GT_ASSERT( roundtrip.GetSanctionTurns() == 10, "player sanction duration was not serialized" );
 				GT_ASSERT(
@@ -460,7 +469,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 					player_extension.WriteInt( x );
 					player_extension.WriteInt( y );
 				}
+				player_extension.WriteInt( source.GetCleanMineralFacilities() );
 				const auto player_extension_size = player_extension.ToString().size();
+				types::Buffer clean_mineral_facilities_field;
+				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
+				const auto clean_mineral_facilities_field_size =
+					clean_mineral_facilities_field.ToString().size();
+				auto pre_clean_mineral_data = source.Serialize().ToString();
+				pre_clean_mineral_data.resize(
+					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size
+				);
+				Player pre_clean_mineral( pre_clean_mineral_data );
+				GT_ASSERT(
+					pre_clean_mineral.GetCleanMineralFacilities() == 0,
+					"older player data did not default its clean mineral facility count"
+				);
 				types::Buffer version_one_extension;
 				version_one_extension.WriteInt( 1 );
 				version_one_extension.WriteBool( false );
@@ -479,6 +502,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					version_one.HasExploredTile( 100, 100 ),
 					"version-one player data did not preserve legacy map visibility"
+				);
+				GT_ASSERT(
+					version_one.GetCleanMineralFacilities() == 0,
+					"version-one player data did not default its clean mineral facility count"
 				);
 				GT_ASSERT(
 					version_one.GetDiplomaticTrade( 5 ) &&

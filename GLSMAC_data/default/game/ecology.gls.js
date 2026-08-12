@@ -2,6 +2,12 @@ const ECOLOGICAL_IMPROVEMENTS = [
 	'road', 'mag_tube', 'farm', 'soil_enricher', 'mine', 'solar',
 	'condenser', 'mirror', 'borehole',
 ];
+const CLEAN_MINERAL_FACILITIES = {
+	TreeFarm: true,
+	HybridForest: true,
+	CentauriPreserve: true,
+	TempleOfPlanet: true,
+};
 const CLIMATE_BASE_TRIGGER = 12;
 const CLIMATE_PROGRESS_TARGET = 20;
 const CLIMATE_SEA_LEVEL_STEP = 100;
@@ -43,7 +49,8 @@ const calculate = (context) => {
 		#floor(#to_float(terraforming_after_facilities) / 8.0),
 		0
 	);
-	const clean_allowance = 16 + context.previous_damages;
+	const clean_allowance = 16 + context.previous_damages +
+		context.clean_mineral_facilities;
 	const clean_terraforming = #min(terraforming_before_clean, clean_allowance);
 	const terraforming_damage = terraforming_before_clean - clean_terraforming;
 	const clean_minerals = #min(
@@ -79,6 +86,7 @@ const calculate = (context) => {
 		terraforming_after_facilities: terraforming_after_facilities,
 		terraforming_before_clean: terraforming_before_clean,
 		clean_allowance: clean_allowance,
+		clean_mineral_facilities: context.clean_mineral_facilities,
 		clean_terraforming: clean_terraforming,
 		terraforming_damage: terraforming_damage,
 		minerals: context.minerals,
@@ -139,6 +147,7 @@ const get_base_damage = (game, base) => {
 			: 0,
 		minerals: base.get_intake().MINERALS,
 		previous_damages: owner.get_ecological_damage_events(),
+		clean_mineral_facilities: owner.get_clean_mineral_facilities(),
 		major_atrocities: owner.get_major_atrocities(),
 		technologies: #sizeof(owner.get_research_state().technologies),
 		planet: ratings.planet,
@@ -146,6 +155,30 @@ const get_base_damage = (game, base) => {
 		difficulty: difficulty_level == 'Thinker' || difficulty_level == 'Transcend' ? 5 : 3,
 		perihelion: is_perihelion(game.get_year()),
 	});
+};
+
+const apply_facility_completion = (base, facility_id) => {
+	if (
+		!#is_defined(CLEAN_MINERAL_FACILITIES[facility_id]) ||
+		!CLEAN_MINERAL_FACILITIES[facility_id]
+	) {
+		return #undefined;
+	}
+	const player = base.get_owner();
+	if (player.get_ecological_damage_events() <= 0) {
+		return #undefined;
+	}
+	const previous_count = player.get_clean_mineral_facilities();
+	player.set_clean_mineral_facilities(previous_count + 1);
+	return {
+		player: player,
+		previous_count: previous_count,
+		facility_id: facility_id,
+	};
+};
+
+const rollback_facility_completion = (applied) => {
+	applied.player.set_clean_mineral_facilities(applied.previous_count);
 };
 
 const get_tile_key = (tile) => {
@@ -245,6 +278,8 @@ return (game) => {
 		game.set('f_ecology_get_base_damage', (base) => { return get_base_damage(game, base); });
 		game.set('f_ecology_get_life_level', get_life_level);
 		game.set('f_ecology_is_perihelion', is_perihelion);
+		game.set('f_ecology_apply_facility_completion', apply_facility_completion);
+		game.set('f_ecology_rollback_facility_completion', rollback_facility_completion);
 		game.set('f_ecology_get_climate_trigger', get_climate_trigger);
 		game.set('f_ecology_advance_climate_damage', (owner) => {
 			return advance_climate_damage(game, owner);

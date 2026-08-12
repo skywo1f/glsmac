@@ -132,6 +132,7 @@ return {
 		let network_node_link_state = #undefined;
 		let prototype_state = #undefined;
 		let orbital_launch = #undefined;
+		let ecology_facility_completion = #undefined;
 
 		if (#is_defined(production)) {
 			const pending_minerals = e.game.get('f_base_get_pending_production')(base);
@@ -229,6 +230,15 @@ return {
 						} else {
 							base.add_facility(production.id);
 							completed_facility = production.id;
+							const apply_ecology_completion = e.game.get(
+								'f_ecology_apply_facility_completion'
+							);
+							if (#is_defined(apply_ecology_completion)) {
+								ecology_facility_completion = apply_ecology_completion(
+									base,
+									production.id
+								);
+							}
 						}
 						if (production.id == 'NetworkNode') {
 							const linked_key = 'network_node_artifact_linked';
@@ -300,6 +310,7 @@ return {
 			network_node_link_state: network_node_link_state,
 			prototype_state: prototype_state,
 			orbital_launch: orbital_launch,
+			ecology_facility_completion: ecology_facility_completion,
 		};
 	},
 
@@ -320,6 +331,11 @@ return {
 		}
 		if (#is_defined(e.applied.orbital_launch)) {
 			e.game.get('f_orbital_rollback_launch')(e.applied.orbital_launch);
+		}
+		if (#is_defined(e.applied.ecology_facility_completion)) {
+			e.game.get('f_ecology_rollback_facility_completion')(
+				e.applied.ecology_facility_completion
+			);
 		}
 		if (#is_defined(e.applied.completed_facility)) {
 			e.data.base.remove_facility(e.applied.completed_facility);

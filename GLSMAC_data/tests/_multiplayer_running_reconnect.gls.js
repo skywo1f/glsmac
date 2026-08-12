@@ -11,6 +11,7 @@
 	const initial_nutrient_stamp = 37;
 	const initial_mineral_stamp = 23;
 	const initial_energy_stamp = 137;
+	const clean_mineral_facilities_stamp = 5;
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
@@ -87,18 +88,28 @@
 
 		game.register_event('running_reconnect_set_energy', {
 			validate: (e) => {
-				if (#typeof(e.data.energy_credits) != 'Int' || e.data.energy_credits < 0) {
+				if (
+					#typeof(e.data.energy_credits) != 'Int' || e.data.energy_credits < 0 ||
+					#typeof(e.data.clean_mineral_facilities) != 'Int' ||
+					e.data.clean_mineral_facilities < 0
+				) {
 					return 'Invalid reconnect energy stamp';
 				}
 			},
 			apply: (e) => {
 				const player = e.game.get_player(e.caller);
-				const previous = player.energy_credits;
+				const previous = {
+					energy_credits: player.energy_credits,
+					clean_mineral_facilities: player.get_clean_mineral_facilities(),
+				};
 				player.set_energy_credits(e.data.energy_credits);
-				return {energy_credits: previous};
+				player.set_clean_mineral_facilities(e.data.clean_mineral_facilities);
+				return previous;
 			},
 			rollback: (e) => {
-				e.game.get_player(e.caller).set_energy_credits(e.applied.energy_credits);
+				const player = e.game.get_player(e.caller);
+				player.set_energy_credits(e.applied.energy_credits);
+				player.set_clean_mineral_facilities(e.applied.clean_mineral_facilities);
 			},
 		});
 
@@ -506,11 +517,16 @@
 							glsmac.exit();
 							return false;
 						}
-						if (game.get_player().energy_credits != initial_energy_stamp) {
+						if (
+							game.get_player().energy_credits != initial_energy_stamp ||
+							game.get_player().get_clean_mineral_facilities() !=
+								clean_mineral_facilities_stamp
+						) {
 							if (!energy_requested) {
 								energy_requested = true;
 								game.event('running_reconnect_set_energy', {
 									energy_credits: initial_energy_stamp,
+									clean_mineral_facilities: clean_mineral_facilities_stamp,
 								});
 							}
 							return true;
@@ -1022,6 +1038,14 @@
 				}
 			}
 			else if (turn_id == 2 && game.is_master() && !exit_scheduled) {
+				if (
+					game.get_player(get_remote_player_id()).get_clean_mineral_facilities() !=
+						clean_mineral_facilities_stamp
+				) {
+					#print('RUNNING_RECONNECT_FAIL_HOST: clean mineral state changed after reconnect');
+					glsmac.exit();
+					return;
+				}
 				if (
 					!game.get_um().has_unit(air_snapshot_unit_id) ||
 					game.get_um().get_unit(air_snapshot_unit_id).airdropped_this_turn ||

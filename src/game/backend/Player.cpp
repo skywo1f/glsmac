@@ -51,6 +51,7 @@ Player::Player( const Player* const other ) {
 	m_research_progress = other->m_research_progress;
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
+	m_clean_mineral_facilities = other->m_clean_mineral_facilities;
 	m_major_atrocities = other->m_major_atrocities;
 	m_sanction_turns = other->m_sanction_turns;
 	m_integrity_blemishes = other->m_integrity_blemishes;
@@ -209,6 +210,17 @@ void Player::SetEcologicalDamageEvents( const int64_t ecological_damage_events )
 		THROW( "player ecological damage event count is out of range" );
 	}
 	m_ecological_damage_events = ecological_damage_events;
+}
+
+int64_t Player::GetCleanMineralFacilities() const {
+	return m_clean_mineral_facilities;
+}
+
+void Player::SetCleanMineralFacilities( const int64_t clean_mineral_facilities ) {
+	if ( clean_mineral_facilities < 0 || clean_mineral_facilities > MAX_CLEAN_MINERAL_FACILITIES ) {
+		THROW( "player clean mineral facility count is out of range" );
+	}
+	m_clean_mineral_facilities = clean_mineral_facilities;
 }
 
 int64_t Player::GetMajorAtrocities() const {
@@ -838,6 +850,29 @@ WRAPIMPL_BEGIN( Player )
 						GSE_ERROR( gse::EC.INVALID_CALL, "Player ecological damage event count is out of range" );
 					}
 					SetEcologicalDamageEvents( ecological_damage_events );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_clean_mineral_facilities",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , m_clean_mineral_facilities );
+				} )
+			},
+			{
+				"set_clean_mineral_facilities",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( clean_mineral_facilities, 0, Int );
+					if (
+						clean_mineral_facilities < 0 ||
+						clean_mineral_facilities > MAX_CLEAN_MINERAL_FACILITIES
+					) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Player clean mineral facility count is out of range" );
+					}
+					SetCleanMineralFacilities( clean_mineral_facilities );
 					return VALUE( gse::value::Undefined );
 				} )
 			},
@@ -1680,6 +1715,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( x );
 		buf.WriteInt( y );
 	}
+	buf.WriteInt( m_clean_mineral_facilities );
 
 	return buf;
 }
@@ -1985,6 +2021,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	bool legacy_unrestricted_contact = true;
 	explored_tiles_t explored_tiles = {};
 	bool legacy_full_map_visibility = true;
+	int64_t clean_mineral_facilities = 0;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto contact_version = buf.ReadInt();
 		if ( contact_version != 1 && contact_version != 2 ) {
@@ -2049,6 +2086,15 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	if ( buf.GetRemaining() > 0 ) {
+		clean_mineral_facilities = buf.ReadInt();
+		if (
+			clean_mineral_facilities < 0 ||
+			clean_mineral_facilities > MAX_CLEAN_MINERAL_FACILITIES
+		) {
+			THROW( "invalid serialized player clean mineral facility count" );
+		}
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2069,6 +2115,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_research_progress = research_progress;
 	m_energy_credits = energy_credits;
 	m_ecological_damage_events = ecological_damage_events;
+	m_clean_mineral_facilities = clean_mineral_facilities;
 	m_social_engineering = std::move( social_engineering );
 	m_diplomatic_relations = std::move( diplomatic_relations );
 	m_diplomatic_offers = std::move( diplomatic_offers );

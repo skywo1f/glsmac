@@ -288,6 +288,8 @@ let competing_has_headquarters = false;
 let datalinks_queues = 0;
 let project_completion_applications = [];
 let project_completion_rollbacks = [];
+let ecology_completion_applications = [];
+let ecology_completion_rollbacks = [];
 let base_custom = {};
 let competing_custom = {};
 
@@ -671,6 +673,21 @@ game = {
 				project_completion_rollbacks :+applied.project_id;
 			};
 		}
+		if (key == 'f_ecology_apply_facility_completion') {
+			return (target_base, facility_id) => {
+				if (facility_id != 'CentauriPreserve') {
+					return #undefined;
+				}
+				test.assert(target_base == base);
+				ecology_completion_applications :+facility_id;
+				return {facility_id: facility_id};
+			};
+		}
+		if (key == 'f_ecology_rollback_facility_completion') {
+			return (applied) => {
+				ecology_completion_rollbacks :+applied.facility_id;
+			};
+		}
 		if (key == 'f_orbital_apply_launch') {
 			return (target_base, definition) => {
 				test.assert(target_base == base && definition == sky_hydroponics);
@@ -928,6 +945,21 @@ process_base_production.rollback(event);
 test.assert(accumulated_minerals == 35);
 test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:SporeLauncher']);
 test.assert(!has_facility('RecyclingTanks'));
+
+production_queue = [centauri_preserve];
+built_facilities = [];
+accumulated_minerals = 95;
+ecology_completion_applications = [];
+ecology_completion_rollbacks = [];
+event.applied = process_base_production.apply(event);
+test.assert(has_facility('CentauriPreserve'));
+test.assert(ecology_completion_applications == ['CentauriPreserve']);
+test.assert(event.applied.ecology_facility_completion == {
+	facility_id: 'CentauriPreserve',
+});
+process_base_production.rollback(event);
+test.assert(!has_facility('CentauriPreserve'));
+test.assert(ecology_completion_rollbacks == ['CentauriPreserve']);
 
 production_queue = [human_genome_project, spore_launcher];
 competing_production_queue = [land_patrol, human_genome_project, sea_patrol];

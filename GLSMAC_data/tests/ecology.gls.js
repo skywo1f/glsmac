@@ -41,6 +41,7 @@ let context = {
 	},
 	minerals: 30,
 	previous_damages: 0,
+	clean_mineral_facilities: 0,
 	major_atrocities: 0,
 	technologies: 20,
 	planet: 0,
@@ -81,6 +82,13 @@ result = values.f_ecology_calculate(context);
 test.assert(result.clean_allowance == 24);
 test.assert(result.clean_minerals == 24);
 test.assert(result.mineral_damage == 2);
+
+context.clean_mineral_facilities = 4;
+result = values.f_ecology_calculate(context);
+test.assert(result.clean_allowance == 28);
+test.assert(result.clean_minerals == 28);
+test.assert(result.mineral_damage == 0);
+context.clean_mineral_facilities = 0;
 
 context.major_atrocities = 2;
 result = values.f_ecology_calculate(context);
@@ -134,6 +142,8 @@ test.assert(climate_state.progress == 0);
 
 let is_master = true;
 let submitted_events = [];
+let runtime_ecological_damage_events = 0;
+let runtime_clean_mineral_facilities = 0;
 const runtime_owner = {
 	difficulty_level: 'Transcend',
 	get_research_state: () => {
@@ -144,7 +154,9 @@ const runtime_owner = {
 			],
 		};
 	},
-	get_ecological_damage_events: () => { return 0; },
+	get_ecological_damage_events: () => { return runtime_ecological_damage_events; },
+	get_clean_mineral_facilities: () => { return runtime_clean_mineral_facilities; },
+	set_clean_mineral_facilities: (count) => { runtime_clean_mineral_facilities = count; },
 	get_major_atrocities: () => { return 0; },
 };
 const runtime_tile = {
@@ -170,6 +182,23 @@ game.get_settings = () => {
 game.get_year = () => { return 2200; };
 game.random = {get_int: (minimum, maximum) => { return minimum; }};
 game.event = (name, data) => { submitted_events :+{name: name, data: data}; };
+
+test.assert(!#is_defined(
+	values.f_ecology_apply_facility_completion(runtime_base, 'TreeFarm')
+));
+test.assert(runtime_clean_mineral_facilities == 0);
+runtime_ecological_damage_events = 1;
+test.assert(!#is_defined(
+	values.f_ecology_apply_facility_completion(runtime_base, 'RecyclingTanks')
+));
+const clean_completion = values.f_ecology_apply_facility_completion(
+	runtime_base,
+	'CentauriPreserve'
+);
+test.assert(clean_completion.facility_id == 'CentauriPreserve');
+test.assert(runtime_clean_mineral_facilities == 1);
+values.f_ecology_rollback_facility_completion(clean_completion);
+test.assert(runtime_clean_mineral_facilities == 0);
 
 callbacks.turn({});
 test.assert(#sizeof(submitted_events) == 1);

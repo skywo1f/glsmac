@@ -267,8 +267,7 @@ The following original-SMAC systems remain absent or materially incomplete:
   Council expulsion consequences for major atrocities;
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
-- volcanoes and the original engine's undocumented post-bloom clean-mineral
-  facility bonus;
+- volcanoes;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
