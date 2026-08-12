@@ -1,5 +1,6 @@
 const base_capture = #include('../base_capture');
-const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
+const snapshots = #include('../entity_snapshots');
+const snapshot_unit = snapshots.snapshot_unit;
 
 const is_un_charter_active = (game) => {
 	const is_repealed = game.get('f_council_is_un_charter_repealed');
@@ -23,26 +24,12 @@ const get_sabotage_facilities = (base) => {
 };
 
 const spawn_snapshot = (game, snapshot, owner_id, transferred) => {
-	const unit = game.um.spawn_unit({
-		id: snapshot.id,
-		def: snapshot.def,
-		owner: game.get_player(owner_id),
-		tile: game.tm.get_tile(snapshot.tile_x, snapshot.tile_y),
-		morale: snapshot.morale,
-		health: snapshot.health,
-		terraforming: transferred ? 'none' : snapshot.terraforming,
-		terraforming_turns_remaining: transferred ? 0 : snapshot.terraforming_turns_remaining,
-		home_base_id: transferred ? 0 : snapshot.home_base_id,
-		fuel: snapshot.fuel,
-		transport_id: snapshot.transport_id,
-		convoy_resource: transferred ? 'none' : snapshot.convoy_resource,
-		airdropped_this_turn: transferred ? false : snapshot.airdropped_this_turn,
-	});
-	unit.movement = transferred ? 0.0 : snapshot.movement;
-	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
-	unit.native_capture_attempted = transferred ? false : snapshot.native_capture_attempted;
-	unit.airdropped_this_turn = transferred ? false : snapshot.airdropped_this_turn;
-	return unit;
+	return snapshots.spawn_unit_snapshot_as(
+		game,
+		snapshot,
+		game.get_player(owner_id),
+		transferred
+	);
 };
 
 const despawn_snapshots = (game, snapshots) => {

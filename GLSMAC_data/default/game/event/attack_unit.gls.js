@@ -53,21 +53,7 @@ const restore_unit = (e, backup) => {
 	if (e.game.um.has_unit(backup.id)) {
 		unit = e.game.um.get_unit(backup.id);
 	} else {
-		unit = e.game.um.spawn_unit({
-			id: backup.id,
-			def: backup.def,
-			owner: e.game.get_player(backup.owner),
-			tile: e.game.tm.get_tile(backup.tile_x, backup.tile_y),
-			morale: backup.morale,
-			health: backup.health,
-			terraforming: backup.terraforming,
-			terraforming_turns_remaining: backup.terraforming_turns_remaining,
-			home_base_id: backup.home_base_id,
-			fuel: backup.fuel,
-			transport_id: backup.transport_id,
-			convoy_resource: backup.convoy_resource,
-			airdropped_this_turn: backup.airdropped_this_turn,
-		});
+		unit = entity_snapshots.spawn_unit_snapshot(e.game, backup);
 	}
 	unit.set_terraforming_order(backup.terraforming, backup.terraforming_turns_remaining);
 	unit.set_fuel(backup.fuel);
@@ -80,6 +66,8 @@ const restore_unit = (e, backup) => {
 	unit.moved_this_turn = backup.moved_this_turn;
 	unit.native_capture_attempted = backup.native_capture_attempted;
 	unit.airdropped_this_turn = backup.airdropped_this_turn;
+	unit.monolith_upgraded = #is_defined(backup.monolith_upgraded)
+		? backup.monolith_upgraded : false;
 };
 
 const promote_unit = (um, unit) => {

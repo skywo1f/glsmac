@@ -1,26 +1,9 @@
 const MAX_BASE_NAME_LENGTH = 64;
-const snapshot_unit = #include('../entity_snapshots').snapshot_unit;
+const snapshots = #include('../entity_snapshots');
+const snapshot_unit = snapshots.snapshot_unit;
 
 const restore_unit = (e, backup) => {
-	const unit = e.game.um.spawn_unit({
-		id: backup.id,
-		def: backup.def,
-		owner: e.game.get_player(backup.owner),
-		tile: e.game.tm.get_tile(backup.tile_x, backup.tile_y),
-		morale: backup.morale,
-		health: backup.health,
-		terraforming: backup.terraforming,
-		terraforming_turns_remaining: backup.terraforming_turns_remaining,
-		home_base_id: backup.home_base_id,
-		fuel: backup.fuel,
-		transport_id: backup.transport_id,
-		convoy_resource: backup.convoy_resource,
-		airdropped_this_turn: backup.airdropped_this_turn,
-	});
-	unit.movement = backup.movement;
-	unit.moved_this_turn = backup.moved_this_turn;
-	unit.native_capture_attempted = backup.native_capture_attempted;
-	unit.airdropped_this_turn = backup.airdropped_this_turn;
+	snapshots.spawn_unit_snapshot(e.game, backup);
 };
 
 const get_initial_production = (game, owner, tile) => {

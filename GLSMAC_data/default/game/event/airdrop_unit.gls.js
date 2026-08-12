@@ -1,5 +1,6 @@
 const rules = #include('../airdrop_rules');
 const snapshots = #include('../entity_snapshots');
+const monoliths = #include('../monoliths');
 
 const collect_group = (unit, result) => {
 	result :+unit;
@@ -46,6 +47,7 @@ return {
 		e.data.unit.teleport_to_tile(e.data.destination);
 		let destroyed = [];
 		let destroyed_ids = {};
+		let monolith_visits = [];
 		for (let i = 0; i < #sizeof(group); i++) {
 			const unit = group[i];
 			const damage = find_damage(e.resolved, unit.id);
@@ -62,6 +64,17 @@ return {
 			) {
 				destroyed :+unit;
 				destroyed_ids['u' + #to_string(unit.id)] = true;
+			}
+		}
+		if (
+			#typeof(e.data.destination.features) == 'Object' &&
+			#is_defined(e.data.destination.features.monolith) &&
+			e.data.destination.features.monolith
+		) {
+			for (unit of group) {
+				if (unit.health > 0.0) {
+					monolith_visits :+monoliths.apply(e.game, unit);
+				}
 			}
 		}
 
@@ -98,10 +111,16 @@ return {
 				}
 			}
 		}
-		return {units: state};
+		return {units: state, monolith_visits: monolith_visits};
 	},
 
 	rollback: (e) => {
+		for (let i = #sizeof(e.applied.monolith_visits) - 1; i >= 0; i--) {
+			const visit = e.applied.monolith_visits[i];
+			if (e.game.get_um().has_unit(visit.unit_id)) {
+				monoliths.rollback(visit, e.game.get_um().get_unit(visit.unit_id));
+			}
+		}
 		const carrier_snapshot = e.applied.units[0];
 		if (e.game.get_um().has_unit(carrier_snapshot.id)) {
 			const carrier = e.game.get_um().get_unit(carrier_snapshot.id);

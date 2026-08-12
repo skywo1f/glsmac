@@ -35,8 +35,8 @@ const run_case = (kind, verify_resolve) => {
 	let elevation = 1000;
 
 	const center = {
-		x: 10,
-		y: 10,
+		x: 0,
+		y: 0,
 		is_water: false,
 		is_land: true,
 		elevation: 1000,
@@ -96,6 +96,13 @@ const run_case = (kind, verify_resolve) => {
 			bonus_state.energy = name == 'energy';
 			bonus_state.minerals = name == 'minerals';
 		},
+	};
+	const gate_destination = {
+		x: 2,
+		y: 0,
+		is_water: false,
+		get_base: () => { return null; },
+		is_locked: () => { return false; },
 	};
 
 	let energy_credits = 100;
@@ -160,7 +167,7 @@ const run_case = (kind, verify_resolve) => {
 	};
 
 	const definitions = [
-		{id: 'ScoutPatrol', name: 'Scout Patrol', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0},
+		{id: 'ScoutPatrol', name: 'Scout Patrol', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0, movement_per_turn: 3.0, is_native: false},
 		{id: 'AlienArtifact', name: 'Alien Artifact', offense: 0, weapon: 'AlienArtifact', cargo_capacity: 0},
 		{id: 'UnityRover', name: 'Unity Rover', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0},
 		{id: 'UnityScoutChopper', name: 'Unity Scout Chopper', offense: 1, weapon: 'HandWeapons', cargo_capacity: 0},
@@ -176,6 +183,7 @@ const run_case = (kind, verify_resolve) => {
 	};
 	let unit_health = 0.5;
 	let unit_morale = 2;
+	let unit_tile = center;
 	const unit = {
 		id: 1,
 		owner: player.id,
@@ -183,8 +191,12 @@ const run_case = (kind, verify_resolve) => {
 		moved_this_turn: false,
 		health: unit_health,
 		morale: unit_morale,
+		monolith_upgraded: false,
+		is_water: false,
 		get_def: () => { return find_definition('ScoutPatrol'); },
-		get_tile: () => { return center; },
+		get_owner: () => { return player; },
+		get_tile: () => { return unit_tile; },
+		teleport_to_tile: (tile) => { unit_tile = tile; },
 		get_cargo: () => { return []; },
 	};
 
@@ -197,7 +209,8 @@ const run_case = (kind, verify_resolve) => {
 	let earthquake_applies = 0;
 	let earthquake_restores = 0;
 	const native_player = {id: 8, name: 'Planet'};
-	const game = {
+	let game = #undefined;
+	game = {
 		random: {
 			get_int: (low, high) => {
 				const value = rolls[roll_index];
@@ -209,6 +222,7 @@ const run_case = (kind, verify_resolve) => {
 		get_turn: () => { return 20; },
 		get_player: (id) => { return player; },
 		get_players: () => { return [player, other_player]; },
+		get_tm: () => { return game.tm; },
 		get_native_player: () => { return native_player; },
 		get: (key) => {
 			if (key == 'f_exploration_apply_reveal') {
@@ -245,6 +259,9 @@ const run_case = (kind, verify_resolve) => {
 		},
 		bm: {get_bases: () => { return [production_base]; }},
 		tm: {
+			get_map_width: () => { return 4; },
+			get_map_height: () => { return 1; },
+			get_tile: (x, y) => { return x == 0 ? center : gate_destination; },
 			get_distance: (first, second) => { return #abs(first.x - second.x) + #abs(first.y - second.y); },
 			apply_earthquake: (tile, steps) => {
 				test.assert(steps == 2);
@@ -327,6 +344,12 @@ const run_case = (kind, verify_resolve) => {
 		resolution.improvement = 'mine';
 	} else if (kind == 'clone') {
 		resolution.unit_def = 'ScoutPatrol';
+	} else if (kind == 'gate') {
+		rolls = [0];
+		roll_index = 0;
+		const gate = unity_pods.make_resolution(game, unit, center, 'gate');
+		test.assert(gate != null && gate.destination == gate_destination);
+		resolution.destination = gate_destination;
 	} else if (kind == 'native') {
 		resolution.outbreak = {
 			spawns: [{
@@ -358,7 +381,10 @@ const run_case = (kind, verify_resolve) => {
 	} else if (kind == 'fungus') {
 		test.assert(feature_state.xenofungus && !terraforming_state.forest);
 	} else if (kind == 'monolith') {
-		test.assert(feature_state.monolith && unit.health == 1.0 && unit.morale == 3);
+		test.assert(
+			feature_state.monolith && unit.health == 1.0 && unit.morale == 3 &&
+			unit.monolith_upgraded
+		);
 	} else if (kind == 'vehicle') {
 		test.assert(game.um.get_unit(applied.spawned_unit_id).def == 'UnityRover');
 	} else if (kind == 'technology') {
@@ -369,6 +395,8 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(!feature_state.xenofungus && terraforming_state.mine && terraforming_state.road);
 	} else if (kind == 'clone') {
 		test.assert(game.um.get_unit(applied.spawned_unit_id).def == 'ScoutPatrol');
+	} else if (kind == 'gate') {
+		test.assert(unit_tile == gate_destination && unit.movement == 3.0);
 	} else if (kind == 'native') {
 		test.assert(#sizeof(applied.native_outbreak.unit_ids) == 1);
 		const spawned_native = game.um.get_unit(applied.native_outbreak.unit_ids[0]);
@@ -380,7 +408,7 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(explored && #sizeof(applied.map_reveal.tiles) == 1);
 	}
 
-	unity_pods.rollback(game, applied);
+	unity_pods.rollback(game, applied, unit);
 	test.assert(feature_state.unity_pod);
 	if (kind == 'energy') {
 		test.assert(energy_credits == 100);
@@ -398,10 +426,14 @@ const run_case = (kind, verify_resolve) => {
 	} else if (kind == 'fungus') {
 		test.assert(!feature_state.xenofungus && terraforming_state.forest);
 	} else if (kind == 'monolith') {
-		test.assert(
-			!feature_state.monolith && applied.unit_state.unit.health == unit_health &&
-			applied.unit_state.unit.morale == unit_morale
-		);
+		test.assert(!feature_state.monolith);
+		test.assert(unit.health == unit_health);
+		test.assert(unit.morale == unit_morale);
+		test.assert(!unit.monolith_upgraded);
+	} else if (kind == 'gate') {
+		test.assert(unit_tile == center);
+		test.assert(unit.movement == 1.0);
+		test.assert(!unit.moved_this_turn);
 	} else if (kind == 'technology') {
 		test.assert(research == {technologies: [], target: 'Alpha', progress: 4});
 	} else if (kind == 'commlink') {
@@ -420,7 +452,7 @@ const run_case = (kind, verify_resolve) => {
 run_case('energy', true);
 for (kind of [
 	'river', 'earthquake', 'production', 'artifact', 'fungus', 'monolith',
-	'vehicle', 'commlink', 'technology', 'terraforming', 'clone', 'native', 'survey', 'resource'
+	'vehicle', 'commlink', 'technology', 'terraforming', 'clone', 'gate', 'native', 'survey', 'resource'
 ]) {
 	run_case(kind, false);
 }

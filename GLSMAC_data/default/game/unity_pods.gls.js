@@ -1,5 +1,6 @@
 const technology_acquisition = #include('./technology_acquisition');
 const native_life = #include('./native_life');
+const monoliths = #include('./monoliths');
 
 const MAX_ENERGY_CREDITS = 1000000000;
 const TERRAFORMING_KEYS = [
@@ -225,6 +226,40 @@ const get_commlink_candidates = (game, player) => {
 	return result;
 };
 
+const get_gate_destinations = (game, unit, source) => {
+	const tm = game.get_tm();
+	let result = [];
+	for (let y = 0; y < tm.get_map_height(); y++) {
+		for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+			const candidate = tm.get_tile(x, y);
+			const locked = #typeof(candidate.is_locked) == 'Callable' && candidate.is_locked();
+			if (
+				candidate != source && candidate != unit.get_tile() &&
+				candidate.is_water == source.is_water && candidate.get_base() == null &&
+				!locked
+			) {
+				result :+candidate;
+			}
+		}
+	}
+	return result;
+};
+
+const get_full_movement = (game, unit) => {
+	const def = unit.get_def();
+	let result = def.movement_per_turn;
+	if (unit.is_water && !def.is_native && #typeof(game.get) == 'Callable') {
+		const get_effects = game.get('f_project_get_player_effects');
+		if (#is_defined(get_effects)) {
+			const effects = get_effects(unit.get_owner());
+			if (#is_defined(effects.naval_movement_bonus)) {
+				result += effects.naval_movement_bonus;
+			}
+		}
+	}
+	return result;
+};
+
 const make_resolution = (game, unit, tile, kind) => {
 	if (kind == 'energy') {
 		const late = game.get_turn() >= (tile.is_water ? 100 : 50);
@@ -331,6 +366,17 @@ const make_resolution = (game, unit, tile, kind) => {
 			? {kind: kind, unit_def: definition.id}
 			: null;
 	}
+	if (kind == 'gate') {
+		const destinations = get_gate_destinations(game, unit, tile);
+		if (#sizeof(destinations) == 0) {
+			return null;
+		}
+		const destination_index = game.random.get_int(0, #sizeof(destinations) - 1);
+		return {
+			kind: kind,
+			destination: destinations[destination_index],
+		};
+	}
 	if (kind == 'native') {
 		const life_level = native_life.get_life_level(game);
 		if (life_level <= 0) {
@@ -376,6 +422,7 @@ const get_weighted_kind = (roll) => {
 	if (roll < 72) { return 'technology'; }
 	if (roll < 82) { return 'terraforming'; }
 	if (roll < 83) { return 'clone'; }
+	if (roll < 84) { return 'gate'; }
 	if (roll < 91) { return 'native'; }
 	if (roll < 96) { return 'survey'; }
 	return 'resource';
@@ -399,6 +446,7 @@ const resolve = (game, unit, tile) => {
 		'commlink',
 		'technology',
 		'terraforming',
+		'gate',
 		'native',
 		'survey',
 		'resource',
@@ -467,6 +515,7 @@ const apply = (game, unit, tile, resolved) => {
 		unit_state: null,
 		contact: null,
 		map_reveal: null,
+		monolith_visit: null,
 	};
 	tile.update_features({unity_pod: false});
 
@@ -511,15 +560,9 @@ const apply = (game, unit, tile, resolved) => {
 		game.message('A Unity Pod released an uncontrolled xenofungal bloom.');
 	} else if (resolved.kind == 'monolith') {
 		applied.tiles :+snapshot_tile(tile);
-		applied.unit_state = {
-			unit: unit,
-			morale: unit.morale,
-			health: unit.health,
-		};
+		tile.update_terraforming(CLEAR_SURFACE_IMPROVEMENTS);
 		tile.update_features({monolith: true, xenofungus: false});
-		unit.health = 1.0;
-		unit.morale = #min(6, unit.morale + 1);
-		game.message('A Unity Pod revealed a monolith that repaired and trained the exploring unit.');
+		applied.monolith_visit = monoliths.apply(game, unit);
 	} else if (resolved.kind == 'vehicle' || resolved.kind == 'clone') {
 		const spawned = spawn_reward_unit(
 			game,
@@ -535,6 +578,29 @@ const apply = (game, unit, tile, resolved) => {
 			resolved.kind == 'clone'
 				? 'A dimensional rift created a copy of ' + unit.get_def().name + '.'
 				: player.name + ' recovered a ' + spawned.get_def().name + ' from a Unity Pod.'
+		);
+	} else if (resolved.kind == 'gate') {
+		const original_tile = unit.get_tile();
+		applied.unit_state = {
+			tile_x: original_tile.x + 0,
+			tile_y: original_tile.y + 0,
+			movement: unit.movement + 0.0,
+			moved_this_turn: unit.moved_this_turn == true,
+		};
+		unit.teleport_to_tile(resolved.destination);
+		unit.movement = get_full_movement(game, unit);
+		let queue_contacts = game.get('f_diplomacy_queue_contacts_at_tile');
+		if (#is_defined(queue_contacts)) {
+			queue_contacts(unit.get_owner(), resolved.destination);
+		}
+		let queue_exploration = game.get('f_exploration_queue_at_tile');
+		if (#is_defined(queue_exploration)) {
+			queue_exploration(unit.get_owner(), resolved.destination);
+		}
+		game.message(
+			tile.is_water
+				? 'A tidal wave swept ' + unit.get_def().name + ' across Planet.'
+				: unit.get_def().name + ' fell through a dimensional gate.'
 		);
 	} else if (resolved.kind == 'technology') {
 		applied.research = technology_acquisition.apply(game, player, 1);
@@ -602,7 +668,7 @@ const apply = (game, unit, tile, resolved) => {
 	return applied;
 };
 
-const rollback = (game, applied) => {
+const rollback = (game, applied, unit) => {
 	if (applied.native_outbreak != null) {
 		native_life.rollback_outbreak(game, applied.native_outbreak);
 	}
@@ -615,6 +681,9 @@ const rollback = (game, applied) => {
 	}
 	if (applied.map_reveal != null) {
 		game.get('f_exploration_rollback_reveal')(applied.map_reveal);
+	}
+	if (applied.monolith_visit != null) {
+		monoliths.rollback(applied.monolith_visit, unit);
 	}
 	if (applied.spawned_unit_id > 0 && game.um.has_unit(applied.spawned_unit_id)) {
 		game.um.despawn_unit(game.um.get_unit(applied.spawned_unit_id));
@@ -630,9 +699,12 @@ const rollback = (game, applied) => {
 		restore_tile(applied.tiles[i]);
 	}
 	if (applied.unit_state != null) {
-		const unit = applied.unit_state.unit;
-		unit.morale = applied.unit_state.morale;
-		unit.health = applied.unit_state.health;
+		const original_tile = game.tm.get_tile(applied.unit_state.tile_x, applied.unit_state.tile_y);
+		if (unit.get_tile() != original_tile) {
+			unit.teleport_to_tile(original_tile);
+		}
+		unit.movement = applied.unit_state.movement;
+		unit.moved_this_turn = applied.unit_state.moved_this_turn;
 	}
 	if (applied.kind == 'energy') {
 		set_player_energy(applied.player, applied.energy_credits);

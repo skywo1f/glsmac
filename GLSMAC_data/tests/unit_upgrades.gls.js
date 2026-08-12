@@ -129,6 +129,8 @@ const make_unit = (data) => {
 		home_base_id: #is_defined(data.home_base_id) ? data.home_base_id : 0,
 		fuel: #is_defined(data.fuel) ? data.fuel : def.operational_range,
 		transport_id: #is_defined(data.transport_id) ? data.transport_id : 0,
+		monolith_upgraded: #is_defined(data.monolith_upgraded)
+			? data.monolith_upgraded : false,
 	};
 	unit.get_def = () => { return rules.find_definition(game, unit.def); };
 	unit.get_tile = () => { return tile; };
@@ -192,6 +194,7 @@ current_unit = make_unit({
 	health: 0.7,
 	home_base_id: 3,
 	fuel: 0,
+	monolith_upgraded: true,
 });
 let event = {
 	caller: player.id,
@@ -207,6 +210,7 @@ test.assert(current_unit.def == laser_synth.id);
 test.assert(current_unit.morale == 4);
 test.assert(current_unit.health == 0.7);
 test.assert(current_unit.home_base_id == 3);
+test.assert(current_unit.monolith_upgraded);
 test.assert(current_unit.movement == 0.0);
 test.assert(current_unit.moved_this_turn);
 test.assert(player.energy_credits == 50);
@@ -223,6 +227,7 @@ test.assert(current_unit.movement == 1.0);
 test.assert(!current_unit.moved_this_turn);
 test.assert(current_unit.morale == 4);
 test.assert(current_unit.health == 0.7);
+test.assert(current_unit.monolith_upgraded);
 test.assert(player.energy_credits == 100);
 test.assert(#sizeof(triggers) == 4);
 

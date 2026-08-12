@@ -217,6 +217,8 @@ const make_stored_unit = (data) => {
 	unit.transport_id = #is_defined(data.transport_id) ? data.transport_id : 0;
 	unit.native_capture_attempted = #is_defined(data.native_capture_attempted)
 		? data.native_capture_attempted : false;
+	unit.monolith_upgraded = #is_defined(data.monolith_upgraded)
+		? data.monolith_upgraded : false;
 	unit.get_owner = () => { return data.owner; };
 	unit.get_tile = () => { return data.tile; };
 	unit.get_def = () => { return {id: data.def, name: data.def, is_native: true}; };
@@ -229,6 +231,7 @@ const make_stored_unit = (data) => {
 const isle = make_stored_unit({
 	id: 100, def: 'IsleOfTheDeep', owner: planet, tile: transfer_tile,
 	morale: 2, health: 0.8, fuel: 0, movement: 1.5, native_capture_attempted: true,
+	monolith_upgraded: true,
 });
 const cargo = make_stored_unit({
 	id: 101, def: 'MindWorms', owner: planet, tile: transfer_tile,
@@ -286,6 +289,7 @@ test.assert(stored.u100.moved_this_turn && stored.u101.moved_this_turn);
 test.assert(stored.u100.home_base_id == 5 && stored.u101.home_base_id == 5);
 test.assert(stored.u101.transport_id == 100);
 test.assert(!stored.u100.native_capture_attempted);
+test.assert(stored.u100.monolith_upgraded);
 
 capture.rollback(transfer_game, applied);
 test.assert(stored.u100.owner == planet.id && stored.u101.owner == planet.id);
@@ -294,3 +298,4 @@ test.assert(stored.u100.health == 0.8 && stored.u101.health == 0.7);
 test.assert(stored.u100.home_base_id == 0 && stored.u101.home_base_id == 0);
 test.assert(stored.u101.transport_id == 100);
 test.assert(stored.u100.native_capture_attempted);
+test.assert(stored.u100.monolith_upgraded);

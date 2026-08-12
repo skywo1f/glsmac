@@ -132,9 +132,12 @@ scenarios, for:
 - land and sea Unity Pods resolve during ordinary movement with reversible,
   deterministic events; supported rewards cover energy, rivers, earthquakes,
   production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
-  technologies, random-faction commlinks, terraforming, unit cloning, and
-  resource bonuses; cartographic and sonar pods reveal a four-tile-radius map
-  region, while AI explorers and combat units route toward reachable pods;
+  technologies, random-faction commlinks, terraforming, unit cloning,
+  same-domain dimensional-gate or tidal-wave relocation with restored movement,
+  and resource bonuses; monoliths fully repair visiting units and grant one
+  morale or lifecycle level once per military unit, while cartographic and sonar
+  pods reveal a four-tile-radius map region and AI units route toward reachable
+  pods;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -267,8 +270,6 @@ The following original-SMAC systems remain absent or materially incomplete:
   player-facing inefficiency diagnostics;
 - volcanoes and the original engine's undocumented post-bloom clean-mineral
   facility bonus;
-- remaining Unity Pod parity: dimensional-gate teleportation and once-per-unit
-  monolith visit tracking;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
@@ -283,7 +284,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 131 cases: 100 isolated native/script GSE tests
+The Release CTest matrix contains 132 cases: 101 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -412,7 +413,7 @@ and both climate Council motions were added, all 86 isolated tests passed in
 160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
 installed-asset runtime coverage passed together in 54.92 seconds.
 
-All 30 runtime scenarios have green runs against an installed Planetary Pack,
+All 31 runtime scenarios have green runs against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
 Planetary Council, Datalinks, air units, transports, Supply Crawlers, the Unit
 Workshop, sea colonies, and the standard AI runtime. The rendered Unity Pod scenario verifies
@@ -478,6 +479,14 @@ passed in 222.45 seconds. A dedicated rendered Sensor Array scenario passed in
 report one owned array after a synchronized tile update. The rendered transport
 scenario passed in 13.92 seconds, multiplayer in 59.01 seconds, and running-game
 reconnect in 49.32 seconds.
+
+After dimensional-gate relocation and persistent once-per-unit monolith visits
+were added, the Windows x64 Release build succeeded and all 101 isolated
+native/script tests passed in 258.45 seconds. The rendered Unity Pod scenario
+passed in 21.11 seconds against the installed Planetary Pack. Ordinary
+multiplayer passed in 63.92 seconds, and running-game reconnect passed in 56.45
+seconds while verifying that monolith upgrade state survives network
+replication, snapshot serialization, process restart, reload, and turn reset.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

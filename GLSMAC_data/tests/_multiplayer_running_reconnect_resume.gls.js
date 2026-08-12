@@ -268,7 +268,7 @@
 			const air_def = air_unit.get_def();
 			if (
 				air_unit.owner != game.get_player().id || air_unit.fuel != 1 ||
-				!air_unit.airdropped_this_turn ||
+				!air_unit.airdropped_this_turn || !air_unit.monolith_upgraded ||
 				air_def.chassis != 'Needlejet' || air_def.operational_range != 2 ||
 				air_def.is_missile || !air_def.is_air
 			) {
@@ -599,7 +599,8 @@
 			else if (turn_id == 2 && !exit_scheduled) {
 				if (
 					!game.get_um().has_unit(air_snapshot_unit_id) ||
-					game.get_um().get_unit(air_snapshot_unit_id).airdropped_this_turn
+					game.get_um().get_unit(air_snapshot_unit_id).airdropped_this_turn ||
+					!game.get_um().get_unit(air_snapshot_unit_id).monolith_upgraded
 				) {
 					#print('RUNNING_RECONNECT_FAIL_CLIENT: air-drop turn flag did not reset');
 					glsmac.exit();

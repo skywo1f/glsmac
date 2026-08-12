@@ -21,6 +21,8 @@ const snapshot_unit = (unit) => {
 			? unit.native_capture_attempted == true : false,
 		airdropped_this_turn: #is_defined(unit.airdropped_this_turn)
 			? unit.airdropped_this_turn == true : false,
+		monolith_upgraded: #is_defined(unit.monolith_upgraded)
+			? unit.monolith_upgraded == true : false,
 	};
 };
 
@@ -41,10 +43,13 @@ const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 			? 'none' : snapshot.convoy_resource,
 		airdropped_this_turn: transferred || !#is_defined(snapshot.airdropped_this_turn)
 			? false : snapshot.airdropped_this_turn,
+		monolith_upgraded: #is_defined(snapshot.monolith_upgraded)
+			? snapshot.monolith_upgraded : false,
 	});
 	unit.movement = transferred ? 0.0 : snapshot.movement;
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
-	unit.native_capture_attempted = transferred ? false : snapshot.native_capture_attempted;
+	unit.native_capture_attempted = transferred || !#is_defined(snapshot.native_capture_attempted)
+		? false : snapshot.native_capture_attempted;
 	return unit;
 };
 

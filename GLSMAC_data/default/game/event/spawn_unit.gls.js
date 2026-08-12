@@ -39,6 +39,9 @@ return {
 		if (#is_defined(e.data.airdropped_this_turn)) {
 			data.airdropped_this_turn = e.data.airdropped_this_turn;
 		}
+		if (#is_defined(e.data.monolith_upgraded)) {
+			data.monolith_upgraded = e.data.monolith_upgraded;
+		}
 		const unit = e.game.um.spawn_unit(data);
 		if (#is_defined(e.data.movement)) {
 			unit.movement = e.data.movement;

@@ -101,6 +101,8 @@ const make_unit = (data) => {
 		convoy_resource: #is_defined(data.convoy_resource) ? data.convoy_resource : 'none',
 		native_capture_attempted: #is_defined(data.native_capture_attempted)
 			? data.native_capture_attempted : false,
+		monolith_upgraded: #is_defined(data.monolith_upgraded)
+			? data.monolith_upgraded : false,
 		is_air: data.def == needlejet.id,
 	};
 	unit.get_def = () => { return rules.find_definition(game, unit.def); };
@@ -164,6 +166,7 @@ units = [
 	make_unit({
 		id: 1, def: scout.id, owner: player, morale: 4, health: 0.7,
 		movement: 0.25, moved_this_turn: true, home_base_id: 3,
+		monolith_upgraded: true,
 	}),
 	make_unit({
 		id: 2, def: scout.id, owner: player, morale: 2, health: 1.0,
@@ -193,6 +196,7 @@ test.assert(find_unit(3).def == scout.id);
 test.assert(find_unit(1).movement == 0.25 && find_unit(1).moved_this_turn);
 test.assert(find_unit(1).morale == 4 && find_unit(1).health == 0.7);
 test.assert(find_unit(1).home_base_id == 3);
+test.assert(find_unit(1).monolith_upgraded && !find_unit(2).monolith_upgraded);
 test.assert(find_unit(2).transport_id == 10 && find_unit(2).movement == 0.0);
 test.assert(player.energy_credits == 80);
 test.assert(#sizeof(triggers) == 4);
@@ -204,6 +208,7 @@ test.assert(
 upgrade_design.rollback(event);
 test.assert(find_unit(1).def == scout.id && find_unit(2).def == scout.id);
 test.assert(find_unit(2).transport_id == 10);
+test.assert(find_unit(1).monolith_upgraded && !find_unit(2).monolith_upgraded);
 test.assert(player.energy_credits == 140);
 test.assert(#sizeof(triggers) == 8);
 

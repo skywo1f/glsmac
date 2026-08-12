@@ -1,6 +1,7 @@
 const movement_rules = #include('../movement_rules');
 const base_capture = #include('../base_capture');
 const unity_pods = #include('../unity_pods');
+const monoliths = #include('../monoliths');
 const unit_abilities = #include('../unit_abilities');
 
 const get_transport_id = (unit) => {
@@ -264,6 +265,9 @@ return {
 		const dst_base = #is_defined(dst_tile.get_base) ? dst_tile.get_base() : null;
 
 		const movement = unit.movement;
+		const is_gate =
+			#is_defined(e.resolved.unity_pod) && e.resolved.unity_pod != null &&
+			e.resolved.unity_pod.kind == 'gate';
 
 		const result = {
 			orig: {
@@ -275,10 +279,12 @@ return {
 					? '' + unit.convoy_resource : 'none',
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
 			},
-			movement_started: e.resolved.is_movement_successful,
+			movement_started: e.resolved.is_movement_successful && !is_gate,
+			gate_teleport: e.resolved.is_movement_successful && is_gate,
 			base_capture: null,
 			rehomed_units: [],
 			unity_pod: null,
+			monolith_visit: null,
 		};
 		if (#is_defined(unit.set_convoy_resource) && unit.convoy_resource != 'none') {
 			unit.set_convoy_resource('none');
@@ -299,7 +305,9 @@ return {
 		};
 
 		if (e.resolved.is_movement_successful) {
-			unit.move_to_tile(dst_tile, () => {});
+			if (!is_gate) {
+				unit.move_to_tile(dst_tile, () => {});
+			}
 			if (#is_defined(e.resolved.transport_id) && e.resolved.transport_id > 0) {
 				unit.embark(e.game.um.get_unit(e.resolved.transport_id));
 			} else if (result.orig.transport_id > 0) {
@@ -334,6 +342,8 @@ return {
 					dst_tile,
 					e.resolved.unity_pod
 				);
+			} else if (#is_defined(dst_tile.features.monolith) && dst_tile.features.monolith) {
+				result.monolith_visit = monoliths.apply(e.game, unit);
 			}
 		} else {
 			// No native move is started on a failed roll, so update state synchronously.
@@ -353,7 +363,10 @@ return {
 		const unit = e.data.unit;
 		const orig = e.applied.orig;
 		if (e.applied.unity_pod != null) {
-			unity_pods.rollback(e.game, e.applied.unity_pod);
+			unity_pods.rollback(e.game, e.applied.unity_pod, unit);
+		}
+		if (e.applied.monolith_visit != null) {
+			monoliths.rollback(e.applied.monolith_visit, unit);
 		}
 		if (e.applied.movement_started) {
 			if (get_transport_id(unit) > 0) {
@@ -363,6 +376,8 @@ return {
 			if (orig.transport_id > 0) {
 				unit.embark(e.game.um.get_unit(orig.transport_id));
 			}
+		} else if (e.applied.gate_teleport && orig.transport_id > 0 && get_transport_id(unit) == 0) {
+			unit.embark(e.game.um.get_unit(orig.transport_id));
 		}
 		if (e.applied.base_capture != null) {
 			base_capture.restore_base(e.data.tile.get_base(), e.applied.base_capture);

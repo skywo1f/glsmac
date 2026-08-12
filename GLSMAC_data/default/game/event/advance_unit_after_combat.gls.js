@@ -1,5 +1,6 @@
 const base_capture = #include('../base_capture');
 const unit_abilities = #include('../unit_abilities');
+const monoliths = #include('../monoliths');
 
 const snapshot_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id + 0 : 0;
@@ -58,6 +59,7 @@ return {
 			orig_base_owner: base == null ? null : base.get_owner(),
 			base_capture: null,
 			rehomed_units: [],
+			monolith_visit: null,
 		};
 		e.game.am.stop_animations(e.data.animations_id);
 		if (applied.orig_transport_id > 0) {
@@ -86,11 +88,20 @@ return {
 			applied.base_capture = base_capture.capture_base(e.game, base, unit.get_owner());
 			applied.rehomed_units = applied.base_capture.rehomed_units;
 		}
+		if (
+			#typeof(e.data.tile.features) == 'Object' &&
+			#is_defined(e.data.tile.features.monolith) && e.data.tile.features.monolith
+		) {
+			applied.monolith_visit = monoliths.apply(e.game, unit);
+		}
 		return applied;
 	},
 
 	rollback: (e) => {
 		const unit = e.data.unit;
+		if (e.applied.monolith_visit != null) {
+			monoliths.rollback(e.applied.monolith_visit, unit);
+		}
 		const restore_transport = () => {
 			if (e.applied.orig_transport_id > 0 && unit.transport_id == 0) {
 				unit.embark(e.game.um.get_unit(e.applied.orig_transport_id));

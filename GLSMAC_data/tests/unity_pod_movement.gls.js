@@ -76,6 +76,7 @@ const make_tile = (x, has_pod) => {
 
 const source = make_tile(0, false);
 const destination = make_tile(2, true);
+const gate_destination = make_tile(4, false);
 source.is_adjactent_to = (tile) => { return tile == destination; };
 destination.is_adjactent_to = (tile) => { return tile == source; };
 destination.update_features = (changes) => {
@@ -122,6 +123,7 @@ const definition = {
 	offense: 1,
 	weapon: 'HandWeapons',
 	cargo_capacity: 0,
+	movement_per_turn: 3.0,
 };
 let current_tile = source;
 let unit = null;
@@ -132,6 +134,7 @@ unit = {
 	moved_this_turn: false,
 	health: 1.0,
 	morale: 2,
+	monolith_upgraded: false,
 	transport_id: 0,
 	is_immovable: false,
 	is_land: true,
@@ -148,6 +151,11 @@ unit = {
 		current_tile.set_units([unit]);
 		done();
 	},
+	teleport_to_tile: (tile) => {
+		current_tile.set_units([]);
+		current_tile = tile;
+		current_tile.set_units([unit]);
+	},
 	embark: (transport) => {},
 	disembark: () => {},
 };
@@ -157,10 +165,12 @@ let rolls = [96, 2];
 let roll_index = 0;
 let messages = [];
 let triggers = [];
-const game = {
+let game = #undefined;
+game = {
 	is_turn_complete: (id) => { return false; },
 	get_turn: () => { return 1; },
 	get_player: (id) => { return player; },
+	get_tm: () => { return game.tm; },
 	get: (key) => { return #undefined; },
 	random: {
 		get_float: (low, high) => { throw Error('movement success should not need a random roll'); },
@@ -172,7 +182,16 @@ const game = {
 		},
 	},
 	bm: {get_bases: () => { return []; }},
-	tm: {get_distance: (first, second) => { return #abs(first.x - second.x); }},
+	tm: {
+		get_map_width: () => { return 6; },
+		get_map_height: () => { return 1; },
+		get_tile: (x, y) => {
+			if (x == source.x) { return source; }
+			if (x == destination.x) { return destination; }
+			return gate_destination;
+		},
+		get_distance: (first, second) => { return #abs(first.x - second.x); },
+	},
 	um: {
 		get_unit_defs: () => { return [definition]; },
 		has_unit: (id) => { return id == unit.id; },
@@ -204,3 +223,47 @@ move_unit.rollback(event);
 test.assert(current_tile.x == source.x && current_tile.y == source.y);
 test.assert(destination.features.unity_pod);
 test.assert(!destination.bonuses.minerals);
+
+rolls = [83, 0];
+roll_index = 0;
+event = {
+	caller: player.id,
+	game: game,
+	data: {unit: unit, tile: destination},
+};
+event.resolved = move_unit.resolve(event);
+test.assert(event.resolved.unity_pod.kind == 'gate');
+test.assert(
+	event.resolved.unity_pod.destination.x == gate_destination.x &&
+	event.resolved.unity_pod.destination.y == gate_destination.y
+);
+event.applied = move_unit.apply(event);
+test.assert(current_tile.x == gate_destination.x && current_tile.y == gate_destination.y);
+test.assert(event.data.unit.movement == 3.0);
+test.assert(!destination.features.unity_pod);
+move_unit.rollback(event);
+test.assert(current_tile == source && event.data.unit.movement == 1.0);
+test.assert(destination.features.unity_pod);
+
+destination.features.unity_pod = false;
+destination.features.monolith = true;
+unit.health = 0.5;
+event = {
+	caller: player.id,
+	game: game,
+	data: {unit: unit, tile: destination},
+};
+event.resolved = move_unit.resolve(event);
+test.assert(event.resolved.unity_pod == null);
+event.applied = move_unit.apply(event);
+test.assert(current_tile == destination);
+test.assert(
+	event.data.unit.health == 1.0 && event.data.unit.morale == 3 &&
+	event.data.unit.monolith_upgraded
+);
+move_unit.rollback(event);
+test.assert(current_tile == source);
+test.assert(
+	event.data.unit.health == 0.5 && event.data.unit.morale == 2 &&
+	!event.data.unit.monolith_upgraded
+);
