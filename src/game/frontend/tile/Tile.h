@@ -40,7 +40,10 @@ namespace tile {
 class Tile {
 public:
 
-	static std::vector< size_t > GetUnitsOrder( const std::unordered_map< size_t, unit::Unit* >& units );
+	static std::vector< size_t > GetUnitsOrder(
+		const std::unordered_map< size_t, unit::Unit* >& units,
+		const bool include_unowned = true
+	);
 
 	Tile( const types::Vec2< size_t >& coords );
 	~Tile();
@@ -58,6 +61,8 @@ public:
 	void UnsetBase( base::Base* base );
 
 	void Render( size_t selected_unit_id = 0 );
+	void SetCurrentlyVisible( const bool is_visible );
+	const bool IsCurrentlyVisible() const;
 
 	const std::unordered_map< size_t, unit::Unit* >& GetUnits() const;
 	const std::vector< unit::Unit* >& GetOrderedUnits();
@@ -106,6 +111,7 @@ private:
 	bool m_is_objects_reorder_needed = true;
 
 	bool m_is_water = false;
+	bool m_is_currently_visible = false;
 
 	base::Base* m_base = nullptr;
 

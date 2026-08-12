@@ -177,10 +177,12 @@ scenarios, for:
   opponent-, and value-aware AI proposals and responses;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
-  tile details and objects are concealed in the inspector, old saves preserve
-  their formerly unrestricted map view, and reciprocal or one-way world-map
-  trades have reversible settlement, human controls, AI valuation, and
-  running-game reconnect coverage;
+  terrain is covered, previously explored terrain is dimmed, currently visible
+  terrain remains clear, and out-of-vision enemy bases and units are concealed
+  from rendering, selection, and previews; the minimap includes the same fog,
+  old saves preserve their formerly unrestricted map view, and reciprocal or
+  one-way world-map trades have reversible settlement, human controls, AI
+  valuation, and running-game reconnect coverage;
 - persistent energy loans with player-authored lending and borrowing terms,
   atomic principal transfer, yearly repayment, partial-payment handling,
   wartime balance growth, human controls, and relationship-, reserve-, risk-,
@@ -250,10 +252,8 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- rendered fog of war and current-vision tracking: persistent exploration and
-  inspector concealment are authoritative, but unexplored terrain is not yet
-  covered on the graphical map and previously explored enemy objects are not
-  hidden when they leave present sensor range;
+- remaining current-vision parity: Sensor Array range and pact-shared vision
+  are not yet incorporated into graphical coverage;
 - deeper diplomacy including surrender, the Council defiance path, and richer
   bundled or counteroffers beyond the implemented energy, technology, commlink,
   and world-map terms;
@@ -457,6 +457,19 @@ The rendered Unity Pod scenario also completes under AddressSanitizer against
 the installed Planetary Pack. This directly covers terrain mesh replacement,
 immutable frontend tile-update snapshots, rapid sprite changes, and the
 movement reward path that previously exposed a frontend access violation.
+
+After rendered fog of war was added, the Windows x64 Release build succeeded
+and all 100 isolated native/script tests passed in 217.06 seconds. The rendered
+transport scenario passed in 14.18 seconds against the installed Planetary Pack;
+live diagnostics reported 25 currently visible and explored tiles out of 100,
+changing coverage during movement, and a nonblank fog framebuffer with alpha
+spanning 0 through 255. Running-game reconnect passed in 50.45 seconds. The
+ordinary multiplayer harness then exposed a generic deserializer defect that
+dropped the game context inside nested arrays and objects; propagating that
+context fixed nested base, tile, pop, unit, and player references, after which
+the full malformed-packet, reconnect, synchronized movement/combat, base,
+terraforming, research, and victory scenario passed in 59.40 seconds with clean
+host and client exits.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

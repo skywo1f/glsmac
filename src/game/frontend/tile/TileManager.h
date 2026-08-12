@@ -24,6 +24,8 @@ CLASS( TileManager, ::common::Class )
 
 	Tile* GetTile( const size_t x, const size_t y );
 	Tile* GetTile( const types::Vec2< size_t >& coords );
+	std::unordered_map< size_t, Tile >& GetTiles();
+	const std::unordered_map< size_t, Tile >& GetTiles() const;
 
 	Tile* GetSelectedTile() const;
 	void SelectTile( Tile* tile );

@@ -407,6 +407,9 @@ void Game::Iterate() {
 		else {
 			m_mt_ids.get_frontend_requests = game->MT_GetFrontendRequests();
 		}
+		if ( !m_on_game_exit ) {
+			RefreshMapVisibility();
+		}
 
 		// check if previous backend requests were sent successfully
 		if ( m_mt_ids.send_backend_requests ) {
@@ -1044,8 +1047,26 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 
 				Log( "Updating tile: " + tile->GetCoords().ToString() );
 				tile->Update( snapshot );
+				UpdateFogTileGeometry( tile );
 			}
 			RefreshSelectedTile( m_um->GetSelectedUnit() );
+			UpdateMinimap();
+			break;
+		}
+		case FrontendRequest::FR_MAP_EXPLORATION: {
+			std::unordered_set< size_t > explored_tiles = {};
+			explored_tiles.reserve( request->data.map_exploration.tiles->size() );
+			for ( const auto& coords : *request->data.map_exploration.tiles ) {
+				ASSERT(
+					coords.x < m_map_data.width && coords.y < m_map_data.height &&
+					( coords.x & 1 ) == ( coords.y & 1 ),
+					"invalid explored tile received from backend"
+				);
+				explored_tiles.insert( GetTileIndex( coords ) );
+			}
+			m_exploration_changed = explored_tiles != m_explored_tiles;
+			m_explored_tiles = std::move( explored_tiles );
+			m_map_visibility_dirty = true;
 			break;
 		}
 		case FrontendRequest::FR_TURN_STATUS: {
@@ -1335,6 +1356,23 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			THROW( "unexpected frontend request type: " + std::to_string( request->type ) );
 		}
 	}
+
+	if ( request ) {
+		switch ( request->type ) {
+			case FrontendRequest::FR_UNIT_SPAWN:
+			case FrontendRequest::FR_UNIT_DESPAWN:
+			case FrontendRequest::FR_UNIT_UPDATE:
+			case FrontendRequest::FR_UNIT_MOVE:
+			case FrontendRequest::FR_UNIT_TELEPORT:
+			case FrontendRequest::FR_BASE_SPAWN:
+			case FrontendRequest::FR_BASE_DESPAWN:
+			case FrontendRequest::FR_BASE_UPDATE:
+				m_map_visibility_dirty = true;
+				break;
+			default:
+				break;
+		}
+	}
 }
 
 void Game::SendBackendRequest( const BackendRequest* request ) {
@@ -1367,6 +1405,192 @@ void Game::UpdateMapData( const types::Vec2< size_t >& map_size ) {
 	);
 
 	m_tm->InitTiles( map_size );
+}
+
+const size_t Game::GetTileIndex( const types::Vec2< size_t >& coords ) const {
+	return coords.y * m_map_data.width + coords.x;
+}
+
+void Game::InitializeFog() {
+	ASSERT( !m_actors.fog, "fog actor already set" );
+	ASSERT( !m_textures.fog, "fog texture already set" );
+	const size_t tile_count = m_map_data.width * m_map_data.height / 2;
+	NEWV( mesh, types::mesh::Render, tile_count * 5, tile_count * 4 );
+
+	for ( size_t y = 0 ; y < m_map_data.height ; y++ ) {
+		for ( size_t x = y & 1 ; x < m_map_data.width ; x += 2 ) {
+			const auto& coords = m_tm->GetTile( x, y )->GetRenderData().selection_coords;
+			const auto center = mesh->AddVertex( coords.center, { 0.5f, 0.5f } );
+			const auto left = mesh->AddVertex( coords.left, { 0.0f, 1.0f } );
+			const auto top = mesh->AddVertex( coords.top, { 0.0f, 0.0f } );
+			const auto right = mesh->AddVertex( coords.right, { 1.0f, 0.0f } );
+			const auto bottom = mesh->AddVertex( coords.bottom, { 1.0f, 1.0f } );
+			mesh->AddSurface( { center, left, top } );
+			mesh->AddSurface( { center, top, right } );
+			mesh->AddSurface( { center, right, bottom } );
+			mesh->AddSurface( { center, bottom, left } );
+		}
+	}
+	mesh->Finalize();
+
+	m_textures.fog = types::texture::Texture::FromColor( { 0.0f, 0.0f, 0.0f, 1.0f } );
+	NEWV( fog_actor, scene::actor::Mesh, "MapFog", mesh );
+	fog_actor->SetTexture( m_textures.fog );
+	fog_actor->SetRenderFlags(
+		scene::actor::Actor::RF_IGNORE_LIGHTING |
+		scene::actor::Actor::RF_IGNORE_DEPTH
+	);
+	NEW( m_actors.fog, scene::actor::Instanced, fog_actor );
+	m_actors.fog->AddInstance( {} );
+	m_world_scene->AddActor( m_actors.fog );
+	m_fog_states.assign( tile_count, FS_UNEXPLORED );
+}
+
+void Game::UpdateFogTileGeometry( const tile::Tile* tile ) {
+	if ( !m_actors.fog ) {
+		return;
+	}
+	auto* const mesh = const_cast< types::mesh::Render* >(
+		static_cast< const types::mesh::Render* >( m_actors.fog->GetMeshActor()->GetMesh() )
+	);
+	const auto& coords = tile->GetCoords();
+	const auto vertex = static_cast< types::mesh::index_t >(
+		( coords.y * ( m_map_data.width / 2 ) + coords.x / 2 ) * 5
+	);
+	const auto& fog_coords = tile->GetRenderData().selection_coords;
+	mesh->SetVertex( vertex, fog_coords.center );
+	mesh->SetVertex( vertex + 1, fog_coords.left );
+	mesh->SetVertex( vertex + 2, fog_coords.top );
+	mesh->SetVertex( vertex + 3, fog_coords.right );
+	mesh->SetVertex( vertex + 4, fog_coords.bottom );
+}
+
+void Game::AddVisibleTilesInRadius(
+	tile::Tile* center,
+	const size_t radius,
+	std::unordered_set< size_t >& visible_tiles
+) const {
+	std::unordered_set< tile::Tile* > seen = { center };
+	std::vector< tile::Tile* > frontier = { center };
+	visible_tiles.insert( GetTileIndex( center->GetCoords() ) );
+	for ( size_t distance = 0 ; distance < radius ; distance++ ) {
+		std::vector< tile::Tile* > next = {};
+		for ( auto* const tile : frontier ) {
+			for (
+			auto direction = backend::map::tile::D_W ;
+			direction <= backend::map::tile::D_SW ;
+			direction = static_cast< backend::map::tile::direction_t >( direction + 1 )
+			) {
+				auto* const candidate = tile->GetNeighbour( direction );
+				if ( seen.insert( candidate ).second ) {
+					visible_tiles.insert( GetTileIndex( candidate->GetCoords() ) );
+					next.push_back( candidate );
+				}
+			}
+		}
+		frontier = std::move( next );
+	}
+}
+
+void Game::AddBaseVisibleTiles(
+	tile::Tile* center,
+	std::unordered_set< size_t >& visible_tiles
+) const {
+	const auto f_add = [ this, &visible_tiles ]( tile::Tile* tile ) {
+		visible_tiles.insert( GetTileIndex( tile->GetCoords() ) );
+		return tile;
+	};
+	const auto* const n = f_add( center->N );
+	const auto* const ne = f_add( center->NE );
+	const auto* const e = f_add( center->E );
+	const auto* const se = f_add( center->SE );
+	const auto* const s = f_add( center->S );
+	const auto* const sw = f_add( center->SW );
+	const auto* const w = f_add( center->W );
+	const auto* const nw = f_add( center->NW );
+	f_add( center );
+	f_add( n->NW );
+	f_add( n->NE );
+	f_add( ne->NE );
+	f_add( e->NE );
+	f_add( e->SE );
+	f_add( se->SE );
+	f_add( s->SE );
+	f_add( s->SW );
+	f_add( sw->SW );
+	f_add( w->SW );
+	f_add( w->NW );
+	f_add( nw->NW );
+}
+
+void Game::RefreshMapVisibility() {
+	if ( !m_map_visibility_dirty || !m_actors.fog ) {
+		return;
+	}
+
+	std::unordered_set< size_t > visible_tiles = {};
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		const auto* const base = tile->GetBase();
+		if ( base && base->IsOwned() ) {
+			AddBaseVisibleTiles( tile, visible_tiles );
+		}
+		for ( const auto& unit : tile->GetUnits() ) {
+			if ( unit.second->IsOwned() ) {
+				AddVisibleTilesInRadius( tile, 1, visible_tiles );
+				break;
+			}
+		}
+	}
+
+	auto* const fog_mesh = const_cast< types::mesh::Render* >(
+		static_cast< const types::mesh::Render* >( m_actors.fog->GetMeshActor()->GetMesh() )
+	);
+	auto* const selected_unit = m_um->GetSelectedUnit();
+	const size_t selected_unit_id = selected_unit ? selected_unit->GetId() : 0;
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		const auto& coords = tile->GetCoords();
+		const auto key = GetTileIndex( coords );
+		const bool is_visible = visible_tiles.find( key ) != visible_tiles.end();
+		if ( tile->IsCurrentlyVisible() != is_visible ) {
+			tile->SetCurrentlyVisible( is_visible );
+			tile->Render( selected_unit_id );
+		}
+
+		const fog_state_t fog_state = is_visible
+			? FS_VISIBLE
+			: ( m_explored_tiles.find( key ) != m_explored_tiles.end()
+				? FS_EXPLORED
+				: FS_UNEXPLORED
+			);
+		const size_t fog_index = coords.y * ( m_map_data.width / 2 ) + coords.x / 2;
+		if ( m_fog_states.at( fog_index ) != fog_state ) {
+			m_fog_states.at( fog_index ) = fog_state;
+			const float alpha = fog_state == FS_VISIBLE
+				? 0.0f
+				: ( fog_state == FS_EXPLORED ? 0.48f : 0.96f );
+			for ( size_t i = 0 ; i < 5 ; i++ ) {
+				fog_mesh->SetVertexTint(
+					static_cast< types::mesh::index_t >( fog_index * 5 + i ),
+					{ 1.0f, 1.0f, 1.0f, alpha }
+				);
+			}
+		}
+	}
+
+	m_currently_visible_tiles = std::move( visible_tiles );
+	m_map_visibility_dirty = false;
+	Log(
+		"Map visibility: " + std::to_string( m_currently_visible_tiles.size() ) +
+		" visible, " + std::to_string( m_explored_tiles.size() ) +
+		" explored of " + std::to_string( m_tm->GetTiles().size() ) + " tiles"
+	);
+	RefreshSelectedTile( selected_unit );
+	if ( m_exploration_changed ) {
+		m_exploration_changed = false;
+		UpdateMinimap();
+	}
 }
 
 void Game::Initialize(
@@ -1475,6 +1699,7 @@ void Game::Initialize(
 			tile->Update( tile_render_snapshot_t( tiles->at( tile_index ), tile_states->at( tile_index ) ) );
 		}
 	}
+	InitializeFog();
 
 	m_viewport.bottom_bar_overlap = 32; // it has transparent area on top so let map render through it
 
@@ -1727,7 +1952,10 @@ void Game::Initialize(
 									std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 									for ( const auto& it : dst_tile->GetUnits() ) {
 										const auto& unit = it.second;
-										if ( !unit->IsEmbarked() && !unit->IsOwned() ) { // TODO: pacts
+										if (
+											dst_tile->IsCurrentlyVisible() &&
+											!unit->IsEmbarked() && !unit->IsOwned()
+										) { // TODO: pacts
 											// TODO: skip units of treaty/truce faction?
 											foreign_units.insert( it );
 										}
@@ -1921,8 +2149,27 @@ void Game::Deinitialize() {
 
 	if ( m_minimap_texture_request_id ) {
 		ASSERT( m_actors.terrain, "minimap texture request pending but terrain actor not set" );
-		m_actors.terrain->GetMeshActor()->CancelDataRequest( m_minimap_texture_request_id );
+		m_actors.terrain->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_texture_request_id );
 		m_minimap_texture_request_id = 0;
+	}
+	if ( m_minimap_fog_texture_request_id ) {
+		ASSERT( m_actors.fog, "minimap fog request pending but fog actor not set" );
+		m_actors.fog->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_fog_texture_request_id );
+		m_minimap_fog_texture_request_id = 0;
+	}
+	if ( m_pending_minimap_terrain ) {
+		DELETE( m_pending_minimap_terrain );
+		m_pending_minimap_terrain = nullptr;
+	}
+	if ( m_pending_minimap_fog ) {
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+	}
+
+	if ( m_actors.fog ) {
+		m_world_scene->RemoveActor( m_actors.fog );
+		DELETE( m_actors.fog );
+		m_actors.fog = nullptr;
 	}
 
 	if ( m_actors.terrain ) {
@@ -1935,6 +2182,15 @@ void Game::Deinitialize() {
 		DELETE( m_textures.terrain );
 		m_textures.terrain = nullptr;
 	}
+	if ( m_textures.fog ) {
+		DELETE( m_textures.fog );
+		m_textures.fog = nullptr;
+	}
+	m_explored_tiles.clear();
+	m_currently_visible_tiles.clear();
+	m_fog_states.clear();
+	m_map_visibility_dirty = true;
+	m_exploration_changed = true;
 
 	for ( const auto& it : m_animations ) {
 		delete it.second;
@@ -2012,7 +2268,10 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 		const bool is_planet_buster = selected_unit->IsPlanetBuster();
 		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 		for ( const auto& it : tile->GetUnits() ) {
-			if ( !it.second->IsEmbarked() && !it.second->IsOwned() ) {
+			if (
+				tile->IsCurrentlyVisible() &&
+				!it.second->IsEmbarked() && !it.second->IsOwned()
+			) {
 				foreign_units.insert( it );
 			}
 		}
@@ -2313,24 +2572,95 @@ const Game::tile_at_result_t Game::GetTileAtScreenCoordsResult() {
 	return {};
 }
 
-void Game::GetMinimapTexture( scene::Camera* camera, const types::Vec2< size_t > texture_dimensions ) {
+void Game::GetMinimapTexture(
+	scene::Camera* terrain_camera,
+	scene::Camera* fog_camera,
+	const types::Vec2< size_t > texture_dimensions
+) {
 	if ( m_minimap_texture_request_id ) {
 		Log( "Canceling minimap texture request" );
-		m_actors.terrain->GetMeshActor()->CancelDataRequest( m_minimap_texture_request_id );
+		m_actors.terrain->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_texture_request_id );
+		m_minimap_texture_request_id = 0;
 	}
-	m_minimap_texture_request_id = m_actors.terrain->GetMeshActor()->CaptureToTexture( camera, texture_dimensions );
+	if ( m_minimap_fog_texture_request_id ) {
+		Log( "Canceling minimap fog texture request" );
+		m_actors.fog->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_fog_texture_request_id );
+		m_minimap_fog_texture_request_id = 0;
+	}
+	if ( m_pending_minimap_terrain ) {
+		DELETE( m_pending_minimap_terrain );
+		m_pending_minimap_terrain = nullptr;
+	}
+	if ( m_pending_minimap_fog ) {
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+	}
+	m_minimap_texture_request_id = m_actors.terrain->GetMeshActor()->CaptureToTexture(
+		terrain_camera,
+		texture_dimensions
+	);
+	m_minimap_fog_texture_request_id = m_actors.fog->GetMeshActor()->CaptureToTexture(
+		fog_camera,
+		texture_dimensions
+	);
 }
 
 types::texture::Texture* Game::GetMinimapTextureResult() {
-	if ( m_minimap_texture_request_id ) {
+	if ( m_minimap_texture_request_id && !m_pending_minimap_terrain ) {
 		auto result = m_actors.terrain->GetMeshActor()->GetCaptureToTextureResponse( m_minimap_texture_request_id );
 		if ( result ) {
-			Log( "Received minimap texture" );
+			Log( "Received minimap terrain texture" );
 			m_minimap_texture_request_id = 0;
-			return result;
+			m_pending_minimap_terrain = result;
 		}
 	}
-	// no texture (yet)
+	if ( m_minimap_fog_texture_request_id && !m_pending_minimap_fog ) {
+		auto result = m_actors.fog->GetMeshActor()->GetCaptureToTextureResponse( m_minimap_fog_texture_request_id );
+		if ( result ) {
+			uint8_t minimum_alpha = 255;
+			uint8_t maximum_alpha = 0;
+			size_t covered_pixels = 0;
+			for ( size_t y = 0 ; y < result->GetHeight() ; y++ ) {
+				for ( size_t x = 0 ; x < result->GetWidth() ; x++ ) {
+					const auto alpha = static_cast< uint8_t >( result->GetPixel( x, y ) >> 24 );
+					minimum_alpha = std::min( minimum_alpha, alpha );
+					maximum_alpha = std::max( maximum_alpha, alpha );
+					if ( alpha ) {
+						covered_pixels++;
+					}
+				}
+			}
+			Log(
+				"Received minimap fog texture; alpha " + std::to_string( minimum_alpha ) +
+				"-" + std::to_string( maximum_alpha ) + ", " +
+				std::to_string( covered_pixels ) + " covered pixels"
+			);
+			m_minimap_fog_texture_request_id = 0;
+			m_pending_minimap_fog = result;
+		}
+	}
+	if ( m_pending_minimap_terrain && m_pending_minimap_fog ) {
+		const auto width = m_pending_minimap_terrain->GetWidth();
+		const auto height = m_pending_minimap_terrain->GetHeight();
+		ASSERT(
+			m_pending_minimap_fog->GetWidth() == width &&
+			m_pending_minimap_fog->GetHeight() == height,
+			"minimap terrain and fog dimensions differ"
+		);
+		m_pending_minimap_terrain->AddFrom(
+			m_pending_minimap_fog,
+			types::texture::AM_MERGE,
+			0,
+			0,
+			width - 1,
+			height - 1
+		);
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+		auto* const result = m_pending_minimap_terrain;
+		m_pending_minimap_terrain = nullptr;
+		return result;
+	}
 	return nullptr;
 }
 
@@ -2342,25 +2672,30 @@ void Game::UpdateMinimap() {
 	}
 	Log( "Requesting minimap ( " + std::to_string( minimap_size.x ) + "x" + std::to_string( minimap_size.y ) + " )" );
 
-	NEWV( camera, scene::Camera, scene::Camera::CT_ORTHOGRAPHIC );
-	camera->SetAngle( m_camera->GetAngle() );
-	camera->SetScale(
-		{
-			minimap_size.x / (float)m_viewport.window_width / m_viewport.window_aspect_ratio / (float)m_map_data.width * 2.0f,
-			minimap_size.y / (float)m_viewport.window_height / (float)( m_map_data.height + 1 ) * 2.82f,
-			0.01f,
-		}
-	);
-	camera->SetPosition(
-		{
-			0.0f,
-			1.014f - ( minimap_size.y / 2.0f / (float)m_viewport.window_height ),
-			0.5f
-		}
-	);
+	const auto f_create_camera = [ this, &minimap_size ]() -> scene::Camera* {
+		auto* const camera = new scene::Camera( scene::Camera::CT_ORTHOGRAPHIC );
+		camera->SetAngle( m_camera->GetAngle() );
+		camera->SetScale(
+			{
+				minimap_size.x / (float)m_viewport.window_width / m_viewport.window_aspect_ratio / (float)m_map_data.width * 2.0f,
+				minimap_size.y / (float)m_viewport.window_height / (float)( m_map_data.height + 1 ) * 2.82f,
+				0.01f,
+			}
+		);
+		camera->SetPosition(
+			{
+				0.0f,
+				1.014f - ( minimap_size.y / 2.0f / (float)m_viewport.window_height ),
+				0.5f
+			}
+		);
+		return camera;
+	};
 
 	GetMinimapTexture(
-		camera, {
+		f_create_camera(),
+		f_create_camera(),
+		{
 			(size_t)std::floor( minimap_size.x ),
 			(size_t)std::floor( minimap_size.y ),
 		}
@@ -2699,6 +3034,9 @@ void Game::UpdatePreviews( tile::Tile* const tile, const unit::Unit* const unit 
 		if ( !selected_unit || selected_unit->GetTile() != tile ) {
 			const auto* const important_unit = tile->GetMostImportantUnit();
 			const auto* base = tile->GetBase();
+			if ( base && !base->IsOwned() && !tile->IsCurrentlyVisible() ) {
+				base = nullptr;
+			}
 			if ( !important_unit && base ) {
 				UpdateBasePreview( base );
 			}

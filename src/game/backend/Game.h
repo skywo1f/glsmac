@@ -5,6 +5,7 @@
 #include <unordered_set>
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 
 #include "common/MTModule.h"
@@ -401,6 +402,9 @@ private:
 	std::unordered_set< size_t > m_verified_turn_checksum_slots = {};
 
 	std::vector< FrontendRequest >* m_pending_frontend_requests = nullptr;
+	bool m_frontend_exploration_initialized = false;
+	std::set< std::pair< size_t, size_t > > m_frontend_explored_tiles = {};
+	void PushExplorationUpdate();
 
 	void InitGame( MT_Response& response, MT_CANCELABLE );
 	void ResetGame();

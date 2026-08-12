@@ -154,6 +154,7 @@ types::texture::Texture* Mesh::GetCaptureToTextureResponse( const rr::id_t reque
 
 void Mesh::CancelCaptureToTextureRequest( const rr::id_t request_id ) {
 	Log( "Canceling capture-to-texture request " + std::to_string( request_id ) );
+	RR_Cancel< rr::Capture >( request_id );
 }
 
 }

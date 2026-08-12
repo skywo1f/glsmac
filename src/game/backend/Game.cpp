@@ -441,6 +441,7 @@ void Game::Iterate() {
 	if ( m_tm ) {
 		m_tm->ProcessTileLockRequests();
 	}
+	PushExplorationUpdate();
 }
 
 const bool Game::IsStarted() const {
@@ -1882,6 +1883,36 @@ void Game::AddFrontendRequest( const FrontendRequest& request ) {
 	m_pending_frontend_requests->push_back( request );
 }
 
+void Game::PushExplorationUpdate() {
+	if ( m_game_state != GS_RUNNING || !m_state || !m_map ) {
+		return;
+	}
+	const auto* const player = GetPlayer();
+	if ( !player ) {
+		return;
+	}
+	const auto& explored = player->GetExploredTiles();
+	if ( m_frontend_exploration_initialized && explored == m_frontend_explored_tiles ) {
+		return;
+	}
+
+	NEWV( tiles, FrontendRequest::map_exploration_t );
+	tiles->reserve( m_map->GetWidth() * m_map->GetHeight() / 2 );
+	for ( size_t y = 0 ; y < m_map->GetHeight() ; y++ ) {
+		for ( size_t x = y & 1 ; x < m_map->GetWidth() ; x += 2 ) {
+			if ( player->HasExploredTile( x, y ) ) {
+				tiles->push_back( { x, y } );
+			}
+		}
+	}
+
+	auto fr = FrontendRequest( FrontendRequest::FR_MAP_EXPLORATION );
+	fr.data.map_exploration.tiles = tiles;
+	AddFrontendRequest( fr );
+	m_frontend_explored_tiles = explored;
+	m_frontend_exploration_initialized = true;
+}
+
 void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 
 	if ( m_game_state != GS_NONE ) {
@@ -2336,6 +2367,8 @@ void Game::ResetGame() {
 	m_player = nullptr;
 	m_slot_num = 0;
 	m_slot = nullptr;
+	m_frontend_exploration_initialized = false;
+	m_frontend_explored_tiles.clear();
 
 	{
 		std::lock_guard guard( m_events_waiting_for_responses_mutex );

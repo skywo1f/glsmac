@@ -95,6 +95,14 @@ Tile* TileManager::GetTile( const types::Vec2< size_t >& coords ) {
 	return GetTile( coords.x, coords.y );
 }
 
+std::unordered_map< size_t, Tile >& TileManager::GetTiles() {
+	return m_tiles;
+}
+
+const std::unordered_map< size_t, Tile >& TileManager::GetTiles() const {
+	return m_tiles;
+}
+
 Tile* TileManager::GetSelectedTile() const {
 	return m_selected_tile;
 }

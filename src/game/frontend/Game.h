@@ -369,12 +369,38 @@ private:
 	struct {
 		std::unordered_map< ::resource::resource_t, types::texture::Texture* > source;
 		types::texture::Texture* terrain = nullptr;
+		types::texture::Texture* fog = nullptr;
 	} m_textures;
 
 	struct {
 		actor::TileSelection* tile_selection = nullptr;
 		scene::actor::Instanced* terrain = nullptr;
+		scene::actor::Instanced* fog = nullptr;
 	} m_actors;
+
+	enum fog_state_t : uint8_t {
+		FS_VISIBLE,
+		FS_EXPLORED,
+		FS_UNEXPLORED,
+	};
+	std::unordered_set< size_t > m_explored_tiles = {};
+	std::unordered_set< size_t > m_currently_visible_tiles = {};
+	std::vector< fog_state_t > m_fog_states = {};
+	bool m_map_visibility_dirty = true;
+	bool m_exploration_changed = true;
+	const size_t GetTileIndex( const types::Vec2< size_t >& coords ) const;
+	void InitializeFog();
+	void UpdateFogTileGeometry( const tile::Tile* tile );
+	void RefreshMapVisibility();
+	void AddVisibleTilesInRadius(
+		tile::Tile* center,
+		const size_t radius,
+		std::unordered_set< size_t >& visible_tiles
+	) const;
+	void AddBaseVisibleTiles(
+		tile::Tile* center,
+		std::unordered_set< size_t >& visible_tiles
+	) const;
 
 	// some additional management of world actors such as calling Iterate()
 	// note that all world actors must be instanced
@@ -405,7 +431,14 @@ private:
 
 	// minimap stuff
 	rr::id_t m_minimap_texture_request_id = 0;
-	void GetMinimapTexture( scene::Camera* camera, const ::types::Vec2< size_t > texture_dimensions );
+	rr::id_t m_minimap_fog_texture_request_id = 0;
+	types::texture::Texture* m_pending_minimap_terrain = nullptr;
+	types::texture::Texture* m_pending_minimap_fog = nullptr;
+	void GetMinimapTexture(
+		scene::Camera* terrain_camera,
+		scene::Camera* fog_camera,
+		const ::types::Vec2< size_t > texture_dimensions
+	);
 	types::texture::Texture* GetMinimapTextureResult();
 	void UpdateMinimap();
 

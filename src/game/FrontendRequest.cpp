@@ -117,6 +117,10 @@ FrontendRequest::FrontendRequest( const FrontendRequest& other )
 			NEW( data.unit_spawn.morale_string, std::string, *other.data.unit_spawn.morale_string );
 			break;
 		}
+		case FR_MAP_EXPLORATION: {
+			NEW( data.map_exploration.tiles, map_exploration_t, *other.data.map_exploration.tiles );
+			break;
+		}
 		case FR_UNIT_UPDATE: {
 			NEW( data.unit_update.morale_string, std::string, *other.data.unit_update.morale_string );
 			break;
@@ -222,6 +226,10 @@ FrontendRequest::~FrontendRequest() {
 		case FR_UNIT_SPAWN: {
 			DELETE( data.unit_spawn.unitdef_id );
 			DELETE( data.unit_spawn.morale_string );
+			break;
+		}
+		case FR_MAP_EXPLORATION: {
+			DELETE( data.map_exploration.tiles );
 			break;
 		}
 		case FR_UNIT_UPDATE: {

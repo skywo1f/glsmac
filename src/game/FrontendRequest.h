@@ -61,6 +61,7 @@ public:
 		FR_QUIT,
 		FR_ERROR,
 		FR_UPDATE_TILES,
+		FR_MAP_EXPLORATION,
 		FR_TURN_STATUS,
 		FR_TURN_ADVANCE,
 		FR_FACTION_DEFINE,
@@ -107,6 +108,7 @@ public:
 	typedef std::vector< slot_define_t > slot_defines_t;
 
 	typedef std::vector< tile_render_snapshot_t > tile_updates_t;
+	typedef std::vector< backend::map::tile::coords_t > map_exploration_t;
 	typedef std::unordered_map< std::string, backend::map::sprite_actor_t > tile_sprite_actors_t;
 	typedef std::unordered_map< size_t, std::string > tile_sprite_removals_t;
 	typedef std::unordered_map< size_t, std::pair< std::string, types::Vec3 > > tile_sprite_additions_t;
@@ -140,6 +142,9 @@ public:
 			size_t terrain_texture_width;
 			size_t terrain_texture_height;
 		} update_tiles;
+		struct {
+			const map_exploration_t* tiles;
+		} map_exploration;
 		struct {
 			size_t tile_x;
 			size_t tile_y;

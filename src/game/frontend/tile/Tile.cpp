@@ -11,13 +11,16 @@ namespace game {
 namespace frontend {
 namespace tile {
 
-std::vector< size_t > Tile::GetUnitsOrder( const std::unordered_map< size_t, unit::Unit* >& units ) {
+std::vector< size_t > Tile::GetUnitsOrder(
+	const std::unordered_map< size_t, unit::Unit* >& units,
+	const bool include_unowned
+) {
 	std::map< size_t, std::vector< size_t > > weights; // { weight, units }
 
 	for ( auto& it : units ) {
 		const auto unit_id = it.first;
 		const auto* unit = it.second;
-		if ( unit->IsEmbarked() ) {
+		if ( unit->IsEmbarked() || ( !include_unowned && !unit->IsOwned() ) ) {
 			continue;
 		}
 		size_t weight = unit->GetSelectionWeight();
@@ -127,10 +130,12 @@ void Tile::Render( size_t selected_unit_id ) {
 	}
 	m_render.currently_rendered_fake_badges.clear();
 
-	const auto units_order = GetUnitsOrder( m_units );
+	const auto units_order = GetUnitsOrder( m_units, m_is_currently_visible );
 	bool should_show_units = !units_order.empty();
 	if ( m_base ) {
-		m_base->Show();
+		if ( m_base->IsOwned() || m_is_currently_visible ) {
+			m_base->Show();
+		}
 		should_show_units = false;
 		for ( const auto& unit_id : units_order ) {
 			if ( unit_id == selected_unit_id ) {
@@ -196,6 +201,19 @@ void Tile::Render( size_t selected_unit_id ) {
 
 }
 
+void Tile::SetCurrentlyVisible( const bool is_visible ) {
+	if ( m_is_currently_visible == is_visible ) {
+		return;
+	}
+	m_is_currently_visible = is_visible;
+	m_is_units_reorder_needed = true;
+	m_is_objects_reorder_needed = true;
+}
+
+const bool Tile::IsCurrentlyVisible() const {
+	return m_is_currently_visible;
+}
+
 const std::unordered_map< size_t, unit::Unit* >& Tile::GetUnits() const {
 	return m_units;
 }
@@ -204,7 +222,7 @@ const std::vector< unit::Unit* >& Tile::GetOrderedUnits() {
 	if ( m_is_units_reorder_needed ) {
 		m_ordered_units.clear();
 		m_ordered_units.reserve( m_units.size() );
-		const auto order = GetUnitsOrder( m_units );
+		const auto order = GetUnitsOrder( m_units, m_is_currently_visible );
 		for ( const auto& it : order ) {
 			m_ordered_units.push_back( m_units.at( it ) );
 		}
@@ -223,7 +241,7 @@ const std::vector< TileObject* >& Tile::GetOrderedObjects() {
 				: 0
 			) + units.size()
 		);
-		if ( m_base ) {
+		if ( m_base && ( m_base->IsOwned() || m_is_currently_visible ) ) {
 			m_ordered_objects.push_back( m_base );
 		}
 		for ( const auto& unit : units ) {
