@@ -7,8 +7,24 @@ const get_sight_radius = (unit_or_def) => {
 };
 
 const is_concealed = (unit_or_def) => {
+	return is_ability_concealed(unit_or_def) || is_fungus_concealed(unit_or_def);
+};
+
+const is_ability_concealed = (unit_or_def) => {
 	return unit_abilities.has(unit_or_def, 'CloakingDevice') ||
 		unit_abilities.has(unit_or_def, 'DeepPressureHull');
+};
+
+const is_fungus_concealed = (unit) => {
+	if (!#is_defined(unit.get_tile)) {
+		return false;
+	}
+	const tile = unit.get_tile();
+	return (
+		(#is_defined(unit.is_land) && unit.is_land) ||
+		(#is_defined(unit.is_water) && unit.is_water)
+	) && #is_defined(tile.features) &&
+		#is_defined(tile.features.xenofungus) && tile.features.xenofungus;
 };
 
 const get_tiles_in_radius = (center, radius) => {
@@ -59,9 +75,44 @@ const has_friendly_sensor = (game, player_id, target_tile) => {
 	return false;
 };
 
+const has_friendly_deep_radar = (game, player_id, target_tile) => {
+	if (
+		!#is_defined(game) || #typeof(game.get_um) != 'Callable' ||
+		target_tile == null
+	) {
+		return false;
+	}
+	for (unit of game.get_um().get_units()) {
+		if (
+			unit.owner != player_id ||
+			(#is_defined(unit.is_embarked) && unit.is_embarked) ||
+			!unit_abilities.has(unit, 'DeepRadar')
+		) {
+			continue;
+		}
+		const observer_tile = unit.get_tile();
+		if (
+			observer_tile == target_tile ||
+			(
+				#typeof(observer_tile.is_adjactent_to) == 'Callable' &&
+				observer_tile.is_adjactent_to(target_tile)
+			)
+		) {
+			return true;
+		}
+	}
+	return false;
+};
+
 const is_detected = (game, player_id, target) => {
-	return target.owner == player_id || !is_concealed(target) ||
-		has_friendly_sensor(game, player_id, target.get_tile());
+	if (target.owner == player_id || !is_concealed(target)) {
+		return true;
+	}
+	if (has_friendly_sensor(game, player_id, target.get_tile())) {
+		return true;
+	}
+	return !is_ability_concealed(target) && is_fungus_concealed(target) &&
+		has_friendly_deep_radar(game, player_id, target.get_tile());
 };
 
 const can_target = (game, player_id, attacker, target) => {
@@ -81,8 +132,11 @@ return {
 	sensor_range: SENSOR_RANGE,
 	get_sight_radius: get_sight_radius,
 	is_concealed: is_concealed,
+	is_ability_concealed: is_ability_concealed,
+	is_fungus_concealed: is_fungus_concealed,
 	get_tiles_in_radius: get_tiles_in_radius,
 	has_friendly_sensor: has_friendly_sensor,
+	has_friendly_deep_radar: has_friendly_deep_radar,
 	is_detected: is_detected,
 	can_target: can_target,
 };

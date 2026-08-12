@@ -188,11 +188,13 @@ scenarios, for:
   terrain is covered, previously explored terrain is dimmed, currently visible
   terrain remains clear, and out-of-vision enemy bases and units are concealed
   from rendering, selection, and previews; the minimap includes the same fog;
-  Deep Radar extends exploration and live sight to two squares; Cloaking Device
-  and Deep Pressure Hull units remain concealed unless directly encountered or
-  detected by an owned Sensor Array; Sensor Arrays provide live two-square
-  coverage, reveal concealed enemies, record terrain when construction completes,
-  and grant the original 25% defense bonus to units on covered land squares;
+  Deep Radar extends exploration and live sight to two squares; ground and sea
+  units in xenofungus are concealed, while adjacent Deep Radar detects fungal
+  concealment without revealing Cloaking Device or Deep Pressure Hull units;
+  ability-concealed units remain hidden unless directly encountered or detected
+  by an owned Sensor Array; Sensor Arrays provide live two-square coverage,
+  reveal all concealed enemies, record terrain when construction completes, and
+  grant the original 25% defense bonus to units on covered land squares;
   bilateral pacts immediately exchange existing maps and continuously share later
   exploration; old saves preserve their formerly unrestricted map view, while
   map trades and automatic pact sharing have reversible settlement and network
@@ -277,8 +279,8 @@ The following original-SMAC systems remain absent or materially incomplete:
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
 - volcanoes;
-- remaining visibility parity: original fungus sight restrictions and broader
-  terrain-sensitive line-of-sight fidelity;
+- remaining multiplayer visibility hardening: authoritative per-client filtering
+  of hidden-unit snapshots so concealed information is not present client-side;
 - complete UI workflows, including the interactive abandon-versus-evacuate
   Headquarters prompt, accessibility review, packaging, upgrade migration, and
   release documentation;
@@ -533,6 +535,15 @@ passed. Multiplayer passed in 66.38 seconds. Running reconnect exposed clients
 redundantly submitting 533 host-only content definitions; restricting those
 events to the authoritative host removed the rejected-event flood, and the same
 reconnect scenario then passed under its original deadline in 61.60 seconds.
+
+After original fungus concealment was completed, the Windows x64 Release build
+succeeded and all 104 isolated native/script tests passed in 323.97 seconds.
+The installed-asset transport, visibility, combat-access, and native-life
+scenarios passed together in 69.07 seconds. The visibility runtime directly
+verified one ordinary ground unit detected in fungus by adjacent Deep Radar,
+one ability-concealed unit remaining hidden from Radar, both units revealed by
+an owned Sensor Array, and the original split restored when the Sensor was
+disabled. Embarked units no longer contribute exploration or live sight.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

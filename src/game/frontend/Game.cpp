@@ -1595,6 +1595,7 @@ void Game::RefreshMapVisibility() {
 
 	std::unordered_set< size_t > visible_tiles = {};
 	std::unordered_set< size_t > sensor_detected_tiles = {};
+	std::unordered_set< size_t > radar_detected_tiles = {};
 	for ( auto& it : m_tm->GetTiles() ) {
 		auto* const tile = &it.second;
 		const auto* const base = tile->GetBase();
@@ -1602,12 +1603,15 @@ void Game::RefreshMapVisibility() {
 			AddBaseVisibleTiles( tile, visible_tiles );
 		}
 		for ( const auto& unit : tile->GetUnits() ) {
-			if ( unit.second->IsOwned() ) {
+			if ( unit.second->IsOwned() && !unit.second->IsEmbarked() ) {
 				AddVisibleTilesInRadius(
 					tile,
 					unit.second->HasDeepRadar() ? 2 : 1,
 					visible_tiles
 				);
+				if ( unit.second->HasDeepRadar() ) {
+					AddVisibleTilesInRadius( tile, 1, radar_detected_tiles );
+				}
 			}
 		}
 	}
@@ -1642,10 +1646,16 @@ void Game::RefreshMapVisibility() {
 			needs_render = true;
 		}
 		const bool has_sensor_detection = sensor_detected_tiles.find( key ) != sensor_detected_tiles.end();
+		const bool has_radar_detection = radar_detected_tiles.find( key ) != radar_detected_tiles.end();
 		for ( const auto& unit : tile->GetUnits() ) {
 			auto* const candidate = unit.second;
+			const bool concealment_is_detected = has_sensor_detection || (
+				!candidate->IsAbilityConcealed() &&
+				candidate->IsFungusConcealed() &&
+				has_radar_detection
+			);
 			const bool unit_is_visible = candidate->IsOwned() || (
-				is_visible && ( !candidate->IsConcealed() || has_sensor_detection )
+				is_visible && ( !candidate->IsConcealed() || concealment_is_detected )
 			);
 			needs_render = candidate->SetVisibleToPlayer( unit_is_visible ) || needs_render;
 			if ( candidate->IsConcealed() && !candidate->IsOwned() ) {

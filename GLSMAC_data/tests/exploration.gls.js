@@ -6,8 +6,9 @@ const values = {};
 let events = [];
 let triggers = [];
 let players = [];
+let units = [];
 const um = {
-	get_units: () => { return []; },
+	get_units: () => { return units; },
 };
 const bm = {
 	get_bases: () => { return []; },
@@ -74,6 +75,21 @@ const beta = make_player(1);
 players = [alpha, beta];
 define_exploration(game);
 callbacks.start({});
+
+const embarked_radar = {
+	owner: 0,
+	is_embarked: true,
+	get_tile: () => { return center; },
+	get_def: () => { return {abilities: ['DeepRadar']}; },
+};
+units = [embarked_radar];
+callbacks.turn({});
+test.assert(#sizeof(events) == 0);
+embarked_radar.is_embarked = false;
+callbacks.turn({});
+test.assert(#sizeof(events) == 1 && #sizeof(events[0].data.tiles) == 4);
+events = [];
+units = [];
 
 center.terraforming = {sensor: true};
 values.f_territory_get_owner = (tile) => { return alpha; };

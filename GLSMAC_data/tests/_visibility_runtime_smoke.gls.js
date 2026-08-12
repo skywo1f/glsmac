@@ -24,6 +24,8 @@
 		game.register_event('visibility_runtime_setup', {
 			validate: (event) => {},
 			apply: (event) => {
+				const xenofungus = event.data.sensor_tile.features.xenofungus;
+				event.data.sensor_tile.update_features({xenofungus: true});
 				const radar = event.game.um.spawn_unit({
 					def: event.data.radar_def_id,
 					owner: event.data.player,
@@ -39,11 +41,23 @@
 					morale: 2,
 					health: 1.0,
 				});
+				const fungus_hidden = event.game.um.spawn_unit({
+					def: event.data.ordinary_def_id,
+					owner: event.data.opponent,
+					tile: event.data.sensor_tile,
+					morale: 2,
+					health: 1.0,
+				});
+				concealed.movement = 0.0;
+				fungus_hidden.movement = 0.0;
 				const queue_exploration = event.game.get('f_exploration_queue_at_tile');
 				if (#is_defined(queue_exploration)) {
 					queue_exploration(event.data.player, radar.get_tile(), radar);
 				}
-				return {unit_ids: [radar.id, concealed.id]};
+				return {
+					unit_ids: [radar.id, concealed.id, fungus_hidden.id],
+					xenofungus: xenofungus,
+				};
 			},
 			rollback: (event) => {
 				for (let i = #sizeof(event.applied.unit_ids) - 1; i >= 0; i--) {
@@ -52,6 +66,7 @@
 						event.game.um.despawn_unit(event.game.um.get_unit(id));
 					}
 				}
+				event.data.sensor_tile.update_features({xenofungus: event.applied.xenofungus});
 			},
 		});
 		game.register_event('visibility_runtime_set_sensor', {
@@ -113,6 +128,7 @@
 			let radar_def = null;
 			let cloaked_def = null;
 			let submarine_def = null;
+			let ordinary_def = null;
 			for (def of game.get_um().get_unit_defs()) {
 				let has_radar = false;
 				let has_cloak = false;
@@ -137,8 +153,14 @@
 				if (submarine_def == null && has_hull && def.is_water) {
 					submarine_def = def;
 				}
+				if (def.id == 'ScoutPatrol') {
+					ordinary_def = def;
+				}
 			}
-			if (radar_def == null || cloaked_def == null || submarine_def == null) {
+			if (
+				radar_def == null || cloaked_def == null ||
+				submarine_def == null || ordinary_def == null
+			) {
 				fail('generated recon and stealth definitions are incomplete');
 				return;
 			}
@@ -147,6 +169,7 @@
 				game.event('visibility_runtime_setup', {
 					radar_def_id: radar_def.id,
 					cloaked_def_id: cloaked_def.id,
+					ordinary_def_id: ordinary_def.id,
 					player: player,
 					opponent: opponent,
 					base_tile: owned_base.get_tile(),
@@ -159,8 +182,8 @@
 				#async(2250, () => {
 					game.event('visibility_runtime_set_sensor', {tile: sensor_tile, enabled: false});
 					#print(
-						'VISIBILITY_RUNTIME_PASS: frontend processed Deep Radar, concealed units, ' +
-						'and owned Sensor Array detection'
+						'VISIBILITY_RUNTIME_PASS: frontend processed fungus concealment, Deep Radar, ' +
+						'ability concealment, and owned Sensor Array detection'
 					);
 					#async(500, () => { glsmac.exit(); });
 				});

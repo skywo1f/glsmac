@@ -126,6 +126,11 @@ const queue_reveal = (game, player, tiles) => {
 };
 
 const queue_at_tile = (game, player, tile, unit) => {
+	if (
+		#is_defined(unit) && #is_defined(unit.is_embarked) && unit.is_embarked
+	) {
+		return;
+	}
 	if (tile != null) {
 		const radius = #is_defined(unit) ? visibility_rules.get_sight_radius(unit) : 1;
 		queue_reveal(game, player, get_tiles_in_radius(tile, radius));

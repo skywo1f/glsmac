@@ -407,7 +407,7 @@ IF ( BUILD_TESTING )
 		)
 		SET_TESTS_PROPERTIES( visibility_runtime_smoke PROPERTIES
 			FAIL_REGULAR_EXPRESSION "VISIBILITY_RUNTIME_FAIL"
-			PASS_REGULAR_EXPRESSION "Map visibility: [0-9]+ visible, [0-9]+ explored of [0-9]+ tiles, 1 owned sensors, 1 concealed detected, 0 concealed hidden"
+			PASS_REGULAR_EXPRESSION "Map visibility: [0-9]+ visible, [0-9]+ explored of [0-9]+ tiles, 1 owned sensors, 2 concealed detected, 0 concealed hidden"
 			RUN_SERIAL TRUE
 			TIMEOUT 90
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"

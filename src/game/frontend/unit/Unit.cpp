@@ -107,8 +107,16 @@ const bool Unit::HasDeepRadar() const {
 	return m_def->HasDeepRadar();
 }
 
-const bool Unit::IsConcealed() const {
+const bool Unit::IsAbilityConcealed() const {
 	return m_def->IsConcealed();
+}
+
+const bool Unit::IsFungusConcealed() const {
+	return m_def->CanHideInFungus() && m_tile->HasFungus();
+}
+
+const bool Unit::IsConcealed() const {
+	return IsAbilityConcealed() || IsFungusConcealed();
 }
 
 const bool Unit::IsVisibleToPlayer() const {

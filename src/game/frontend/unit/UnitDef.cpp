@@ -29,6 +29,9 @@ UnitDef::UnitDef( sprite::InstancedSpriteManager* ism, const backend::unit::Def*
 			m_is_concealed =
 				def->HasAbility( "CloakingDevice" ) ||
 				def->HasAbility( "DeepPressureHull" );
+			m_can_hide_in_fungus =
+				def->GetMovementType() == backend::unit::MT_LAND ||
+				def->GetMovementType() == backend::unit::MT_WATER;
 
 			switch ( def->m_render->m_type ) {
 
@@ -75,6 +78,10 @@ const bool UnitDef::HasDeepRadar() const {
 
 const bool UnitDef::IsConcealed() const {
 	return m_is_concealed;
+}
+
+const bool UnitDef::CanHideInFungus() const {
+	return m_can_hide_in_fungus;
 }
 
 sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {

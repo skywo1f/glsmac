@@ -70,6 +70,8 @@ public:
 	const bool IsPlanetBuster() const;
 	const bool IsArtillery() const;
 	const bool HasDeepRadar() const;
+	const bool IsAbilityConcealed() const;
+	const bool IsFungusConcealed() const;
 	const bool IsConcealed() const;
 	const bool IsVisibleToPlayer() const;
 	const bool SetVisibleToPlayer( const bool is_visible );

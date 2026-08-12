@@ -223,6 +223,10 @@ const bool Tile::HasSensor() const {
 	return m_has_sensor;
 }
 
+const bool Tile::HasFungus() const {
+	return m_has_fungus;
+}
+
 const std::unordered_map< size_t, unit::Unit* >& Tile::GetUnits() const {
 	return m_units;
 }
@@ -318,6 +322,7 @@ void Tile::Update( const tile_render_snapshot_t& snapshot ) {
 
 	m_is_water = snapshot.is_water;
 	m_has_sensor = snapshot.terraforming & backend::map::tile::TERRAFORMING_SENSOR;
+	m_has_fungus = snapshot.features & backend::map::tile::FEATURE_XENOFUNGUS;
 
 	backend::map::tile::tile_layer_type_t lt = ( snapshot.is_water
 		? backend::map::tile::LAYER_WATER
