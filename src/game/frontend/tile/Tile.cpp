@@ -543,6 +543,9 @@ void Tile::Update( const tile_render_snapshot_t& snapshot ) {
 		FEATURE( FEATURE_JUNGLE, "Jungle" )
 		FEATURE( FEATURE_DUNES, "Dunes" )
 		FEATURE( FEATURE_URANIUM, "Uranium" )
+		FEATURE( FEATURE_VOLCANO, "Mount Planet" )
+		FEATURE( FEATURE_SUNNY_MESA, "Sunny Mesa" )
+		FEATURE( FEATURE_GARLAND_CRATER, "Garland Crater" )
 	}
 	FEATURE( FEATURE_MONOLITH, "Monolith" )
 

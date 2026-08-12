@@ -22,6 +22,10 @@ const make_tile = (fungus) => {
 			monolith: false,
 			jungle: false,
 			river: false,
+			volcano: false,
+			uranium: false,
+			geothermal: false,
+			garland_crater: false,
 		},
 		terraforming: {
 			road: false,
@@ -130,6 +134,26 @@ test.assert(resources.get_tile_yields(monolith, player) == {
 	MINERALS: 2,
 	ENERGY: 2,
 });
+
+known_technologies = {};
+const volcano = make_tile(false);
+volcano.features.volcano = true;
+test.assert(resources.get_tile_yields(volcano, player) == {
+	NUTRIENTS: 1,
+	MINERALS: 1,
+	ENERGY: 1,
+});
+const uranium = make_tile(false);
+uranium.features.uranium = true;
+test.assert(resources.get_tile_yields(uranium, player).ENERGY == 1);
+const crater = make_tile(false);
+crater.features.garland_crater = true;
+test.assert(resources.get_tile_yields(crater, player).MINERALS == 1);
+const geothermal = make_tile(false);
+geothermal.is_land = false;
+geothermal.is_water = true;
+geothermal.features.geothermal = true;
+test.assert(resources.get_tile_yields(geothermal, player).ENERGY == 2);
 
 const borehole = make_tile(false);
 borehole.terraforming.borehole = true;

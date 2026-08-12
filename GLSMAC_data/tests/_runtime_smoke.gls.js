@@ -123,6 +123,31 @@
 		game.on('turn', (e) => {
 			const turn_id = e.year - 2100;
 			if (turn_id == 1) {
+				const landmark_tm = game.get_tm();
+				let volcano_tiles = 0;
+				for (let landmark_y = 0; landmark_y < landmark_tm.get_map_height(); landmark_y++) {
+					for (
+						let landmark_x = landmark_y % 2;
+						landmark_x < landmark_tm.get_map_width();
+						landmark_x += 2
+					) {
+						const landmark_tile = landmark_tm.get_tile(landmark_x, landmark_y);
+						if (landmark_tile.features.volcano) {
+							if (!landmark_tile.is_land) {
+								#print('RUNTIME_SMOKE_FAIL: Mount Planet contains a water tile');
+								glsmac.exit();
+								return;
+							}
+							volcano_tiles++;
+						}
+					}
+				}
+				if (volcano_tiles < 2) {
+					#print('RUNTIME_SMOKE_FAIL: Mount Planet was not generated');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNTIME_SMOKE_MOUNT_PLANET_PASS: ' + #to_string(volcano_tiles) + ' tiles');
 				const victory_state = game.get_victory_state();
 				if (
 					game.is_game_over() ||

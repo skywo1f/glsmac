@@ -66,6 +66,9 @@ CLASS( MapGenerator, common::Class )
 	// generate everything EXCEPT FOR elevations here
 	virtual void GenerateDetails( tile::Tiles* tiles, const settings::MapSettings* map_settings, MT_CANCELABLE ) = 0;
 
+	// generate landmarks after all terrain normalization is complete
+	virtual void GenerateLandmarks( tile::Tiles* tiles, const settings::MapSettings* map_settings, MT_CANCELABLE ) = 0;
+
 protected:
 
 	Game* m_game = nullptr;

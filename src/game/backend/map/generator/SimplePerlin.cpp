@@ -165,6 +165,85 @@ void SimplePerlin::GenerateDetails( tile::Tiles* tiles, const backend::settings:
 	}
 }
 
+void SimplePerlin::GenerateLandmarks( tile::Tiles* tiles, const backend::settings::MapSettings* map_settings, MT_CANCELABLE ) {
+	tile::Tile* center = nullptr;
+	size_t best_land_neighbours = 0;
+	tile::elevation_t best_elevation = tile::ELEVATION_MIN;
+
+	for ( auto y = 0 ; y < tiles->GetHeight() ; y++ ) {
+		for ( auto x = y & 1 ; x < tiles->GetWidth() ; x += 2 ) {
+			auto* const candidate = &tiles->At( x, y );
+			if ( candidate->is_water_tile ) {
+				continue;
+			}
+			size_t land_neighbours = 0;
+			for ( const auto* const neighbour : candidate->neighbours ) {
+				if ( !neighbour->is_water_tile ) {
+					land_neighbours++;
+				}
+			}
+			const auto elevation = *candidate->elevation.center;
+			const bool candidate_is_supported = land_neighbours >= 6;
+			const bool center_is_supported = center && best_land_neighbours >= 6;
+			if (
+				!center ||
+				(candidate_is_supported && !center_is_supported) ||
+				(
+					candidate_is_supported == center_is_supported &&
+					(
+						elevation > best_elevation ||
+						(
+							elevation == best_elevation &&
+							(candidate->coord.y < center->coord.y || (
+								candidate->coord.y == center->coord.y &&
+								candidate->coord.x < center->coord.x
+							))
+						)
+					)
+				)
+			) {
+				center = candidate;
+				best_land_neighbours = land_neighbours;
+				best_elevation = elevation;
+			}
+			MT_RETIF();
+		}
+	}
+
+	if ( !center ) {
+		Log( "Skipping Mount Planet: generated map has no land" );
+		return;
+	}
+
+	std::vector< tile::Tile* > landmark_tiles = { center };
+	for ( auto* const neighbour : center->neighbours ) {
+		if ( !neighbour->is_water_tile ) {
+			landmark_tiles.push_back( neighbour );
+		}
+	}
+	static constexpr tile::feature_t CONFLICTING_FEATURES =
+		tile::FEATURE_RIVER |
+		tile::FEATURE_MONOLITH |
+		tile::FEATURE_XENOFUNGUS |
+		tile::FEATURE_JUNGLE |
+		tile::FEATURE_URANIUM |
+		tile::FEATURE_GEOTHERMAL |
+		tile::FEATURE_UNITY_POD |
+		tile::FEATURE_DUNES;
+	for ( auto* const landmark_tile : landmark_tiles ) {
+		landmark_tile->features &= static_cast< tile::feature_t >( ~CONFLICTING_FEATURES );
+		landmark_tile->features |= tile::FEATURE_VOLCANO;
+		landmark_tile->rockiness = landmark_tile == center
+			? tile::ROCKINESS_ROCKY
+			: std::max( landmark_tile->rockiness, tile::ROCKINESS_ROLLING );
+	}
+	Log(
+		"Generated Mount Planet around [ " + std::to_string( center->coord.x ) + " " +
+		std::to_string( center->coord.y ) + " ] using " +
+		std::to_string( landmark_tiles.size() ) + " land tiles"
+	);
+}
+
 void SimplePerlin::GenerateRiver( tile::Tiles* tiles, tile::Tile* tile, uint8_t length, uint8_t direction, int8_t direction_diagonal, MT_CANCELABLE ) {
 
 	if ( tile->features & tile::FEATURE_RIVER ) {

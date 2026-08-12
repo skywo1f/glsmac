@@ -164,6 +164,19 @@ const get_tile_yields = (tile, player) => {
 			result.ENERGY = result.ENERGY + 1;
 		}
 	}
+	if (tile.is_land && tile.features.volcano) {
+		result.MINERALS = result.MINERALS + 1;
+		result.ENERGY = result.ENERGY + 1;
+	}
+	if (tile.is_land && tile.features.uranium) {
+		result.ENERGY = result.ENERGY + 1;
+	}
+	if (tile.is_land && tile.features.garland_crater) {
+		result.MINERALS = result.MINERALS + 1;
+	}
+	if (tile.is_water && tile.features.geothermal) {
+		result.ENERGY = result.ENERGY + 1;
+	}
 	add_resource_bonus(result, tile);
 	if (tile.get_base() != null) {
 		result.NUTRIENTS = #max(result.NUTRIENTS, rules.base_yields.NUTRIENTS);

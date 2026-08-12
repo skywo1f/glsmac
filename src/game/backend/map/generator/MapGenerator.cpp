@@ -111,6 +111,10 @@ void MapGenerator::Generate( tile::Tiles* tiles, const settings::MapSettings* ma
 	FixImpossibleThings( tiles, MT_C );
 	MT_RETIF();
 
+	m_game->SetLoaderText( "Generating landmarks" );
+	GenerateLandmarks( tiles, map_settings, MT_C );
+	MT_RETIF();
+
 	Log( "Final land amount: " + std::to_string( GetLandAmount( tiles, MT_C ) ) );
 #ifdef DEBUG
 	{

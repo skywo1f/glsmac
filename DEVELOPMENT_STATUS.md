@@ -170,6 +170,11 @@ scenarios, for:
   supported combat units outside friendly territory now apply the original
   POLICE -3, -4, and -5 pacifism-drone rules, including the air superiority
   exception and base-screen diagnostics;
+- generated maps place a deterministic multi-tile Mount Planet on connected
+  high ground after terrain normalization, clear incompatible surface features,
+  and expose its name in tile information; Mount Planet, Uranium Flats, Garland
+  Crater, and Geothermal Shallows apply their original intrinsic resource
+  bonuses;
 - persistent bilateral faction contact discovered through adjacent units and
   bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
   Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
@@ -279,7 +284,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   Council expulsion consequences for major atrocities;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
-- volcanoes;
+- remaining landmark generation beyond Mount Planet, plus original volcano
+  creation and eruption events and their terrain-improvement destruction;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots so concealed information is not present client-side;
 - complete UI workflows, including the interactive abandon-versus-evacuate
@@ -551,6 +557,13 @@ visibility, combat, pacifism, exploration, and air-drop rule tests passed in
 9.67 seconds. The standard installed-asset runtime completed in 51.29 seconds,
 covering live base intake, AI evaluation, Sensor ownership, and tile previews
 against the new bounded path search.
+
+After the final landmark-generation phase and Mount Planet were added, the
+Windows x64 Release build succeeded. Four focused resource, base-growth,
+terraforming, and Supply Crawler tests passed in 4.86 seconds. The standard
+installed-asset runtime passed in 55.36 seconds through turn 5 and directly
+verified a nine-tile, land-only Mount Planet before completing its ordinary
+production, expansion, and terraforming lifecycle checks.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
