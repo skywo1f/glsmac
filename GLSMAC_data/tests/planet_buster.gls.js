@@ -62,6 +62,19 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 	ring[0].adjacent_positions[center_position] = true;
 
 	const make_player = (id, name) => {
+		let council_state = {
+			is_governor: id == 0,
+			last_session_turn: 0,
+			proposal: '',
+			caller_id: -1,
+			candidate_a_id: -1,
+			candidate_b_id: -1,
+			vote_id: -2,
+			global_trade_pact: false,
+			unity_core_salvaged: false,
+			un_charter_repealed: charter_repealed == true,
+			is_expelled: false,
+		};
 		let player = {
 			id: id,
 			name: name,
@@ -75,6 +88,8 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 		player.set_major_atrocities = (value) => { player.major_atrocities = value; };
 		player.get_sanction_turns = () => { return player.sanction_turns; };
 		player.set_sanction_turns = (value) => { player.sanction_turns = value; };
+		player.get_council_state = () => { return #clone(council_state); };
+		player.set_council_state = (value) => { council_state = #clone(value); };
 		player.get_orbital_facility_count = (id) => {
 			test.assert(id == 'OrbitalDefensePod');
 			return player.pods;
@@ -384,7 +399,9 @@ let observer_key = key(world.observer.id);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
 test.assert(live_actor.relations[observer_key] == 'vendetta');
-test.assert(world.get_message_count() == 2);
+test.assert(live_actor.get_council_state().is_expelled);
+test.assert(!live_actor.get_council_state().is_governor);
+test.assert(world.get_message_count() == 3);
 test.assert(world.get_crater_apply_count() == 1);
 
 planet_buster.rollback(event);
@@ -397,6 +414,8 @@ test.assert(world.center.get_base() != null);
 live_actor = world.game.get_player(world.actor.id);
 test.assert(live_actor.get_major_atrocities() == 2);
 test.assert(live_actor.get_sanction_turns() == 3);
+test.assert(!live_actor.get_council_state().is_expelled);
+test.assert(live_actor.get_council_state().is_governor);
 test.assert(live_actor.relations[victim_key] == 'neutral');
 test.assert(live_actor.relations[bystander_key] == 'neutral');
 test.assert(live_actor.relations[observer_key] == 'neutral');
@@ -413,6 +432,7 @@ bystander_key = key(world.bystander.id);
 observer_key = key(world.observer.id);
 test.assert(live_actor.get_major_atrocities() == 3);
 test.assert(live_actor.get_sanction_turns() == 3);
+test.assert(!live_actor.get_council_state().is_expelled);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
 test.assert(live_actor.relations[observer_key] == 'neutral');
@@ -421,6 +441,7 @@ planet_buster.rollback(event);
 live_actor = world.game.get_player(world.actor.id);
 test.assert(live_actor.get_major_atrocities() == 2);
 test.assert(live_actor.get_sanction_turns() == 3);
+test.assert(!live_actor.get_council_state().is_expelled);
 test.assert(live_actor.relations[victim_key] == 'neutral');
 test.assert(live_actor.relations[bystander_key] == 'neutral');
 test.assert(live_actor.relations[observer_key] == 'neutral');

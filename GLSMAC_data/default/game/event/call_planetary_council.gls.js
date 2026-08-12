@@ -40,6 +40,7 @@ return {
 				global_trade_pact: old.global_trade_pact,
 				unity_core_salvaged: old.unity_core_salvaged,
 				un_charter_repealed: old.un_charter_repealed,
+				is_expelled: #is_defined(old.is_expelled) ? old.is_expelled : false,
 			});
 		}
 		e.game.trigger('council_updated', {proposal: e.data.proposal});

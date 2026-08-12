@@ -278,9 +278,18 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
-					true, 42, "governor", 1, 1, 2, 1, true, true, true,
+					false, 42, "governor", 1, 1, 2, 1, true, true, true, true,
 				};
 				source.SetCouncilState( council_state );
+				Player council_policy_validator( "Council", Player::PR_SINGLE, nullptr, "Citizen" );
+				council_policy_validator.SetCouncilState( {
+					false, 42, "launch_solar_shade", 1, 1, 0,
+					Player::COUNCIL_VOTE_PENDING, false, false, false, false,
+				} );
+				council_policy_validator.SetCouncilState( {
+					false, 42, "melt_polar_caps", 1, 1, 0,
+					Player::COUNCIL_VOTE_PENDING, false, false, false, false,
+				} );
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -470,14 +479,29 @@ void AddTests( task::gsetests::GSETests* task ) {
 					player_extension.WriteInt( y );
 				}
 				player_extension.WriteInt( source.GetCleanMineralFacilities() );
+				player_extension.WriteBool( source.GetCouncilState().is_expelled );
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
 				const auto clean_mineral_facilities_field_size =
 					clean_mineral_facilities_field.ToString().size();
+				types::Buffer council_expulsion_field;
+				council_expulsion_field.WriteBool( source.GetCouncilState().is_expelled );
+				const auto council_expulsion_field_size = council_expulsion_field.ToString().size();
+				auto pre_expulsion_data = source.Serialize().ToString();
+				pre_expulsion_data.resize(
+					pre_expulsion_data.size() - council_expulsion_field_size
+				);
+				Player pre_expulsion( pre_expulsion_data );
+				GT_ASSERT(
+					!pre_expulsion.GetCouncilState().is_expelled &&
+					pre_expulsion.GetCleanMineralFacilities() == 3,
+					"older player data did not default Council expulsion state"
+				);
 				auto pre_clean_mineral_data = source.Serialize().ToString();
 				pre_clean_mineral_data.resize(
-					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size
+					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
+						council_expulsion_field_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(
@@ -549,7 +573,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					!legacy_council.GetCouncilState().global_trade_pact &&
 					!legacy_council.GetCouncilState().unity_core_salvaged &&
-					!legacy_council.GetCouncilState().un_charter_repealed,
+					!legacy_council.GetCouncilState().un_charter_repealed &&
+					!legacy_council.GetCouncilState().is_expelled,
 					"legacy Planetary Council policies did not default to their initial state"
 				);
 				GT_ASSERT(

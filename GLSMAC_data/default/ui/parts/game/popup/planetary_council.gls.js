@@ -193,6 +193,13 @@ return {
 		const get_governor = this.p.game.get('f_council_get_governor');
 		const validate_call = this.p.game.get('f_council_validate_call');
 		const session = get_session();
+		if (this.p.game.get('f_council_is_expelled')(this.player)) {
+			this.status_text.text = 'Council status: expelled under the U.N. Charter';
+			this.first_text.text = 'This faction has no Council votes.';
+			this.second_text.text = '';
+			this.detail_text.text = 'Council sessions and elections remain closed to this faction.';
+			return;
+		}
 		if (session != null) {
 			const tally = get_tally();
 			const is_policy = this.p.game.get('f_council_is_policy_proposal')(
@@ -236,7 +243,6 @@ return {
 			}
 			return;
 		}
-
 		const governor = get_governor();
 		const has_trade_pact = this.p.game.get('f_council_has_global_trade_pact')();
 		const unity_salvaged = this.p.game.get('f_council_has_salvaged_unity_core')();

@@ -399,7 +399,9 @@
 				if (
 					live_actor.get_major_atrocities() != atrocities_before + 1 ||
 					live_actor.get_sanction_turns() != sanctions_before + 20 ||
-					live_actor.get_diplomatic_relation(game.get_player(defender.id)) != 'vendetta'
+					live_actor.get_diplomatic_relation(game.get_player(defender.id)) != 'vendetta' ||
+					!live_actor.get_council_state().is_expelled ||
+					game.get('f_council_get_votes')(live_actor) != 0
 				) {
 					fail('live Planet Buster diplomatic consequences are invalid');
 					return false;

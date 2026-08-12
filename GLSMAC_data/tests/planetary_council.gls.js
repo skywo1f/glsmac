@@ -22,6 +22,7 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		global_trade_pact: false,
 		unity_core_salvaged: false,
 		un_charter_repealed: false,
+		is_expelled: false,
 	};
 	let technologies = [];
 	let relations = {};
@@ -166,6 +167,17 @@ test.assert(rules.get_required_votes('supreme', 27) == 21);
 test.assert(#is_defined(rules.validate_call(game, clinical, 'supreme')));
 test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'governor')));
 
+let expelled_state = empath.get_council_state();
+expelled_state.is_expelled = true;
+empath.set_council_state(expelled_state);
+test.assert(rules.is_expelled(empath));
+test.assert(rules.get_votes(game, empath) == 0);
+test.assert(rules.get_total_votes(game) == 18);
+test.assert(#sizeof(rules.get_voters(game)) == 2);
+test.assert(#is_defined(rules.validate_call(game, empath, 'governor')));
+expelled_state.is_expelled = false;
+empath.set_council_state(expelled_state);
+
 
 let call = {
 	caller: peacekeepers.id,
@@ -184,6 +196,21 @@ test.assert(progenitor.get_council_state().vote_id == -1);
 call_council.rollback(call);
 test.assert(rules.get_session(game) == null);
 test.assert(peacekeepers.get_council_state().last_session_turn == 0);
+
+call.applied = call_council.apply(call);
+let expelled_candidate_state = clinical.get_council_state();
+expelled_candidate_state.is_governor = false;
+expelled_candidate_state.is_expelled = true;
+clinical.set_council_state(expelled_candidate_state);
+for (voter of [peacekeepers, empath]) {
+	let voter_state = voter.get_council_state();
+	voter_state.vote_id = clinical.id;
+	voter.set_council_state(voter_state);
+}
+test.assert(rules.get_tally(game).all_voted);
+test.assert(rules.get_result(game).winner_id == -1);
+call_council.rollback(call);
+
 call.applied = call_council.apply(call);
 
 const submit_vote = (player, candidate_id) => {

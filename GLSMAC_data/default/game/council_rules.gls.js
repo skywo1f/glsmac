@@ -67,7 +67,11 @@ const owns_project = (game, player, project_id) => {
 };
 
 const get_votes = (game, player) => {
-	if (player.get_faction().is_progenitor) {
+	const council_state = player.get_council_state();
+	if (
+		player.get_faction().is_progenitor ||
+		(#is_defined(council_state.is_expelled) && council_state.is_expelled)
+	) {
 		return 0;
 	}
 	let votes = get_population(game, player);
@@ -86,7 +90,11 @@ const get_votes = (game, player) => {
 const get_voters = (game) => {
 	let voters = [];
 	for (player of game.get_players()) {
-		if (get_population(game, player) > 0 && !player.get_faction().is_progenitor) {
+		const state = player.get_council_state();
+		if (
+			get_population(game, player) > 0 && !player.get_faction().is_progenitor &&
+			(!#is_defined(state.is_expelled) || !state.is_expelled)
+		) {
 			voters :+player;
 		}
 	}
@@ -240,6 +248,10 @@ const validate_call = (game, player, proposal) => {
 	) {
 		return 'Unsupported Planetary Council proposal';
 	}
+	const state = player.get_council_state();
+	if (#is_defined(state.is_expelled) && state.is_expelled) {
+		return 'Faction has been expelled from the Planetary Council';
+	}
 	if (!is_voter(game, player)) {
 		return 'Only a living human faction may convene the Planetary Council';
 	}
@@ -344,6 +356,10 @@ const validate_vote = (game, player, vote_id) => {
 			? 'Planetary Council session state is inconsistent'
 			: 'No Planetary Council vote is active';
 	}
+	const council_state = player.get_council_state();
+	if (#is_defined(council_state.is_expelled) && council_state.is_expelled) {
+		return 'Faction has been expelled from the Planetary Council';
+	}
 	if (!is_voter(game, player)) {
 		return 'Faction is not eligible to vote in the Planetary Council';
 	}
@@ -411,6 +427,13 @@ const get_result = (game) => {
 		winner_id = tally.candidate_b_id;
 		winner_votes = tally.candidate_b_votes;
 	}
+	if (
+		winner_id >= 0 && !is_policy_proposal(tally.proposal) &&
+		!is_voter(game, game.get_player(winner_id))
+	) {
+		winner_id = -1;
+		winner_votes = 0;
+	}
 	return {
 		proposal: tally.proposal,
 		winner_id: winner_votes >= tally.required_votes ? winner_id : -1,
@@ -477,6 +500,10 @@ return {
 	has_global_trade_pact: has_global_trade_pact,
 	has_salvaged_unity_core: has_salvaged_unity_core,
 	is_un_charter_repealed: is_un_charter_repealed,
+	is_expelled: (player) => {
+		const state = player.get_council_state();
+		return #is_defined(state.is_expelled) && state.is_expelled;
+	},
 	has_active_session: has_active_session,
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,

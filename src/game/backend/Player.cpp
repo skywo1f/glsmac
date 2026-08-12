@@ -1525,6 +1525,7 @@ WRAPIMPL_BEGIN( Player )
 						{ "global_trade_pact", VALUE( gse::value::Bool, , m_council_state.global_trade_pact ) },
 						{ "unity_core_salvaged", VALUE( gse::value::Bool, , m_council_state.unity_core_salvaged ) },
 						{ "un_charter_repealed", VALUE( gse::value::Bool, , m_council_state.un_charter_repealed ) },
+						{ "is_expelled", VALUE( gse::value::Bool, , m_council_state.is_expelled ) },
 					} );
 				} )
 			},
@@ -1565,6 +1566,14 @@ WRAPIMPL_BEGIN( Player )
 						Bool,
 						m_council_state.un_charter_repealed
 					);
+					N_GETPROP_OPT(
+						bool,
+						is_expelled,
+						state,
+						"is_expelled",
+						Bool,
+						m_council_state.is_expelled
+					);
 					try {
 						SetCouncilState( {
 							is_governor,
@@ -1577,6 +1586,7 @@ WRAPIMPL_BEGIN( Player )
 							global_trade_pact,
 							unity_core_salvaged,
 							un_charter_repealed,
+							is_expelled,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1716,6 +1726,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( y );
 	}
 	buf.WriteInt( m_clean_mineral_facilities );
+	buf.WriteBool( m_council_state.is_expelled );
 
 	return buf;
 }
@@ -2095,6 +2106,9 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized player clean mineral facility count" );
 		}
 	}
+	if ( buf.GetRemaining() > 0 ) {
+		council_state.is_expelled = buf.ReadBool();
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2196,6 +2210,10 @@ bool Player::ValidateSocialEngineering(
 }
 
 bool Player::ValidateCouncilState( const council_state_t& state, std::string& error ) {
+	if ( state.is_expelled && state.is_governor ) {
+		error = "A faction expelled from the Planetary Council cannot be Governor";
+		return false;
+	}
 	if ( state.last_session_turn < 0 || state.last_session_turn > MAX_COUNCIL_TURN ) {
 		error = "Planetary Council session turn is out of range";
 		return false;
@@ -2213,7 +2231,8 @@ bool Player::ValidateCouncilState( const council_state_t& state, std::string& er
 	const bool is_policy =
 		state.proposal == "trade_pact" || state.proposal == "repeal_trade_pact" ||
 		state.proposal == "salvage_unity_core" || state.proposal == "repeal_un_charter" ||
-		state.proposal == "reinstate_un_charter";
+		state.proposal == "reinstate_un_charter" || state.proposal == "launch_solar_shade" ||
+		state.proposal == "melt_polar_caps";
 	if ( state.proposal != "governor" && state.proposal != "supreme" && !is_policy ) {
 		error = "Planetary Council proposal is unsupported";
 		return false;

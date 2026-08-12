@@ -150,6 +150,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		bool global_trade_pact = false;
 		bool unity_core_salvaged = false;
 		bool un_charter_repealed = false;
+		bool is_expelled = false;
 
 		bool operator==( const council_state_t& other ) const {
 			return
@@ -162,7 +163,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				vote_id == other.vote_id &&
 				global_trade_pact == other.global_trade_pact &&
 				unity_core_salvaged == other.unity_core_salvaged &&
-				un_charter_repealed == other.un_charter_repealed;
+				un_charter_repealed == other.un_charter_repealed &&
+				is_expelled == other.is_expelled;
 		}
 	};
 	const council_state_t& GetCouncilState() const;

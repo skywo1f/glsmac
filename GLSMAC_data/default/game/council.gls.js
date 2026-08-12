@@ -90,6 +90,9 @@ return (game) => {
 		game.set('f_council_is_un_charter_repealed', () => {
 			return rules.is_un_charter_repealed(game);
 		});
+		game.set('f_council_is_expelled', (player) => {
+			return rules.is_expelled(player);
+		});
 		game.set('f_council_is_policy_proposal', (proposal) => {
 			return rules.is_policy_proposal(proposal);
 		});

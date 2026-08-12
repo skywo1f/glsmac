@@ -105,6 +105,16 @@ const restore_diplomacy = (game, actor, snapshots) => {
 	}
 };
 
+const expel_from_council = (game, actor) => {
+	const previous = actor.get_council_state();
+	const updated = #clone(previous);
+	updated.is_governor = false;
+	updated.is_expelled = true;
+	actor.set_council_state(updated);
+	game.trigger('council_updated', {player: actor, expelled: true});
+	return previous;
+};
+
 return {
 
 	validate: (e) => {
@@ -196,6 +206,7 @@ return {
 			rehomed_units: [],
 			actor_atrocities: actor.get_major_atrocities(),
 			actor_sanction_turns: actor.get_sanction_turns(),
+			actor_council_state: actor.get_council_state(),
 			diplomacy: snapshot_diplomacy(e.game, actor),
 			defense: e.resolved.defense,
 			terrain_snapshot: null,
@@ -256,6 +267,7 @@ return {
 				applied.actor_sanction_turns + SANCTION_YEARS
 			));
 			set_global_vendettas(e.game, actor, applied.diplomacy);
+			expel_from_council(e.game, actor);
 			e.game.trigger('diplomatic_sanctions_updated', {
 				player: actor,
 				turns: actor.get_sanction_turns(),
@@ -284,6 +296,7 @@ return {
 		}
 		if (charter_active) {
 			e.game.message('Economic sanctions imposed against ' + actor.name + ' for 20 years.');
+			e.game.message(actor.name + ' has been expelled from the Planetary Council.');
 		}
 		return applied;
 	},
@@ -310,7 +323,9 @@ return {
 
 		actor.set_major_atrocities(e.applied.actor_atrocities);
 		actor.set_sanction_turns(e.applied.actor_sanction_turns);
+		actor.set_council_state(e.applied.actor_council_state);
 		restore_diplomacy(e.game, actor, e.applied.diplomacy);
+		e.game.trigger('council_updated', {player: actor, expelled: false});
 		e.game.trigger('diplomatic_sanctions_updated', {
 			player: actor,
 			turns: e.applied.actor_sanction_turns,

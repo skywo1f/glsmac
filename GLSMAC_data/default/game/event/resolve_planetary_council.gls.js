@@ -3,8 +3,11 @@ const rules = #include('../council_rules');
 const clear_session = (game, governor_id, policy_state) => {
 	for (player of game.get_players()) {
 		const old = player.get_council_state();
+		const is_expelled = #is_defined(old.is_expelled) && old.is_expelled;
 		player.set_council_state({
-			is_governor: governor_id < 0 ? old.is_governor : player.id == governor_id,
+			is_governor: !is_expelled && (
+				governor_id < 0 ? old.is_governor : player.id == governor_id
+			),
 			last_session_turn: old.last_session_turn,
 			proposal: '',
 			caller_id: -1,
@@ -20,6 +23,7 @@ const clear_session = (game, governor_id, policy_state) => {
 			un_charter_repealed: #is_defined(policy_state)
 				? policy_state.un_charter_repealed
 				: old.un_charter_repealed,
+			is_expelled: is_expelled,
 		});
 	}
 };

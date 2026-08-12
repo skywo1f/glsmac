@@ -125,9 +125,10 @@ scenarios, for:
 - generated Planet Buster designs, reactor-scaled blast radii, destruction of
   affected bases, units, and cargo, surviving-unit rehoming, terrain
   deformation and crater formation, persistent major-atrocity consequences,
-  Charter-controlled Council sanctions and global vendettas, reversible
-  network application, and conservative opponent-aware AI production and
-  targeting; Orbital Defense Pods make one 50% interception attempt per
+  Charter-controlled Council sanctions, permanent Council expulsion, Governor
+  removal, and global vendettas, reversible network application, and
+  conservative opponent-aware AI production and targeting; Orbital Defense
+  Pods make one 50% interception attempt per
   undeployed pod each turn and can sacrifice an already deployed pod for a
   guaranteed interception; undeployed Pods can also directly attack rival
   satellites with the original 50% success-or-self-destruction outcome,
@@ -302,7 +303,7 @@ The following original-SMAC systems remain absent or materially incomplete:
   bundled or counteroffers beyond the implemented energy, technology, commlink,
   and world-map terms;
 - remaining probe-team parity: exact original cost/outcome and probe-combat
-  tuning, and full global Council expulsion consequences for major atrocities;
+  tuning;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -645,6 +646,16 @@ verified live infiltration-gated research, economy, base, social-model, and
 force-composition aggregation before continuing through the existing
 interrogation and subversion workflow. The Intelligence menu popup also has
 isolated initialization and event-refresh coverage.
+
+After U.N. Charter Council expulsion was added for Planet Buster atrocities,
+the final Windows x64 Release rebuild succeeded in 48.3 seconds and all 108
+isolated native/script tests passed in 241.61 seconds. The installed-asset
+Planet Buster and Planetary Council scenarios passed together in 62.72 seconds,
+verifying live expulsion, Governor removal, zero Council votes, universal
+vendetta, sanctions, and the unaffected diplomatic-victory path. Expulsion is
+preserved by the native player save tail with backward-compatible defaults;
+the same native validation fix also enables the existing Solar Shade and Polar
+Caps Council motions in real games.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
