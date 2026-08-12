@@ -155,6 +155,13 @@ const get_attack_error = (game, player, target, facility_id) => {
 	if (game.is_turn_complete(player.id)) {
 		return 'Player has already completed this turn';
 	}
+	const get_forced_relation = game.get('f_council_get_forced_relation');
+	if (
+		#typeof(get_forced_relation) == 'Callable' &&
+		get_forced_relation(player, target) == 'pact'
+	) {
+		return 'Factions loyal to the Supreme Leader cannot attack each other';
+	}
 	if (get_available_defense_pods(player) <= 0) {
 		return player.get_orbital_facility_count('OrbitalDefensePod') <= 0
 			? 'No Orbital Defense Pods are available'
@@ -177,7 +184,10 @@ const get_attack_targets = (game, player) => {
 		}
 		for (definition of game.get_bm().get_facility_defs()) {
 			const count = target.get_orbital_facility_count(definition.id);
-			if (is_orbital(definition) && count > 0) {
+			if (
+				is_orbital(definition) && count > 0 &&
+				!#is_defined(get_attack_error(game, player, target, definition.id))
+			) {
 				result :+{
 					player: target,
 					definition: definition,

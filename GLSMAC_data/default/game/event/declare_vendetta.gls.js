@@ -11,6 +11,13 @@ return {
 		if (e.game.is_turn_complete(e.data.player.id)) {
 			return 'Player has already completed this turn';
 		}
+		const get_forced_relation = e.game.get('f_council_get_forced_relation');
+		if (
+			#typeof(get_forced_relation) == 'Callable' &&
+			get_forced_relation(e.data.player, e.data.target) == 'pact'
+		) {
+			return 'Factions loyal to the Supreme Leader cannot declare vendetta on each other';
+		}
 		if (e.data.player.get_diplomatic_relation(e.data.target) == 'vendetta') {
 			return 'Players are already at vendetta';
 		}

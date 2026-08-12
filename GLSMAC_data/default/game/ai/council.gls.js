@@ -222,6 +222,21 @@ const choose_vote = (game, voter, session) => {
 	return first_score > second_score ? first.id : second.id;
 };
 
+const choose_supreme_defiance = (player, leader) => {
+	const state = player.get_council_state();
+	if (#is_defined(state.is_expelled) && state.is_expelled) {
+		return true;
+	}
+	const relation = player.get_diplomatic_relation(leader);
+	if (relation == 'vendetta') {
+		return true;
+	}
+	if (relation == 'pact') {
+		return false;
+	}
+	return get_major_atrocities(leader) > 0 || leader.get_integrity_blemishes() >= 4;
+};
+
 return {
 	score_candidate: score_candidate,
 	get_policy_value: get_policy_value,
@@ -231,4 +246,5 @@ return {
 	get_climate_policy_value: get_climate_policy_value,
 	choose_policy_vote: choose_policy_vote,
 	choose_vote: choose_vote,
+	choose_supreme_defiance: choose_supreme_defiance,
 };

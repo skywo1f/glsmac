@@ -312,6 +312,13 @@ return {
 		if (target_player.id == actor.id) {
 			return 'Probe Team cannot target its own faction';
 		}
+		const get_forced_relation = e.game.get('f_council_get_forced_relation');
+		if (
+			#typeof(get_forced_relation) == 'Callable' &&
+			get_forced_relation(actor, target_player) == 'pact'
+		) {
+			return 'Factions loyal to the Supreme Leader cannot target each other with Probe Teams';
+		}
 		if (e.game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')) {
 			return 'The Hunter-Seeker Algorithm blocks this probe operation';
 		}

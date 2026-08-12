@@ -8,6 +8,7 @@
 	let ui_started = false;
 	let vote_requested = false;
 	let observed_session = null;
+	let observed_accession = false;
 
 	const fail = (message) => {
 		if (!finished) {
@@ -20,7 +21,7 @@
 	const finish_if_ready = () => {
 		if (finished && ui_started) {
 			#print(
-				'PLANETARY_COUNCIL_RUNTIME_PASS: installed assets, native Council state, AI ballot, and diplomatic victory verified'
+				'PLANETARY_COUNCIL_RUNTIME_PASS: installed assets, native Council state, AI ballot, Supreme Leader accession, and diplomatic victory verified'
 			);
 			#async(250, () => { glsmac.exit(); });
 		}
@@ -30,7 +31,12 @@
 		const game = e.game;
 
 		game.on('council_updated', (event) => {
-			if (finished || vote_requested) { return; }
+			if (finished) { return; }
+			const get_supreme = game.get('f_council_get_supreme_state');
+			if (#is_defined(get_supreme) && get_supreme() != null) {
+				observed_accession = true;
+			}
+			if (vote_requested) { return; }
 			const get_session = game.get('f_council_get_session');
 			if (!#is_defined(get_session)) { return; }
 			const session = get_session();
@@ -48,7 +54,8 @@
 				state.proposal != 'supreme' || state.caller_id != player.id ||
 				state.last_session_turn != game.get_turn() || state.vote_id != -2 ||
 				state.global_trade_pact || state.unity_core_salvaged ||
-				state.un_charter_repealed
+				state.un_charter_repealed || state.supreme_leader_id != -1 ||
+				state.supreme_response != 0 || state.supreme_resolved
 			) {
 				fail('native player wrapper exposed invalid active Council state');
 				return;
@@ -144,13 +151,17 @@
 					}
 					const victory = game.get_victory_state();
 					const state = player.get_council_state();
+					const supreme = game.get('f_council_get_supreme_state')();
 					if (
-						observed_session == null || !vote_requested ||
+						observed_session == null || !vote_requested || !observed_accession ||
 						victory.type != 'diplomatic' || victory.winner != player.id ||
 						victory.turn != game.get_turn() || state.proposal != '' ||
-						state.last_session_turn != game.get_turn() || state.vote_id != -2
+						state.last_session_turn != game.get_turn() || state.vote_id != -2 ||
+						supreme == null || supreme.leader.id != player.id || !supreme.resolved ||
+						state.supreme_leader_id != player.id || state.supreme_response != 2 ||
+						!state.supreme_resolved
 					) {
-						fail('terminal diplomatic victory or cleared Council state is invalid');
+						fail('terminal diplomatic victory or Supreme Leader accession state is invalid');
 						return false;
 					}
 					finished = true;

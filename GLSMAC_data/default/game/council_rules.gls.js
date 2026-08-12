@@ -3,6 +3,10 @@ const VOTE_PENDING = -2;
 const VOTE_ABSTAIN = -1;
 const VOTE_NO = 0;
 const VOTE_YES = 1;
+const SUPREME_RESPONSE_NONE = 0;
+const SUPREME_RESPONSE_PENDING = 1;
+const SUPREME_RESPONSE_ACCEDE = 2;
+const SUPREME_RESPONSE_DEFY = 3;
 const MAX_ENERGY_CREDITS = 1000000000;
 const UNITY_CORE_ENERGY = 500;
 const COUNCIL_SEA_CHANGE = 300;
@@ -59,6 +63,180 @@ const get_population = (game, player) => {
 		}
 	}
 	return population;
+};
+
+const has_surviving_faction = (game, player) => {
+	if (get_population(game, player) > 0) {
+		return true;
+	}
+	if (#typeof(game.get_um) != 'Callable') {
+		return false;
+	}
+	for (unit of game.get_um().get_units(true)) {
+		if (unit.owner == player.id && unit.health > 0.0 && unit.get_def().can_found_base) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const get_supreme_response = (player) => {
+	const state = player.get_council_state();
+	return #is_defined(state.supreme_response)
+		? state.supreme_response
+		: SUPREME_RESPONSE_NONE;
+};
+
+const get_supreme_state = (game) => {
+	let leader_id = -1;
+	let resolved = null;
+	let found_inactive = false;
+	for (player of game.get_players()) {
+		const state = player.get_council_state();
+		const current_leader = #is_defined(state.supreme_leader_id)
+			? state.supreme_leader_id
+			: -1;
+		if (current_leader < 0) {
+			if (leader_id >= 0) { return null; }
+			found_inactive = true;
+			continue;
+		}
+		if (found_inactive) { return null; }
+		if (leader_id < 0) {
+			leader_id = current_leader;
+		} else if (leader_id != current_leader) {
+			return null;
+		}
+		const current_resolved = #is_defined(state.supreme_resolved)
+			? state.supreme_resolved
+			: false;
+		if (resolved == null) {
+			resolved = current_resolved;
+		} else if (resolved != current_resolved) {
+			return null;
+		}
+	}
+	if (leader_id < 0) { return null; }
+	const leader = game.get_player(leader_id);
+	return leader == null ? null : {leader: leader, resolved: resolved == true};
+};
+
+const get_supreme_participants = (game) => {
+	let result = [];
+	for (player of game.get_players()) {
+		if (
+			player.type != 'native' && !player.get_faction().is_progenitor &&
+			has_surviving_faction(game, player)
+		) {
+			result :+player;
+		}
+	}
+	return result;
+};
+
+const get_supreme_players_with_response = (game, response) => {
+	let result = [];
+	for (player of get_supreme_participants(game)) {
+		if (get_supreme_response(player) == response) {
+			result :+player;
+		}
+	}
+	return result;
+};
+
+const begin_supreme_accession = (game, leader_id) => {
+	let participants = {};
+	for (player of get_supreme_participants(game)) {
+		participants['p' + #to_string(player.id)] = true;
+	}
+	for (player of game.get_players()) {
+		const old = player.get_council_state();
+		const updated = #clone(old);
+		updated.is_governor = false;
+		updated.proposal = '';
+		updated.caller_id = -1;
+		updated.candidate_a_id = -1;
+		updated.candidate_b_id = -1;
+		updated.vote_id = VOTE_PENDING;
+		updated.supreme_leader_id = leader_id;
+		updated.supreme_response = player.id == leader_id
+			? SUPREME_RESPONSE_ACCEDE
+			: (#is_defined(participants['p' + #to_string(player.id)])
+				? SUPREME_RESPONSE_PENDING
+				: SUPREME_RESPONSE_NONE);
+		updated.supreme_resolved = false;
+		player.set_council_state(updated);
+	}
+};
+
+const set_supreme_resolved = (game, resolved) => {
+	for (player of game.get_players()) {
+		const state = player.get_council_state();
+		const updated = #clone(state);
+		updated.supreme_resolved = resolved;
+		player.set_council_state(updated);
+	}
+};
+
+const clear_supreme_state = (game) => {
+	for (player of game.get_players()) {
+		const state = player.get_council_state();
+		const updated = #clone(state);
+		updated.supreme_leader_id = -1;
+		updated.supreme_response = SUPREME_RESPONSE_NONE;
+		updated.supreme_resolved = false;
+		player.set_council_state(updated);
+	}
+};
+
+const get_forced_relation = (game, player, other) => {
+	const supreme = get_supreme_state(game);
+	if (supreme == null || !supreme.resolved) { return ''; }
+	const player_response = get_supreme_response(player);
+	const other_response = get_supreme_response(other);
+	if (
+		(player_response == SUPREME_RESPONSE_DEFY) !=
+		(other_response == SUPREME_RESPONSE_DEFY) &&
+		player_response != SUPREME_RESPONSE_NONE &&
+		other_response != SUPREME_RESPONSE_NONE
+	) {
+		return 'vendetta';
+	}
+	return player_response == SUPREME_RESPONSE_ACCEDE &&
+		other_response == SUPREME_RESPONSE_ACCEDE
+		? 'pact'
+		: '';
+};
+
+const get_supreme_defiance_winner = (game) => {
+	const supreme = get_supreme_state(game);
+	if (
+		supreme == null || !supreme.resolved ||
+		!has_surviving_faction(game, supreme.leader)
+	) {
+		return null;
+	}
+	let found_defiant = false;
+	for (player of game.get_players()) {
+		if (get_supreme_response(player) != SUPREME_RESPONSE_DEFY) { continue; }
+		found_defiant = true;
+		if (has_surviving_faction(game, player)) { return null; }
+	}
+	return found_defiant ? supreme.leader : null;
+};
+
+const validate_supreme_response = (game, player) => {
+	if (game.is_game_over()) { return 'Game already has a winner'; }
+	const supreme = get_supreme_state(game);
+	if (supreme == null || supreme.resolved) {
+		return 'No Supreme Leader accession decision is pending';
+	}
+	if (!has_surviving_faction(game, player)) {
+		return 'Defeated factions cannot answer the Supreme Leader';
+	}
+	if (get_supreme_response(player) != SUPREME_RESPONSE_PENDING) {
+		return 'Faction has already answered the Supreme Leader';
+	}
 };
 
 const owns_project = (game, player, project_id) => {
@@ -150,7 +328,11 @@ const same_session = (left, right) => {
 		left.candidate_b_id == right.candidate_b_id &&
 		left.global_trade_pact == right.global_trade_pact &&
 		left.unity_core_salvaged == right.unity_core_salvaged &&
-		left.un_charter_repealed == right.un_charter_repealed;
+		left.un_charter_repealed == right.un_charter_repealed &&
+		(!#is_defined(left.supreme_leader_id) ? -1 : left.supreme_leader_id) ==
+			(!#is_defined(right.supreme_leader_id) ? -1 : right.supreme_leader_id) &&
+		(!#is_defined(left.supreme_resolved) ? false : left.supreme_resolved) ==
+			(!#is_defined(right.supreme_resolved) ? false : right.supreme_resolved);
 };
 
 const normalize_policy_state = (state) => {
@@ -247,6 +429,9 @@ const validate_call = (game, player, proposal) => {
 		!is_policy_proposal(proposal)
 	) {
 		return 'Unsupported Planetary Council proposal';
+	}
+	if (get_supreme_state(game) != null) {
+		return 'The Planetary Council has already elected a Supreme Leader';
 	}
 	const state = player.get_council_state();
 	if (#is_defined(state.is_expelled) && state.is_expelled) {
@@ -486,11 +671,16 @@ return {
 	vote_abstain: VOTE_ABSTAIN,
 	vote_no: VOTE_NO,
 	vote_yes: VOTE_YES,
+	supreme_response_none: SUPREME_RESPONSE_NONE,
+	supreme_response_pending: SUPREME_RESPONSE_PENDING,
+	supreme_response_accede: SUPREME_RESPONSE_ACCEDE,
+	supreme_response_defy: SUPREME_RESPONSE_DEFY,
 	unity_core_energy: UNITY_CORE_ENERGY,
 	council_sea_change: COUNCIL_SEA_CHANGE,
 	is_policy_proposal: is_policy_proposal,
 	get_proposal_name: get_proposal_name,
 	get_population: get_population,
+	has_surviving_faction: has_surviving_faction,
 	get_votes: get_votes,
 	get_voters: get_voters,
 	get_rankings: get_rankings,
@@ -504,6 +694,24 @@ return {
 		const state = player.get_council_state();
 		return #is_defined(state.is_expelled) && state.is_expelled;
 	},
+	get_supreme_response: get_supreme_response,
+	get_supreme_state: get_supreme_state,
+	get_supreme_participants: get_supreme_participants,
+	get_pending_supreme_players: (game) => {
+		return get_supreme_players_with_response(game, SUPREME_RESPONSE_PENDING);
+	},
+	get_loyal_supreme_players: (game) => {
+		return get_supreme_players_with_response(game, SUPREME_RESPONSE_ACCEDE);
+	},
+	get_defiant_supreme_players: (game) => {
+		return get_supreme_players_with_response(game, SUPREME_RESPONSE_DEFY);
+	},
+	begin_supreme_accession: begin_supreme_accession,
+	set_supreme_resolved: set_supreme_resolved,
+	clear_supreme_state: clear_supreme_state,
+	get_forced_relation: get_forced_relation,
+	get_supreme_defiance_winner: get_supreme_defiance_winner,
+	validate_supreme_response: validate_supreme_response,
 	has_active_session: has_active_session,
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,

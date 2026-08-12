@@ -59,6 +59,7 @@ const other_player = {
 let space_elevator = false;
 let turn_complete = false;
 let game_over = false;
+let forced_allies = false;
 const make_base = (id, owner, size, aerospace) => {
 	return {
 		id: id,
@@ -82,6 +83,9 @@ const game = {
 			return (candidate, id) => {
 				return candidate == player && id == 'TheSpaceElevator' && space_elevator;
 			};
+		}
+		if (key == 'f_council_get_forced_relation') {
+			return (player, target) => { return forced_allies ? 'pact' : ''; };
 		}
 		return #undefined;
 	},
@@ -111,6 +115,13 @@ test.assert(!#is_defined(
 	rules.get_attack_error(game, player, other_player, 'SkyHydroponicsLab')
 ));
 test.assert(#sizeof(rules.get_attack_targets(game, player)) == 2);
+forced_allies = true;
+test.assert(
+	rules.get_attack_error(game, player, other_player, 'SkyHydroponicsLab') ==
+	'Factions loyal to the Supreme Leader cannot attack each other'
+);
+test.assert(#sizeof(rules.get_attack_targets(game, player)) == 0);
+forced_allies = false;
 
 deployments = 2;
 test.assert(

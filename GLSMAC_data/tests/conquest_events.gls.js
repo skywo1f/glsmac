@@ -7,6 +7,7 @@ let message = '';
 let transcendence_base = null;
 let economic_base = null;
 let current_turn = 1;
+let diplomatic_winner = null;
 
 let game = null;
 game = {
@@ -27,6 +28,12 @@ game = {
 	},
 	get_players: () => { return [game.get_player(1)]; },
 	get_turn: () => { return current_turn; },
+	get: (name) => {
+		if (name == 'f_council_get_supreme_defiance_winner') {
+			return () => { return diplomatic_winner; };
+		}
+		return #undefined;
+	},
 	declare_victory: (type, winner_id) => {
 		declaration = {type: type, winner_id: winner_id};
 		game_over = true;
@@ -79,6 +86,12 @@ test.assert(#is_defined(declare_victory.validate(event)));
 eligible_winner = {id: 1};
 
 test.assert(!#is_defined(declare_victory.validate(event)));
+diplomatic_winner = eligible_winner;
+test.assert(
+	declare_victory.validate(event) ==
+	'Supreme Leader defiance must resolve as a diplomatic victory'
+);
+diplomatic_winner = null;
 declare_victory.apply(event);
 test.assert(game_over);
 test.assert(declaration == {type: 'conquest', winner_id: 1});

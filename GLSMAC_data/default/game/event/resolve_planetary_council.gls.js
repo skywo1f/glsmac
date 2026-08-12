@@ -24,6 +24,12 @@ const clear_session = (game, governor_id, policy_state) => {
 				? policy_state.un_charter_repealed
 				: old.un_charter_repealed,
 			is_expelled: is_expelled,
+			supreme_leader_id: #is_defined(old.supreme_leader_id)
+				? old.supreme_leader_id : -1,
+			supreme_response: #is_defined(old.supreme_response)
+				? old.supreme_response : rules.supreme_response_none,
+			supreme_resolved: #is_defined(old.supreme_resolved)
+				? old.supreme_resolved : false,
 		});
 	}
 };
@@ -129,15 +135,15 @@ return {
 			}
 			e.game.trigger('economy_updated', {});
 		} else {
-			clear_session(e.game, (-1), #undefined);
 			if (result.winner_id >= 0) {
 				const winner = e.game.get_player(result.winner_id);
-				e.game.declare_victory('diplomatic', result.winner_id);
+				rules.begin_supreme_accession(e.game, result.winner_id);
 				e.game.message(
 					winner.get_faction().name + ' has been elected Supreme Leader of Planet in M.Y. ' +
-					#to_string(e.game.get_year()) + '.'
+					#to_string(e.game.get_year()) + '. Each faction must now accede or defy.'
 				);
 			} else {
+				clear_session(e.game, (-1), #undefined);
 				e.game.message('The Supreme Leader proposal failed to win a three-quarters majority.');
 			}
 		}
@@ -146,7 +152,7 @@ return {
 			states: previous,
 			energy: previous_energy,
 			climate: previous_climate,
-			terminal: result.proposal == 'supreme' && result.winner_id >= 0,
+			terminal: false,
 		};
 	},
 
@@ -159,6 +165,5 @@ return {
 			}
 			e.game.trigger('council_updated', {});
 		}
-		// Successful Supreme Leader resolutions are host-authored terminal events.
 	},
 };

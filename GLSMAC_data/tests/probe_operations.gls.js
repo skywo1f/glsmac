@@ -291,6 +291,7 @@ const make_fixture = (charter_repealed) => {
 	values.f_base_pop_unwork_tile = (base, pop) => { pop.set_worked_tile(#undefined); };
 	values.f_base_pop_work_tile = (base, pop, tile) => { pop.set_worked_tile(tile); };
 	values.f_council_is_un_charter_repealed = () => { return charter_repealed == true; };
+	values.f_council_get_forced_relation = (player, other) => { return ''; };
 	define_probes(game);
 	define_diplomacy(game);
 	for (callback of callbacks.start) { callback({}); }
@@ -330,6 +331,12 @@ const result = (success, detected, survives) => {
 let f = make_fixture();
 let e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'infiltrate', target: f.target_base}};
 test.assert(!#is_defined(probe_operation.validate(e)));
+f.game.set('f_council_get_forced_relation', (player, other) => { return 'pact'; });
+test.assert(
+	probe_operation.validate(e) ==
+	'Factions loyal to the Supreme Leader cannot target each other with Probe Teams'
+);
+f.game.set('f_council_get_forced_relation', (player, other) => { return ''; });
 f.actor.set_diplomatic_relation(f.target_player, 'treaty');
 f.target_player.set_diplomatic_relation(f.actor, 'treaty');
 e.resolved = result(true, true, true);

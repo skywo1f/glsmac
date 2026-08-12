@@ -137,6 +137,20 @@ return {
 		) {
 			return 'Wild native life cannot capture bases';
 		}
+		if (dst_base != null && dst_base.get_owner().id != e.data.unit.owner) {
+			const get_forced_relation = e.game.get('f_council_get_forced_relation');
+			const unit_owner = #typeof(e.data.unit.get_owner) == 'Callable'
+				? e.data.unit.get_owner()
+				: (#typeof(e.game.get_player) == 'Callable'
+					? e.game.get_player(e.data.unit.owner) : null);
+			if (
+				#typeof(get_forced_relation) == 'Callable' &&
+				unit_owner != null &&
+				get_forced_relation(unit_owner, dst_base.get_owner()) == 'pact'
+			) {
+				return 'Factions loyal to the Supreme Leader cannot capture each other\'s bases';
+			}
+		}
 
 		if (src_tile == dst_tile) {
 			return 'Source tile is same as destination tile';

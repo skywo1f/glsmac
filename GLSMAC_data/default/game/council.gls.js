@@ -4,6 +4,8 @@ const council_ai = #include('ai/council');
 return (game) => {
 	game.on('start', (e) => {
 		let resolution_pending = false;
+		let accession_resolution_pending = false;
+		let defiance_victory_pending = false;
 
 		const process_session = () => {
 			if (!game.is_master() || game.is_game_over()) { return; }
@@ -76,6 +78,45 @@ return (game) => {
 			}
 		};
 
+		const process_supreme = () => {
+			if (!game.is_master() || game.is_game_over()) { return; }
+			const supreme = rules.get_supreme_state(game);
+			if (supreme == null) {
+				accession_resolution_pending = false;
+				defiance_victory_pending = false;
+				return;
+			}
+			if (!supreme.resolved) {
+				defiance_victory_pending = false;
+				for (player of rules.get_pending_supreme_players(game)) {
+					if (player.type == 'ai') {
+						game.event_as(player.id, 'respond_supreme_leader', {
+							player: player,
+							defy: council_ai.choose_supreme_defiance(player, supreme.leader),
+						});
+					}
+				}
+				if (
+					(!rules.has_surviving_faction(game, supreme.leader) ||
+						#sizeof(rules.get_pending_supreme_players(game)) == 0) &&
+					!accession_resolution_pending
+				) {
+					accession_resolution_pending = true;
+					game.event('resolve_supreme_accession', {});
+				}
+				return;
+			}
+
+			accession_resolution_pending = false;
+			if (
+				rules.get_supreme_defiance_winner(game) != null &&
+				!defiance_victory_pending
+			) {
+				defiance_victory_pending = true;
+				game.event('resolve_supreme_defiance', {});
+			}
+		};
+
 		game.set('f_council_get_votes', (player) => { return rules.get_votes(game, player); });
 		game.set('f_council_get_voters', () => { return rules.get_voters(game); });
 		game.set('f_council_get_rankings', () => { return rules.get_rankings(game); });
@@ -92,6 +133,24 @@ return (game) => {
 		});
 		game.set('f_council_is_expelled', (player) => {
 			return rules.is_expelled(player);
+		});
+		game.set('f_council_get_supreme_state', () => {
+			return rules.get_supreme_state(game);
+		});
+		game.set('f_council_get_supreme_response', (player) => {
+			return rules.get_supreme_response(player);
+		});
+		game.set('f_council_get_pending_supreme_players', () => {
+			return rules.get_pending_supreme_players(game);
+		});
+		game.set('f_council_get_defiant_supreme_players', () => {
+			return rules.get_defiant_supreme_players(game);
+		});
+		game.set('f_council_get_supreme_defiance_winner', () => {
+			return rules.get_supreme_defiance_winner(game);
+		});
+		game.set('f_council_get_forced_relation', (player, other) => {
+			return rules.get_forced_relation(game, player, other);
 		});
 		game.set('f_council_is_policy_proposal', (proposal) => {
 			return rules.is_policy_proposal(proposal);
@@ -115,11 +174,28 @@ return (game) => {
 			return governor != null && governor.id == player.id && !other.get_faction().is_progenitor;
 		});
 
-		game.on('council_updated', process_session);
+		game.on('council_updated', (event) => {
+			process_session();
+			process_supreme();
+		});
 		game.on('turn', (e) => {
 			process_session();
+			process_supreme();
 			maybe_call_ai();
 		});
+		if (
+			#typeof(game.get_um) == 'Callable' &&
+			#typeof(game.get_um().on) == 'Callable'
+		) {
+			game.get_um().on('unit_despawn', (event) => { process_supreme(); });
+		}
+		if (
+			#typeof(game.get_bm) == 'Callable' &&
+			#typeof(game.get_bm().on) == 'Callable'
+		) {
+			game.get_bm().on('base_despawn', (event) => { process_supreme(); });
+		}
 		process_session();
+		process_supreme();
 	});
 };

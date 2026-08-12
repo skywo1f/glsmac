@@ -33,6 +33,7 @@ let integrity_state = {p1: 0, p2: 0};
 const player_key = (player) => { return 'p' + #to_string(player.id); };
 let game_over = false;
 let turn_complete = false;
+let forced_allies = false;
 let random_result = 0;
 let messages = [];
 let triggers = [];
@@ -54,6 +55,9 @@ game = {
 			return (player, other, facility_id) => {
 				return rules.get_attack_error(game, player, other, facility_id);
 			};
+		}
+		if (key == 'f_council_get_forced_relation') {
+			return (player, other) => { return forced_allies ? 'pact' : ''; };
 		}
 		if (key == 'f_diplomacy_snapshot_pair') {
 			return (player, other) => {
@@ -107,6 +111,12 @@ let event = {
 	data: {target: target, facility_id: 'SkyHydroponicsLab'},
 };
 test.assert(!#is_defined(attack_orbital.validate(event)));
+forced_allies = true;
+test.assert(
+	attack_orbital.validate(event) ==
+	'Factions loyal to the Supreme Leader cannot attack each other'
+);
+forced_allies = false;
 event.resolved = attack_orbital.resolve(event);
 test.assert(event.resolved.success);
 event.applied = attack_orbital.apply(event);

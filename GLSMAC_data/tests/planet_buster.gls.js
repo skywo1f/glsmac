@@ -13,6 +13,7 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 	let stopped_animation = 0;
 	let crater_apply_count = 0;
 	let crater_restore_count = 0;
+	let forced_ally_id = -1;
 	const terrain_snapshot = 'terrain:before-crater';
 
 	const make_tile = (x, y) => {
@@ -294,6 +295,11 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 			if (name == 'f_council_is_un_charter_repealed') {
 				return () => { return charter_repealed == true; };
 			}
+			if (name == 'f_council_get_forced_relation') {
+				return (player, other) => {
+					return other != null && other.id == forced_ally_id ? 'pact' : '';
+				};
+			}
 			if (name == 'f_diplomacy_snapshot_pair') {
 				return (player, other) => {
 					const other_key = key(other.id);
@@ -349,6 +355,9 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 		get_stopped_animation: () => { return stopped_animation; },
 		get_crater_apply_count: () => { return crater_apply_count; },
 		get_crater_restore_count: () => { return crater_restore_count; },
+		set_forced_ally: (player) => {
+			forced_ally_id = player == null ? -1 : player.id;
+		},
 	};
 };
 
@@ -359,6 +368,12 @@ let event = {
 	data: {unit: world.missile, tile: world.center},
 };
 test.assert(!#is_defined(planet_buster.validate(event)));
+world.set_forced_ally(world.victim);
+test.assert(
+	planet_buster.validate(event) ==
+	'Planet Buster blast radius contains a faction loyal to the Supreme Leader'
+);
+world.set_forced_ally(null);
 event.caller = world.victim.id;
 test.assert(#is_defined(planet_buster.validate(event)));
 event.caller = world.actor.id;
@@ -380,6 +395,7 @@ locked_blast_tile.locked = true;
 test.assert(#is_defined(planet_buster.validate(event)));
 locked_blast_tile.locked = false;
 
+world.set_forced_ally(world.observer);
 event.resolved = planet_buster.resolve(event);
 test.assert(event.resolved.radius == 1);
 test.assert(!event.resolved.defense.intercepted);
@@ -398,7 +414,7 @@ let bystander_key = key(world.bystander.id);
 let observer_key = key(world.observer.id);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
-test.assert(live_actor.relations[observer_key] == 'vendetta');
+test.assert(live_actor.relations[observer_key] == 'neutral');
 test.assert(live_actor.get_council_state().is_expelled);
 test.assert(!live_actor.get_council_state().is_governor);
 test.assert(world.get_message_count() == 3);

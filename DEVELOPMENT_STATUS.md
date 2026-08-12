@@ -248,8 +248,13 @@ scenarios, for:
   relationship-aware AI voting, technology gating, a 20-turn cooldown,
   save/reconnect restoration, and reversible election and policy results;
 - the Planetary Governor receives +1 energy per commerce transaction and
-  effective infiltration against every rival; election as Supreme Leader ends
-  the game with a diplomatic victory;
+  effective infiltration against every rival; election as Supreme Leader asks
+  each surviving human and AI faction to accede or defy, unites loyal factions
+  in a pact, forces vendetta against every holdout, and awards diplomatic
+  victory only after all factions accede or every defiant faction is defeated;
+  the persistent decision state, player controls, AI responses, coalition
+  combat and diplomacy enforcement, save compatibility, and reversible
+  nonterminal events are covered;
 - buildable Probe Teams, persistent faction infiltration, Hunter-Seeker
   immunity, infiltration, technology theft, production/facility sabotage,
   energy drain, drone riots, researcher assassination, genetic plague, unit
@@ -299,9 +304,8 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including surrender, the Council defiance path, and richer
-  bundled or counteroffers beyond the implemented energy, technology, commlink,
-  and world-map terms;
+- deeper diplomacy including surrender and richer bundled or counteroffers
+  beyond the implemented energy, technology, commlink, and world-map terms;
 - remaining probe-team parity: exact original cost/outcome and probe-combat
   tuning;
 - remaining territory presentation: rendered faction border overlays and
@@ -656,6 +660,17 @@ vendetta, sanctions, and the unaffected diplomatic-victory path. Expulsion is
 preserved by the native player save tail with backward-compatible defaults;
 the same native validation fix also enables the existing Solar Shade and Polar
 Caps Council motions in real games.
+
+After the original Supreme Leader accession and defiance path was added, the
+final Windows x64 Release rebuild succeeded in 62.8 seconds and all 108 isolated
+native/script tests passed in 249.96 seconds. The installed-asset Planetary
+Council scenario passed in a final 45.67-second run while verifying the live election,
+AI ballots, persistent native accession state, AI responses, and all-factions-
+accede diplomatic victory. Focused coverage additionally verifies a human
+defiance decision, coalition pact and vendetta formation, event rollback,
+holdout elimination before victory, and enforcement across conventional combat,
+undefended-base capture, Probe Teams, orbital attacks, diplomatic proposals,
+and Planet Buster blast effects.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

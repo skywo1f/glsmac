@@ -23,6 +23,15 @@ return {
 		}
 		let winner = null;
 		if (e.data.type == 'conquest') {
+			const get_diplomatic_winner = #typeof(e.game.get) == 'Callable'
+				? e.game.get('f_council_get_supreme_defiance_winner')
+				: #undefined;
+			if (
+				#typeof(get_diplomatic_winner) == 'Callable' &&
+				get_diplomatic_winner() != null
+			) {
+				return 'Supreme Leader defiance must resolve as a diplomatic victory';
+			}
 			winner = e.game.get_conquest_winner();
 		} else if (e.data.type == 'transcendence') {
 			winner = victory_rules.get_transcendence_winner(e.game);

@@ -56,9 +56,15 @@ const snapshot_diplomacy = (game, actor) => {
 	return result;
 };
 
+const get_forced_relation = (game, player, other) => {
+	const get_relation = game.get('f_council_get_forced_relation');
+	return #typeof(get_relation) == 'Callable' ? get_relation(player, other) : '';
+};
+
 const set_global_vendettas = (game, actor, snapshots) => {
 	for (snapshot of snapshots) {
 		const other = game.get_player(snapshot.player_id);
+		if (get_forced_relation(game, actor, other) == 'pact') { continue; }
 		game.get('f_diplomacy_set_bilateral_relation')(actor, other, 'vendetta');
 		game.get('f_diplomacy_clear_offers')(actor, other);
 		game.trigger('diplomacy_updated', {
@@ -83,6 +89,7 @@ const set_affected_vendettas = (game, actor, snapshots, applied) => {
 	for (snapshot of snapshots) {
 		if (!#is_defined(affected['p' + #to_string(snapshot.player_id)])) { continue; }
 		const other = game.get_player(snapshot.player_id);
+		if (get_forced_relation(game, actor, other) == 'pact') { continue; }
 		game.get('f_diplomacy_set_bilateral_relation')(actor, other, 'vendetta');
 		game.get('f_diplomacy_clear_offers')(actor, other);
 		game.trigger('diplomacy_updated', {
@@ -158,6 +165,29 @@ return {
 		for (blast_tile of get_tiles_in_radius(target, definition.reactor_power)) {
 			if (blast_tile.is_locked()) {
 				return 'Planet Buster blast radius contains locked tiles';
+			}
+			const base = blast_tile.get_base();
+			if (
+				base != null && base.get_owner().id != e.caller &&
+				get_forced_relation(
+					e.game,
+					e.game.get_player(e.caller),
+					base.get_owner()
+				) == 'pact'
+			) {
+				return 'Planet Buster blast radius contains a faction loyal to the Supreme Leader';
+			}
+			for (affected_unit of blast_tile.get_units(true)) {
+				if (
+					affected_unit.owner != e.caller &&
+					get_forced_relation(
+						e.game,
+						e.game.get_player(e.caller),
+						e.game.get_player(affected_unit.owner)
+					) == 'pact'
+				) {
+					return 'Planet Buster blast radius contains a faction loyal to the Supreme Leader';
+				}
 			}
 		}
 		if (e.game.get_player(e.caller).get_major_atrocities() >= MAX_MAJOR_ATROCITIES) {

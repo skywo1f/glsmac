@@ -278,7 +278,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
 				source.SetOrbitalDefenseDeployments( 2 );
 				const Player::council_state_t council_state = {
-					false, 42, "governor", 1, 1, 2, 1, true, true, true, true,
+					false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+					true, true, true, true, 2, Player::SUPREME_RESPONSE_DEFY, true,
 				};
 				source.SetCouncilState( council_state );
 				Player council_policy_validator( "Council", Player::PR_SINGLE, nullptr, "Citizen" );
@@ -290,6 +291,48 @@ void AddTests( task::gsetests::GSETests* task ) {
 					false, 42, "melt_polar_caps", 1, 1, 0,
 					Player::COUNCIL_VOTE_PENDING, false, false, false, false,
 				} );
+				bool rejected_inactive_supreme_response = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, -1, Player::SUPREME_RESPONSE_DEFY, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inactive_supreme_response = true;
+				}
+				GT_ASSERT(
+					rejected_inactive_supreme_response,
+					"inactive Supreme Leader state accepted a faction response"
+				);
+				bool rejected_conflicting_supreme_session = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "governor", 1, 1, 0, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, 2, Player::SUPREME_RESPONSE_PENDING, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_conflicting_supreme_session = true;
+				}
+				GT_ASSERT(
+					rejected_conflicting_supreme_session,
+					"Supreme Leader accession accepted a concurrent Council session"
+				);
+				bool rejected_invalid_supreme_leader = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, 64, Player::SUPREME_RESPONSE_PENDING, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_supreme_leader = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_supreme_leader,
+					"out-of-range Supreme Leader ID was accepted"
+				);
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
@@ -480,6 +523,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				player_extension.WriteInt( source.GetCleanMineralFacilities() );
 				player_extension.WriteBool( source.GetCouncilState().is_expelled );
+				player_extension.WriteInt( source.GetCouncilState().supreme_leader_id );
+				player_extension.WriteInt( source.GetCouncilState().supreme_response );
+				player_extension.WriteBool( source.GetCouncilState().supreme_resolved );
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
@@ -488,9 +534,28 @@ void AddTests( task::gsetests::GSETests* task ) {
 				types::Buffer council_expulsion_field;
 				council_expulsion_field.WriteBool( source.GetCouncilState().is_expelled );
 				const auto council_expulsion_field_size = council_expulsion_field.ToString().size();
+				types::Buffer supreme_state_fields;
+				supreme_state_fields.WriteInt( source.GetCouncilState().supreme_leader_id );
+				supreme_state_fields.WriteInt( source.GetCouncilState().supreme_response );
+				supreme_state_fields.WriteBool( source.GetCouncilState().supreme_resolved );
+				const auto supreme_state_fields_size = supreme_state_fields.ToString().size();
+				auto pre_supreme_data = source.Serialize().ToString();
+				pre_supreme_data.resize(
+					pre_supreme_data.size() - supreme_state_fields_size
+				);
+				Player pre_supreme( pre_supreme_data );
+				GT_ASSERT(
+					pre_supreme.GetCouncilState().is_expelled &&
+					pre_supreme.GetCouncilState().supreme_leader_id == -1 &&
+					pre_supreme.GetCouncilState().supreme_response ==
+						Player::SUPREME_RESPONSE_NONE &&
+					!pre_supreme.GetCouncilState().supreme_resolved,
+					"older player data did not default Supreme Leader state"
+				);
 				auto pre_expulsion_data = source.Serialize().ToString();
 				pre_expulsion_data.resize(
-					pre_expulsion_data.size() - council_expulsion_field_size
+					pre_expulsion_data.size() - council_expulsion_field_size -
+						supreme_state_fields_size
 				);
 				Player pre_expulsion( pre_expulsion_data );
 				GT_ASSERT(
@@ -501,7 +566,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				auto pre_clean_mineral_data = source.Serialize().ToString();
 				pre_clean_mineral_data.resize(
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
-						council_expulsion_field_size
+						council_expulsion_field_size - supreme_state_fields_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(

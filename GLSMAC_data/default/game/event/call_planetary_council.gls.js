@@ -41,6 +41,12 @@ return {
 				unity_core_salvaged: old.unity_core_salvaged,
 				un_charter_repealed: old.un_charter_repealed,
 				is_expelled: #is_defined(old.is_expelled) ? old.is_expelled : false,
+				supreme_leader_id: #is_defined(old.supreme_leader_id)
+					? old.supreme_leader_id : -1,
+				supreme_response: #is_defined(old.supreme_response)
+					? old.supreme_response : rules.supreme_response_none,
+				supreme_resolved: #is_defined(old.supreme_resolved)
+					? old.supreme_resolved : false,
 			});
 		}
 		e.game.trigger('council_updated', {proposal: e.data.proposal});

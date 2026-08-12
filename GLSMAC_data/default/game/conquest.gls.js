@@ -11,6 +11,13 @@ return (game) => {
 			) {
 				return;
 			}
+			const get_diplomatic_winner = game.get('f_council_get_supreme_defiance_winner');
+			if (
+				#typeof(get_diplomatic_winner) == 'Callable' &&
+				get_diplomatic_winner() != null
+			) {
+				return;
+			}
 			const winner = game.get_conquest_winner();
 			if (winner != null) {
 				victory_request_pending = true;

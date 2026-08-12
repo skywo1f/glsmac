@@ -14,6 +14,13 @@ return {
 		if (e.data.relation != 'treaty' && e.data.relation != 'pact') {
 			return 'Diplomatic proposal must be a treaty or pact';
 		}
+		const get_forced_relation = e.game.get('f_council_get_forced_relation');
+		if (
+			#typeof(get_forced_relation) == 'Callable' &&
+			get_forced_relation(e.data.player, e.data.target) == 'vendetta'
+		) {
+			return 'Defiant and loyal factions must remain at vendetta';
+		}
 		const current = e.data.player.get_diplomatic_relation(e.data.target);
 		if (current == e.data.relation) {
 			return 'Players already have that diplomatic relation';

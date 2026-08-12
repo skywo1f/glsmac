@@ -137,6 +137,10 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t COUNCIL_VOTE_ABSTAIN = -1;
 	static constexpr int64_t COUNCIL_VOTE_NO = 0;
 	static constexpr int64_t COUNCIL_VOTE_YES = 1;
+	static constexpr int64_t SUPREME_RESPONSE_NONE = 0;
+	static constexpr int64_t SUPREME_RESPONSE_PENDING = 1;
+	static constexpr int64_t SUPREME_RESPONSE_ACCEDE = 2;
+	static constexpr int64_t SUPREME_RESPONSE_DEFY = 3;
 	static constexpr int64_t MAX_COUNCIL_TURN = 1000000;
 	static constexpr size_t MAX_COUNCIL_PLAYER_ID = 64;
 	struct council_state_t {
@@ -151,6 +155,9 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		bool unity_core_salvaged = false;
 		bool un_charter_repealed = false;
 		bool is_expelled = false;
+		int64_t supreme_leader_id = -1;
+		int64_t supreme_response = SUPREME_RESPONSE_NONE;
+		bool supreme_resolved = false;
 
 		bool operator==( const council_state_t& other ) const {
 			return
@@ -164,7 +171,10 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				global_trade_pact == other.global_trade_pact &&
 				unity_core_salvaged == other.unity_core_salvaged &&
 				un_charter_repealed == other.un_charter_repealed &&
-				is_expelled == other.is_expelled;
+				is_expelled == other.is_expelled &&
+				supreme_leader_id == other.supreme_leader_id &&
+				supreme_response == other.supreme_response &&
+				supreme_resolved == other.supreme_resolved;
 		}
 	};
 	const council_state_t& GetCouncilState() const;

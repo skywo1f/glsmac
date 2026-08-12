@@ -118,6 +118,21 @@ return (m) => {
 					p.modules.popup.show('headquarters_evacuation');
 				}
 			}
+			const get_supreme = game.get('f_council_get_supreme_state');
+			const get_supreme_response = game.get('f_council_get_supreme_response');
+			if (
+				#typeof(get_supreme) == 'Callable' &&
+				#typeof(get_supreme_response) == 'Callable'
+			) {
+				const supreme = get_supreme();
+				if (
+					supreme != null && !supreme.resolved &&
+					get_supreme_response(game.get_player()) == 1 &&
+					!p.modules.popup.is_shown()
+				) {
+					p.modules.popup.show('planetary_council');
+				}
+			}
 			// TODO
 
 		});

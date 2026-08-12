@@ -2,6 +2,11 @@ const rules = #include('../default/game/council_rules');
 const call_council = #include('../default/game/event/call_planetary_council');
 const cast_vote = #include('../default/game/event/cast_council_vote');
 const resolve_council = #include('../default/game/event/resolve_planetary_council');
+const respond_supreme = #include('../default/game/event/respond_supreme_leader');
+const resolve_accession = #include('../default/game/event/resolve_supreme_accession');
+const resolve_defiance = #include('../default/game/event/resolve_supreme_defiance');
+const declare_vendetta = #include('../default/game/event/declare_vendetta');
+const propose_relation = #include('../default/game/event/propose_diplomatic_relation');
 const council_ai = #include('../default/game/ai/council');
 const define_council = #include('../default/game/council');
 const council_popup = #include('../default/ui/parts/game/popup/planetary_council');
@@ -23,9 +28,13 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		unity_core_salvaged: false,
 		un_charter_repealed: false,
 		is_expelled: false,
+		supreme_leader_id: -1,
+		supreme_response: 0,
+		supreme_resolved: false,
 	};
 	let technologies = [];
 	let relations = {};
+	let offers = {};
 	let infiltrated = {};
 	let integrity = 0;
 	let energy_credits = 100;
@@ -50,6 +59,16 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		},
 		set_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
+		},
+		set_diplomatic_relation: (other, relation) => {
+			relations['p' + #to_string(other.id)] = relation;
+		},
+		get_diplomatic_offer: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(offers[key]) ? offers[key] : '';
+		},
+		set_diplomatic_offer: (other, offer) => {
+			offers['p' + #to_string(other.id)] = offer;
 		},
 		get_integrity_blemishes: () => { return integrity; },
 		set_integrity_blemishes: (value) => { integrity = value; },
@@ -150,6 +169,35 @@ game = {
 			};
 		},
 	},
+};
+
+values.f_diplomacy_validate_pair = (player, other) => {
+	if (player.id == other.id) { return 'A player cannot conduct diplomacy with itself'; }
+};
+values.f_diplomacy_snapshot_pair = (player, other) => {
+	return {
+		player_relation: player.get_diplomatic_relation(other),
+		other_relation: other.get_diplomatic_relation(player),
+		player_offer: player.get_diplomatic_offer(other),
+		other_offer: other.get_diplomatic_offer(player),
+	};
+};
+values.f_diplomacy_restore_pair = (player, other, state) => {
+	player.set_diplomatic_relation(other, state.player_relation);
+	other.set_diplomatic_relation(player, state.other_relation);
+	player.set_diplomatic_offer(other, state.player_offer);
+	other.set_diplomatic_offer(player, state.other_offer);
+};
+values.f_diplomacy_set_bilateral_relation = (player, other, relation) => {
+	player.set_diplomatic_relation(other, relation);
+	other.set_diplomatic_relation(player, relation);
+};
+values.f_diplomacy_clear_offers = (player, other) => {
+	player.set_diplomatic_offer(other, '');
+	other.set_diplomatic_offer(player, '');
+};
+values.f_council_get_forced_relation = (player, other) => {
+	return rules.get_forced_relation(game, player, other);
 };
 
 
@@ -502,18 +550,104 @@ let supreme_resolution = {caller: 0, game: game, data: {}};
 test.assert(!#is_defined(resolve_council.validate(supreme_resolution)));
 supreme_resolution.applied = resolve_council.apply(supreme_resolution);
 
+test.assert(!game_over);
+test.assert(!supreme_resolution.applied.terminal);
+test.assert(rules.get_session(game) == null);
+test.assert(rules.get_supreme_state(game) == {leader: clinical, resolved: false});
+test.assert(rules.get_supreme_response(clinical) == rules.supreme_response_accede);
+test.assert(rules.get_supreme_response(peacekeepers) == rules.supreme_response_pending);
+test.assert(rules.get_supreme_response(empath) == rules.supreme_response_pending);
+test.assert(rules.get_supreme_response(progenitor) == rules.supreme_response_none);
+test.assert(#is_defined(rules.validate_call(game, clinical, 'governor')));
+
+peacekeepers.set_relation(clinical, 'pact');
+test.assert(!council_ai.choose_supreme_defiance(peacekeepers, clinical));
+peacekeepers.set_relation(clinical, 'neutral');
+empath.set_relation(clinical, 'vendetta');
+test.assert(council_ai.choose_supreme_defiance(empath, clinical));
+empath.set_relation(clinical, 'neutral');
+clinical.set_major_atrocities(1);
+test.assert(council_ai.choose_supreme_defiance(empath, clinical));
+clinical.set_major_atrocities(0);
+
+let peace_response = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, defy: false},
+};
+test.assert(!#is_defined(respond_supreme.validate(peace_response)));
+peace_response.applied = respond_supreme.apply(peace_response);
+test.assert(rules.get_supreme_response(peacekeepers) == rules.supreme_response_accede);
+respond_supreme.rollback(peace_response);
+test.assert(rules.get_supreme_response(peacekeepers) == rules.supreme_response_pending);
+peace_response.applied = respond_supreme.apply(peace_response);
+
+let empath_response = {
+	caller: empath.id,
+	game: game,
+	data: {player: empath, defy: true},
+};
+test.assert(!#is_defined(respond_supreme.validate(empath_response)));
+empath_response.applied = respond_supreme.apply(empath_response);
+test.assert(rules.get_supreme_response(empath) == rules.supreme_response_defy);
+test.assert(#is_defined(respond_supreme.validate(empath_response)));
+test.assert(#sizeof(rules.get_pending_supreme_players(game)) == 0);
+
+let accession = {caller: 0, game: game, data: {}};
+test.assert(!#is_defined(resolve_accession.validate(accession)));
+accession.applied = resolve_accession.apply(accession);
+test.assert(!game_over);
+test.assert(!accession.applied.terminal);
+test.assert(rules.get_supreme_state(game) == {leader: clinical, resolved: true});
+test.assert(peacekeepers.get_diplomatic_relation(clinical) == 'pact');
+test.assert(empath.get_diplomatic_relation(peacekeepers) == 'vendetta');
+test.assert(empath.get_diplomatic_relation(clinical) == 'vendetta');
+test.assert(rules.get_forced_relation(game, peacekeepers, clinical) == 'pact');
+test.assert(rules.get_forced_relation(game, empath, clinical) == 'vendetta');
+test.assert(rules.get_supreme_defiance_winner(game) == null);
+
+let loyal_vendetta = {
+	caller: peacekeepers.id,
+	game: game,
+	data: {player: peacekeepers, target: clinical},
+};
+test.assert(#is_defined(declare_vendetta.validate(loyal_vendetta)));
+let holdout_peace = {
+	caller: empath.id,
+	game: game,
+	data: {player: empath, target: clinical, relation: 'treaty'},
+};
+test.assert(#is_defined(propose_relation.validate(holdout_peace)));
+
+resolve_accession.rollback(accession);
+test.assert(rules.get_supreme_state(game) == {leader: clinical, resolved: false});
+test.assert(peacekeepers.get_diplomatic_relation(clinical) == 'neutral');
+test.assert(empath.get_diplomatic_relation(peacekeepers) == 'neutral');
+test.assert(empath.get_diplomatic_relation(clinical) == 'neutral');
+accession.applied = resolve_accession.apply(accession);
+
+empath_base.set_size(0);
+test.assert(rules.get_supreme_defiance_winner(game) == clinical);
+let defiance = {caller: 0, game: game, data: {}};
+test.assert(!#is_defined(resolve_defiance.validate(defiance)));
+defiance.applied = resolve_defiance.apply(defiance);
 test.assert(game_over);
 test.assert(victory == {type: 'diplomatic', winner_id: clinical.id});
-test.assert(supreme_resolution.applied.terminal);
+test.assert(defiance.applied.terminal);
 
 define_council(game);
 callbacks.start({});
-test.assert(values.f_council_is_governor(clinical));
+test.assert(!values.f_council_is_governor(clinical));
 test.assert(!values.f_council_has_global_trade_pact());
 test.assert(values.f_council_has_salvaged_unity_core());
 test.assert(!values.f_council_is_un_charter_repealed());
 test.assert(values.f_council_is_policy_proposal('repeal_un_charter'));
 test.assert(values.f_council_get_proposal_name('salvage_unity_core') == 'Salvage Unity Fusion Core');
+test.assert(values.f_council_get_supreme_state() == {leader: clinical, resolved: true});
+test.assert(values.f_council_get_supreme_response(empath) == rules.supreme_response_defy);
+test.assert(values.f_council_get_forced_relation(peacekeepers, clinical) == 'pact');
+test.assert(!values.f_council_has_intelligence(clinical, peacekeepers));
+clinical.set_infiltrated(peacekeepers, true);
 test.assert(values.f_council_has_intelligence(clinical, peacekeepers));
 test.assert(!values.f_council_has_intelligence(clinical, progenitor));
 clinical.set_infiltrated(progenitor, true);

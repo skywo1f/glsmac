@@ -89,6 +89,19 @@ return {
 		if (e.data.defender.owner == e.data.attacker.owner) {
 			return 'Unit cannot attack a friendly unit';
 		}
+		const get_forced_relation = #typeof(e.game.get) == 'Callable'
+			? e.game.get('f_council_get_forced_relation')
+			: #undefined;
+		if (
+			#typeof(get_forced_relation) == 'Callable' &&
+			#typeof(e.game.get_player) == 'Callable' &&
+			get_forced_relation(
+				e.game.get_player(e.data.attacker.owner),
+				e.game.get_player(e.data.defender.owner)
+			) == 'pact'
+		) {
+			return 'Factions loyal to the Supreme Leader cannot attack each other';
+		}
 		if (e.data.attacker.health <= 0.0) {
 			return 'Dead unit cannot attack';
 		}

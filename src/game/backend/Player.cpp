@@ -1526,6 +1526,9 @@ WRAPIMPL_BEGIN( Player )
 						{ "unity_core_salvaged", VALUE( gse::value::Bool, , m_council_state.unity_core_salvaged ) },
 						{ "un_charter_repealed", VALUE( gse::value::Bool, , m_council_state.un_charter_repealed ) },
 						{ "is_expelled", VALUE( gse::value::Bool, , m_council_state.is_expelled ) },
+						{ "supreme_leader_id", VALUE( gse::value::Int, , m_council_state.supreme_leader_id ) },
+						{ "supreme_response", VALUE( gse::value::Int, , m_council_state.supreme_response ) },
+						{ "supreme_resolved", VALUE( gse::value::Bool, , m_council_state.supreme_resolved ) },
 					} );
 				} )
 			},
@@ -1574,6 +1577,30 @@ WRAPIMPL_BEGIN( Player )
 						Bool,
 						m_council_state.is_expelled
 					);
+					N_GETPROP_OPT(
+						int64_t,
+						supreme_leader_id,
+						state,
+						"supreme_leader_id",
+						Int,
+						m_council_state.supreme_leader_id
+					);
+					N_GETPROP_OPT(
+						int64_t,
+						supreme_response,
+						state,
+						"supreme_response",
+						Int,
+						m_council_state.supreme_response
+					);
+					N_GETPROP_OPT(
+						bool,
+						supreme_resolved,
+						state,
+						"supreme_resolved",
+						Bool,
+						m_council_state.supreme_resolved
+					);
 					try {
 						SetCouncilState( {
 							is_governor,
@@ -1587,6 +1614,9 @@ WRAPIMPL_BEGIN( Player )
 							unity_core_salvaged,
 							un_charter_repealed,
 							is_expelled,
+							supreme_leader_id,
+							supreme_response,
+							supreme_resolved,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1727,6 +1757,9 @@ const types::Buffer Player::Serialize() const {
 	}
 	buf.WriteInt( m_clean_mineral_facilities );
 	buf.WriteBool( m_council_state.is_expelled );
+	buf.WriteInt( m_council_state.supreme_leader_id );
+	buf.WriteInt( m_council_state.supreme_response );
+	buf.WriteBool( m_council_state.supreme_resolved );
 
 	return buf;
 }
@@ -2109,6 +2142,11 @@ void Player::Deserialize( types::Buffer buf ) {
 	if ( buf.GetRemaining() > 0 ) {
 		council_state.is_expelled = buf.ReadBool();
 	}
+	if ( buf.GetRemaining() > 0 ) {
+		council_state.supreme_leader_id = buf.ReadInt();
+		council_state.supreme_response = buf.ReadInt();
+		council_state.supreme_resolved = buf.ReadBool();
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2212,6 +2250,30 @@ bool Player::ValidateSocialEngineering(
 bool Player::ValidateCouncilState( const council_state_t& state, std::string& error ) {
 	if ( state.is_expelled && state.is_governor ) {
 		error = "A faction expelled from the Planetary Council cannot be Governor";
+		return false;
+	}
+	if (
+		state.supreme_leader_id < -1 ||
+		state.supreme_leader_id >= static_cast< int64_t >( MAX_COUNCIL_PLAYER_ID )
+	) {
+		error = "Supreme Leader ID is invalid";
+		return false;
+	}
+	if ( state.supreme_leader_id < 0 ) {
+		if ( state.supreme_response != SUPREME_RESPONSE_NONE || state.supreme_resolved ) {
+			error = "Inactive Supreme Leader state contains response data";
+			return false;
+		}
+	}
+	else if (
+		state.supreme_response < SUPREME_RESPONSE_NONE ||
+		state.supreme_response > SUPREME_RESPONSE_DEFY
+	) {
+		error = "Supreme Leader response is invalid";
+		return false;
+	}
+	if ( !state.proposal.empty() && state.supreme_leader_id >= 0 ) {
+		error = "Planetary Council session conflicts with Supreme Leader accession";
 		return false;
 	}
 	if ( state.last_session_turn < 0 || state.last_session_turn > MAX_COUNCIL_TURN ) {

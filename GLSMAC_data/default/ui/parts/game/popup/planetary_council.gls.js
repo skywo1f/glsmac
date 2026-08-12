@@ -16,6 +16,8 @@ return {
 		this.charter_button = null;
 		this.solar_button = null;
 		this.polar_button = null;
+		this.accede_button = null;
+		this.defy_button = null;
 
 		const result = p.create('PLANETARY COUNCIL', 560, 332, (body, cb) => {
 			this.status_text = body.text({
@@ -63,6 +65,30 @@ return {
 			this.abstain_button.on('click', (e) => {
 				if (this.player != null) {
 					p.game.event('cast_council_vote', {player: this.player, vote_id: -1});
+				}
+				return true;
+			});
+
+			this.accede_button = body.button({
+				class: 'game-popup-button', text: 'Accede to Supreme Leader', top: 122,
+			});
+			this.accede_button.on('click', (e) => {
+				if (this.player != null) {
+					p.game.event('respond_supreme_leader', {
+						player: this.player, defy: false,
+					});
+				}
+				return true;
+			});
+
+			this.defy_button = body.button({
+				class: 'game-popup-button', text: 'Defy the Council', top: 148,
+			});
+			this.defy_button.on('click', (e) => {
+				if (this.player != null) {
+					p.game.event('respond_supreme_leader', {
+						player: this.player, defy: true,
+					});
 				}
 				return true;
 			});
@@ -167,7 +193,12 @@ return {
 			if (this.player == null) { this.player = p.game.get_player(); }
 			this.refresh();
 			const state = this.player.get_council_state();
-			if (state.proposal != '' && state.vote_id == -2 && !p.modules.popup.is_shown()) {
+			if (
+				(
+					(state.proposal != '' && state.vote_id == -2) ||
+					(#is_defined(state.supreme_response) && state.supreme_response == 1)
+				) && !p.modules.popup.is_shown()
+			) {
 				p.modules.popup.show('planetary_council');
 			}
 		});
@@ -185,6 +216,8 @@ return {
 		this.charter_button.hide();
 		this.solar_button.hide();
 		this.polar_button.hide();
+		this.accede_button.hide();
+		this.defy_button.hide();
 		if (this.player == null) { return; }
 
 		const get_session = this.p.game.get('f_council_get_session');
@@ -193,6 +226,34 @@ return {
 		const get_governor = this.p.game.get('f_council_get_governor');
 		const validate_call = this.p.game.get('f_council_validate_call');
 		const session = get_session();
+		const get_supreme = this.p.game.get('f_council_get_supreme_state');
+		const supreme = #typeof(get_supreme) == 'Callable' ? get_supreme() : null;
+		if (supreme != null) {
+			const response = this.p.game.get('f_council_get_supreme_response')(
+				this.player
+			);
+			this.status_text.text = 'Supreme Leader: ' + supreme.leader.get_faction().name;
+			this.first_text.text = supreme.resolved
+				? 'The Council accession decision is final.'
+				: 'Each surviving faction must accede or defy.';
+			this.second_text.text = response == 3
+				? 'Your faction is defiant.'
+				: (response == 2 ? 'Your faction is loyal.' : 'Your response is pending.');
+			if (!supreme.resolved && response == 1) {
+				this.detail_text.text = 'Will you accept the authority of the Supreme Leader?';
+				this.accede_button.show();
+				this.defy_button.show();
+			} else if (!supreme.resolved) {
+				this.detail_text.text = 'Waiting for the remaining faction leaders.';
+			} else {
+				const defiant = this.p.game.get('f_council_get_defiant_supreme_players')();
+				this.detail_text.text = #sizeof(defiant) == 0
+					? 'All surviving factions have acceded.'
+					: #to_string(#sizeof(defiant)) +
+						' defiant faction(s) must be defeated.';
+			}
+			return;
+		}
 		if (this.p.game.get('f_council_is_expelled')(this.player)) {
 			this.status_text.text = 'Council status: expelled under the U.N. Charter';
 			this.first_text.text = 'This faction has no Council votes.';
