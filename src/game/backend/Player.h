@@ -84,6 +84,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static constexpr int64_t MAX_MAJOR_ATROCITIES = 1000000;
 	static constexpr int64_t MAX_SANCTION_TURNS = 1000000;
 	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
+	static constexpr int64_t MAX_MIND_CONTROL_TOTAL = 1000000;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENTS = 1024;
 	static constexpr size_t MAX_PROTOTYPED_COMPONENT_ID_LENGTH = 128;
 	static constexpr size_t MAX_OBSOLETE_UNIT_DESIGNS = 4096;
@@ -114,6 +115,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetSanctionTurns( const int64_t sanction_turns );
 	int64_t GetIntegrityBlemishes() const;
 	void SetIntegrityBlemishes( const int64_t integrity_blemishes );
+	int64_t GetMindControlTotal() const;
+	void SetMindControlTotal( const int64_t mind_control_total );
 	using prototyped_components_t = std::set< std::string >;
 	const prototyped_components_t& GetPrototypedComponents() const;
 	bool HasPrototypedComponent( const std::string& id ) const;
@@ -327,6 +330,7 @@ private:
 	int64_t m_major_atrocities = 0;
 	int64_t m_sanction_turns = 0;
 	int64_t m_integrity_blemishes = 0;
+	int64_t m_mind_control_total = 0;
 	prototyped_components_t m_prototyped_components = {
 		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
 	};

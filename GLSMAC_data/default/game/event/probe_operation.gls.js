@@ -572,6 +572,12 @@ return {
 			actor_sanction_turns: actor.get_sanction_turns(),
 			frame_player_id: frame_player_id,
 		};
+		if (
+			#typeof(actor.get_mind_control_total) == 'Callable' &&
+			#typeof(actor.set_mind_control_total) == 'Callable'
+		) {
+			applied.actor_mind_control_total = actor.get_mind_control_total();
+		}
 
 		if (e.resolved.cost > 0) {
 			actor.set_energy_credits(actor.energy_credits - e.resolved.cost);
@@ -702,6 +708,15 @@ return {
 			refresh_base_psych(e.game, base);
 			e.game.trigger('update_base', {base: base});
 		}
+		if (
+			e.resolved.success && #is_defined(applied.actor_mind_control_total) &&
+			(operation == 'subvert_unit' || operation == 'mind_control_base')
+		) {
+			actor.set_mind_control_total(#min(
+				1000000,
+				applied.actor_mind_control_total + (operation == 'mind_control_base' ? 4 : 1)
+			));
+		}
 
 		if (e.resolved.success && e.resolved.survives && e.game.um.has_unit(probe.id)) {
 			promote_probe(e.game, probe);
@@ -831,6 +846,9 @@ return {
 		actor.set_energy_credits(e.applied.actor_energy);
 		actor.set_major_atrocities(e.applied.actor_atrocities);
 		actor.set_sanction_turns(e.applied.actor_sanction_turns);
+		if (#is_defined(e.applied.actor_mind_control_total)) {
+			actor.set_mind_control_total(e.applied.actor_mind_control_total);
+		}
 		target_player.set_energy_credits(e.applied.target_energy);
 		e.game.trigger('diplomatic_sanctions_updated', {
 			player: actor,

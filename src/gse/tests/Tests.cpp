@@ -269,6 +269,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetMajorAtrocities( 2 );
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
+				source.SetMindControlTotal( 12 );
 				source.SetObsoleteUnitDesigns( {
 					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 				} );
@@ -372,6 +373,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player diplomatic integrity was not cloned"
 				);
 				GT_ASSERT(
+					cloned.GetMindControlTotal() == 12,
+					"player mind control total was not cloned"
+				);
+				GT_ASSERT(
 					cloned.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -469,6 +474,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player diplomatic integrity was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.GetMindControlTotal() == 12,
+					"player mind control total was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -534,6 +543,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				player_extension.WriteBool( source.GetCouncilState().supreme_resolved );
 				player_extension.WriteInt( source.GetSubmissiveToId() );
 				player_extension.WriteInt( source.GetSurrenderOfferToId() );
+				player_extension.WriteInt( source.GetMindControlTotal() );
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
@@ -551,20 +561,26 @@ void AddTests( task::gsetests::GSETests* task ) {
 				submission_state_fields.WriteInt( source.GetSubmissiveToId() );
 				submission_state_fields.WriteInt( source.GetSurrenderOfferToId() );
 				const auto submission_state_fields_size = submission_state_fields.ToString().size();
+				types::Buffer mind_control_total_field;
+				mind_control_total_field.WriteInt( source.GetMindControlTotal() );
+				const auto mind_control_total_field_size =
+					mind_control_total_field.ToString().size();
 				auto pre_submission_data = source.Serialize().ToString();
 				pre_submission_data.resize(
-					pre_submission_data.size() - submission_state_fields_size
+					pre_submission_data.size() - submission_state_fields_size -
+						mind_control_total_field_size
 				);
 				Player pre_submission( pre_submission_data );
 				GT_ASSERT(
 					pre_submission.GetSubmissiveToId() == Player::NO_DIPLOMATIC_PLAYER &&
-					pre_submission.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER,
+						pre_submission.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER &&
+						pre_submission.GetMindControlTotal() == 0,
 					"older player data did not default diplomatic submission state"
 				);
 				auto pre_supreme_data = source.Serialize().ToString();
 				pre_supreme_data.resize(
 					pre_supreme_data.size() - submission_state_fields_size -
-						supreme_state_fields_size
+						supreme_state_fields_size - mind_control_total_field_size
 				);
 				Player pre_supreme( pre_supreme_data );
 				GT_ASSERT(
@@ -578,7 +594,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				auto pre_expulsion_data = source.Serialize().ToString();
 				pre_expulsion_data.resize(
 					pre_expulsion_data.size() - council_expulsion_field_size -
-						supreme_state_fields_size - submission_state_fields_size
+						supreme_state_fields_size - submission_state_fields_size -
+						mind_control_total_field_size
 				);
 				Player pre_expulsion( pre_expulsion_data );
 				GT_ASSERT(
@@ -590,7 +607,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				pre_clean_mineral_data.resize(
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
 						council_expulsion_field_size - supreme_state_fields_size -
-						submission_state_fields_size
+						submission_state_fields_size - mind_control_total_field_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(
@@ -721,6 +738,17 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					rejected_invalid_submission_player && roundtrip.GetSubmissiveToId() == 4,
 					"out-of-range submission player ID was accepted or partially mutated"
+				);
+				bool rejected_invalid_mind_control_total = false;
+				try {
+					roundtrip.SetMindControlTotal( Player::MAX_MIND_CONTROL_TOTAL + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_mind_control_total = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_mind_control_total && roundtrip.GetMindControlTotal() == 12,
+					"out-of-range mind control total was accepted or partially mutated"
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				roundtrip.ClearDiplomaticTrade( 4 );
@@ -883,6 +911,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					legacy.GetIntegrityBlemishes() == 0,
 					"legacy player diplomatic integrity did not default to noble"
+				);
+				GT_ASSERT(
+					legacy.GetMindControlTotal() == 0,
+					"legacy player mind control total did not default to zero"
 				);
 				GT_ASSERT(
 					legacy.GetOrbitalFacilities().empty(),

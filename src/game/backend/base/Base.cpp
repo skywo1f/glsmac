@@ -570,6 +570,35 @@ const types::Buffer Base::Serialize( const Base* base ) {
 			buf.WriteInt( value );
 		}
 	}
+	auto get_probe_bool = [base]( const std::string& key ) {
+		auto* const value = const_cast< Base* >( base )->CustomGet( key );
+		if ( value && value->type != gse::VT_BOOL ) {
+			THROW( "base Probe operation state must contain booleans" );
+		}
+		return value && ( (gse::value::Bool*)value )->value;
+	};
+	auto get_probe_int = [base]( const std::string& key, const int64_t fallback ) {
+		auto* const value = const_cast< Base* >( base )->CustomGet( key );
+		if ( value && value->type != gse::VT_INT ) {
+			THROW( "base Probe operation state must contain integers" );
+		}
+		return value ? ( (gse::value::Int*)value )->value : fallback;
+	};
+	const auto former_owner_id = get_probe_int( "former_owner_id", -1 );
+	const auto nerve_stapling_turns = get_probe_int( "nerve_stapling_turns", 0 );
+	if (
+		former_owner_id < -1 ||
+		former_owner_id >= static_cast< int64_t >( Player::MAX_DIPLOMATIC_PLAYER_ID ) ||
+		nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS
+	) {
+		THROW( "invalid base Probe operation state" );
+	}
+	buf.WriteInt( 1 );
+	buf.WriteBool( get_probe_bool( "probe_research_data_stolen" ) );
+	buf.WriteBool( get_probe_bool( "probe_energy_reserves_drained" ) );
+	buf.WriteBool( get_probe_bool( "probe_genetic_plague_introduced" ) );
+	buf.WriteInt( former_owner_id );
+	buf.WriteInt( nerve_stapling_turns );
 	return buf;
 }
 
@@ -741,6 +770,29 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			}
 		}
 	}
+	bool probe_research_data_stolen = false;
+	bool probe_energy_reserves_drained = false;
+	bool probe_genetic_plague_introduced = false;
+	int64_t former_owner_id = -1;
+	int64_t nerve_stapling_turns = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		const auto probe_state_version = buf.ReadInt();
+		if ( probe_state_version != 1 ) {
+			THROW( "unsupported serialized base Probe operation state version" );
+		}
+		probe_research_data_stolen = buf.ReadBool();
+		probe_energy_reserves_drained = buf.ReadBool();
+		probe_genetic_plague_introduced = buf.ReadBool();
+		former_owner_id = buf.ReadInt();
+		nerve_stapling_turns = buf.ReadInt();
+		if (
+			former_owner_id < -1 ||
+			former_owner_id >= static_cast< int64_t >( Player::MAX_DIPLOMATIC_PLAYER_ID ) ||
+			nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS
+		) {
+			THROW( "invalid serialized base Probe operation state" );
+		}
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
@@ -795,6 +847,36 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 				VALUE( gse::value::Int, , headquarters_evacuation.at( i ) )
 			);
 		}
+	}
+	if ( probe_research_data_stolen ) {
+		base->CustomSet(
+			"probe_research_data_stolen",
+			VALUE( gse::value::Bool, , true )
+		);
+	}
+	if ( probe_energy_reserves_drained ) {
+		base->CustomSet(
+			"probe_energy_reserves_drained",
+			VALUE( gse::value::Bool, , true )
+		);
+	}
+	if ( probe_genetic_plague_introduced ) {
+		base->CustomSet(
+			"probe_genetic_plague_introduced",
+			VALUE( gse::value::Bool, , true )
+		);
+	}
+	if ( former_owner_id >= 0 ) {
+		base->CustomSet(
+			"former_owner_id",
+			VALUE( gse::value::Int, , former_owner_id )
+		);
+	}
+	if ( nerve_stapling_turns > 0 ) {
+		base->CustomSet(
+			"nerve_stapling_turns",
+			VALUE( gse::value::Int, , nerve_stapling_turns )
+		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );
 	return base.release();

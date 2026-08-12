@@ -5,6 +5,7 @@ let values = {};
 let bases = [];
 let units = [];
 let players = {};
+let pending_market_cost = 0;
 const game = {
 	on: (name, callback) => {
 		if (!#is_defined(callbacks[name])) {
@@ -21,6 +22,9 @@ const game = {
 };
 
 values.f_social_get_ratings = (player) => { return {probe: player.probe_rating}; };
+values.f_economic_victory_get_state = (player) => {
+	return pending_market_cost > 0 ? {cost: pending_market_cost} : null;
+};
 define_probes(game);
 for (callback of callbacks.start) {
 	callback({});
@@ -31,8 +35,11 @@ const make_player = (id, energy, rating, technologies) => {
 	let research_target = '';
 	let research_progress = 0;
 	let known_technologies = technologies;
+	let mind_control_total = 0;
 	return {
 		id: id,
+		type: 'human',
+		difficulty_level: 'Librarian',
 		energy_credits: energy,
 		probe_rating: rating,
 		get_research_state: () => {
@@ -63,6 +70,8 @@ const make_player = (id, energy, rating, technologies) => {
 		get_diplomatic_relation: (other) => { return 'neutral'; },
 		has_infiltrated: (other) => { return infiltrated; },
 		set_test_infiltrated: (value) => { infiltrated = value; },
+		get_mind_control_total: () => { return mind_control_total; },
+		set_mind_control_total: (value) => { mind_control_total = value; },
 	};
 };
 
@@ -81,6 +90,16 @@ const headquarters = {
 	get_size: () => { return 5; },
 };
 const target_tile = {id: 'target'};
+const make_pop = (initial_type) => {
+	let type = initial_type;
+	return {
+		get_type: () => { return type; },
+		set_type: (value) => { type = value; },
+	};
+};
+const target_pops = [
+	make_pop('WORKER'), make_pop('WORKER'), make_pop('WORKER'), make_pop('WORKER'),
+];
 const target_base = {
 	id: 2,
 	name: 'Target Outpost',
@@ -89,10 +108,7 @@ const target_base = {
 	has_facility: (id) => { return false; },
 	get_tile: () => { return target_tile; },
 	get_size: () => { return 4; },
-	get_pops: () => { return [
-		{get_type: () => { return 'WORKER'; }},
-		{get_type: () => { return 'DRONE'; }},
-	]; },
+	get_pops: () => { return target_pops; },
 };
 let target_base_values = {};
 target_base.has = (key) => { return #is_defined(target_base_values[key]); };
@@ -258,6 +274,32 @@ target_player.probe_rating = 0;
 test.assert(values.f_probe_get_mind_control_cost(actor, headquarters) == null);
 const base_cost = values.f_probe_get_mind_control_cost(actor, target_base);
 test.assert(base_cost == 875);
+actor.set_mind_control_total(4);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1050);
+actor.set_mind_control_total(0);
+target_base.set('former_owner_id', actor.id);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 437);
+target_base.unset('former_owner_id');
+target_pops[0].set_type('DRONE');
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 437);
+target_pops[0].set_type('WORKER');
+target_pops[0].set_type('TALENT');
+target_pops[1].set_type('TALENT');
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1750);
+target_pops[0].set_type('WORKER');
+target_pops[1].set_type('WORKER');
+target_base.set('nerve_stapling_turns', 5);
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1165);
+target_base.unset('nerve_stapling_turns');
+pending_market_cost = 600;
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1250);
+pending_market_cost = 0;
+actor.type = 'ai';
+target_player.type = 'human';
+target_player.difficulty_level = 'Thinker';
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 656);
+actor.type = 'human';
+target_player.difficulty_level = 'Librarian';
 target_base.has_facility = (id) => { return id == 'GenejackFactory'; };
 test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 435);
 target_base.has_facility = (id) => { return id == 'ChildrenSCreche'; };

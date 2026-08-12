@@ -16,6 +16,8 @@
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
+	const mind_control_total_stamp = 12;
+	const nerve_stapling_turns_stamp = 6;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
@@ -187,6 +189,7 @@
 					lender_contact: e.data.lender.has_contact(borrower),
 					sanction_turns: borrower.get_sanction_turns(),
 					integrity_blemishes: borrower.get_integrity_blemishes(),
+					mind_control_total: borrower.get_mind_control_total(),
 					prototyped_components: borrower.get_prototyped_components(),
 					sky_hydroponics: borrower.get_orbital_facility_count('SkyHydroponicsLab'),
 					orbital_defense_pods: borrower.get_orbital_facility_count('OrbitalDefensePod'),
@@ -201,6 +204,7 @@
 				e.data.lender.set_contact(borrower, true);
 				borrower.set_sanction_turns(sanction_turns_stamp);
 				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
+				borrower.set_mind_control_total(mind_control_total_stamp);
 				borrower.set_prototyped_components(prototyped_components_stamp);
 				borrower.set_orbital_facility_count('SkyHydroponicsLab', sky_hydroponics_stamp);
 				borrower.set_orbital_facility_count('OrbitalDefensePod', orbital_defense_pods_stamp);
@@ -224,6 +228,7 @@
 				e.data.lender.set_contact(borrower, e.applied.lender_contact);
 				borrower.set_sanction_turns(e.applied.sanction_turns);
 				borrower.set_integrity_blemishes(e.applied.integrity_blemishes);
+				borrower.set_mind_control_total(e.applied.mind_control_total);
 				borrower.set_prototyped_components(e.applied.prototyped_components);
 				borrower.set_orbital_facility_count(
 					'SkyHydroponicsLab',
@@ -549,6 +554,7 @@
 							!lender.has_contact(game.get_player()) ||
 							game.get_player().get_sanction_turns() != sanction_turns_stamp ||
 							game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp ||
+							game.get_player().get_mind_control_total() != mind_control_total_stamp ||
 							game.get_player().get_prototyped_components() != prototyped_components_stamp ||
 							game.get_player().get_orbital_facility_count('SkyHydroponicsLab') !=
 								sky_hydroponics_stamp ||
@@ -843,6 +849,15 @@
 			if (base.get('network_node_artifact_linked') != true) {
 				return 'Network Node artifact state is missing';
 			}
+			if (
+				base.get('probe_research_data_stolen') != true ||
+				base.get('probe_energy_reserves_drained') != true ||
+				base.get('probe_genetic_plague_introduced') != true ||
+				base.get('former_owner_id') != get_remote_player_id() ||
+				base.get('nerve_stapling_turns') != nerve_stapling_turns_stamp
+			) {
+				return 'Probe operation base state is missing';
+			}
 			if (!game.get_um().has_unit(air_snapshot_unit_id)) {
 				return 'partially fueled Needlejet is missing';
 			}
@@ -970,6 +985,11 @@
 					// Initial growth adds the base-tile yield, then spends the map growth threshold.
 					client_base.set('accumulated_nutrients', initial_nutrient_stamp);
 					client_base.set('network_node_artifact_linked', true);
+					client_base.set('probe_research_data_stolen', true);
+					client_base.set('probe_energy_reserves_drained', true);
+					client_base.set('probe_genetic_plague_introduced', true);
+					client_base.set('former_owner_id', game.get_player().id);
+					client_base.set('nerve_stapling_turns', nerve_stapling_turns_stamp);
 					const production_ids = get_snapshot_production_ids(client_base);
 					client_base.add_facility('RecyclingTanks');
 					client_base.set_production_queue([

@@ -55,6 +55,7 @@ Player::Player( const Player* const other ) {
 	m_major_atrocities = other->m_major_atrocities;
 	m_sanction_turns = other->m_sanction_turns;
 	m_integrity_blemishes = other->m_integrity_blemishes;
+	m_mind_control_total = other->m_mind_control_total;
 	m_prototyped_components = other->m_prototyped_components;
 	m_obsolete_unit_designs = other->m_obsolete_unit_designs;
 	m_retired_unit_designs = other->m_retired_unit_designs;
@@ -256,6 +257,17 @@ void Player::SetIntegrityBlemishes( const int64_t integrity_blemishes ) {
 		THROW( "player diplomatic integrity blemishes are out of range" );
 	}
 	m_integrity_blemishes = integrity_blemishes;
+}
+
+int64_t Player::GetMindControlTotal() const {
+	return m_mind_control_total;
+}
+
+void Player::SetMindControlTotal( const int64_t mind_control_total ) {
+	if ( mind_control_total < 0 || mind_control_total > MAX_MIND_CONTROL_TOTAL ) {
+		THROW( "player mind control total is out of range" );
+	}
+	m_mind_control_total = mind_control_total;
 }
 
 const Player::prototyped_components_t& Player::GetPrototypedComponents() const {
@@ -963,6 +975,28 @@ WRAPIMPL_BEGIN( Player )
 					N_GETVALUE( integrity_blemishes, 0, Int );
 					try {
 						SetIntegrityBlemishes( integrity_blemishes );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
+				"get_mind_control_total",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetMindControlTotal() );
+				} )
+			},
+			{
+				"set_mind_control_total",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( mind_control_total, 0, Int );
+					try {
+						SetMindControlTotal( mind_control_total );
 					}
 					catch ( const std::runtime_error& e ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
@@ -1836,6 +1870,7 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteBool( m_council_state.supreme_resolved );
 	buf.WriteInt( m_submissive_to_id );
 	buf.WriteInt( m_surrender_offer_to_id );
+	buf.WriteInt( m_mind_control_total );
 
 	return buf;
 }
@@ -2232,6 +2267,13 @@ void Player::Deserialize( types::Buffer buf ) {
 		validator.SetSubmissiveToId( submissive_to_id );
 		validator.SetSurrenderOfferToId( surrender_offer_to_id );
 	}
+	int64_t mind_control_total = 0;
+	if ( buf.GetRemaining() > 0 ) {
+		mind_control_total = buf.ReadInt();
+		if ( mind_control_total < 0 || mind_control_total > MAX_MIND_CONTROL_TOTAL ) {
+			THROW( "invalid serialized player mind control total" );
+		}
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2275,6 +2317,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_council_state = std::move( council_state );
 	m_submissive_to_id = submissive_to_id;
 	m_surrender_offer_to_id = surrender_offer_to_id;
+	m_mind_control_total = mind_control_total;
 
 }
 

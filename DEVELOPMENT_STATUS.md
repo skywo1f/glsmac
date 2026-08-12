@@ -269,7 +269,11 @@ scenarios, for:
   genetic plague damage, unit subversion, and base mind control; subversion and
   mind-control prices include original energy reserves, Headquarters distance,
   garrison, population, social PROBE, encryption, pact, Children's Creche,
-  Genejack Factory, and Punishment Sphere modifiers; paid operations expose
+  Genejack Factory, Punishment Sphere, prior capture history, former ownership,
+  drone riot, Golden Age, active Energy Market bid, AI-versus-human difficulty,
+  and supported nerve-stapling-state modifiers; successful subversion and mind
+  control update persistent capture history, and base captures retain the
+  former owner across saves and reconnects; paid operations expose
   standard and untraceable approaches, unit targeting rejects native life,
   stacks, cargo, and inaccessible air units, and base capture resets prior-owner
   research-raid state; eligible operations can frame a contacted third faction
@@ -325,9 +329,8 @@ The following original-SMAC systems remain absent or materially incomplete:
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
 - remaining probe-team parity: the human framed-faction excuse response, exact
-  resident Probe-versus-Probe combat resolution, and uncommon mind-control
-  modifiers for former ownership, revenge state, drone riots, Golden Ages, and
-  prior captures;
+  resident Probe-versus-Probe combat resolution, active nerve-stapling gameplay,
+  and per-pair atrocity-victim and revenge-state mind-control modifiers;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -721,6 +724,17 @@ failed-frame exposure, AI retaliation, preservation of a human scapegoat's
 response choice, and exact rollback across both affected diplomatic pairs. The
 installed-asset Probe scenario passed in 41.96 seconds against the existing
 Windows x64 Release executable and live SMAC data.
+
+After the remaining supported base-game mind-control modifiers were added, the
+Windows x64 Release build succeeded and all 109 isolated native/script tests
+passed in 252.34 seconds. Focused coverage verifies cumulative prior-capture
+cost, former-owner and faction-type handling, drone riots, Golden Ages, active
+Energy Market bids, nerve-stapling state, exact energy accounting, capture
+history increments, and rollback. The installed-asset Probe scenario passed in
+29.12 seconds. Running reconnect passed in 57.57 seconds and directly restored
+the faction capture total plus base research-theft, energy-drain, genetic-plague,
+former-owner, and nerve-stapling fields; this also corrected a pre-existing
+omission that discarded the three per-base Probe operation flags on save.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

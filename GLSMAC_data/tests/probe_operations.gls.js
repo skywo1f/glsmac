@@ -13,6 +13,7 @@ const make_player = (id, energy, technologies, target, type) => {
 	let major_atrocities = 0;
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
+	let mind_control_total = 0;
 	let research = {technologies: technologies, target: target, progress: target == '' ? 0 : 9};
 	let player = {
 		id: id,
@@ -38,6 +39,8 @@ const make_player = (id, energy, technologies, target, type) => {
 	player.set_sanction_turns = (value) => { sanction_turns = value; };
 	player.get_integrity_blemishes = () => { return integrity_blemishes; };
 	player.set_integrity_blemishes = (value) => { integrity_blemishes = value; };
+	player.get_mind_control_total = () => { return mind_control_total; };
+	player.set_mind_control_total = (value) => { mind_control_total = value; };
 	player.has_contact = (other) => {
 		const key = 'p' + #to_string(other.id);
 		return #is_defined(contacts[key]) && contacts[key];
@@ -672,8 +675,10 @@ e.resolved = result(true, true, true);
 e.resolved.cost = 100;
 e.applied = probe_operation.apply(e);
 test.assert(f.um.get_unit(2).owner == 1 && f.actor.read_energy_credits() == 900);
+test.assert(f.actor.get_mind_control_total() == 1);
 probe_operation.rollback(e);
 test.assert(f.um.get_unit(2).owner == 2 && f.actor.read_energy_credits() == 1000);
+test.assert(f.actor.get_mind_control_total() == 0);
 
 f = make_fixture();
 const stacked_defender = f.um.spawn_unit({
@@ -719,11 +724,15 @@ e.resolved = result(true, true, true);
 e.resolved.cost = 300;
 e.applied = probe_operation.apply(e);
 test.assert(f.target_base.get_owner().id == 1);
+test.assert(f.target_base.get('former_owner_id') == 2);
+test.assert(f.actor.get_mind_control_total() == 4);
 test.assert(f.um.get_unit(2).owner == 1);
 test.assert(f.um.get_unit(4).owner == 1 && f.um.get_unit(4).home_base_id == 0);
 test.assert(remote_support.owner == 2 && remote_support.home_base_id == 11);
 probe_operation.rollback(e);
 test.assert(f.target_base.get_owner().id == 2);
+test.assert(!f.target_base.has('former_owner_id'));
+test.assert(f.actor.get_mind_control_total() == 0);
 test.assert(f.um.get_unit(2).owner == 2 && f.um.get_unit(2).home_base_id == 10);
 test.assert(f.um.get_unit(4).owner == 2 && f.um.get_unit(4).home_base_id == 11);
 test.assert(remote_support.owner == 2 && remote_support.home_base_id == 10);

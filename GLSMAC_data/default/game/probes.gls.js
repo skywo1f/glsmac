@@ -2,6 +2,16 @@ const MAX_ENERGY_CREDITS = 1000000000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
 const GENETIC_PLAGUE_KEY = 'probe_genetic_plague_introduced';
+const FORMER_OWNER_KEY = 'former_owner_id';
+const NERVE_STAPLING_TURNS_KEY = 'nerve_stapling_turns';
+const DIFFICULTY_LEVELS = {
+	Citizen: 0,
+	Specialist: 1,
+	Talent: 2,
+	Librarian: 3,
+	Thinker: 4,
+	Transcend: 5,
+};
 const FRAMEABLE_OPERATIONS = {
 	steal_technology: true,
 	sabotage: true,
@@ -207,6 +217,36 @@ const get_base_garrison_value = (game, base) => {
 	return combat_units * (encrypted_units + 1);
 };
 
+const get_base_population_state = (game, base) => {
+	let talents = 0;
+	let drones = 0;
+	for (pop of base.get_pops()) {
+		const type = pop.get_type();
+		if (type == 'TALENT') {
+			talents++;
+		} else if (type == 'DRONE') {
+			drones++;
+		} else if (type == 'DRONEPLUS') {
+			drones += 2;
+		}
+	}
+	const get_psych = game.get('f_base_get_psych');
+	const psych = #typeof(get_psych) == 'Callable' ? get_psych(base) : null;
+	const is_rioting = psych != null && #is_defined(psych.is_rioting)
+		? psych.is_rioting : drones > talents;
+	return {
+		is_rioting: is_rioting,
+		is_golden_age: !is_rioting && drones == 0 && talents > 0 &&
+			talents * 2 >= base.get_size(),
+	};
+};
+
+const get_pending_market_cost = (game, player) => {
+	const get_state = game.get('f_economic_victory_get_state');
+	const state = #typeof(get_state) == 'Callable' ? get_state(player) : null;
+	return state != null && #is_defined(state.cost) ? state.cost : 0;
+};
+
 const get_mind_control_cost = (game, actor, base) => {
 	const target_player = base.get_owner();
 	let rating = get_effective_rating(game, target_player);
@@ -226,14 +266,47 @@ const get_mind_control_cost = (game, actor, base) => {
 	if (base.has_facility('PunishmentSphere')) {
 		distance = #floor(#to_float(distance) / 2.0);
 	}
-	const population_value = base.get_size();
+	if (
+		#typeof(base.has) == 'Callable' && base.has(NERVE_STAPLING_TURNS_KEY) &&
+		base.get(NERVE_STAPLING_TURNS_KEY) > 0
+	) {
+		distance = #floor(#to_float(distance) / 2.0);
+	}
+	const mind_control_total = #typeof(actor.get_mind_control_total) == 'Callable'
+		? actor.get_mind_control_total() : 0;
+	const population_value = base.get_size() + #floor(#to_float(mind_control_total) / 4.0);
 	const garrison_value = get_base_garrison_value(game, base);
 	let cost = (population_value + garrison_value) * #floor(
-		#to_float(target_player.energy_credits + 1200) / #to_float(distance + 4)
+		#to_float(
+			target_player.energy_credits + get_pending_market_cost(game, target_player) + 1200
+		) / #to_float(distance + 4)
 	);
 	cost = apply_rating_cost(cost, rating);
+	if (
+		actor.type == 'ai' && target_player.type == 'human' &&
+		#is_defined(DIFFICULTY_LEVELS[target_player.difficulty_level]) &&
+		DIFFICULTY_LEVELS[target_player.difficulty_level] > DIFFICULTY_LEVELS.Librarian
+	) {
+		cost = #floor(
+			#to_float(cost * 3) /
+			#to_float(DIFFICULTY_LEVELS[target_player.difficulty_level])
+		);
+	}
 	const relation = actor.get_diplomatic_relation(target_player);
 	if (relation == 'pact') {
+		cost *= 2;
+	}
+	if (
+		#typeof(base.has) == 'Callable' && base.has(FORMER_OWNER_KEY) &&
+		base.get(FORMER_OWNER_KEY) == actor.id
+	) {
+		cost = #floor(#to_float(cost) / 2.0);
+	}
+	const population_state = get_base_population_state(game, base);
+	if (population_state.is_rioting) {
+		cost = #floor(#to_float(cost) / 2.0);
+	}
+	if (population_state.is_golden_age) {
 		cost *= 2;
 	}
 	return cost;

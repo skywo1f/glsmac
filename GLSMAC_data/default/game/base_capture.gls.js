@@ -3,6 +3,7 @@ const economic_victory = #include('./economic_victory_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
+const FORMER_OWNER_KEY = 'former_owner_id';
 
 const snapshot_base_value = (base, key) => {
 	if (#typeof(base.has) != 'Callable') {
@@ -191,6 +192,7 @@ const capture_base = (game, base, new_owner) => {
 	const old_owner = base.get_owner();
 	const old_queue = get_queue_specs(base);
 	const research_data_stolen = snapshot_base_value(base, RESEARCH_DATA_STOLEN_KEY);
+	const former_owner = snapshot_base_value(base, FORMER_OWNER_KEY);
 	if (research_data_stolen.defined && #typeof(base.unset) == 'Callable') {
 		base.unset(RESEARCH_DATA_STOLEN_KEY);
 	}
@@ -242,6 +244,9 @@ const capture_base = (game, base, new_owner) => {
 		));
 	}
 
+	if (#typeof(base.set) == 'Callable') {
+		base.set(FORMER_OWNER_KEY, old_owner.id);
+	}
 	base.set_owner(new_owner);
 	if (headquarters_evacuation != null) {
 		game.message(
@@ -286,6 +291,7 @@ const capture_base = (game, base, new_owner) => {
 		old_owner: old_owner,
 		old_queue: old_queue,
 		research_data_stolen: research_data_stolen,
+		former_owner: former_owner,
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
 		headquarters_evacuation: headquarters_evacuation,
@@ -360,6 +366,9 @@ const restore_base = (game, base, snapshot) => {
 	base.set_production_queue(snapshot.old_queue);
 	if (#is_defined(snapshot.research_data_stolen)) {
 		restore_base_value(base, snapshot.research_data_stolen);
+	}
+	if (#is_defined(snapshot.former_owner)) {
+		restore_base_value(base, snapshot.former_owner);
 	}
 	restore_units(snapshot.rehomed_units);
 };

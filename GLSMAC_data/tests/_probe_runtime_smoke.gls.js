@@ -231,6 +231,7 @@
 				return;
 			}
 			let energy_before = game.get_player(actor.id).energy_credits;
+			let mind_control_before = actor.get_mind_control_total();
 			let expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 			if (expected_cost == null || expected_cost <= 0 || expected_cost > energy_before) {
 				fail(
@@ -248,6 +249,7 @@
 
 			const run_subversion = () => {
 				energy_before = game.get_player(actor.id).energy_credits;
+				mind_control_before = actor.get_mind_control_total();
 				expected_cost = game.get('f_probe_get_subversion_cost')(actor, target);
 				probe_morale_before_operation = probe.morale;
 				probe_morale_expected = #min(
@@ -274,6 +276,7 @@
 					}
 					if (
 						game.get_player(actor.id).energy_credits != energy_before - expected_cost ||
+						actor.get_mind_control_total() != mind_control_before + 1 ||
 						probe.movement != 0.0 ||
 						probe_morale_at_notification != probe_morale_expected ||
 						actor.get_diplomatic_relation(target_player) != 'vendetta' ||
@@ -284,6 +287,8 @@
 							'live subversion side effects are invalid: energy=' +
 								#to_string(game.get_player(actor.id).energy_credits) +
 							' expected=' + #to_string(energy_before - expected_cost) +
+							' mind_control=' + #to_string(actor.get_mind_control_total()) +
+							' expected_mind_control=' + #to_string(mind_control_before + 1) +
 							' movement=' + #to_string(probe.movement) +
 							' morale=' + #to_string(probe.morale) +
 							' expected_morale=' + #to_string(probe_morale_expected) +
@@ -297,7 +302,7 @@
 					}
 					finished = true;
 					#print(
-						'PROBE_RUNTIME_PASS: validated probe catalog, intelligence, neutral probe interrogation/repatriation, subversion, promotion, diplomacy, and notification'
+						'PROBE_RUNTIME_PASS: validated probe catalog, intelligence, neutral probe interrogation/repatriation, persisted subversion history, promotion, diplomacy, and notification'
 					);
 					#async(2500, () => { glsmac.exit(); });
 					return false;

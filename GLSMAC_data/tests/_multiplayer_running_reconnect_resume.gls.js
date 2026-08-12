@@ -11,6 +11,8 @@
 	const loan_payment_stamp = 7;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
+	const mind_control_total_stamp = 12;
+	const nerve_stapling_turns_stamp = 6;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
@@ -306,6 +308,9 @@
 			if (game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp) {
 				return 'diplomatic integrity was not restored';
 			}
+			if (game.get_player().get_mind_control_total() != mind_control_total_stamp) {
+				return 'mind-control history was not restored';
+			}
 			if (game.get_player().get_prototyped_components() != prototyped_components_stamp) {
 				return 'prototyped unit components were not restored';
 			}
@@ -381,6 +386,15 @@
 			}
 			if (base.get('network_node_artifact_linked') != true) {
 				return 'Network Node artifact state was not restored';
+			}
+			if (
+				base.get('probe_research_data_stolen') != true ||
+				base.get('probe_energy_reserves_drained') != true ||
+				base.get('probe_genetic_plague_introduced') != true ||
+				base.get('former_owner_id') != lender.id ||
+				base.get('nerve_stapling_turns') != nerve_stapling_turns_stamp
+			) {
+				return 'Probe operation base state was not restored';
 			}
 			if (game.get_um().get_unit(former_snapshot_unit_id).home_base_id != base.id) {
 				return 'Former home base was not restored from the snapshot';
