@@ -128,7 +128,10 @@ scenarios, for:
   network application, and conservative opponent-aware AI production and
   targeting; Orbital Defense Pods make one 50% interception attempt per
   undeployed pod each turn and can sacrifice an already deployed pod for a
-  guaranteed interception;
+  guaranteed interception; undeployed Pods can also directly attack rival
+  satellites with the original 50% success-or-self-destruction outcome,
+  vendetta and integrity consequences, reversible network state, player UI,
+  and reserve- and marginal-yield-aware AI targeting;
 - land and sea Unity Pods resolve during ordinary movement with reversible,
   deterministic events; supported rewards cover energy, rivers, earthquakes,
   production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
@@ -246,7 +249,7 @@ scenarios, for:
 The base-game content validator currently reports:
 
 - 77 technologies;
-- all 38 base facilities represented: 37 complete and 1 partial;
+- all 38 base facilities represented: 38 complete and 0 partial;
 - all 33 Secret Projects represented: 33 complete and 0 partial;
 - 488 runtime unit definitions, 14 source-manifest predefined units, and 68
   unit components.
@@ -268,8 +271,6 @@ The following original-SMAC systems remain absent or materially incomplete:
 - remaining territory parity: connected-region claim boundaries, rendered
   faction border overlays, and treaty-aware foreign-border visibility;
 - volcanoes;
-- Orbital Defense Pod remains partial because direct attacks against rival
-  satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
   abilities such as Cloaking and Deep Pressure Hull;
 - complete UI workflows, including the interactive abandon-versus-evacuate
@@ -283,7 +284,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 132 cases: 101 isolated native/script GSE tests
+The Release CTest matrix contains 134 cases: 103 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -499,6 +500,20 @@ fixed both failures. The installed-asset full-game scenario then passed in
 capturing and rolling back an active-bid Headquarters, its 1,000-credit charge,
 destination, facility, ownership, balances, and transferred market state. The
 synchronized multiplayer capture scenario passed in 62.18 seconds.
+
+After persistent post-bloom clean-mineral progression was added, the Windows
+x64 Release build succeeded and the three focused ecology cases passed. The
+installed-asset research runtime passed in 30.27 seconds, and running-game
+reconnect passed in 57.06 seconds while restoring the faction-wide bloom count.
+
+After direct Orbital Defense Pod satellite attacks were completed, the Windows
+x64 Release build succeeded and all 103 isolated native/script tests passed in
+267.69 seconds. Five focused orbital, AI, UI, and content cases passed together
+in 10.57 seconds. The installed-asset research runtime passed in 31.14 seconds;
+the seven-player runtime passed in 58.65 seconds while exercising successful
+and failed native-player attacks, treaty betrayal, and full rollback through an
+authoritative event; and multiplayer synchronization plus running reconnect
+passed in 64.79 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

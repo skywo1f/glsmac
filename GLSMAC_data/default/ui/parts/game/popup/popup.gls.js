@@ -6,6 +6,7 @@ return {
 		'social_engineering',
 		'planetary_council',
 		'economic_victory',
+		'orbital_attack',
 		'diplomacy',
 		'probe_operations',
 		'alien_artifact',

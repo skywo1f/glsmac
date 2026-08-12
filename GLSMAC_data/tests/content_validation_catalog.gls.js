@@ -78,11 +78,9 @@ test.assert(catalog.project_coverage.status.TheUniversalTranslator == 'complete'
 test.assert(catalog.project_coverage.status.TheNanoFactory == 'complete');
 test.assert(catalog.project_coverage.status.TheEmpathGuild == 'complete');
 test.assert(catalog.project_coverage.status.TheSpaceElevator == 'complete');
-for (id of ['OrbitalDefensePod']) {
-	test.assert(catalog.facility_coverage.status[id] == 'partial');
-}
 for (id of [
 	'ResearchHospital', 'Nanohospital', 'PsiGate', 'PressureDome',
+	'OrbitalDefensePod',
 ]) {
 	test.assert(catalog.facility_coverage.status[id] == 'complete');
 }
@@ -97,8 +95,8 @@ test.assert(planet != null && planet.data.is_native);
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 38,
-	complete_facilities: 37,
-	partial_facilities: 1,
+	complete_facilities: 38,
+	partial_facilities: 0,
 	implemented_projects: 33,
 	complete_projects: 33,
 	partial_projects: 0,

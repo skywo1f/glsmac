@@ -74,9 +74,7 @@ const effects = {
 	StockpileEnergy: {mineral_to_energy_divisor: 2},
 };
 
-const partial_effects = {
-	OrbitalDefensePod: true,
-};
+const partial_effects = {};
 
 const project_effects = {
 	TheHumanGenomeProject: {global_talent_bonus: 1},

@@ -5,6 +5,7 @@ const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
 const economic_victory = #include('ai/economic_victory');
+const orbitals = #include('ai/orbitals');
 const pathfinding = #include('ai/pathfinding');
 const probes = #include('ai/probes');
 const planet_busters = #include('ai/planet_busters');
@@ -1686,6 +1687,17 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		if (!waiting_for_action && !waiting_for_animation) {
+			const orbital_target = orbitals.choose_target(game, player);
+			if (orbital_target != null) {
+				game.event_as(player.id, 'attack_orbital', {
+					target: orbital_target.player,
+					facility_id: orbital_target.definition.id,
+				});
+				action_started = true;
+				action_delay = 100;
+			}
+		}
+		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			const choose_upgrade = game.get('f_unit_upgrade_choose_ai_target');
 			if (#is_defined(choose_upgrade)) {
 				for (unit of current_units) {

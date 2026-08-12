@@ -82,6 +82,10 @@ return (m) => {
 					p.maybe_quit(false);
 					return true;
 				}
+				if (e.modifiers == {} && e.code == 'F6') {
+					p.modules.popup.show('orbital_attack');
+					return true;
+				}
 				return false;
 			});
 

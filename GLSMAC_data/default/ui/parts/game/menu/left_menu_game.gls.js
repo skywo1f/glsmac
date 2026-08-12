@@ -21,6 +21,12 @@ return {
 				},
 			},
 			{
+				label: 'Orbital Attack',
+				open: () => {
+					p.modules.popup.show('orbital_attack');
+				},
+			},
+			{
 				label: 'Quit',
 				open: () => {
 					p.maybe_quit(true);

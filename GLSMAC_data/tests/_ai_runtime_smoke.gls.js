@@ -5,6 +5,7 @@
 
 	const colonization = #include('../default/game/ai/colonization');
 	const terraforming = #include('../default/game/ai/terraforming');
+	const attack_orbital = #include('../default/game/event/attack_orbital');
 	let game = null;
 	let ai_id = 0 - 1;
 	let initial_ai_bases = 0;
@@ -13,6 +14,9 @@
 	let setup_complete = false;
 	let ui_started = false;
 	let exit_scheduled = false;
+	let seven_player_orbital_requested = false;
+	let seven_player_orbital_complete = false;
+	let seven_player_orbital_error = null;
 
 	const fail = (message) => {
 		#print('AI_RUNTIME_FAIL: ' + message);
@@ -92,12 +96,143 @@
 			fail('expected six computer opponents');
 			return;
 		}
-		#print('SEVEN_PLAYER_RUNTIME_PASS: seven unique factions started with six computer opponents');
-		glsmac.exit();
+
+		if (seven_player_orbital_requested) {
+			return;
+		}
+		seven_player_orbital_requested = true;
+		game.event('ai_runtime_validate_orbital_attack', {});
+		let wait_ticks = 0;
+		#async(25, () => {
+			wait_ticks++;
+			if (seven_player_orbital_complete) {
+				if (seven_player_orbital_error != null) {
+					fail(seven_player_orbital_error);
+				} else {
+					#print(
+						'SEVEN_PLAYER_RUNTIME_PASS: seven unique factions, orbital attack outcomes, diplomacy, and rollback verified'
+					);
+					glsmac.exit();
+				}
+				return false;
+			}
+			if (wait_ticks >= 200) {
+				fail('native orbital attack event timed out');
+				return false;
+			}
+			return true;
+		});
 	};
 
 	glsmac.on('configure_game', (e) => {
 		game = e.game;
+		game.register_event('ai_runtime_validate_orbital_attack', {
+			validate: (event) => {
+				if (event.caller != 0) {
+					return 'Only the host can run the native orbital attack check';
+				}
+			},
+			apply: (event) => {
+				const actor = event.game.get_player();
+				let target = null;
+				for (player of event.game.get_players()) {
+					if (player.id != actor.id) {
+						target = player;
+						break;
+					}
+				}
+				if (target == null) {
+					seven_player_orbital_error = 'orbital attack target player is missing';
+					seven_player_orbital_complete = true;
+					return {verified: false};
+				}
+
+				const actor_pods = actor.get_orbital_facility_count('OrbitalDefensePod');
+				const actor_deployments = actor.get_orbital_defense_deployments();
+				const target_labs = target.get_orbital_facility_count('SkyHydroponicsLab');
+				const diplomacy = event.game.get('f_diplomacy_snapshot_pair')(actor, target);
+				const integrity = actor.get_integrity_blemishes();
+				actor.set_orbital_facility_count('OrbitalDefensePod', 2);
+				actor.set_orbital_defense_deployments(0);
+				target.set_orbital_facility_count('SkyHydroponicsLab', 2);
+				actor.set_contact(target, true);
+				target.set_contact(actor, true);
+				actor.set_diplomatic_relation(target, 'treaty');
+				target.set_diplomatic_relation(actor, 'treaty');
+
+				let orbital_event = {
+					caller: actor.id,
+					game: event.game,
+					data: {target: target, facility_id: 'SkyHydroponicsLab'},
+					resolved: {success: true},
+				};
+				const validation_error = attack_orbital.validate(orbital_event);
+				if (#is_defined(validation_error)) {
+					seven_player_orbital_error =
+						'native orbital attack validation failed: ' + validation_error;
+				} else {
+					orbital_event.applied = attack_orbital.apply(orbital_event);
+					if (
+						actor.get_orbital_facility_count('OrbitalDefensePod') != 2 ||
+						actor.get_orbital_defense_deployments() != 1 ||
+						target.get_orbital_facility_count('SkyHydroponicsLab') != 1 ||
+						actor.get_diplomatic_relation(target) != 'vendetta' ||
+						target.get_diplomatic_relation(actor) != 'vendetta' ||
+						actor.get_integrity_blemishes() != #min(7, integrity + 1)
+					) {
+						seven_player_orbital_error =
+							'successful native orbital attack state is invalid';
+					}
+					attack_orbital.rollback(orbital_event);
+					if (
+						seven_player_orbital_error == null && (
+							actor.get_orbital_facility_count('OrbitalDefensePod') != 2 ||
+							actor.get_orbital_defense_deployments() != 0 ||
+							target.get_orbital_facility_count('SkyHydroponicsLab') != 2 ||
+							actor.get_diplomatic_relation(target) != 'treaty' ||
+							actor.get_integrity_blemishes() != integrity
+						)
+					) {
+						seven_player_orbital_error =
+							'successful native orbital attack rollback is invalid';
+					}
+
+					if (seven_player_orbital_error == null) {
+						orbital_event.resolved = {success: false};
+						orbital_event.applied = attack_orbital.apply(orbital_event);
+						if (
+							actor.get_orbital_facility_count('OrbitalDefensePod') != 1 ||
+							actor.get_orbital_defense_deployments() != 0 ||
+							target.get_orbital_facility_count('SkyHydroponicsLab') != 2
+						) {
+							seven_player_orbital_error =
+								'failed native orbital attack state is invalid';
+						}
+						attack_orbital.rollback(orbital_event);
+						if (
+							seven_player_orbital_error == null && (
+								actor.get_orbital_facility_count('OrbitalDefensePod') != 2 ||
+								actor.get_orbital_defense_deployments() != 0 ||
+								target.get_orbital_facility_count('SkyHydroponicsLab') != 2 ||
+								actor.get_diplomatic_relation(target) != 'treaty' ||
+								actor.get_integrity_blemishes() != integrity
+							)
+						) {
+							seven_player_orbital_error =
+								'failed native orbital attack rollback is invalid';
+						}
+					}
+				}
+
+				actor.set_orbital_facility_count('OrbitalDefensePod', actor_pods);
+				actor.set_orbital_defense_deployments(actor_deployments);
+				target.set_orbital_facility_count('SkyHydroponicsLab', target_labs);
+				event.game.get('f_diplomacy_restore_pair')(actor, target, diplomacy);
+				seven_player_orbital_complete = true;
+				return {verified: seven_player_orbital_error == null};
+			},
+			rollback: (event) => {},
+		});
 
 		game.on('start_ui', (e) => {
 			ui_started = true;

@@ -19,6 +19,7 @@ return (game) => {
 		'airdrop_unit',
 		'attack_unit',
 		'planet_buster',
+		'attack_orbital',
 		'advance_unit_after_combat',
 		'unit_skip_turn',
 		'terraform_tile',
