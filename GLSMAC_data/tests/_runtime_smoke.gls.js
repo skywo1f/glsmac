@@ -124,7 +124,20 @@
 			const turn_id = e.year - 2100;
 			if (turn_id == 1) {
 				const landmark_tm = game.get_tm();
-				let volcano_tiles = 0;
+				let mount_planet_tiles = 0;
+				let landmark_garland_tiles = 0;
+				let landmark_monsoon_tiles = 0;
+				let landmark_uranium_tiles = 0;
+				let landmark_sargasso_tiles = 0;
+				let landmark_ruins_tiles = 0;
+				let landmark_ruins_monolith_tiles = 0;
+				let landmark_dunes_tiles = 0;
+				let landmark_freshwater_tiles = 0;
+				let landmark_mesa_tiles = 0;
+				let landmark_canyon_tiles = 0;
+				let landmark_geothermal_tiles = 0;
+				let landmark_ridge_tiles = 0;
+				let generated_landmark_tiles = 0;
 				for (let landmark_y = 0; landmark_y < landmark_tm.get_map_height(); landmark_y++) {
 					for (
 						let landmark_x = landmark_y % 2;
@@ -132,22 +145,158 @@
 						landmark_x += 2
 					) {
 						const landmark_tile = landmark_tm.get_tile(landmark_x, landmark_y);
-						if (landmark_tile.features.volcano) {
-							if (!landmark_tile.is_land) {
-								#print('RUNTIME_SMOKE_FAIL: Mount Planet contains a water tile');
+						let tile_landmark_count = 0;
+						for (landmark_key in landmark_tile.landmarks) {
+							if (landmark_tile.landmarks[landmark_key]) {
+								tile_landmark_count++;
+							}
+						}
+						if (tile_landmark_count > 1) {
+							#print('RUNTIME_SMOKE_FAIL: generated landmarks overlap');
+							glsmac.exit();
+							return;
+						}
+						if (tile_landmark_count == 1) {
+							generated_landmark_tiles++;
+						}
+						if (landmark_tile.features.jungle && !landmark_tile.landmarks.monsoon_jungle) {
+							#print('RUNTIME_SMOKE_FAIL: generic jungle was generated outside Monsoon Jungle');
+							glsmac.exit();
+							return;
+						}
+						if (landmark_tile.landmarks.mount_planet) {
+							if (
+								!landmark_tile.is_land || !landmark_tile.features.volcano ||
+								landmark_tile.rockiness < 2
+							) {
+								#print('RUNTIME_SMOKE_FAIL: Mount Planet has invalid physical terrain');
 								glsmac.exit();
 								return;
 							}
-							volcano_tiles++;
+							mount_planet_tiles++;
+						}
+						if (landmark_tile.landmarks.garland_crater) {
+							if (
+								!landmark_tile.is_land || !landmark_tile.features.garland_crater ||
+								landmark_tile.rockiness != 2
+							) {
+								#print('RUNTIME_SMOKE_FAIL: Garland Crater has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_garland_tiles++;
+						}
+						if (landmark_tile.landmarks.monsoon_jungle) {
+							if (!landmark_tile.is_land || !landmark_tile.features.jungle || landmark_tile.moisture != 3) {
+								#print('RUNTIME_SMOKE_FAIL: Monsoon Jungle has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_monsoon_tiles++;
+						}
+						if (landmark_tile.landmarks.uranium_flats) {
+							if (
+								!landmark_tile.is_land || !landmark_tile.features.uranium ||
+								landmark_tile.rockiness != 1
+							) {
+								#print('RUNTIME_SMOKE_FAIL: Uranium Flats has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_uranium_tiles++;
+						}
+						if (landmark_tile.landmarks.new_sargasso) {
+							if (!landmark_tile.is_water || !landmark_tile.features.xenofungus) {
+								#print('RUNTIME_SMOKE_FAIL: New Sargasso has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_sargasso_tiles++;
+						}
+						if (landmark_tile.landmarks.the_ruins) {
+							if (!landmark_tile.is_land) {
+								#print('RUNTIME_SMOKE_FAIL: The Ruins contains water');
+								glsmac.exit();
+								return;
+							}
+							if (landmark_tile.features.monolith) {
+								landmark_ruins_monolith_tiles++;
+							}
+							landmark_ruins_tiles++;
+						}
+						if (landmark_tile.landmarks.great_dunes) {
+							if (
+								!landmark_tile.is_land || !landmark_tile.features.dunes ||
+								landmark_tile.moisture != 1 || landmark_tile.rockiness != 1
+							) {
+								#print('RUNTIME_SMOKE_FAIL: Great Dunes has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_dunes_tiles++;
+						}
+						if (landmark_tile.landmarks.freshwater_sea) {
+							if (!landmark_tile.is_water) {
+								#print('RUNTIME_SMOKE_FAIL: Freshwater Sea contains land');
+								glsmac.exit();
+								return;
+							}
+							landmark_freshwater_tiles++;
+						}
+						if (landmark_tile.landmarks.sunny_mesa) {
+							if (
+								!landmark_tile.is_land || !landmark_tile.features.sunny_mesa ||
+								landmark_tile.rockiness < 2
+							) {
+								#print('RUNTIME_SMOKE_FAIL: Sunny Mesa has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_mesa_tiles++;
+						}
+						if (landmark_tile.landmarks.nessus_canyon) {
+							if (!landmark_tile.is_land || landmark_tile.rockiness != 2) {
+								#print('RUNTIME_SMOKE_FAIL: Nessus Canyon has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_canyon_tiles++;
+						}
+						if (landmark_tile.landmarks.geothermal_shallows) {
+							if (!landmark_tile.is_water || !landmark_tile.features.geothermal) {
+								#print('RUNTIME_SMOKE_FAIL: Geothermal Shallows has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_geothermal_tiles++;
+						}
+						if (landmark_tile.landmarks.pholus_ridge) {
+							if (!landmark_tile.is_land || landmark_tile.rockiness < 2) {
+								#print('RUNTIME_SMOKE_FAIL: Pholus Ridge has invalid physical terrain');
+								glsmac.exit();
+								return;
+							}
+							landmark_ridge_tiles++;
 						}
 					}
 				}
-				if (volcano_tiles < 2) {
-					#print('RUNTIME_SMOKE_FAIL: Mount Planet was not generated');
+				if (
+					mount_planet_tiles < 2 || landmark_garland_tiles == 0 ||
+					landmark_monsoon_tiles == 0 || landmark_uranium_tiles == 0 ||
+					landmark_sargasso_tiles == 0 || landmark_ruins_tiles == 0 ||
+					landmark_ruins_monolith_tiles == 0 ||
+					landmark_dunes_tiles == 0 || landmark_freshwater_tiles == 0 ||
+					landmark_mesa_tiles == 0 || landmark_canyon_tiles == 0 ||
+					landmark_geothermal_tiles == 0 || landmark_ridge_tiles == 0
+				) {
+					#print('RUNTIME_SMOKE_FAIL: one or more base-game landmarks were not generated');
 					glsmac.exit();
 					return;
 				}
-				#print('RUNTIME_SMOKE_MOUNT_PLANET_PASS: ' + #to_string(volcano_tiles) + ' tiles');
+				#print(
+					'RUNTIME_SMOKE_LANDMARKS_PASS: all 12 types across ' +
+					#to_string(generated_landmark_tiles) + ' separated tiles'
+				);
 				const victory_state = game.get_victory_state();
 				if (
 					game.is_game_over() ||
@@ -285,6 +434,7 @@
 						candidate.is_land &&
 						candidate.rockiness < 3 &&
 						!candidate.features.xenofungus &&
+						candidate.get_resources().NUTRIENTS < 2 &&
 						candidate.get_base() == null &&
 						#sizeof(candidate.get_units()) == 0
 					) {

@@ -24,6 +24,7 @@ tile_render_snapshot_t::tile_render_snapshot_t(
 	rockiness = tile.rockiness;
 	bonus = tile.bonus;
 	features = tile.features;
+	landmarks = tile.landmarks;
 	terraforming = tile.terraforming;
 	for ( size_t layer = 0 ; layer < backend::map::tile::LAYER_MAX ; layer++ ) {
 		layers[ layer ].coords = tile_state.layers[ layer ].coords;

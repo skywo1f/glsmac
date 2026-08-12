@@ -164,17 +164,47 @@ const get_tile_yields = (tile, player) => {
 			result.ENERGY = result.ENERGY + 1;
 		}
 	}
-	if (tile.is_land && tile.features.volcano) {
+	if (
+		tile.is_land &&
+		(
+			(#is_defined(tile.landmarks) && tile.landmarks.mount_planet) ||
+			tile.features.volcano
+		)
+	) {
 		result.MINERALS = result.MINERALS + 1;
 		result.ENERGY = result.ENERGY + 1;
 	}
-	if (tile.is_land && tile.features.uranium) {
+	if (
+		tile.is_land &&
+		(
+			(#is_defined(tile.landmarks) && tile.landmarks.uranium_flats) ||
+			tile.features.uranium
+		)
+	) {
 		result.ENERGY = result.ENERGY + 1;
 	}
-	if (tile.is_land && tile.features.garland_crater) {
+	if (
+		tile.is_land &&
+		(
+			(#is_defined(tile.landmarks) && tile.landmarks.garland_crater) ||
+			tile.features.garland_crater
+		)
+	) {
 		result.MINERALS = result.MINERALS + 1;
 	}
-	if (tile.is_water && tile.features.geothermal) {
+	if (
+		tile.is_water &&
+		(
+			(#is_defined(tile.landmarks) && tile.landmarks.geothermal_shallows) ||
+			tile.features.geothermal
+		)
+	) {
+		result.ENERGY = result.ENERGY + 1;
+	}
+	if (#is_defined(tile.landmarks) && tile.landmarks.freshwater_sea && tile.is_water) {
+		result.NUTRIENTS = result.NUTRIENTS + 1;
+	}
+	if (#is_defined(tile.landmarks) && tile.landmarks.pholus_ridge && tile.is_land) {
 		result.ENERGY = result.ENERGY + 1;
 	}
 	add_resource_bonus(result, tile);

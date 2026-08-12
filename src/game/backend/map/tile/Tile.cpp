@@ -54,6 +54,12 @@ static const std::unordered_map< std::string, feature_t > s_feature_by_name = {
 #undef X_FEATURE
 };
 
+static const std::unordered_map< std::string, landmark_t > s_landmark_by_name = {
+#define X_LANDMARK( _x, _i ) { util::String::GetLowerCase( #_x ), LANDMARK_ ## _x },
+	X_LANDMARKS
+#undef X_LANDMARK
+};
+
 static const std::unordered_map< std::string, bonus_t > s_bonus_by_name = {
 	{ "none", BONUS_NONE },
 #define X_BONUS( _x, _i ) { util::String::GetLowerCase( #_x ), BONUS_ ## _x },
@@ -140,6 +146,17 @@ void Tile::RefreshWrappers() {
 		X_FEATURES
 #undef X_FEATURE
 
+		auto* const wrapped_landmarks = (gse::value::Object*)f_get_property( "landmarks", gse::VT_OBJECT );
+#define X_LANDMARK( _x, _i ) \
+		{ \
+			const auto& flag_it = wrapped_landmarks->value.find( util::String::GetLowerCase( #_x ) ); \
+			ASSERT( flag_it != wrapped_landmarks->value.end(), "tile wrapper has no landmark flag" ); \
+			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile landmark flag is not a bool" ); \
+			( (gse::value::Bool*)flag_it->second )->value = ( landmarks & LANDMARK_ ## _x ) != 0; \
+		}
+		X_LANDMARKS
+#undef X_LANDMARK
+
 		auto* const wrapped_bonuses = (gse::value::Object*)f_get_property( "bonuses", gse::VT_OBJECT );
 #define X_BONUS( _x, _i ) \
 		{ \
@@ -168,7 +185,7 @@ void Tile::Clear() {
 	for ( auto& c : elevation.corners ) {
 		*c = 0;
 	}
-	moisture = rockiness = bonus = features = terraforming = is_water_tile = 0;
+	moisture = rockiness = bonus = features = landmarks = terraforming = is_water_tile = 0;
 }
 
 const bool Tile::IsAdjactentTo( const Tile* other ) const {
@@ -204,6 +221,7 @@ const types::Buffer Tile::Serialize() const {
 
 	buf.WriteInt( features );
 	buf.WriteInt( terraforming );
+	buf.WriteInt( landmarks );
 
 	return buf;
 }
@@ -255,11 +273,17 @@ void Tile::Deserialize( types::Buffer buf ) {
 
 	const auto serialized_features = buf.ReadInt< feature_t >( "tile features" );
 	const auto serialized_terraforming = buf.ReadInt< terraforming_t >( "tile terraforming" );
+	const auto serialized_landmarks = buf.GetRemaining() == 0
+		? LANDMARK_NONE
+		: buf.ReadInt< landmark_t >( "tile landmarks" );
 	if ( serialized_features & static_cast< feature_t >( ~FEATURE_ALL ) ) {
 		THROW( "invalid serialized tile features" );
 	}
 	if ( serialized_terraforming & static_cast< terraforming_t >( ~TERRAFORMING_ALL ) ) {
 		THROW( "invalid serialized tile terraforming" );
+	}
+	if ( serialized_landmarks & static_cast< landmark_t >( ~LANDMARK_ALL ) ) {
+		THROW( "invalid serialized tile landmarks" );
 	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized tile" );
@@ -275,6 +299,7 @@ void Tile::Deserialize( types::Buffer buf ) {
 	rockiness = serialized_rockiness;
 	bonus = serialized_bonus;
 	features = serialized_features;
+	landmarks = serialized_landmarks;
 	terraforming = serialized_terraforming;
 
 	Update();
@@ -311,6 +336,13 @@ feature_t Tile::GetFeatureFromString( const std::string& name ) {
 		: it->second;
 }
 
+landmark_t Tile::GetLandmarkFromString( const std::string& name ) {
+	const auto& it = s_landmark_by_name.find( util::String::GetLowerCase( name ) );
+	return it == s_landmark_by_name.end()
+		? LANDMARK_NONE
+		: it->second;
+}
+
 bonus_t Tile::GetBonusFromString( const std::string& name ) {
 	const auto& it = s_bonus_by_name.find( util::String::GetLowerCase( name ) );
 	return it == s_bonus_by_name.end()
@@ -343,6 +375,18 @@ void Tile::SetFeatures( GSE_CALLABLE, const feature_t value ) {
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 	if ( features != value ) {
 		features = value;
+		RefreshWrappers();
+		tiles->GetMap()->RefreshTile( this );
+	}
+}
+
+void Tile::SetLandmarks( GSE_CALLABLE, const landmark_t value ) {
+	if ( value & static_cast< landmark_t >( ~LANDMARK_ALL ) ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile landmarks value: " + std::to_string( value ) );
+	}
+	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+	if ( landmarks != value ) {
+		landmarks = value;
 		RefreshWrappers();
 		tiles->GetMap()->RefreshTile( this );
 	}
@@ -502,6 +546,7 @@ WRAPIMPL_BEGIN( Tile )
 			} )
 		},
 		{ "features", GetFeatures( GSE_CALL ) },
+		{ "landmarks", GetLandmarks( GSE_CALL ) },
 		{ "bonuses", GetBonuses( GSE_CALL ) },
 		{ "terraforming", GetTerraformings( GSE_CALL ) },
 		{
@@ -523,6 +568,28 @@ WRAPIMPL_BEGIN( Tile )
 					}
 				}
 				SetFeatures( GSE_CALL, updated );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"update_landmarks",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( changes, 0, Object );
+				auto updated = landmarks;
+				for ( const auto& change : changes ) {
+					const auto flag = GetLandmarkFromString( change.first );
+					if ( flag == LANDMARK_NONE || change.second->type != gse::VT_BOOL ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Invalid landmark update: " + change.first );
+					}
+					if ( ( (gse::value::Bool*)change.second )->value ) {
+						updated |= flag;
+					}
+					else {
+						updated &= static_cast< landmark_t >( ~flag );
+					}
+				}
+				SetLandmarks( GSE_CALL, updated );
 				return VALUE( gse::value::Undefined );
 			} )
 		},
@@ -657,6 +724,18 @@ gse::Value* const Tile::GetBonuses( GSE_CALLABLE ) const {
 	);
 	X_BONUSES
 #undef X_BONUS
+	return VALUE( gse::value::Object,, GSE_CALL_NOGC, result );
+}
+
+gse::Value* const Tile::GetLandmarks( GSE_CALLABLE ) const {
+	gse::value::object_properties_t result = {};
+#define X_LANDMARK( _x, _i ) \
+	result.insert_or_assign(   \
+		util::String::GetLowerCase( # _x ), \
+		VALUE( gse::value::Bool,, landmarks & backend::map::tile::LANDMARK_ ## _x ) \
+	);
+X_LANDMARKS
+#undef X_LANDMARK
 	return VALUE( gse::value::Object,, GSE_CALL_NOGC, result );
 }
 

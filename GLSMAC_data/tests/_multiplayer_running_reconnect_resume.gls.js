@@ -48,6 +48,67 @@
 			return null;
 		};
 
+		const get_landmark_state_error = () => {
+			const landmark_ids = [
+				'mount_planet', 'new_sargasso', 'garland_crater',
+				'geothermal_shallows', 'monsoon_jungle', 'freshwater_sea',
+			];
+			const counts = {
+				mount_planet: 0,
+				new_sargasso: 0,
+				garland_crater: 0,
+				geothermal_shallows: 0,
+				monsoon_jungle: 0,
+				freshwater_sea: 0,
+			};
+			const tm = game.get_tm();
+			for (let y = 0; y < tm.get_map_height(); y++) {
+				for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+					const tile = tm.get_tile(x, y);
+					let landmark_count = 0;
+					for (id of landmark_ids) {
+						if (tile.landmarks[id]) {
+							counts[id] = counts[id] + 1;
+							landmark_count++;
+						}
+					}
+					if (landmark_count > 1) {
+						return 'overlapping landmark metadata was restored';
+					}
+					if (tile.landmarks.mount_planet && (!tile.is_land || !tile.features.volcano)) {
+						return 'Mount Planet terrain was not restored';
+					}
+					if (tile.landmarks.new_sargasso && (!tile.is_water || !tile.features.xenofungus)) {
+						return 'New Sargasso terrain was not restored';
+					}
+					if (tile.landmarks.garland_crater && (!tile.is_land || !tile.features.garland_crater)) {
+						return 'Garland Crater terrain was not restored';
+					}
+					if (
+						tile.landmarks.geothermal_shallows &&
+						(!tile.is_water || !tile.features.geothermal)
+					) {
+						return 'Geothermal Shallows terrain was not restored';
+					}
+					if (
+						tile.landmarks.monsoon_jungle &&
+						(!tile.is_land || !tile.features.jungle || tile.moisture != 3)
+					) {
+						return 'Monsoon Jungle terrain was not restored';
+					}
+					if (tile.landmarks.freshwater_sea && !tile.is_water) {
+						return 'Freshwater Sea terrain was not restored';
+					}
+				}
+			}
+			for (id of landmark_ids) {
+				if (counts[id] == 0) {
+					return id + ' metadata was not restored';
+				}
+			}
+			return #undefined;
+		};
+
 		const get_research_state_error = (player) => {
 			const starting_technologies = player.get_faction().get_starting_technologies();
 			let starts_with_ecology = false;
@@ -581,7 +642,14 @@
 					glsmac.exit();
 					return;
 				}
+				const landmark_state_error = get_landmark_state_error();
+				if (#is_defined(landmark_state_error)) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + landmark_state_error);
+					glsmac.exit();
+					return;
+				}
 				#print('RUNNING_RECONNECT_BASE_STATE_RESUMED_CLIENT');
+				#print('RUNNING_RECONNECT_LANDMARKS_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_CONQUERED_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_EXPANSION_BASE_RESUMED_CLIENT');
 				#print('RUNNING_RECONNECT_UNIT_DEF_RESUMED_CLIENT');

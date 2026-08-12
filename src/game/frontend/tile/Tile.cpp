@@ -543,13 +543,41 @@ void Tile::Update( const tile_render_snapshot_t& snapshot ) {
 		FEATURE( FEATURE_JUNGLE, "Jungle" )
 		FEATURE( FEATURE_DUNES, "Dunes" )
 		FEATURE( FEATURE_URANIUM, "Uranium" )
-		FEATURE( FEATURE_VOLCANO, "Mount Planet" )
-		FEATURE( FEATURE_SUNNY_MESA, "Sunny Mesa" )
-		FEATURE( FEATURE_GARLAND_CRATER, "Garland Crater" )
+		if ( !( snapshot.landmarks & backend::map::tile::LANDMARK_MOUNT_PLANET ) ) {
+			FEATURE( FEATURE_VOLCANO, "Mount Planet" )
+		}
+		if ( !( snapshot.landmarks & backend::map::tile::LANDMARK_SUNNY_MESA ) ) {
+			FEATURE( FEATURE_SUNNY_MESA, "Sunny Mesa" )
+		}
+		if ( !( snapshot.landmarks & backend::map::tile::LANDMARK_GARLAND_CRATER ) ) {
+			FEATURE( FEATURE_GARLAND_CRATER, "Garland Crater" )
+		}
 	}
 	FEATURE( FEATURE_MONOLITH, "Monolith" )
 
 #undef FEATURE
+
+#define LANDMARK( _landmark, _line ) \
+			if ( snapshot.landmarks & backend::map::tile::_landmark ) { \
+				info_lines.push_back( _line ); \
+			}
+
+	LANDMARK( LANDMARK_GARLAND_CRATER, "Garland Crater" )
+	LANDMARK( LANDMARK_MOUNT_PLANET, "Mount Planet" )
+	LANDMARK( LANDMARK_MONSOON_JUNGLE, "Monsoon Jungle" )
+	LANDMARK( LANDMARK_URANIUM_FLATS, "Uranium Flats" )
+	LANDMARK( LANDMARK_NEW_SARGASSO, "New Sargasso" )
+	LANDMARK( LANDMARK_THE_RUINS, "The Ruins" )
+	LANDMARK( LANDMARK_GREAT_DUNES, "Great Dunes" )
+	LANDMARK( LANDMARK_FRESHWATER_SEA, "Freshwater Sea" )
+	LANDMARK( LANDMARK_SUNNY_MESA, "Sunny Mesa" )
+	LANDMARK( LANDMARK_NESSUS_CANYON, "Nessus Canyon" )
+	LANDMARK( LANDMARK_GEOTHERMAL_SHALLOWS, "Geothermal Shallows" )
+	LANDMARK( LANDMARK_PHOLUS_RIDGE, "Pholus Ridge" )
+	LANDMARK( LANDMARK_BOREHOLE_CLUSTER, "Borehole Cluster" )
+	LANDMARK( LANDMARK_MANIFOLD_NEXUS, "Manifold Nexus" )
+
+#undef LANDMARK
 
 #define TERRAFORMING( _terraforming, _line ) \
 			if ( snapshot.terraforming & backend::map::tile::_terraforming ) { \

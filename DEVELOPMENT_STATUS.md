@@ -170,11 +170,13 @@ scenarios, for:
   supported combat units outside friendly territory now apply the original
   POLICE -3, -4, and -5 pacifism-drone rules, including the air superiority
   exception and base-screen diagnostics;
-- generated maps place a deterministic multi-tile Mount Planet on connected
-  high ground after terrain normalization, clear incompatible surface features,
-  and expose its name in tile information; Mount Planet, Uranium Flats, Garland
-  Crater, and Geothermal Shallows apply their original intrinsic resource
-  bonuses;
+- generated maps place separated, deterministic regions for all 12
+  original-release natural landmarks after terrain normalization: Garland
+  Crater, Mount Planet, Monsoon Jungle, Uranium Flats, New Sargasso, The Ruins,
+  Great Dunes, Freshwater Sea, Sunny Mesa, Nessus Canyon, Geothermal Shallows,
+  and Pholus Ridge; persistent landmark metadata, physical terrain, tile
+  information, and old feature-only snapshots are covered, while all seven
+  landmarks with intrinsic resource effects apply their original bonuses;
 - persistent bilateral faction contact discovered through adjacent units and
   bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
   Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
@@ -284,8 +286,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   Council expulsion consequences for major atrocities;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
-- remaining landmark generation beyond Mount Planet, plus original volcano
-  creation and eruption events and their terrain-improvement destruction;
+- post-release SMAC patch landmark parity for Borehole Cluster and Manifold
+  Nexus, plus original volcano creation and eruption events and their
+  terrain-improvement destruction;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots so concealed information is not present client-side;
 - complete UI workflows, including the interactive abandon-versus-evacuate
@@ -564,6 +567,15 @@ terraforming, and Supply Crawler tests passed in 4.86 seconds. The standard
 installed-asset runtime passed in 55.36 seconds through turn 5 and directly
 verified a nine-tile, land-only Mount Planet before completing its ordinary
 production, expansion, and terraforming lifecycle checks.
+
+After the complete original-release natural-landmark set and persistent tile
+metadata were added, the Windows x64 Release build succeeded and all 104 GSE
+tests passed in 232.13 seconds. The standard installed-asset runtime passed in
+40.67 seconds through turn 5 while directly validating all 12 separated
+landmark types, their physical terrain, and the absence of generic random
+jungles. Running reconnect passed in 50.57 seconds and directly verified that
+six compact-map landmark regions and their terrain survived host snapshot
+transfer. Resource and tile-preview tests also cover old feature-only maps.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

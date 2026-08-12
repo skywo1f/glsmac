@@ -139,6 +139,32 @@ X_FEATURES
 static constexpr feature_t FEATURE_ALL = X_FEATURES FEATURE_NONE;
 #undef X_FEATURE
 
+// Named natural landmarks are separate from the physical terrain features
+// used to render and evaluate their tiles.
+typedef uint16_t landmark_t;
+static constexpr landmark_t LANDMARK_NONE = 0;
+#define X_LANDMARKS \
+	X_LANDMARK( GARLAND_CRATER, 0 ) \
+	X_LANDMARK( MOUNT_PLANET, 1 ) \
+	X_LANDMARK( MONSOON_JUNGLE, 2 ) \
+	X_LANDMARK( URANIUM_FLATS, 3 ) \
+	X_LANDMARK( NEW_SARGASSO, 4 ) \
+	X_LANDMARK( THE_RUINS, 5 ) \
+	X_LANDMARK( GREAT_DUNES, 6 ) \
+	X_LANDMARK( FRESHWATER_SEA, 7 ) \
+	X_LANDMARK( SUNNY_MESA, 8 ) \
+	X_LANDMARK( NESSUS_CANYON, 9 ) \
+	X_LANDMARK( GEOTHERMAL_SHALLOWS, 10 ) \
+	X_LANDMARK( PHOLUS_RIDGE, 11 ) \
+	X_LANDMARK( BOREHOLE_CLUSTER, 12 ) \
+	X_LANDMARK( MANIFOLD_NEXUS, 13 )
+#define X_LANDMARK( _x, _i ) static constexpr landmark_t LANDMARK_ ## _x = 1 << _i;
+X_LANDMARKS
+#undef X_LANDMARK
+#define X_LANDMARK( _x, _i ) LANDMARK_ ## _x |
+static constexpr landmark_t LANDMARK_ALL = X_LANDMARKS LANDMARK_NONE;
+#undef X_LANDMARK
+
 // bitflags
 #define X_TERRAFORMINGS \
 	X_TERRAFORMING( ROAD, 0 ) \

@@ -124,7 +124,7 @@ IF ( BUILD_TESTING )
 			--smacpath "${GLSMAC_SMAC_PATH}"
 			--mainscript "../tests/_runtime_smoke"
 			--quickstart
-			--quickstart-mapsize "20x10"
+			--quickstart-mapsize "28x14"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound

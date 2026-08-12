@@ -87,6 +87,7 @@ public:
 	rockiness_t rockiness;
 	bonus_t bonus;
 	feature_t features;
+	landmark_t landmarks;
 	terraforming_t terraforming;
 
 	// units (id -> unit)
@@ -110,10 +111,12 @@ public:
 
 	const std::string ToString() const;
 	static feature_t GetFeatureFromString( const std::string& name );
+	static landmark_t GetLandmarkFromString( const std::string& name );
 	static bonus_t GetBonusFromString( const std::string& name );
 	static terraforming_t GetTerraformingFromString( const std::string& name );
 	static const std::string& GetTerraformingString( const terraforming_t value );
 	void SetFeatures( GSE_CALLABLE, const feature_t value );
+	void SetLandmarks( GSE_CALLABLE, const landmark_t value );
 	void SetBonus( GSE_CALLABLE, const bonus_t value );
 	void SetTerraforming( GSE_CALLABLE, const terraforming_t value );
 
@@ -139,6 +142,7 @@ private:
 	size_t m_lock_initiator_slot = 0;
 
 	gse::Value* const GetFeatures( GSE_CALLABLE ) const;
+	gse::Value* const GetLandmarks( GSE_CALLABLE ) const;
 	gse::Value* const GetBonuses( GSE_CALLABLE ) const;
 	gse::Value* const GetTerraformings( GSE_CALLABLE ) const;
 

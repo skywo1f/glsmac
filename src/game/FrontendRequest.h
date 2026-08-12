@@ -42,6 +42,7 @@ struct tile_render_snapshot_t {
 	backend::map::tile::rockiness_t rockiness = backend::map::tile::ROCKINESS_NONE;
 	backend::map::tile::bonus_t bonus = backend::map::tile::BONUS_NONE;
 	backend::map::tile::feature_t features = backend::map::tile::FEATURE_NONE;
+	backend::map::tile::landmark_t landmarks = backend::map::tile::LANDMARK_NONE;
 	backend::map::tile::terraforming_t terraforming = backend::map::tile::TERRAFORMING_NONE;
 	tile_render_layer_t layers[ backend::map::tile::LAYER_MAX ] = {};
 	std::vector< std::string > sprites = {};

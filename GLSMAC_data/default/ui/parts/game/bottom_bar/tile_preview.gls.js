@@ -37,6 +37,24 @@ return {
 				case 'uranium': {
 					return 'Uranium';
 				}
+				case 'volcano': {
+					if (!#is_defined(tile.landmarks) || !tile.landmarks.mount_planet) {
+						return 'Mount Planet';
+					}
+					return #undefined;
+				}
+				case 'sunny_mesa': {
+					if (!#is_defined(tile.landmarks) || !tile.landmarks.sunny_mesa) {
+						return 'Sunny Mesa';
+					}
+					return #undefined;
+				}
+				case 'garland_crater': {
+					if (!#is_defined(tile.landmarks) || !tile.landmarks.garland_crater) {
+						return 'Garland Crater';
+					}
+					return #undefined;
+				}
 			}
 		}
 
@@ -60,6 +78,25 @@ return {
 			case 'minerals': {
 				return 'Minerals bonus';
 			}
+		}
+	},
+
+	get_landmark_name: (landmark) => {
+		switch (landmark) {
+			case 'garland_crater': { return 'Garland Crater'; }
+			case 'mount_planet': { return 'Mount Planet'; }
+			case 'monsoon_jungle': { return 'Monsoon Jungle'; }
+			case 'uranium_flats': { return 'Uranium Flats'; }
+			case 'new_sargasso': { return 'New Sargasso'; }
+			case 'the_ruins': { return 'The Ruins'; }
+			case 'great_dunes': { return 'Great Dunes'; }
+			case 'freshwater_sea': { return 'Freshwater Sea'; }
+			case 'sunny_mesa': { return 'Sunny Mesa'; }
+			case 'nessus_canyon': { return 'Nessus Canyon'; }
+			case 'geothermal_shallows': { return 'Geothermal Shallows'; }
+			case 'pholus_ridge': { return 'Pholus Ridge'; }
+			case 'borehole_cluster': { return 'Borehole Cluster'; }
+			case 'manifold_nexus': { return 'Manifold Nexus'; }
 		}
 	},
 
@@ -186,9 +223,20 @@ return {
 				this.line(tilestr);
 			}
 
+			if (#is_defined(tile.landmarks)) {
+				for (landmark in tile.landmarks) {
+					if (tile.landmarks[landmark]) {
+						this.line(this.get_landmark_name(landmark));
+					}
+				}
+			}
+
 			for (f in tile.features) {
 				if (tile.features[f]) {
-					this.line(this.get_feature_name(tile, f));
+					const feature_name = this.get_feature_name(tile, f);
+					if (#is_defined(feature_name)) {
+						this.line(feature_name);
+					}
 				}
 			}
 

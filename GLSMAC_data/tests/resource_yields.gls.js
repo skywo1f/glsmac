@@ -27,6 +27,22 @@ const make_tile = (fungus) => {
 			geothermal: false,
 			garland_crater: false,
 		},
+		landmarks: {
+			garland_crater: false,
+			mount_planet: false,
+			monsoon_jungle: false,
+			uranium_flats: false,
+			new_sargasso: false,
+			the_ruins: false,
+			great_dunes: false,
+			freshwater_sea: false,
+			sunny_mesa: false,
+			nessus_canyon: false,
+			geothermal_shallows: false,
+			pholus_ridge: false,
+			borehole_cluster: false,
+			manifold_nexus: false,
+		},
 		terraforming: {
 			road: false,
 			forest: false,
@@ -137,23 +153,57 @@ test.assert(resources.get_tile_yields(monolith, player) == {
 
 known_technologies = {};
 const volcano = make_tile(false);
-volcano.features.volcano = true;
+volcano.landmarks.mount_planet = true;
 test.assert(resources.get_tile_yields(volcano, player) == {
 	NUTRIENTS: 1,
 	MINERALS: 1,
 	ENERGY: 1,
 });
 const uranium = make_tile(false);
-uranium.features.uranium = true;
+uranium.landmarks.uranium_flats = true;
 test.assert(resources.get_tile_yields(uranium, player).ENERGY == 1);
 const crater = make_tile(false);
-crater.features.garland_crater = true;
+crater.landmarks.garland_crater = true;
 test.assert(resources.get_tile_yields(crater, player).MINERALS == 1);
 const geothermal = make_tile(false);
 geothermal.is_land = false;
 geothermal.is_water = true;
-geothermal.features.geothermal = true;
+geothermal.landmarks.geothermal_shallows = true;
 test.assert(resources.get_tile_yields(geothermal, player).ENERGY == 2);
+const jungle = make_tile(false);
+jungle.features.jungle = true;
+jungle.landmarks.monsoon_jungle = true;
+test.assert(resources.get_tile_yields(jungle, player).NUTRIENTS == 2);
+const ordinary_jungle_feature = make_tile(false);
+ordinary_jungle_feature.features.jungle = true;
+test.assert(resources.get_tile_yields(ordinary_jungle_feature, player).NUTRIENTS == 2);
+const freshwater = make_tile(false);
+freshwater.is_land = false;
+freshwater.is_water = true;
+freshwater.landmarks.freshwater_sea = true;
+test.assert(resources.get_tile_yields(freshwater, player).NUTRIENTS == 2);
+const ridge = make_tile(false);
+ridge.landmarks.pholus_ridge = true;
+test.assert(resources.get_tile_yields(ridge, player).ENERGY == 1);
+
+const legacy_volcano = make_tile(false);
+legacy_volcano.features.volcano = true;
+test.assert(resources.get_tile_yields(legacy_volcano, player) == {
+	NUTRIENTS: 1,
+	MINERALS: 1,
+	ENERGY: 1,
+});
+const legacy_uranium = make_tile(false);
+legacy_uranium.features.uranium = true;
+test.assert(resources.get_tile_yields(legacy_uranium, player).ENERGY == 1);
+const legacy_crater = make_tile(false);
+legacy_crater.features.garland_crater = true;
+test.assert(resources.get_tile_yields(legacy_crater, player).MINERALS == 1);
+const legacy_geothermal = make_tile(false);
+legacy_geothermal.is_land = false;
+legacy_geothermal.is_water = true;
+legacy_geothermal.features.geothermal = true;
+test.assert(resources.get_tile_yields(legacy_geothermal, player).ENERGY == 2);
 
 const borehole = make_tile(false);
 borehole.terraforming.borehole = true;
