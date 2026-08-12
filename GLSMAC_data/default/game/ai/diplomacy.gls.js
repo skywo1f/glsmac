@@ -76,6 +76,22 @@ const get_shared_technology_multiplier = (relation, relative_strength) => {
 	return multiplier + #max(0.0, relative_strength) * 0.8;
 };
 
+const get_contact_id = (terms, key) => {
+	const value = terms[key];
+	return #typeof(value) == 'Int' ? value : 0 - 1;
+};
+
+const get_contact_value = (state, key) => {
+	const value = state[key];
+	return #typeof(value) == 'Int' ? value : 0;
+};
+
+const get_shared_contact_multiplier = (relation) => {
+	if (relation == 'pact') { return 1.0; }
+	if (relation == 'treaty') { return 1.1; }
+	return 1.25;
+};
+
 const get_trade_acceptance_score = (state) => {
 	if (state.relation == 'vendetta') {
 		return 0.0 - 100000.0;
@@ -93,6 +109,13 @@ const get_trade_acceptance_score = (state) => {
 	if (state.terms.request_technology != '') {
 		given += #to_float(state.request_technology_cost) * sharing_multiplier;
 	}
+	if (get_contact_id(state.terms, 'offer_contact') >= 0) {
+		received += #to_float(get_contact_value(state, 'offer_contact_value')) * 1.5;
+	}
+	if (get_contact_id(state.terms, 'request_contact') >= 0) {
+		given += #to_float(get_contact_value(state, 'request_contact_value')) *
+			get_shared_contact_multiplier(state.relation);
+	}
 	return received - given - 5.0;
 };
 
@@ -102,10 +125,19 @@ const reverse_terms = (terms) => {
 		offer_technology: terms.request_technology,
 		request_energy: terms.offer_energy,
 		request_technology: terms.offer_technology,
+		offer_contact: get_contact_id(terms, 'request_contact'),
+		request_contact: get_contact_id(terms, 'offer_contact'),
 	};
 };
 
-const score_trade_proposal = (state, terms, offer_cost, request_cost) => {
+const score_trade_proposal = (
+	state,
+	terms,
+	offer_cost,
+	request_cost,
+	offer_contact_value,
+	request_contact_value
+) => {
 	const recipient_score = get_trade_acceptance_score({
 		relation: state.relation,
 		own_power: state.other_power,
@@ -113,6 +145,8 @@ const score_trade_proposal = (state, terms, offer_cost, request_cost) => {
 		terms: terms,
 		offer_technology_cost: offer_cost,
 		request_technology_cost: request_cost,
+		offer_contact_value: offer_contact_value,
+		request_contact_value: request_contact_value,
 	});
 	if (recipient_score < 0.0) {
 		return null;
@@ -124,6 +158,8 @@ const score_trade_proposal = (state, terms, offer_cost, request_cost) => {
 		terms: reverse_terms(terms),
 		offer_technology_cost: request_cost,
 		request_technology_cost: offer_cost,
+		offer_contact_value: request_contact_value,
+		request_contact_value: offer_contact_value,
 	});
 	if (proposer_score < 0.0) {
 		return null;
@@ -136,8 +172,21 @@ const get_trade_proposal = (state) => {
 		return null;
 	}
 	let best = null;
-	const consider = (terms, offer_cost, request_cost) => {
-		const score = score_trade_proposal(state, terms, offer_cost, request_cost);
+	const consider = (
+		terms,
+		offer_cost,
+		request_cost,
+		offer_contact_value,
+		request_contact_value
+	) => {
+		const score = score_trade_proposal(
+			state,
+			terms,
+			offer_cost,
+			request_cost,
+			offer_contact_value,
+			request_contact_value
+		);
 		if (score != null && (best == null || score > best.score)) {
 			best = {terms: terms, score: score};
 		}
@@ -150,7 +199,9 @@ const get_trade_proposal = (state) => {
 				offer_technology: own_technology.id,
 				request_energy: 0,
 				request_technology: other_technology.id,
-			}, own_technology.cost, other_technology.cost);
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+			}, own_technology.cost, other_technology.cost, 0, 0);
 		}
 	}
 
@@ -162,7 +213,9 @@ const get_trade_proposal = (state) => {
 				offer_technology: '',
 				request_energy: 0,
 				request_technology: other_technology.id,
-			}, 0, other_technology.cost);
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+			}, 0, other_technology.cost, 0, 0);
 		}
 	}
 
@@ -174,7 +227,50 @@ const get_trade_proposal = (state) => {
 				offer_technology: own_technology.id,
 				request_energy: price,
 				request_technology: '',
-			}, own_technology.cost, 0);
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+			}, own_technology.cost, 0, 0, 0);
+		}
+	}
+
+	const own_contacts = #is_defined(state.own_contacts) ? state.own_contacts : [];
+	const other_contacts = #is_defined(state.other_contacts) ? state.other_contacts : [];
+	for (own_contact of own_contacts) {
+		for (other_contact of other_contacts) {
+			consider({
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: own_contact.id,
+				request_contact: other_contact.id,
+			}, 0, 0, own_contact.value, other_contact.value);
+		}
+	}
+	for (other_contact of other_contacts) {
+		const price = #ceil(#to_float(other_contact.value) * 1.25 / 5.0) * 5;
+		if (price <= state.own_energy && state.own_energy - price >= 25) {
+			consider({
+				offer_energy: price,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: 0 - 1,
+				request_contact: other_contact.id,
+			}, 0, 0, 0, other_contact.value);
+		}
+	}
+	for (own_contact of own_contacts) {
+		const price = #ceil(#to_float(own_contact.value) * 1.25 / 5.0) * 5;
+		if (price <= state.other_energy && state.other_energy - price >= 25) {
+			consider({
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: price,
+				request_technology: '',
+				offer_contact: own_contact.id,
+				request_contact: 0 - 1,
+			}, 0, 0, own_contact.value, 0);
 		}
 	}
 

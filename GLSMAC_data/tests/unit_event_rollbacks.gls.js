@@ -886,6 +886,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 
 	const xeno_game = {
 		get: (key) => {
+			if (key == 'f_diplomacy_queue_contacts_at_tile') {
+				return #undefined;
+			}
 			test.assert(key == 'f_project_get_player_effects');
 			return (player) => {
 				test.assert(player == owner);

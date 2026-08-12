@@ -68,7 +68,10 @@ common::mt_id_t Network::MT_SendPacket( const types::Packet* packet, const netwo
 	ASSERT(
 		( m_current_connection_mode == CM_SERVER && cid ) ||
 			( m_current_connection_mode == CM_CLIENT && !cid ),
-		"unexpected cid value for connection mode"
+		"unexpected cid value for connection mode (mode=" +
+			std::to_string( m_current_connection_mode ) + ", cid=" +
+			std::to_string( cid ) + ", packet=" +
+			std::to_string( packet->type ) + ")"
 	);
 	Event e;
 	e.cid = cid;

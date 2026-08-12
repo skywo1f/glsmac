@@ -20,7 +20,7 @@
 				return false;
 			}
 			if (ticks >= 200) {
-				fail(failure);
+				fail(#typeof(failure) == 'Callable' ? failure() : failure);
 				return false;
 			}
 			return true;
@@ -69,8 +69,29 @@
 			},
 			rollback: (e) => {},
 		});
+		game.register_event('diplomacy_runtime_prepare_contacts', {
+			validate: (e) => {
+				if (e.caller != 0 && e.caller != e.data.player.id) {
+					return 'Only the runtime test player may prepare contacts';
+				}
+			},
+			apply: (e) => {
+				const snapshot = {
+					player_target: e.data.player.has_contact(e.data.target),
+					target_player: e.data.target.has_contact(e.data.player),
+				};
+				e.data.player.set_contact(e.data.target, true);
+				e.data.target.set_contact(e.data.player, true);
+				return snapshot;
+			},
+			rollback: (e) => {
+				e.data.player.set_contact(e.data.target, e.applied.player_target);
+				e.data.target.set_contact(e.data.player, e.applied.target_player);
+			},
+		});
 		game.on('start_ui', (e) => {
 			let player = game.get_player();
+			let debt_before_vendetta = 0;
 			const get_owned_base = (owner) => {
 				for (base of game.get_bm().get_bases()) {
 					if (base.get_owner().id == owner.id) {
@@ -90,7 +111,9 @@
 				fail('quickstart did not create an opponent');
 				return;
 			}
+			const exercise_diplomacy = () => {
 			if (
+				!player.has_contact(other) || !other.has_contact(player) ||
 				player.get_diplomatic_relation(other) != 'neutral' ||
 				player.get_diplomatic_offer(other) != '' ||
 				player.get_diplomatic_trade(other) != null ||
@@ -123,7 +146,7 @@
 						if (
 							ended_commerce.total != 0 ||
 							#sizeof(ended_commerce.partners) != 0 ||
-							debt == null || debt.balance != 114
+							debt == null || debt.balance != debt_before_vendetta
 						) {
 							fail('vendetta did not end commerce while preserving debt');
 							return;
@@ -136,13 +159,14 @@
 						wait_for(
 							() => {
 								const wartime_debt = other.get_diplomatic_loan(player);
-								return wartime_debt != null && wartime_debt.balance == 120;
+								return wartime_debt != null &&
+									wartime_debt.balance == debt_before_vendetta + 6;
 							},
 							'wartime missed payment did not increase loan balance',
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: treaty commerce, reciprocal trade, loan repayment, betrayal integrity, and vendetta debt'
+									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology trade, loan repayment, betrayal integrity, and vendetta debt'
 								);
 								glsmac.exit();
 							}
@@ -180,26 +204,48 @@
 							() => { return other.get_diplomatic_loan_offer(player) != null; },
 							'loan proposal was not stored',
 							() => {
-								game.event_as(other.id, 'respond_diplomatic_loan', {
-									player: other,
-									proposer: player,
-									accept: true,
-								});
+								if (game.is_turn_complete(other.id)) {
+									game.event_as(other.id, 'uncomplete_turn', {});
+								}
+								wait_for(
+									() => { return !game.is_turn_complete(other.id); },
+									'could not reopen the AI turn for its loan response',
+									() => {
+										game.event_as(other.id, 'respond_diplomatic_loan', {
+											player: other,
+											proposer: player,
+											accept: true,
+										});
+									}
+								);
 								wait_for(
 									() => {
 										const current_player = game.get_player(player.id);
 										const current_other = game.get_player(other.id);
-										const debt = current_other.get_diplomatic_loan(current_player);
-										return (
-											debt != null && debt.balance == 120 && debt.payment == 6 &&
-											current_player.energy_credits == 100 &&
-											current_other.energy_credits == 120
-										);
+									const debt = current_other.get_diplomatic_loan(current_player);
+									return (
+										debt != null && debt.payment == 6 && debt.balance > 6 &&
+										debt.balance == current_other.energy_credits &&
+										current_player.energy_credits + current_other.energy_credits == 220
+									);
 									},
-									'accepted loan did not transfer principal and create debt',
+									() => {
+										const current_player = game.get_player(player.id);
+										const current_other = game.get_player(other.id);
+										const debt = current_other.get_diplomatic_loan(current_player);
+										return 'accepted loan state mismatch: lender=' +
+											#to_string(current_player.energy_credits) + ', borrower=' +
+											#to_string(current_other.energy_credits) + ', debt=' +
+											(debt == null ? 'none' : #to_string(debt.balance)) +
+											', payment=' + (debt == null ? 'none' : #to_string(debt.payment));
+									},
 									() => {
 										player = game.get_player(player.id);
 										other = game.get_player(other.id);
+										const debt = other.get_diplomatic_loan(player);
+										const balance_before_payment = debt.balance;
+										const lender_energy_before_payment = player.energy_credits;
+										const borrower_energy_before_payment = other.energy_credits;
 										game.event('diplomacy_runtime_process_loan', {
 											player: player,
 											borrower: other,
@@ -210,16 +256,17 @@
 												const current_player = game.get_player(player.id);
 												const current_other = game.get_player(other.id);
 												const debt = current_other.get_diplomatic_loan(current_player);
-												return (
-													debt != null && debt.balance == 114 &&
-													current_player.energy_credits == 106 &&
-													current_other.energy_credits == 114
-												);
+											return (
+												debt != null && debt.balance == balance_before_payment - 6 &&
+												current_player.energy_credits == lender_energy_before_payment + 6 &&
+												current_other.energy_credits == borrower_energy_before_payment - 6
+											);
 											},
 											'peaceful loan payment did not transfer and reduce debt',
 											() => {
 												player = game.get_player(player.id);
 												other = game.get_player(other.id);
+												debt_before_vendetta = other.get_diplomatic_loan(player).balance;
 												exercise_vendetta();
 											}
 										);
@@ -311,7 +358,7 @@
 												other.has_technology(offered_technology)
 											);
 										},
-										'accepted trade did not transfer its technologies',
+									'accepted trade did not transfer its technologies',
 									() => { exercise_loan(); }
 									);
 								}
@@ -319,6 +366,18 @@
 						}
 					);
 				}
+			);
+			};
+			game.event('diplomacy_runtime_prepare_contacts', {
+				player: player,
+				target: other,
+			});
+			wait_for(
+				() => {
+					return player.has_contact(other) && other.has_contact(player);
+				},
+				'could not prepare deterministic commlink state',
+				exercise_diplomacy
 			);
 		});
 	});

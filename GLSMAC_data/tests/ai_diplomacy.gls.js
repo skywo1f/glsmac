@@ -62,6 +62,8 @@ const fair_swap = {
 		offer_technology: 'CentauriEcology',
 		request_energy: 0,
 		request_technology: 'IndustrialBase',
+		offer_contact: 0 - 1,
+		request_contact: 0 - 1,
 	},
 	offer_technology_cost: 40,
 	request_technology_cost: 50,
@@ -85,6 +87,21 @@ let trade_proposal = diplomacy.get_trade_proposal({
 test.assert(trade_proposal != null);
 test.assert(trade_proposal.terms.offer_technology == 'CentauriEcology');
 test.assert(trade_proposal.terms.request_technology == 'IndustrialBase');
+
+trade_proposal = diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 200,
+	other_energy: 200,
+	own_technologies: [],
+	other_technologies: [],
+	own_contacts: [{id: 3, value: 55}],
+	other_contacts: [{id: 4, value: 50}],
+});
+test.assert(trade_proposal != null);
+test.assert(trade_proposal.terms.offer_contact == 3);
+test.assert(trade_proposal.terms.request_contact == 4);
 
 trade_proposal = diplomacy.get_trade_proposal({
 	relation: 'treaty',

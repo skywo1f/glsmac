@@ -3,6 +3,7 @@ const base_capture = #include('../default/game/base_capture');
 
 const make_player = (id, name) => {
 	let infiltrated = {};
+	let contacts = {};
 	return {
 		id: id,
 		name: name,
@@ -12,6 +13,13 @@ const make_player = (id, name) => {
 		},
 		set_infiltrated: (other, value) => {
 			infiltrated['p' + #to_string(other.id)] = value;
+		},
+		has_contact: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(contacts[key]) && contacts[key];
+		},
+		set_contact: (other, value) => {
+			contacts['p' + #to_string(other.id)] = value;
 		},
 	};
 };
@@ -60,19 +68,25 @@ test.assert(#sizeof(applied.applied.infiltrated_players) == 1);
 test.assert(applied.applied.infiltrated_players[0] == defender);
 test.assert(attacker.has_infiltrated(defender));
 test.assert(attacker.has_infiltrated(third_party));
+test.assert(attacker.has_contact(defender) && defender.has_contact(attacker));
+test.assert(attacker.has_contact(third_party) && third_party.has_contact(attacker));
 test.assert(messages == [
-	'The Gaians has infiltrated every faction through The Empath Guild.',
+	'The Gaians has gained every commlink and infiltrated every faction through The Empath Guild.',
 ]);
 
 values.f_project_rollback_completion_effects(applied);
 test.assert(!attacker.has_infiltrated(defender));
 test.assert(attacker.has_infiltrated(third_party));
+test.assert(!attacker.has_contact(defender) && !defender.has_contact(attacker));
+test.assert(!attacker.has_contact(third_party) && !third_party.has_contact(attacker));
 
 current_owner = defender;
 const capture = base_capture.capture_base(game, base, attacker);
 test.assert(current_owner == attacker);
 test.assert(attacker.has_infiltrated(defender));
 test.assert(attacker.has_infiltrated(third_party));
+test.assert(attacker.has_contact(defender) && defender.has_contact(attacker));
+test.assert(attacker.has_contact(third_party) && third_party.has_contact(attacker));
 test.assert(#is_defined(capture.empath_guild_infiltration));
 test.assert(capture.empath_guild_infiltration.infiltrated_players == [defender]);
 
@@ -80,9 +94,15 @@ base_capture.restore_base(base, capture);
 test.assert(current_owner == defender);
 test.assert(!attacker.has_infiltrated(defender));
 test.assert(attacker.has_infiltrated(third_party));
+test.assert(!attacker.has_contact(defender) && !defender.has_contact(attacker));
+test.assert(!attacker.has_contact(third_party) && !third_party.has_contact(attacker));
 
 current_owner = attacker;
 attacker.set_infiltrated(defender, true);
+attacker.set_contact(defender, true);
+defender.set_contact(attacker, true);
+attacker.set_contact(third_party, true);
+third_party.set_contact(attacker, true);
 messages = [];
 test.assert(!#is_defined(
 	values.f_project_apply_completion_effects(base, empath_guild.id)

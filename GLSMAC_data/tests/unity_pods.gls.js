@@ -99,6 +99,19 @@ const run_case = (kind, verify_resolve) => {
 	};
 
 	let energy_credits = 100;
+	let player_contacts = {};
+	let other_contacts = {};
+	const other_player = {
+		id: 2,
+		name: 'Sparta',
+		has_contact: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(other_contacts[key]) && other_contacts[key];
+		},
+		set_contact: (other, value) => {
+			other_contacts['p' + #to_string(other.id)] = value;
+		},
+	};
 	let research = {technologies: [], target: 'Alpha', progress: 4};
 	const clone_research = () => {
 		let technologies = [];
@@ -110,6 +123,13 @@ const run_case = (kind, verify_resolve) => {
 	const player = {
 		id: 1,
 		name: 'Gaia',
+		has_contact: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(player_contacts[key]) && player_contacts[key];
+		},
+		set_contact: (other, value) => {
+			player_contacts['p' + #to_string(other.id)] = value;
+		},
 		get_energy_credits: () => { return energy_credits; },
 		set_energy_credits: (value) => { energy_credits = value; },
 		has_technology: (id) => { return id == 'SyntheticFossilFuels'; },
@@ -185,6 +205,7 @@ const run_case = (kind, verify_resolve) => {
 		},
 		get_turn: () => { return 20; },
 		get_player: (id) => { return player; },
+		get_players: () => { return [player, other_player]; },
 		get_native_player: () => { return native_player; },
 		get: (key) => {
 			if (key == 'f_base_get_production_cost') {
@@ -284,6 +305,8 @@ const run_case = (kind, verify_resolve) => {
 		resolution.tiles = [center];
 	} else if (kind == 'vehicle') {
 		resolution.unit_def = 'UnityRover';
+	} else if (kind == 'commlink') {
+		resolution.contact_id = other_player.id;
 	} else if (kind == 'terraforming') {
 		resolution.tiles = [center];
 		resolution.improvement = 'mine';
@@ -323,6 +346,8 @@ const run_case = (kind, verify_resolve) => {
 		test.assert(game.um.get_unit(applied.spawned_unit_id).def == 'UnityRover');
 	} else if (kind == 'technology') {
 		test.assert(research.technologies == ['Alpha']);
+	} else if (kind == 'commlink') {
+		test.assert(player.has_contact(other_player) && other_player.has_contact(player));
 	} else if (kind == 'terraforming') {
 		test.assert(!feature_state.xenofungus && terraforming_state.mine && terraforming_state.road);
 	} else if (kind == 'clone') {
@@ -360,6 +385,8 @@ const run_case = (kind, verify_resolve) => {
 		);
 	} else if (kind == 'technology') {
 		test.assert(research == {technologies: [], target: 'Alpha', progress: 4});
+	} else if (kind == 'commlink') {
+		test.assert(!player.has_contact(other_player) && !other_player.has_contact(player));
 	} else if (kind == 'terraforming') {
 		test.assert(feature_state.xenofungus && !terraforming_state.mine && !terraforming_state.road);
 	} else if (kind == 'native') {
@@ -372,7 +399,7 @@ const run_case = (kind, verify_resolve) => {
 run_case('energy', true);
 for (kind of [
 	'river', 'earthquake', 'production', 'artifact', 'fungus', 'monolith',
-	'vehicle', 'technology', 'terraforming', 'clone', 'native', 'resource'
+	'vehicle', 'commlink', 'technology', 'terraforming', 'clone', 'native', 'resource'
 ]) {
 	run_case(kind, false);
 }

@@ -229,7 +229,7 @@ return (game) => {
 			if (#is_defined(applied)) {
 				game.message(
 					base.get_owner().name +
-					' has infiltrated every faction through The Empath Guild.'
+					' has gained every commlink and infiltrated every faction through The Empath Guild.'
 				);
 				return {kind: 'empath_guild', applied: applied};
 			}

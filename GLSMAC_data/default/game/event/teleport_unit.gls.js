@@ -32,6 +32,13 @@ return {
 			unit.set_convoy_resource('none');
 		}
 		unit.teleport_to_tile(destination.get_tile());
+		let queue_contacts = #undefined;
+		if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+			queue_contacts = e.game.get('f_diplomacy_queue_contacts_at_tile');
+		}
+		if (#is_defined(queue_contacts)) {
+			queue_contacts(unit.get_owner(), destination.get_tile());
+		}
 		return result;
 	},
 

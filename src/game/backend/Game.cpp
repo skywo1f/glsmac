@@ -1794,7 +1794,7 @@ void Game::ProcessEvents() {
 							}
 						}
 						if ( m_state->m_connection ) {
-							if ( event->GetCaller() != 0 ) {
+							if ( event->GetSource() == event::Event::ES_CLIENT ) {
 								// notify caller of acceptance
 								m_state->m_connection->AsServer()->SendGameEventResponse( event->GetCaller(), event->GetId(), true, resolved );
 							}
@@ -1852,7 +1852,7 @@ void Game::ProcessEvents() {
 				else {
 					MTModule::Log( "Event rejected: " + *errptr );
 					if ( m_state->m_connection && m_state->IsMaster() ) {
-						if ( event->GetCaller() != 0 ) {
+						if ( event->GetSource() == event::Event::ES_CLIENT ) {
 							// notify caller of rejection
 							m_state->m_connection->AsServer()->SendGameEventResponse( event->GetCaller(), event->GetId(), false, nullptr );
 						}

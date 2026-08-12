@@ -181,18 +181,28 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
 	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
 
+	using contacted_players_t = std::set< size_t >;
+	static constexpr size_t MAX_CONTACTED_PLAYERS = 64;
+	const contacted_players_t& GetContactedPlayers() const;
+	bool HasContacted( const size_t player_id ) const;
+	void SetContacted( const size_t player_id, const bool contacted );
+
 	struct diplomatic_trade_t {
 		int64_t offer_energy = 0;
 		std::string offer_technology = "";
 		int64_t request_energy = 0;
 		std::string request_technology = "";
+		int64_t offer_contact = -1;
+		int64_t request_contact = -1;
 
 		bool operator==( const diplomatic_trade_t& other ) const {
 			return
 				offer_energy == other.offer_energy &&
 				offer_technology == other.offer_technology &&
 				request_energy == other.request_energy &&
-				request_technology == other.request_technology;
+				request_technology == other.request_technology &&
+				offer_contact == other.offer_contact &&
+				request_contact == other.request_contact;
 		}
 	};
 	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
@@ -287,6 +297,8 @@ private:
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
+	contacted_players_t m_contacted_players = {};
+	bool m_legacy_unrestricted_contact = false;
 	infiltrated_players_t m_infiltrated_players = {};
 	diplomatic_trades_t m_diplomatic_trades = {};
 	diplomatic_loan_offers_t m_diplomatic_loan_offers = {};

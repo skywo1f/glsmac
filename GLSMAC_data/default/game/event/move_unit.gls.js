@@ -305,6 +305,13 @@ return {
 			} else if (result.orig.transport_id > 0) {
 				unit.disembark();
 			}
+			let queue_contacts = #undefined;
+			if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+				queue_contacts = e.game.get('f_diplomacy_queue_contacts_at_tile');
+			}
+			if (#is_defined(queue_contacts)) {
+				queue_contacts(unit.get_owner(), dst_tile);
+			}
 			if (
 				get_transport_id(unit) == 0 && dst_base != null &&
 				dst_base.get_owner().id != unit.owner

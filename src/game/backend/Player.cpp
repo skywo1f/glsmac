@@ -61,6 +61,8 @@ Player::Player( const Player* const other ) {
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
+	m_contacted_players = other->m_contacted_players;
+	m_legacy_unrestricted_contact = other->m_legacy_unrestricted_contact;
 	m_infiltrated_players = other->m_infiltrated_players;
 	m_diplomatic_trades = other->m_diplomatic_trades;
 	m_diplomatic_loan_offers = other->m_diplomatic_loan_offers;
@@ -435,6 +437,26 @@ bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relati
 	return false;
 }
 
+const Player::contacted_players_t& Player::GetContactedPlayers() const {
+	return m_contacted_players;
+}
+
+bool Player::HasContacted( const size_t player_id ) const {
+	return m_legacy_unrestricted_contact || m_contacted_players.find( player_id ) != m_contacted_players.end();
+}
+
+void Player::SetContacted( const size_t player_id, const bool contacted ) {
+	if ( player_id >= MAX_CONTACTED_PLAYERS ) {
+		THROW( "contacted player ID is out of range" );
+	}
+	if ( contacted ) {
+		m_contacted_players.insert( player_id );
+	}
+	else {
+		m_contacted_players.erase( player_id );
+	}
+}
+
 const Player::diplomatic_trades_t& Player::GetDiplomaticTrades() const {
 	return m_diplomatic_trades;
 }
@@ -470,8 +492,21 @@ void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_
 		THROW( "diplomatic trade cannot exchange a technology for itself" );
 	}
 	if (
+		trade.offer_contact < -1 || trade.offer_contact >= static_cast< int64_t >( MAX_CONTACTED_PLAYERS ) ||
+		trade.request_contact < -1 || trade.request_contact >= static_cast< int64_t >( MAX_CONTACTED_PLAYERS )
+	) {
+		THROW( "diplomatic trade contact player ID is out of range" );
+	}
+	if (
+		trade.offer_contact >= 0 &&
+		trade.offer_contact == trade.request_contact
+	) {
+		THROW( "diplomatic trade cannot exchange a commlink for itself" );
+	}
+	if (
 		trade.offer_energy == 0 && trade.offer_technology.empty() &&
-		trade.request_energy == 0 && trade.request_technology.empty()
+		trade.request_energy == 0 && trade.request_technology.empty() &&
+		trade.offer_contact < 0 && trade.request_contact < 0
 	) {
 		THROW( "diplomatic trade cannot be empty" );
 	}
@@ -1126,6 +1161,31 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"has_contact",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot contact itself" );
+					}
+					return VALUE( gse::value::Bool, , HasContacted( other->m_slotnum ) );
+				} )
+			},
+			{
+				"set_contact",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( contacted, 1, Bool );
+					if ( other == this ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot contact itself" );
+					}
+					SetContacted( other->m_slotnum, contacted );
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_diplomatic_trade",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -1142,6 +1202,8 @@ WRAPIMPL_BEGIN( Player )
 						{ "offer_technology", VALUE( gse::value::String, , trade->offer_technology ) },
 						{ "request_energy", VALUE( gse::value::Int, , trade->request_energy ) },
 						{ "request_technology", VALUE( gse::value::String, , trade->request_technology ) },
+						{ "offer_contact", VALUE( gse::value::Int, , trade->offer_contact ) },
+						{ "request_contact", VALUE( gse::value::Int, , trade->request_contact ) },
 					} );
 				} )
 			},
@@ -1159,12 +1221,16 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP( offer_technology, terms, "offer_technology", String );
 					N_GETPROP( request_energy, terms, "request_energy", Int );
 					N_GETPROP( request_technology, terms, "request_technology", String );
+					N_GETPROP_OPT( int64_t, offer_contact, terms, "offer_contact", Int, -1 );
+					N_GETPROP_OPT( int64_t, request_contact, terms, "request_contact", Int, -1 );
 					try {
 						SetDiplomaticTrade( other->m_slotnum, {
 							offer_energy,
 							offer_technology,
 							request_energy,
 							request_technology,
+							offer_contact,
+							request_contact,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1494,6 +1560,27 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_retired_unit_designs ) {
 		buf.WriteString( id );
 	}
+	buf.WriteInt( 1 );
+	buf.WriteBool( m_legacy_unrestricted_contact );
+	buf.WriteInt( m_contacted_players.size() );
+	for ( const auto player_id : m_contacted_players ) {
+		buf.WriteInt( player_id );
+	}
+	size_t extended_trade_count = 0;
+	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
+		if ( trade.offer_contact >= 0 || trade.request_contact >= 0 ) {
+			extended_trade_count++;
+		}
+	}
+	buf.WriteInt( extended_trade_count );
+	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
+		if ( trade.offer_contact < 0 && trade.request_contact < 0 ) {
+			continue;
+		}
+		buf.WriteInt( player_id );
+		buf.WriteInt( trade.offer_contact );
+		buf.WriteInt( trade.request_contact );
+	}
 
 	return buf;
 }
@@ -1631,8 +1718,6 @@ void Player::Deserialize( types::Buffer buf ) {
 				buf.ReadInt(),
 				buf.ReadString(),
 			};
-			Player validator( "trade validator", PR_NONE, nullptr, "" );
-			validator.SetDiplomaticTrade( player_id, trade );
 			if ( !diplomatic_trades.emplace( player_id, trade ).second ) {
 				THROW( "duplicate serialized diplomatic trade player ID" );
 			}
@@ -1797,6 +1882,53 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	contacted_players_t contacted_players = {};
+	bool legacy_unrestricted_contact = true;
+	if ( buf.GetRemaining() > 0 ) {
+		const auto contact_version = buf.ReadInt();
+		if ( contact_version != 1 ) {
+			THROW( "unsupported serialized player contact version" );
+		}
+		legacy_unrestricted_contact = buf.ReadBool();
+		const auto contact_count = buf.ReadCollectionSize( "player contact" );
+		if ( contact_count > MAX_CONTACTED_PLAYERS ) {
+			THROW( "invalid serialized player contact count" );
+		}
+		for ( size_t i = 0 ; i < contact_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "contacted player ID" );
+			if (
+				player_id >= MAX_CONTACTED_PLAYERS ||
+				!contacted_players.insert( player_id ).second
+			) {
+				THROW( "invalid or duplicate serialized contacted player ID" );
+			}
+		}
+		const auto extended_trade_count = buf.ReadCollectionSize( "extended diplomatic trade" );
+		if ( extended_trade_count > diplomatic_trades.size() ) {
+			THROW( "invalid serialized extended diplomatic trade count" );
+		}
+		std::set< size_t > extended_trade_players = {};
+		for ( size_t i = 0 ; i < extended_trade_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "extended diplomatic trade player ID" );
+			const auto offer_contact = buf.ReadInt();
+			const auto request_contact = buf.ReadInt();
+			auto trade_it = diplomatic_trades.find( player_id );
+			if (
+				trade_it == diplomatic_trades.end() ||
+				!extended_trade_players.insert( player_id ).second
+			) {
+				THROW( "invalid or duplicate serialized extended diplomatic trade" );
+			}
+			trade_it->second.offer_contact = offer_contact;
+			trade_it->second.request_contact = request_contact;
+			Player validator( "extended trade validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticTrade( player_id, trade_it->second );
+		}
+	}
+	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
+		Player validator( "trade validator", PR_NONE, nullptr, "" );
+		validator.SetDiplomaticTrade( player_id, trade );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized player" );
 	}
@@ -1816,6 +1948,8 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_social_engineering = std::move( social_engineering );
 	m_diplomatic_relations = std::move( diplomatic_relations );
 	m_diplomatic_offers = std::move( diplomatic_offers );
+	m_contacted_players = std::move( contacted_players );
+	m_legacy_unrestricted_contact = legacy_unrestricted_contact;
 	m_infiltrated_players = std::move( infiltrated_players );
 	m_major_atrocities = major_atrocities;
 	m_diplomatic_trades = std::move( diplomatic_trades );

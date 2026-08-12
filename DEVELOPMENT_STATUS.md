@@ -32,11 +32,10 @@ scenarios, for:
   grants bred native life +1 lifecycle;
 - the Hunter-Seeker Algorithm blocks all enemy probe operations against the
   owner's bases and units, and AI Probe Teams avoid immune targets;
-- the Empath Guild grants persistent infiltration of every rival on completion
-  or capture, preserves existing intelligence through rollback, adds the exact
-  +50% rounded-down Planetary Council vote bonus, and receives rival-aware AI
-  production value; unrestricted diplomacy already permits contact with every
-  faction;
+- the Empath Guild grants persistent bilateral contact and infiltration with
+  every rival on completion or capture, preserves existing contact and
+  intelligence through rollback, adds the exact +50% rounded-down Planetary
+  Council vote bonus, and receives rival-aware AI production value;
 - the Planetary Datalinks automatically grants every technology known by three
   other factions after research, trade, probe theft, project completion, or
   project capture, with deterministic multiplayer events and rival-aware AI
@@ -133,8 +132,9 @@ scenarios, for:
 - land and sea Unity Pods resolve during ordinary movement with reversible,
   deterministic events; supported rewards cover energy, rivers, earthquakes,
   production completion, Alien Artifacts, fungus, monoliths, Unity vehicles,
-  technologies, terraforming, unit cloning, and resource bonuses, while AI
-  explorers and combat units route toward reachable pods;
+  technologies, random-faction commlinks, terraforming, unit cloning, and
+  resource bonuses, while AI explorers and combat units route toward reachable
+  pods;
 - the Children's Creche exact +2 local GROWTH and conventional-defender
   social-MORALE floor of +1, without affecting native units or enemy occupiers;
 - Headquarters grant +1 base-square energy, eliminate local inefficiency, and
@@ -161,15 +161,20 @@ scenarios, for:
   water claims; supported combat units outside friendly territory now apply
   the original POLICE -3, -4, and -5 pacifism-drone rules, including the air
   superiority exception and base-screen diagnostics;
+- persistent bilateral faction contact discovered through adjacent units and
+  bases, movement, air drops, Psi Gates, direct attacks, commlink trades, Unity
+  Pods, and the Empath Guild; unknown factions are excluded from diplomacy and
+  AI negotiations, legacy saves preserve their prior unrestricted diplomacy,
+  and contact survives a running-game reconnect;
 - persistent bilateral neutral, treaty, pact, and vendetta relations, including
   saved pending proposals, reversible network events, attack-triggered
   vendettas, and a player diplomacy screen;
 - persistent eight-level diplomatic integrity, with treaty and pact betrayal
   consequences shared by declarations of war, direct attacks, and detected
   covert operations, plus rollback, player diagnostics, and trust-aware AI;
-- persistent structured energy and technology trade offers, atomic reversible
-  settlement, human negotiation controls, and relation-, strength-, and
-  value-aware AI proposals and responses;
+- persistent structured energy, technology, and commlink trade offers, atomic
+  reversible settlement, human negotiation controls, and relation-, strength-,
+  opponent-, and value-aware AI proposals and responses;
 - persistent energy loans with player-authored lending and borrowing terms,
   atomic principal transfer, yearly repayment, partial-payment handling,
   wartime balance growth, human controls, and relationship-, reserve-, risk-,
@@ -239,8 +244,9 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy including map and commlink exchanges, surrender, the
-  Council defiance path, and richer bundled or counteroffers;
+- deeper diplomacy including map exchanges, surrender, the Council defiance
+  path, and richer bundled or counteroffers; map exchange first requires a
+  persistent explored-tile and faction-visibility subsystem;
 - remaining probe-team parity: captured faction leader rescue,
   counterespionage, probe interrogation, exact original cost/outcome and
   probe-combat tuning, richer intelligence displays, and full global
@@ -251,8 +257,8 @@ The following original-SMAC systems remain absent or materially incomplete:
   player-facing inefficiency diagnostics;
 - volcanoes and the original engine's undocumented post-bloom clean-mineral
   facility bonus;
-- remaining Unity Pod parity: map-survey and commlink rewards,
-  dimensional-gate teleportation, and once-per-unit monolith visit tracking;
+- remaining Unity Pod parity: map-survey rewards, dimensional-gate
+  teleportation, and once-per-unit monolith visit tracking;
 - Orbital Defense Pod remains partial because direct attacks against rival
   satellites are not available;
 - remaining Unit Workshop parity: original behaviors for currently unavailable
@@ -270,6 +276,24 @@ development build rather than a finished replacement for the original game.
 The Release CTest matrix contains 129 cases: 99 isolated native/script GSE tests
 and 30 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
+
+After persistent faction contact and commlink exchange were added, the Windows
+x64 Release build succeeded. In the broad isolated run, 98 unaffected cases
+passed in 214.82 seconds; the sole movement-fixture mismatch was corrected and
+its rollback case then passed in 1.20 seconds together with focused movement,
+capture, diplomacy, AI, Empath Guild, Unity Pod, loan, probe, and native
+serialization coverage. The installed-asset diplomacy runtime passed in 26.32
+seconds with contact-gated treaty commerce, reciprocal technology trade, loan
+repayment, betrayal integrity, and wartime debt. Running reconnect passed in
+49.22 seconds and now verifies bilateral contact alongside the existing loan,
+sanction, orbital, Workshop, unit, base, and terraforming snapshot state.
+A later loaded-debug run held the reconnecting client in snapshot download long
+enough to expose a server crash: locally controlled AI and native events were
+mistaken for remote-client events because they use nonzero player slots. Event
+responses are now sent only for events whose source is an actual network client.
+With realistic cold-start deadlines, the exact installed-asset CTest commands
+passed again: diplomacy in 195.19 seconds and running reconnect in 201.34
+seconds.
 
 After Drop Pods were completed, the Windows x64 Release build succeeded and all
 99 isolated tests passed in 213.14 seconds. Focused installed-asset Workshop,

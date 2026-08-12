@@ -76,6 +76,13 @@ return {
 			#to_string(e.data.destination.x) + ', ' +
 			#to_string(e.data.destination.y) + ').'
 		);
+		let queue_contacts = #undefined;
+		if (#is_defined(e.game) && #typeof(e.game.get) == 'Callable') {
+			queue_contacts = e.game.get('f_diplomacy_queue_contacts_at_tile');
+		}
+		if (#is_defined(queue_contacts) && e.game.get_um().has_unit(e.data.unit.id)) {
+			queue_contacts(e.data.unit.get_owner(), e.data.destination);
+		}
 
 		if (e.game.is_master()) {
 			for (let i = #sizeof(destroyed) - 1; i >= 0; i--) {

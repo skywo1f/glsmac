@@ -37,6 +37,7 @@ return {
 			proposer_energy: proposer.get_energy_credits(),
 			player_research: player.get_research_state(),
 			proposer_research: proposer.get_research_state(),
+			contacts: [],
 		};
 		player.clear_diplomatic_trade(proposer);
 		if (e.data.accept) {
@@ -48,6 +49,14 @@ return {
 			);
 			e.game.get('f_diplomacy_grant_technology')(player, terms.offer_technology);
 			e.game.get('f_diplomacy_grant_technology')(proposer, terms.request_technology);
+			for (contact of [
+				e.game.get('f_diplomacy_grant_contact')(player, terms.offer_contact),
+				e.game.get('f_diplomacy_grant_contact')(proposer, terms.request_contact),
+			]) {
+				if (#is_defined(contact)) {
+					snapshot.contacts :+contact;
+				}
+			}
 			if (terms.offer_energy > 0 || terms.request_energy > 0) {
 				e.game.trigger('economy_updated', {player: player});
 				e.game.trigger('economy_updated', {player: proposer});
@@ -76,6 +85,9 @@ return {
 		proposer.set_energy_credits(e.applied.proposer_energy);
 		player.set_research_state(e.applied.player_research);
 		proposer.set_research_state(e.applied.proposer_research);
+		for (let i = #sizeof(e.applied.contacts) - 1; i >= 0; i--) {
+			e.game.get('f_diplomacy_restore_contact')(e.applied.contacts[i]);
+		}
 		player.set_diplomatic_trade(proposer, e.applied.terms);
 		e.game.trigger('economy_updated', {player: player});
 		e.game.trigger('economy_updated', {player: proposer});

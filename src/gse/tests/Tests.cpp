@@ -283,14 +283,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
 				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
 				source.SetDiplomaticOffer( 3, Player::DR_PACT );
+				source.SetContacted( 6, true );
 				source.SetInfiltrated( 4, true );
 				const Player::diplomatic_trade_t trade = {
 					25,
 					"CentauriEcology",
 					0,
 					"IndustrialBase",
+					6,
+					-1,
 				};
 				source.SetDiplomaticTrade( 5, trade );
+				const Player::diplomatic_trade_t commlink_trade = {
+					0, "", 0, "", 6, -1,
+				};
+				source.SetDiplomaticTrade( 4, commlink_trade );
 				const Player::diplomatic_loan_offer_t loan_offer = { false, 100, 6, 20 };
 				const Player::diplomatic_loan_t loan = { 120, 6 };
 				source.SetDiplomaticLoanOffer( 6, loan_offer );
@@ -358,6 +365,13 @@ void AddTests( task::gsetests::GSETests* task ) {
 					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not cloned"
 				);
+				GT_ASSERT( cloned.HasContacted( 6 ), "player contact was not cloned" );
+				GT_ASSERT( !cloned.HasContacted( 5 ), "missing player contact was cloned" );
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 4 ) &&
+						*cloned.GetDiplomaticTrade( 4 ) == commlink_trade,
+					"commlink-only diplomatic trade was not cloned"
+				);
 				GT_ASSERT(
 					cloned.GetDiplomaticLoanOffer( 6 ) &&
 						*cloned.GetDiplomaticLoanOffer( 6 ) == loan_offer,
@@ -406,6 +420,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					roundtrip.GetCouncilState() == council_state,
 					"Planetary Council state was not serialized"
 				);
+				source.ClearDiplomaticTrade( 4 );
 				types::Buffer bool_field;
 				bool_field.WriteBool( true );
 				const auto bool_field_size = bool_field.ToString().size();
@@ -421,8 +436,22 @@ void AddTests( task::gsetests::GSETests* task ) {
 					retired_designs_field.WriteString( id );
 				}
 				const auto retired_designs_field_size = retired_designs_field.ToString().size();
+				types::Buffer contact_extension;
+				contact_extension.WriteInt( 1 );
+				contact_extension.WriteBool( false );
+				contact_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					contact_extension.WriteInt( player_id );
+				}
+				contact_extension.WriteInt( 1 );
+				contact_extension.WriteInt( 5 );
+				contact_extension.WriteInt( trade.offer_contact );
+				contact_extension.WriteInt( trade.request_contact );
+				const auto contact_extension_size = contact_extension.ToString().size();
 				auto pre_retirement_data = source.Serialize().ToString();
-				pre_retirement_data.resize( pre_retirement_data.size() - retired_designs_field_size );
+				pre_retirement_data.resize(
+					pre_retirement_data.size() - contact_extension_size - retired_designs_field_size
+				);
 				Player pre_retirement( pre_retirement_data );
 				GT_ASSERT(
 					pre_retirement.IsUnitDesignObsolete(
@@ -435,7 +464,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto trade_only_council_data = source.Serialize().ToString();
 				trade_only_council_data.resize(
-					trade_only_council_data.size() - retired_designs_field_size -
+					trade_only_council_data.size() - contact_extension_size - retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 2
 				);
@@ -448,7 +477,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - retired_designs_field_size -
+					legacy_council_data.size() - contact_extension_size - retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 3
 				);
@@ -477,9 +506,16 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT( roundtrip.HasInfiltrated( 4 ), "player infiltration was not serialized" );
 				GT_ASSERT( !roundtrip.HasInfiltrated( 5 ), "missing player infiltration was present" );
+				GT_ASSERT( roundtrip.HasContacted( 6 ), "player contact was not serialized" );
+				GT_ASSERT( !roundtrip.HasContacted( 5 ), "missing player contact was serialized" );
 				GT_ASSERT(
 					roundtrip.GetDiplomaticTrade( 5 ) && *roundtrip.GetDiplomaticTrade( 5 ) == trade,
 					"pending diplomatic trade was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 4 ) &&
+						*roundtrip.GetDiplomaticTrade( 4 ) == commlink_trade,
+					"commlink-only diplomatic trade was not serialized"
 				);
 				GT_ASSERT(
 					roundtrip.GetDiplomaticLoanOffer( 6 ) &&
@@ -491,6 +527,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"diplomatic loan was not serialized"
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
+				roundtrip.ClearDiplomaticTrade( 4 );
 				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
 				roundtrip.ClearDiplomaticLoanOffer( 6 );
 				roundtrip.ClearDiplomaticLoan( 7 );
@@ -630,6 +667,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					return player;
 				};
 				Player legacy( make_diplomatic_player() );
+				GT_ASSERT(
+					legacy.HasContacted( 63 ),
+					"legacy player data did not preserve unrestricted diplomacy"
+				);
 				GT_ASSERT(
 					legacy.GetMajorAtrocities() == 0,
 					"legacy player major atrocity count did not default to zero"

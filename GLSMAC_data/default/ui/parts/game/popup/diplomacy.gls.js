@@ -13,7 +13,11 @@ const technology_name = (game, id) => {
 	return definition == null ? id : definition.name;
 };
 
-const trade_side_text = (game, energy, technology) => {
+const contact_name = (game, id) => {
+	return id < 0 ? '' : game.get_player(id).name;
+};
+
+const trade_side_text = (game, energy, technology, contact) => {
 	let parts = [];
 	if (energy > 0) {
 		parts :+(#to_string(energy) + ' EC');
@@ -21,16 +25,26 @@ const trade_side_text = (game, energy, technology) => {
 	if (technology != '') {
 		parts :+technology_name(game, technology);
 	}
+	if (#typeof(contact) == 'Int' && contact >= 0) {
+		parts :+('Commlink: ' + contact_name(game, contact));
+	}
 	if (#sizeof(parts) == 0) {
 		return 'nothing';
 	}
-	return #sizeof(parts) == 1 ? parts[0] : parts[0] + ' + ' + parts[1];
+	let result = parts[0];
+	for (let i = 1; i < #sizeof(parts); i++) {
+		result += ' + ' + parts[i];
+	}
+	return result;
 };
 
 const trade_text = (game, terms) => {
 	return (
-		'Offers ' + trade_side_text(game, terms.offer_energy, terms.offer_technology) +
-		'; requests ' + trade_side_text(game, terms.request_energy, terms.request_technology)
+		'Offers ' + trade_side_text(
+			game, terms.offer_energy, terms.offer_technology, terms.offer_contact
+		) + '; requests ' + trade_side_text(
+			game, terms.request_energy, terms.request_technology, terms.request_contact
+		)
 	);
 };
 
@@ -62,10 +76,14 @@ return {
 		this.reject_offer = null;
 		this.offer_technology_label = null;
 		this.offer_technology = null;
+		this.offer_contact_label = null;
+		this.offer_contact = null;
 		this.offer_energy_label = null;
 		this.offer_energy = null;
 		this.request_technology_label = null;
 		this.request_technology = null;
+		this.request_contact_label = null;
+		this.request_contact = null;
 		this.request_energy_label = null;
 		this.request_energy = null;
 		this.propose_trade_button = null;
@@ -97,6 +115,8 @@ return {
 			'diplomatic_loan_resolved',
 			'diplomatic_sanctions_updated',
 			'diplomatic_integrity_updated',
+			'diplomatic_contact_established',
+			'diplomatic_contact_updated',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
@@ -114,7 +134,7 @@ return {
 			});
 		}
 
-		return p.create('DIPLOMACY', 600, 650, (body, cb) => {
+		return p.create('DIPLOMACY', 600, 710, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});
 			this.opponent_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -181,46 +201,60 @@ return {
 				class: 'popup-list-select', align: 'top right', right: 10, top: 194,
 				width: 360, items: [['', 'No technology']], value: '',
 			});
+			this.offer_contact_label = body.text({
+				class: 'game-popup-text', text: 'Offer commlink:', left: 10, top: 226,
+			});
+			this.offer_contact = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 222,
+				width: 360, items: [['-1', 'No commlink']], value: '-1',
+			});
 			this.offer_energy_label = body.text({
-				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 226,
+				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 254,
 			});
 			this.offer_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 222,
+				class: 'popup-input', align: 'top right', right: 10, top: 250,
 				width: 160, value: '0',
 			});
 			this.request_technology_label = body.text({
-				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 254,
+				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 282,
 			});
 			this.request_technology = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 250,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 278,
 				width: 360, items: [['', 'No technology']], value: '',
 			});
+			this.request_contact_label = body.text({
+				class: 'game-popup-text', text: 'Request commlink:', left: 10, top: 310,
+			});
+			this.request_contact = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 306,
+				width: 360, items: [['-1', 'No commlink']], value: '-1',
+			});
 			this.request_energy_label = body.text({
-				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 282,
+				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 338,
 			});
 			this.request_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 278,
+				class: 'popup-input', align: 'top right', right: 10, top: 334,
 				width: 160, value: '0',
 			});
 			this.trade_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 310,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 366,
 			});
 			this.propose_trade_button = body.button({
-				class: 'game-popup-button', text: 'Propose Trade', top: 334,
+				class: 'game-popup-button', text: 'Propose Trade', top: 390,
 			});
 			this.propose_trade_button.on('click', (e) => {
 				this.propose_trade();
 				return true;
 			});
 			this.accept_trade = body.button({
-				class: 'game-popup-button', text: 'Accept Trade', top: 334,
+				class: 'game-popup-button', text: 'Accept Trade', top: 390,
 			});
 			this.accept_trade.on('click', (e) => {
 				this.respond_trade(true);
 				return true;
 			});
 			this.reject_trade = body.button({
-				class: 'game-popup-button', text: 'Reject Trade', top: 358,
+				class: 'game-popup-button', text: 'Reject Trade', top: 414,
 			});
 			this.reject_trade.on('click', (e) => {
 				this.respond_trade(false);
@@ -228,55 +262,55 @@ return {
 			});
 
 			this.loan_text = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 386,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 442,
 			});
 			this.loan_principal_label = body.text({
-				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 414,
+				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 470,
 			});
 			this.loan_principal = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 410,
+				class: 'popup-input', align: 'top right', right: 10, top: 466,
 				width: 160, value: '100',
 			});
 			this.loan_payment_label = body.text({
-				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 442,
+				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 498,
 			});
 			this.loan_payment = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 438,
+				class: 'popup-input', align: 'top right', right: 10, top: 494,
 				width: 160, value: '7',
 			});
 			this.loan_turns_label = body.text({
-				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 470,
+				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 526,
 			});
 			this.loan_turns = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 466,
+				class: 'popup-input', align: 'top right', right: 10, top: 522,
 				width: 160, value: '20',
 			});
 			this.loan_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 494,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 550,
 			});
 			this.offer_loan_button = body.button({
-				class: 'game-popup-button', text: 'Offer Loan', top: 522,
+				class: 'game-popup-button', text: 'Offer Loan', top: 578,
 			});
 			this.offer_loan_button.on('click', (e) => {
 				this.propose_loan(true);
 				return true;
 			});
 			this.request_loan_button = body.button({
-				class: 'game-popup-button', text: 'Request Loan', top: 546,
+				class: 'game-popup-button', text: 'Request Loan', top: 602,
 			});
 			this.request_loan_button.on('click', (e) => {
 				this.propose_loan(false);
 				return true;
 			});
 			this.accept_loan = body.button({
-				class: 'game-popup-button', text: 'Accept Loan', top: 522,
+				class: 'game-popup-button', text: 'Accept Loan', top: 578,
 			});
 			this.accept_loan.on('click', (e) => {
 				this.respond_loan(true);
 				return true;
 			});
 			this.reject_loan = body.button({
-				class: 'game-popup-button', text: 'Reject Loan', top: 546,
+				class: 'game-popup-button', text: 'Reject Loan', top: 602,
 			});
 			this.reject_loan.on('click', (e) => {
 				this.respond_loan(false);
@@ -284,7 +318,7 @@ return {
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Close', top: 618, is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 674, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -296,6 +330,8 @@ return {
 		this.target = value == '' ? null : this.p.game.get_player(#to_int(value));
 		this.offer_energy.value = '0';
 		this.request_energy.value = '0';
+		this.offer_contact.value = '-1';
+		this.request_contact.value = '-1';
 		this.trade_error.text = '';
 		this.loan_error.text = '';
 		this.refresh();
@@ -347,6 +383,8 @@ return {
 				offer_technology: this.offer_technology.value,
 				request_energy: request_energy,
 				request_technology: this.request_technology.value,
+				offer_contact: #to_int(this.offer_contact.value),
+				request_contact: #to_int(this.request_contact.value),
 			},
 		});
 	},
@@ -410,6 +448,20 @@ return {
 		return items;
 	},
 
+	get_contact_items: (source, recipient) => {
+		let items = [['-1', 'No commlink']];
+		for (contact of this.p.game.get_players()) {
+			if (
+				contact.id != source.id && contact.id != recipient.id &&
+				source.has_contact(contact) && contact.has_contact(source) &&
+				(!recipient.has_contact(contact) || !contact.has_contact(recipient))
+			) {
+				items :+[#to_string(contact.id), contact.name];
+			}
+		}
+		return items;
+	},
+
 	refresh: () => {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
@@ -417,8 +469,10 @@ return {
 		];
 		const trade_editor = [
 			this.offer_technology_label, this.offer_technology,
+			this.offer_contact_label, this.offer_contact,
 			this.offer_energy_label, this.offer_energy,
 			this.request_technology_label, this.request_technology,
+			this.request_contact_label, this.request_contact,
 			this.request_energy_label, this.request_energy,
 			this.propose_trade_button,
 		];
@@ -529,8 +583,12 @@ return {
 
 		this.offer_technology.items = this.get_technology_items(this.player, this.target);
 		this.request_technology.items = this.get_technology_items(this.target, this.player);
+		this.offer_contact.items = this.get_contact_items(this.player, this.target);
+		this.request_contact.items = this.get_contact_items(this.target, this.player);
 		this.offer_technology.value = '';
 		this.request_technology.value = '';
+		this.offer_contact.value = '-1';
+		this.request_contact.value = '-1';
 		for (control of trade_editor) {
 			control.show();
 		}
@@ -555,7 +613,10 @@ return {
 		this.player = this.p.game.get_player();
 		let items = [];
 		for (player of this.p.game.get_players()) {
-			if (player.id != this.player.id) {
+			if (
+				player.id != this.player.id &&
+				this.player.has_contact(player) && player.has_contact(this.player)
+			) {
 				items :+[#to_string(player.id), player.name];
 			}
 		}

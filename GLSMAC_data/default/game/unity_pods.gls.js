@@ -212,6 +212,19 @@ const get_vehicle_definition = (game, unit, tile) => {
 	return get_unit_def(game, 'UnityRover');
 };
 
+const get_commlink_candidates = (game, player) => {
+	let result = [];
+	for (other of game.get_players()) {
+		if (
+			other.id != player.id &&
+			(!player.has_contact(other) || !other.has_contact(player))
+		) {
+			result :+other;
+		}
+	}
+	return result;
+};
+
 const make_resolution = (game, unit, tile, kind) => {
 	if (kind == 'energy') {
 		const late = game.get_turn() >= (tile.is_water ? 100 : 50);
@@ -274,6 +287,14 @@ const make_resolution = (game, unit, tile, kind) => {
 		return technology_acquisition.can_grant(game, game.get_player(unit.owner))
 			? {kind: kind}
 			: null;
+	}
+	if (kind == 'commlink') {
+		const candidates = get_commlink_candidates(game, game.get_player(unit.owner));
+		if (#sizeof(candidates) == 0) {
+			return null;
+		}
+		const index = game.random.get_int(0, #sizeof(candidates) - 1);
+		return {kind: kind, contact_id: candidates[index].id};
 	}
 	if (kind == 'terraforming') {
 		const tiles = get_improvement_tiles(tile);
@@ -339,7 +360,8 @@ const get_weighted_kind = (roll) => {
 	if (roll < 42) { return 'fungus'; }
 	if (roll < 50) { return 'monolith'; }
 	if (roll < 60) { return 'vehicle'; }
-	if (roll < 68) { return 'technology'; }
+	if (roll < 65) { return 'commlink'; }
+	if (roll < 72) { return 'technology'; }
 	if (roll < 82) { return 'terraforming'; }
 	if (roll < 83) { return 'clone'; }
 	if (roll < 91) { return 'native'; }
@@ -361,6 +383,7 @@ const resolve = (game, unit, tile) => {
 		'fungus',
 		'monolith',
 		'vehicle',
+		'commlink',
 		'technology',
 		'terraforming',
 		'native',
@@ -428,6 +451,7 @@ const apply = (game, unit, tile, resolved) => {
 		research: #undefined,
 		terrain_snapshot: null,
 		unit_state: null,
+		contact: null,
 	};
 	tile.update_features({unity_pod: false});
 
@@ -505,6 +529,26 @@ const apply = (game, unit, tile, resolved) => {
 		for (name of applied.research.completed_names) {
 			game.message(player.name + ' recovered ' + name + ' from a Unity data pod.');
 		}
+	} else if (resolved.kind == 'commlink') {
+		let contact = null;
+		for (other of game.get_players()) {
+			if (other.id == resolved.contact_id) {
+				contact = other;
+				break;
+			}
+		}
+		if (contact == null) {
+			throw Error('Unity Pod commlink faction is unavailable');
+		}
+		applied.contact = {
+			player: contact,
+			owner_contact: player.has_contact(contact),
+			contact_owner: contact.has_contact(player),
+		};
+		player.set_contact(contact, true);
+		contact.set_contact(player, true);
+		game.trigger('diplomatic_contact_established', {player: player, target: contact});
+		game.message(player.name + ' recovered the commlink frequency for ' + contact.name + '.');
 	} else if (resolved.kind == 'terraforming') {
 		const changes = get_terraforming_changes(resolved.improvement);
 		for (improved_tile of resolved.tiles) {
@@ -542,6 +586,10 @@ const rollback = (game, applied) => {
 	}
 	if (#is_defined(applied.research)) {
 		technology_acquisition.rollback(game, applied.research);
+	}
+	if (applied.contact != null) {
+		applied.player.set_contact(applied.contact.player, applied.contact.owner_contact);
+		applied.contact.player.set_contact(applied.player, applied.contact.contact_owner);
 	}
 	if (applied.spawned_unit_id > 0 && game.um.has_unit(applied.spawned_unit_id)) {
 		game.um.despawn_unit(game.um.get_unit(applied.spawned_unit_id));

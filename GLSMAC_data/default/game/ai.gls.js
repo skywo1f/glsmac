@@ -141,11 +141,30 @@ const get_tradeable_technologies = (game, source, recipient) => {
 	return result;
 };
 
+const get_contact_value = (game, player) => {
+	return 25 + get_player_base_count(game, player) * 15 +
+		#min(75, #floor(get_player_power(game, player) * 5.0));
+};
+
+const get_tradeable_contacts = (game, source, recipient) => {
+	let result = [];
+	for (contact of game.get_players()) {
+		if (
+			contact.id != source.id && contact.id != recipient.id &&
+			source.has_contact(contact) && contact.has_contact(source) &&
+			(!recipient.has_contact(contact) || !contact.has_contact(recipient))
+		) {
+			result :+{id: contact.id, value: get_contact_value(game, contact)};
+		}
+	}
+	return result;
+};
+
 const update_diplomacy = (game, player) => {
 	const own_power = get_player_power(game, player);
 	const own_bases = get_player_base_count(game, player);
 	for (other of game.get_players()) {
-		if (other.id == player.id) {
+		if (other.id == player.id || !player.has_contact(other)) {
 			continue;
 		}
 		const offer = player.get_diplomatic_offer(other);
@@ -167,7 +186,7 @@ const update_diplomacy = (game, player) => {
 		}
 	}
 	for (other of game.get_players()) {
-		if (other.id == player.id) {
+		if (other.id == player.id || !player.has_contact(other)) {
 			continue;
 		}
 		const trade = player.get_diplomatic_trade(other);
@@ -178,6 +197,12 @@ const update_diplomacy = (game, player) => {
 			const request_definition = trade.request_technology == ''
 				? null
 				: game.get('f_technology_get_definition')(trade.request_technology);
+			const offer_contact = (
+				#typeof(trade.offer_contact) != 'Int' || trade.offer_contact < 0
+			) ? null : game.get_player(trade.offer_contact);
+			const request_contact = (
+				#typeof(trade.request_contact) != 'Int' || trade.request_contact < 0
+			) ? null : game.get_player(trade.request_contact);
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
@@ -189,13 +214,15 @@ const update_diplomacy = (game, player) => {
 					terms: trade,
 					offer_technology_cost: offer_definition == null ? 0 : offer_definition.cost,
 					request_technology_cost: request_definition == null ? 0 : request_definition.cost,
+					offer_contact_value: offer_contact == null ? 0 : get_contact_value(game, offer_contact),
+					request_contact_value: request_contact == null ? 0 : get_contact_value(game, request_contact),
 				}) >= 0.0,
 			});
 			return;
 		}
 	}
 	for (other of game.get_players()) {
-		if (other.id == player.id) {
+		if (other.id == player.id || !player.has_contact(other)) {
 			continue;
 		}
 		const loan_offer = player.get_diplomatic_loan_offer(other);
@@ -226,6 +253,7 @@ const update_diplomacy = (game, player) => {
 	for (other of game.get_players()) {
 		if (
 			other.id == player.id ||
+			!player.has_contact(other) ||
 			other.get_diplomatic_offer(player) != '' ||
 			player.get_diplomatic_offer(other) != ''
 		) {
@@ -262,6 +290,7 @@ const update_diplomacy = (game, player) => {
 	for (other of game.get_players()) {
 		if (
 			other.id == player.id ||
+			!player.has_contact(other) ||
 			player.get_diplomatic_relation(other) == 'vendetta' ||
 			player.get_sanction_turns() > 0 || other.get_sanction_turns() > 0 ||
 			other.get_diplomatic_offer(player) != '' ||
@@ -279,6 +308,8 @@ const update_diplomacy = (game, player) => {
 			other_energy: other.energy_credits,
 			own_technologies: get_tradeable_technologies(game, player, other),
 			other_technologies: get_tradeable_technologies(game, other, player),
+			own_contacts: get_tradeable_contacts(game, player, other),
+			other_contacts: get_tradeable_contacts(game, other, player),
 		});
 		if (
 			proposal != null &&
@@ -303,6 +334,7 @@ const update_diplomacy = (game, player) => {
 	for (other of game.get_players()) {
 		if (
 			other.id == player.id ||
+			!player.has_contact(other) ||
 			player.get_sanction_turns() > 0 || other.get_sanction_turns() > 0 ||
 			other.get_diplomatic_offer(player) != '' ||
 			player.get_diplomatic_offer(other) != '' ||

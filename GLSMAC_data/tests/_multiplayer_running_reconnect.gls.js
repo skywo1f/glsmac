@@ -170,6 +170,8 @@
 				const borrower = e.game.get_player(e.caller);
 				const previous = {
 					loan: borrower.get_diplomatic_loan(e.data.lender),
+					borrower_contact: borrower.has_contact(e.data.lender),
+					lender_contact: e.data.lender.has_contact(borrower),
 					sanction_turns: borrower.get_sanction_turns(),
 					integrity_blemishes: borrower.get_integrity_blemishes(),
 					prototyped_components: borrower.get_prototyped_components(),
@@ -181,6 +183,8 @@
 					balance: loan_balance_stamp,
 					payment: loan_payment_stamp,
 				});
+				borrower.set_contact(e.data.lender, true);
+				e.data.lender.set_contact(borrower, true);
 				borrower.set_sanction_turns(sanction_turns_stamp);
 				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
 				borrower.set_prototyped_components(prototyped_components_stamp);
@@ -196,6 +200,8 @@
 				} else {
 					borrower.set_diplomatic_loan(e.data.lender, e.applied.loan);
 				}
+				borrower.set_contact(e.data.lender, e.applied.borrower_contact);
+				e.data.lender.set_contact(borrower, e.applied.lender_contact);
 				borrower.set_sanction_turns(e.applied.sanction_turns);
 				borrower.set_integrity_blemishes(e.applied.integrity_blemishes);
 				borrower.set_prototyped_components(e.applied.prototyped_components);
@@ -508,6 +514,8 @@
 						}
 						if (
 							loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp ||
+							!game.get_player().has_contact(lender) ||
+							!lender.has_contact(game.get_player()) ||
 							game.get_player().get_sanction_turns() != sanction_turns_stamp ||
 							game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp ||
 							game.get_player().get_prototyped_components() != prototyped_components_stamp ||

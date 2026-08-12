@@ -7,6 +7,8 @@ const is_player = (player) => {
 		#typeof(player.set_sanction_turns) == 'Callable' &&
 		#typeof(player.get_integrity_blemishes) == 'Callable' &&
 		#typeof(player.set_integrity_blemishes) == 'Callable' &&
+		#typeof(player.has_contact) == 'Callable' &&
+		#typeof(player.set_contact) == 'Callable' &&
 		#typeof(player.set_diplomatic_relation) == 'Callable' &&
 		#typeof(player.get_diplomatic_offer) == 'Callable' &&
 		#typeof(player.set_diplomatic_offer) == 'Callable' &&
@@ -22,12 +24,22 @@ const is_player = (player) => {
 	);
 };
 
-const validate_pair = (player, other) => {
+const validate_players = (player, other) => {
 	if (!is_player(player) || !is_player(other)) {
 		return 'Diplomacy requires two players';
 	}
 	if (player.id == other.id) {
 		return 'A player cannot conduct diplomacy with itself';
+	}
+};
+
+const validate_pair = (player, other) => {
+	const player_error = validate_players(player, other);
+	if (#is_defined(player_error)) {
+		return player_error;
+	}
+	if (!player.has_contact(other) || !other.has_contact(player)) {
+		return 'The factions have not established diplomatic contact';
 	}
 };
 
@@ -37,6 +49,8 @@ const snapshot_pair = (player, other) => {
 		other_relation: other.get_diplomatic_relation(player),
 		player_offer: player.get_diplomatic_offer(other),
 		other_offer: other.get_diplomatic_offer(player),
+		player_contact: player.has_contact(other),
+		other_contact: other.has_contact(player),
 		player_trade: player.get_diplomatic_trade(other),
 		other_trade: other.get_diplomatic_trade(player),
 		player_loan_offer: player.get_diplomatic_loan_offer(other),
@@ -67,6 +81,8 @@ const restore_pair = (player, other, snapshot) => {
 	other.set_diplomatic_relation(player, snapshot.other_relation);
 	player.set_diplomatic_offer(other, snapshot.player_offer);
 	other.set_diplomatic_offer(player, snapshot.other_offer);
+	player.set_contact(other, snapshot.player_contact);
+	other.set_contact(player, snapshot.other_contact);
 	restore_trade(player, other, snapshot.player_trade);
 	restore_trade(other, player, snapshot.other_trade);
 	restore_loan_offer(player, other, snapshot.player_loan_offer);
@@ -117,6 +133,12 @@ const set_bilateral_relation = (game, player, other, relation) => {
 	if (relation == 'vendetta') {
 		record_betrayal(game, player, other);
 	}
+	const established_contact = !player.has_contact(other) || !other.has_contact(player);
+	player.set_contact(other, true);
+	other.set_contact(player, true);
+	if (established_contact) {
+		game.trigger('diplomatic_contact_established', {player: player, target: other});
+	}
 	player.set_diplomatic_relation(other, relation);
 	other.set_diplomatic_relation(player, relation);
 };
@@ -134,6 +156,42 @@ const clear_offers = (player, other) => {
 	other.clear_diplomatic_loan_offer(player);
 };
 
+const get_offer_contact = (terms) => {
+	return #typeof(terms.offer_contact) == 'Int' ? terms.offer_contact : 0 - 1;
+};
+
+const get_request_contact = (terms) => {
+	return #typeof(terms.request_contact) == 'Int' ? terms.request_contact : 0 - 1;
+};
+
+const find_player = (game, player_id) => {
+	if (#typeof(game.get_players) != 'Callable') {
+		return null;
+	}
+	for (player of game.get_players()) {
+		if (player.id == player_id) {
+			return player;
+		}
+	}
+	return null;
+};
+
+const validate_contact_transfer = (game, sender, recipient, contact_id, label) => {
+	if (contact_id < 0) {
+		return;
+	}
+	const contact = find_player(game, contact_id);
+	if (contact == null || contact.id == sender.id || contact.id == recipient.id) {
+		return 'The ' + label + ' commlink identifies an invalid faction';
+	}
+	if (!sender.has_contact(contact) || !contact.has_contact(sender)) {
+		return 'The ' + label + ' commlink is not known by its sender';
+	}
+	if (recipient.has_contact(contact) || contact.has_contact(recipient)) {
+		return 'The ' + label + ' commlink is already known by its recipient';
+	}
+};
+
 const validate_trade = (game, proposer, recipient, terms) => {
 	if (#typeof(terms) != 'Object') {
 		return 'Diplomatic trade terms must be an object';
@@ -142,7 +200,9 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		#typeof(terms.offer_energy) != 'Int' ||
 		#typeof(terms.offer_technology) != 'String' ||
 		#typeof(terms.request_energy) != 'Int' ||
-		#typeof(terms.request_technology) != 'String'
+		#typeof(terms.request_technology) != 'String' ||
+		(#is_defined(terms.offer_contact) && #typeof(terms.offer_contact) != 'Int') ||
+		(#is_defined(terms.request_contact) && #typeof(terms.request_contact) != 'Int')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
 	}
@@ -155,9 +215,21 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (terms.offer_energy > 0 && terms.request_energy > 0) {
 		return 'Diplomatic trade cannot send energy in both directions';
 	}
+	const offer_contact = get_offer_contact(terms);
+	const request_contact = get_request_contact(terms);
+	if (
+		offer_contact < -1 || offer_contact >= 64 ||
+		request_contact < -1 || request_contact >= 64
+	) {
+		return 'Diplomatic trade commlink is out of range';
+	}
+	if (offer_contact >= 0 && offer_contact == request_contact) {
+		return 'Diplomatic trade cannot exchange a commlink for itself';
+	}
 	if (
 		terms.offer_energy == 0 && terms.offer_technology == '' &&
-		terms.request_energy == 0 && terms.request_technology == ''
+		terms.request_energy == 0 && terms.request_technology == '' &&
+		offer_contact < 0 && request_contact < 0
 	) {
 		return 'Diplomatic trade cannot be empty';
 	}
@@ -204,6 +276,89 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		}
 		if (technology[2].has_technology(id)) {
 			return 'The ' + technology[3] + ' technology is already known by its recipient';
+		}
+	}
+	const offer_contact_error = validate_contact_transfer(
+		game, proposer, recipient, offer_contact, 'offered'
+	);
+	if (#is_defined(offer_contact_error)) {
+		return offer_contact_error;
+	}
+	return validate_contact_transfer(
+		game, recipient, proposer, request_contact, 'requested'
+	);
+};
+
+const grant_contact = (game, player, contact_id) => {
+	if (#typeof(contact_id) != 'Int' || contact_id < 0) {
+		return #undefined;
+	}
+	const contact = find_player(game, contact_id);
+	const snapshot = {
+		player: player,
+		contact: contact,
+		player_contact: player.has_contact(contact),
+		contact_player: contact.has_contact(player),
+	};
+	player.set_contact(contact, true);
+	contact.set_contact(player, true);
+	game.trigger('diplomatic_contact_established', {player: player, target: contact});
+	return snapshot;
+};
+
+const restore_contact = (game, snapshot) => {
+	snapshot.player.set_contact(snapshot.contact, snapshot.player_contact);
+	snapshot.contact.set_contact(snapshot.player, snapshot.contact_player);
+	game.trigger('diplomatic_contact_updated', {
+		player: snapshot.player,
+		target: snapshot.contact,
+	});
+};
+
+const queue_contact = (game, player, other) => {
+	if (
+		player == null || other == null || player.id == other.id ||
+		(player.has_contact(other) && other.has_contact(player))
+	) {
+		return;
+	}
+	game.event('establish_diplomatic_contact', {player: player, target: other});
+};
+
+const queue_contacts_at_tile = (game, player, tile) => {
+	if (
+		#typeof(game.is_master) != 'Callable' || !game.is_master() ||
+		player == null || tile == null
+	) {
+		return;
+	}
+	let tiles = [tile];
+	for (nearby of tile.get_surrounding_tiles()) {
+		tiles :+nearby;
+	}
+	for (candidate of tiles) {
+		for (unit of candidate.get_units()) {
+			queue_contact(game, player, find_player(game, unit.owner));
+		}
+		const base = candidate.get_base();
+		if (base != null) {
+			queue_contact(game, player, base.get_owner());
+		}
+	}
+};
+
+const scan_contacts = (game) => {
+	if (#typeof(game.is_master) != 'Callable' || !game.is_master()) {
+		return;
+	}
+	if (#typeof(game.get_um) == 'Callable') {
+		for (unit of game.get_um().get_units()) {
+			queue_contacts_at_tile(game, find_player(game, unit.owner), unit.get_tile());
+		}
+	}
+	if (#typeof(game.get_bm) == 'Callable') {
+		for (base of game.get_bm().get_bases()) {
+			queue_contacts_at_tile(game, base.get_owner(), base.get_tile());
 		}
 	}
 };
@@ -301,6 +456,7 @@ const validate_loan_offer = (proposer, recipient, terms) => {
 
 return (game) => {
 	game.on('start', (e) => {
+		game.set('f_diplomacy_validate_players', validate_players);
 		game.set('f_diplomacy_validate_pair', validate_pair);
 		game.set('f_diplomacy_snapshot_pair', snapshot_pair);
 		game.set('f_diplomacy_restore_pair', restore_pair);
@@ -319,10 +475,41 @@ return (game) => {
 		game.set('f_diplomacy_grant_technology', (player, id) => {
 			return grant_technology(game, player, id);
 		});
+		game.set('f_diplomacy_grant_contact', (player, contact_id) => {
+			return grant_contact(game, player, contact_id);
+		});
+		game.set('f_diplomacy_restore_contact', (snapshot) => {
+			return restore_contact(game, snapshot);
+		});
+		game.set('f_diplomacy_queue_contacts_at_tile', (player, tile) => {
+			return queue_contacts_at_tile(game, player, tile);
+		});
+		if (
+			#typeof(game.get_um) == 'Callable' &&
+			#typeof(game.get_um().on) == 'Callable'
+		) {
+			game.get_um().on('unit_spawn', (event) => {
+				queue_contacts_at_tile(
+					game,
+					find_player(game, event.unit.owner),
+					event.unit.get_tile()
+				);
+			});
+		}
+		if (
+			#typeof(game.get_bm) == 'Callable' &&
+			#typeof(game.get_bm().on) == 'Callable'
+		) {
+			game.get_bm().on('base_spawn', (event) => {
+				queue_contacts_at_tile(game, event.base.get_owner(), event.base.get_tile());
+			});
+		}
+		scan_contacts(game);
 		game.on('turn', (e) => {
 			if (!game.is_master()) {
 				return;
 			}
+			scan_contacts(game);
 			for (borrower of game.get_players()) {
 				for (lender of game.get_players()) {
 					if (

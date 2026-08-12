@@ -48,6 +48,7 @@ return (game) => {
 		'resolve_planetary_council',
 		'corner_global_energy_market',
 		'declare_vendetta',
+		'establish_diplomatic_contact',
 		'propose_diplomatic_relation',
 		'respond_diplomatic_proposal',
 		'propose_diplomatic_trade',

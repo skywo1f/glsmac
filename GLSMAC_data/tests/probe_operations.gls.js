@@ -9,6 +9,7 @@ const make_player = (id, energy, technologies, target) => {
 	let trades = {};
 	let loan_offers = {};
 	let loans = {};
+	let contacts = {};
 	let major_atrocities = 0;
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
@@ -36,6 +37,13 @@ const make_player = (id, energy, technologies, target) => {
 	player.set_sanction_turns = (value) => { sanction_turns = value; };
 	player.get_integrity_blemishes = () => { return integrity_blemishes; };
 	player.set_integrity_blemishes = (value) => { integrity_blemishes = value; };
+	player.has_contact = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(contacts[key]) && contacts[key];
+	};
+	player.set_contact = (other, value) => {
+		contacts['p' + #to_string(other.id)] = value;
+	};
 	player.has_infiltrated = (other) => {
 			return #is_defined(infiltrated['p' + #to_string(other.id)]) &&
 				infiltrated['p' + #to_string(other.id)];
@@ -93,6 +101,8 @@ const make_player = (id, energy, technologies, target) => {
 const make_fixture = (charter_repealed) => {
 	const actor = make_player(1, 1000, [], 'PlanetaryNetworks');
 	const target_player = make_player(2, 200, ['PlanetaryNetworks'], '');
+	actor.set_contact(target_player, true);
+	target_player.set_contact(actor, true);
 	let players = {p1: actor, p2: target_player};
 	let triggers = [];
 	let last_message = '';

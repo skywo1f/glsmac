@@ -4,6 +4,7 @@ const propose_relation = #include('../default/game/event/propose_diplomatic_rela
 const respond_proposal = #include('../default/game/event/respond_diplomatic_proposal');
 const propose_trade = #include('../default/game/event/propose_diplomatic_trade');
 const respond_trade = #include('../default/game/event/respond_diplomatic_trade');
+const establish_contact = #include('../default/game/event/establish_diplomatic_contact');
 const diplomacy_popup = #include('../default/ui/parts/game/popup/diplomacy');
 
 test.assert(#typeof(diplomacy_popup.init) == 'Callable');
@@ -14,14 +15,16 @@ const values = {};
 let triggers = [];
 let messages = [];
 let datalinks_queues = 0;
+let players = [];
+let event_calls = [];
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
 	get: (name) => { return values[name]; },
 	is_turn_complete: (player_id) => { return false; },
 	is_master: () => { return true; },
-	get_players: () => { return []; },
-	event: (name, data) => {},
+	get_players: () => { return players; },
+	event: (name, data) => { event_calls :+{name: name, data: data}; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
 	message: (text) => { messages :+text; },
 };
@@ -60,6 +63,7 @@ const make_player = (id, name) => {
 	let trades = {};
 	let loan_offers = {};
 	let loans = {};
+	let contacts = {};
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
@@ -68,6 +72,13 @@ const make_player = (id, name) => {
 		id: id,
 		name: name,
 		energy_credits: 0,
+		has_contact: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(contacts[key]) && contacts[key];
+		},
+		set_contact: (other, contacted) => {
+			contacts['p' + #to_string(other.id)] = contacted;
+		},
 		get_diplomatic_relation: (other) => {
 			const key = 'p' + #to_string(other.id);
 			return #is_defined(relations[key]) ? relations[key] : 'neutral';
@@ -134,6 +145,18 @@ const make_player = (id, name) => {
 
 const alpha = make_player(1, 'Alpha');
 const beta = make_player(2, 'Beta');
+const gamma = make_player(3, 'Gamma');
+const delta = make_player(4, 'Delta');
+players = [alpha, beta, gamma, delta];
+const contact_tile = {
+	get_units: () => { return [{owner: beta.id}]; },
+	get_base: () => { return null; },
+	get_surrounding_tiles: () => { return []; },
+};
+values.f_diplomacy_queue_contacts_at_tile(alpha, contact_tile);
+test.assert(#sizeof(event_calls) == 1);
+test.assert(event_calls[0].name == 'establish_diplomatic_contact');
+test.assert(event_calls[0].data.player == alpha && event_calls[0].data.target == beta);
 test.assert(values.f_diplomacy_get_integrity_name(0) == 'Noble');
 test.assert(values.f_diplomacy_get_integrity_name(7) == 'Infamous');
 test.assert(values.f_diplomacy_get_betrayal_penalty('neutral') == 0);
@@ -145,6 +168,19 @@ let proposal = {
 	game: game,
 	data: {player: alpha, target: beta, relation: 'treaty'},
 };
+test.assert(#is_defined(propose_relation.validate(proposal)));
+let contact = {
+	caller: 0,
+	game: game,
+	data: {player: alpha, target: beta},
+};
+test.assert(!#is_defined(establish_contact.validate(contact)));
+contact.applied = establish_contact.apply(contact);
+test.assert(alpha.has_contact(beta) && beta.has_contact(alpha));
+establish_contact.rollback(contact);
+test.assert(!alpha.has_contact(beta) && !beta.has_contact(alpha));
+contact.applied = establish_contact.apply(contact);
+messages = [];
 test.assert(!#is_defined(propose_relation.validate(proposal)));
 proposal.applied = propose_relation.apply(proposal);
 test.assert(beta.get_diplomatic_offer(alpha) == 'treaty');
@@ -235,6 +271,10 @@ beta.set_research_state({
 	target: 'CentauriEcology',
 	progress: 7,
 });
+alpha.set_contact(gamma, true);
+gamma.set_contact(alpha, true);
+beta.set_contact(delta, true);
+delta.set_contact(beta, true);
 
 let trade = {
 	caller: 1,
@@ -247,6 +287,8 @@ let trade = {
 			offer_technology: 'CentauriEcology',
 			request_energy: 0,
 			request_technology: 'IndustrialBase',
+			offer_contact: gamma.id,
+			request_contact: delta.id,
 		},
 	},
 };
@@ -267,6 +309,8 @@ test.assert(alpha.energy_credits == 80);
 test.assert(beta.energy_credits == 70);
 test.assert(alpha.has_technology('IndustrialBase'));
 test.assert(beta.has_technology('CentauriEcology'));
+test.assert(beta.has_contact(gamma) && gamma.has_contact(beta));
+test.assert(alpha.has_contact(delta) && delta.has_contact(alpha));
 test.assert(alpha.get_research_state().target == 'Biogenetics');
 test.assert(alpha.get_research_state().progress == 12);
 test.assert(beta.get_research_state().target == 'Biogenetics');
@@ -279,6 +323,8 @@ test.assert(alpha.energy_credits == 100);
 test.assert(beta.energy_credits == 50);
 test.assert(!alpha.has_technology('IndustrialBase'));
 test.assert(!beta.has_technology('CentauriEcology'));
+test.assert(!beta.has_contact(gamma) && !gamma.has_contact(beta));
+test.assert(!alpha.has_contact(delta) && !delta.has_contact(alpha));
 
 trade_response.data.accept = false;
 trade_response.applied = respond_trade.apply(trade_response);

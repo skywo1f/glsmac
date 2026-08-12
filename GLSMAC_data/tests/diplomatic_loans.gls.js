@@ -30,6 +30,7 @@ const make_player = (id, name, energy, stale_energy_property) => {
 	let trades = {};
 	let loan_offers = {};
 	let loans = {};
+	let contacts = {};
 	let current_energy = energy;
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
@@ -39,6 +40,14 @@ const make_player = (id, name, energy, stale_energy_property) => {
 		id: id,
 		name: name,
 		energy_credits: energy,
+		has_contact: (other) => {
+			const other_key = key(other);
+			return #is_defined(contacts[other_key]) && contacts[other_key];
+		},
+		set_contact: (other, contacted) => {
+			const other_key = key(other);
+			contacts[other_key] = contacted;
+		},
 		get_diplomatic_relation: (other) => {
 			const other_key = key(other);
 			return #is_defined(relations[other_key]) ? relations[other_key] : 'neutral';
@@ -109,6 +118,8 @@ const make_player = (id, name, energy, stale_energy_property) => {
 const alpha = make_player(1, 'Alpha', 20, false);
 const beta = make_player(2, 'Beta', 200, false);
 players = [alpha, beta];
+alpha.set_contact(beta, true);
+beta.set_contact(alpha, true);
 const terms = {
 	proposer_is_lender: false,
 	principal: 100,
