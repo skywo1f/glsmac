@@ -26,6 +26,21 @@ PASS_CLIENT = "RUNNING_RECONNECT_PASS_CLIENT"
 FAIL_MARKER = "RUNNING_RECONNECT_FAIL_"
 
 
+def wait_for_initial_client(host, host_log, client, client_log, timeout):
+    deadline = time.monotonic() + timeout
+    while time.monotonic() < deadline:
+        host_text = read_log(host_log)
+        client_text = read_log(client_log)
+        if DROP_READY in client_text:
+            return True
+        if FAIL_MARKER in host_text or FAIL_MARKER in client_text:
+            return False
+        if host.poll() is not None or client.poll() is not None:
+            return False
+        time.sleep(0.1)
+    return False
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description="Run a bounded in-game disconnect/reconnect smoke test."
@@ -70,6 +85,7 @@ def run(args):
         "--port", str(args.port),
         "--skipintro",
         "--nosound",
+        "--headless",
         "--windowed",
         "--window-size", "1024x768",
         "--verbose",
@@ -121,12 +137,19 @@ def run(args):
             initial_command, workdir, initial_stdout, initial_stderr
         )
         handles.extend([initial_out_handle, initial_err_handle])
-        if not wait_for_log(
-            initial_client, initial_stdout, DROP_READY, args.phase_timeout
+        if not wait_for_initial_client(
+            host, host_stdout, initial_client, initial_stdout, args.phase_timeout
         ):
+            initial_failure = FAIL_MARKER in read_log(host_stdout) or FAIL_MARKER in read_log(
+                initial_stdout
+            )
             raise RuntimeError(
-                "initial client did not complete colony founding (exit={})".format(
-                    initial_client.poll()
+                "initial client {} (host_exit={}, client_exit={})".format(
+                    "reported a fixture failure"
+                    if initial_failure
+                    else "did not complete colony founding",
+                    host.poll(),
+                    initial_client.poll(),
                 )
             )
 
@@ -153,6 +176,10 @@ def run(args):
             now = time.monotonic()
             if now >= deadline:
                 timed_out = True
+                break
+            if FAIL_MARKER in read_log(host_stdout) or FAIL_MARKER in read_log(
+                resumed_stdout
+            ):
                 break
             exactly_one_exited = (host.poll() is None) != (
                 resumed_client.poll() is None

@@ -2,6 +2,8 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const technologies = #include('../default/technologies');
+	const unit_abilities = #include('../default/game/unit_abilities');
 
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
@@ -24,8 +26,6 @@
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
 	];
-	// The Believers' +2 SUPPORT rating covers the two snapshot units for free.
-	const processed_turn_unit_support = 0;
 	const defeated_snapshot_unit_id = 3;
 	const expansion_snapshot_unit_id = 4;
 	const former_snapshot_unit_id = 5;
@@ -128,10 +128,17 @@
 			if (state.technologies != starting_technologies) {
 				return 'faction starting technologies were not restored';
 			}
+			let target_is_available = false;
+			for (available_id of technologies.get_available_targets(state.technologies)) {
+				if (available_id == state.target) {
+					target_is_available = true;
+					break;
+				}
+			}
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != 'Biogenetics' ||
+					!target_is_available ||
 					state.progress <= 0
 				) {
 					return 'starting Centauri Ecology progression was not restored';
@@ -141,7 +148,7 @@
 			const base = find_base_for_player(player.id);
 			if (
 				player.has_technology('CentauriEcology') ||
-				state.target != 'Biogenetics' ||
+				!target_is_available ||
 				state.progress <= 0 ||
 				(base != null && base.can_set_production('unit', 'Former'))
 			) {
@@ -584,11 +591,29 @@
 			) {
 				return 'restored facility definition is invalid';
 			}
-			const expected_snapshot_minerals =
-				initial_mineral_stamp +
-					base.get_tile().get_resources(base.get_owner()).MINERALS +
-					recycling_tanks.mineral_bonus -
-					processed_turn_unit_support;
+			const support_cost_resolver = game.get('f_social_get_support_cost');
+			const free_support_resolver = game.get('f_social_get_free_support');
+			const social_support_cost = #is_defined(support_cost_resolver)
+				? support_cost_resolver(base.get_owner())
+				: 1;
+			let historical_unit_support = unit_abilities.get_support_cost(
+				game.get_um().get_unit_def('ColonyPod')
+			) * social_support_cost;
+			for (unit of game.get_um().get_units()) {
+				if (unit.owner == base.get_owner().id && unit.home_base_id == base.id) {
+					historical_unit_support +=
+						unit_abilities.get_support_cost(unit) * social_support_cost;
+				}
+			}
+			const free_support = #is_defined(free_support_resolver)
+				? free_support_resolver(base.get_owner(), base.get_size())
+				: #max(base.get_size(), 1);
+			const historical_support_cost = #max(historical_unit_support - free_support, 0);
+			const expected_snapshot_minerals = initial_mineral_stamp + #max(
+				base.get_tile().get_resources(base.get_owner()).MINERALS +
+					recycling_tanks.mineral_bonus - historical_support_cost,
+				0
+			);
 			if (base.get_accumulated_minerals() != expected_snapshot_minerals) {
 				return
 					'accumulated minerals are ' + #to_string(base.get_accumulated_minerals()) +

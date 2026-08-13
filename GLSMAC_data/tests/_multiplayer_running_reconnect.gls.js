@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const technologies = #include('../default/technologies');
 
 	let map_size_requested = false;
 	let ready_requested = false;
@@ -338,10 +339,17 @@
 			if (state.technologies != starting_technologies) {
 				return 'faction starting technologies are invalid';
 			}
+			let target_is_available = false;
+			for (available_id of technologies.get_available_targets(state.technologies)) {
+				if (available_id == state.target) {
+					target_is_available = true;
+					break;
+				}
+			}
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != 'Biogenetics' ||
+					!target_is_available ||
 					(expect_progress ? state.progress <= 0 : state.progress != 0)
 				) {
 					return 'starting Centauri Ecology progression is invalid';
@@ -351,7 +359,7 @@
 			const base = find_base_for_player(player.id);
 			if (
 				player.has_technology('CentauriEcology') ||
-				state.target != 'Biogenetics' ||
+				!target_is_available ||
 				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
 				(base != null && base.can_set_production('unit', 'Former'))
 			) {

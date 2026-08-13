@@ -2060,17 +2060,22 @@ const std::string Game::SerializeWorldSnapshot( const size_t* viewer_slot ) cons
 const bool Game::DeserializeWorldSnapshot( GSE_CALLABLE, const std::string& serialized_snapshot ) {
 	auto buf = types::Buffer( serialized_snapshot );
 	NEW( m_map, map::Map, this );
-	const auto ec = m_map->LoadFromBuffer( types::Buffer( buf.ReadString() ) );
+	auto map_buffer = types::Buffer( buf.ReadString() );
+	const auto ec = m_map->LoadFromBuffer( map_buffer );
 	if ( ec != map::Map::EC_NONE ) {
 		DELETE( m_map );
 		m_map = nullptr;
 		return false;
 	}
 
-	m_rm->Deserialize( types::Buffer( buf.ReadString() ) );
-	m_um->Deserialize( GSE_CALL, types::Buffer( buf.ReadString() ) );
-	m_bm->Deserialize( GSE_CALL, types::Buffer( buf.ReadString() ) );
-	m_am->Deserialize( types::Buffer( buf.ReadString() ) );
+	auto resource_buffer = types::Buffer( buf.ReadString() );
+	auto unit_buffer = types::Buffer( buf.ReadString() );
+	auto base_buffer = types::Buffer( buf.ReadString() );
+	auto animation_buffer = types::Buffer( buf.ReadString() );
+	m_rm->Deserialize( resource_buffer );
+	m_um->Deserialize( GSE_CALL, unit_buffer );
+	m_bm->Deserialize( GSE_CALL, base_buffer );
+	m_am->Deserialize( animation_buffer );
 
 	const auto turn_id = buf.ReadInt< size_t >( "snapshot turn id" );
 	const auto has_victory = buf.ReadBool();

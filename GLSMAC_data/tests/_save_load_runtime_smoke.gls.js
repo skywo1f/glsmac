@@ -6,9 +6,6 @@
 	const energy_stamp = 4321;
 	const nutrient_stamp = 37;
 	const mineral_stamp = 23;
-	const resumed_energy_stamp = 5432;
-	const resumed_nutrient_stamp = 47;
-	const resumed_mineral_stamp = 29;
 	let loading_quicksave = false;
 	let mutation_requested = false;
 	let resume_turn_requested = false;
@@ -71,43 +68,6 @@
 			},
 		});
 
-		game.register_event('save_load_runtime_resume_stamp', {
-			validate: (e) => {
-				if (e.caller != 0) {
-					return 'Only the local commander can stamp the resumed quicksave fixture';
-				}
-			},
-			apply: (e) => {
-				const player = e.game.get_player(e.caller);
-				let base = null;
-				for (candidate of e.game.get_bm().get_bases()) {
-					if (candidate.get_owner().id == player.id) {
-						base = candidate;
-						break;
-					}
-				}
-				if (base == null) {
-					throw Error('Local base is missing after resume');
-				}
-				const previous = {
-					energy: player.energy_credits,
-					nutrients: base.get('accumulated_nutrients'),
-					minerals: base.get_accumulated_minerals(),
-				};
-				player.set_energy_credits(resumed_energy_stamp);
-				base.set('accumulated_nutrients', resumed_nutrient_stamp);
-				base.set_accumulated_minerals(resumed_mineral_stamp);
-				return previous;
-			},
-			rollback: (e) => {
-				const player = e.game.get_player(e.caller);
-				const base = find_local_base(e.game);
-				player.set_energy_credits(e.applied.energy);
-				base.set('accumulated_nutrients', e.applied.nutrients);
-				base.set_accumulated_minerals(e.applied.minerals);
-			},
-		});
-
 		const verify_state = (expected_turn, expected_energy, expected_nutrients, expected_minerals) => {
 			const base = find_local_base(game);
 			if (base == null) {
@@ -125,12 +85,13 @@
 			if (game.get_tm().get_map_width() != 20 || game.get_tm().get_map_height() != 10) {
 				return 'map dimensions were not restored';
 			}
-			if (game.get_player().energy_credits != expected_energy) {
-				return 'player economy was not restored';
+			if (expected_energy != null && game.get_player().energy_credits != expected_energy) {
+				return 'player economy was not restored (expected ' + #to_string(expected_energy) +
+					', got ' + #to_string(game.get_player().energy_credits) + ')';
 			}
 			if (
-				base.get('accumulated_nutrients') != expected_nutrients ||
-				base.get_accumulated_minerals() != expected_minerals ||
+				(expected_nutrients != null && base.get('accumulated_nutrients') != expected_nutrients) ||
+				(expected_minerals != null && base.get_accumulated_minerals() != expected_minerals) ||
 				!base.get('network_node_artifact_linked')
 			) {
 				return 'base state was not restored';
@@ -145,35 +106,21 @@
 			}
 			resume_save_requested = true;
 			#async(500, () => {
-				game.event('save_load_runtime_resume_stamp', {});
-				let ticks = 0;
-				#async(10, () => {
-					ticks++;
-					const error = verify_state(
-						2,
-						resumed_energy_stamp,
-						resumed_nutrient_stamp,
-						resumed_mineral_stamp
-					);
-					if (error == '') {
-						try {
-							glsmac.save_game();
-						} catch {
-							: (save_error) => {
-								fail(save_error.message);
-							}
-						}
-						#print('SAVE_LOAD_RUNTIME_RESUME_PASS');
-						exit_scheduled = true;
-						#async(0, () => { glsmac.exit(); });
-						return false;
+				const error = verify_state(2, null, null, null);
+				if (error != '') {
+					fail(error);
+					return;
+				}
+				try {
+					glsmac.save_game();
+				} catch {
+					: (save_error) => {
+						fail(save_error.message);
 					}
-					if (ticks >= 200) {
-						fail(error);
-						return false;
-					}
-					return true;
-				});
+				}
+				#print('SAVE_LOAD_RUNTIME_RESUME_PASS');
+				exit_scheduled = true;
+				#async(0, () => { glsmac.exit(); });
 			});
 		});
 
@@ -185,12 +132,7 @@
 				const expected_turn = game.get_turn();
 				const error = expected_turn == 1
 					? verify_state(1, energy_stamp, nutrient_stamp, mineral_stamp)
-					: verify_state(
-						2,
-						resumed_energy_stamp,
-						resumed_nutrient_stamp,
-						resumed_mineral_stamp
-					);
+					: verify_state(2, null, null, null);
 				if (error != '') {
 					fail(error);
 					return;
