@@ -98,8 +98,20 @@ return (game) => {
 	game.on('start', (e) => {
 		let ui_started = false;
 		let native_running = false;
+		const human_turns_complete = () => {
+			for (player of game.get_players()) {
+				if (player.type != 'ai' && !game.is_turn_complete(player.id)) {
+					return false;
+				}
+			}
+			return true;
+		};
 		const play_native = () => {
 			if (native_running || !game.is_master() || game.is_game_over()) {
+				return;
+			}
+			if (!human_turns_complete()) {
+				#async(250, play_native);
 				return;
 			}
 			const player = game.get_native_player();

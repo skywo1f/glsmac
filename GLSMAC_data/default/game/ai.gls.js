@@ -1145,6 +1145,14 @@ const queue_production = (game, player, bases, units) => {
 			}
 		}
 		const context = {
+			is_unit_available: (def) => {
+				return (
+					(!#is_defined(def.required_technology) || def.required_technology == '' ||
+						player.has_technology(def.required_technology)) &&
+					(!#is_defined(def.owner_player_id) || def.owner_player_id < 0 ||
+						def.owner_player_id == player.id)
+				);
+			},
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: base_tile.is_water
 				? sea_former_count < metrics.sea_base_count
@@ -2107,8 +2115,20 @@ return (game) => {
 		});
 		let ui_started = false;
 		let ai_running = false;
+		const human_turns_complete = () => {
+			for (player of game.get_players()) {
+				if (player.type != 'ai' && !game.is_turn_complete(player.id)) {
+					return false;
+				}
+			}
+			return true;
+		};
 		const play_ai_players = () => {
 			if (ai_running || !game.is_master() || game.is_game_over()) {
+				return;
+			}
+			if (!human_turns_complete()) {
+				#async(250, play_ai_players);
 				return;
 			}
 			let players = [];

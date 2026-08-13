@@ -15,17 +15,14 @@ const game = {
 	get_fm: () => {
 		return {list: () => { return factions; }};
 	},
-	event: (name, data) => {
-		test.assert(name == 'select_faction');
-		selected_faction = data.faction;
-	},
 };
 const i = {
 	glsmac: {
 		game: game,
-		add_single_player: () => {
+		add_single_player: (faction_id) => {
 			test.assert(#sizeof(players) == 0);
 			players :+{id: 0};
+			selected_faction = #is_defined(faction_id) ? faction_id : 'RANDOM';
 		},
 		add_ai_player: () => {
 			test.assert(#is_defined(selected_faction));
@@ -42,7 +39,7 @@ const i = {
 };
 
 select_faction(i);
-test.assert(#sizeof(players) == 1);
+test.assert(#sizeof(players) == 0);
 test.assert(menu.title == 'Select a faction');
 test.assert(#sizeof(menu.entries) == 3);
 test.assert(menu.entries[0][0] == 'Random');
@@ -73,15 +70,13 @@ const quick_settings = {
 	global: {difficulty_level: 'Transcend'},
 };
 const quick_glsmac = {
-	game: {
-		event: (name, data) => {
-			test.assert(name == 'select_faction');
-			quick_faction = data.faction;
-		},
-	},
+	game: {},
 	deinit: () => {},
 	init: () => {},
-	add_single_player: () => { quick_players++; },
+	add_single_player: (faction_id) => {
+		quick_players++;
+		quick_faction = faction_id;
+	},
 	add_ai_player: () => { quick_ai++; },
 	start_game: () => { quick_started++; },
 	has_quicksave: () => { return quicksave_exists; },

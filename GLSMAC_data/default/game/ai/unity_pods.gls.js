@@ -6,16 +6,20 @@ const choose_destination = (game, unit, can_enter) => {
 	if (unit.is_air || unit.is_immovable || unit.get_def().weapon == 'AlienArtifact') {
 		return null;
 	}
+	const player = game.get_player(unit.owner);
 	return pathfinding.find_best_reachable(
 		game.get_tm(),
 		unit,
-		can_enter,
+		(source, candidate) => {
+			return player.has_explored(candidate) && can_enter(source, candidate);
+		},
 		(candidate, distance) => {
-			if (!candidate.features.unity_pod || distance > MAX_EXPLORATION_DISTANCE) {
+			if (!player.has_explored(candidate) || !candidate.features.unity_pod) {
 				return null;
 			}
 			return 100000 - distance * 100;
-		}
+		},
+		MAX_EXPLORATION_DISTANCE
 	);
 };
 

@@ -17,13 +17,6 @@ const factions = [
 	faction('Peacekeepers', 'peace', {starting_technologies: ['Biogenetics']}),
 	// Planet is a serialized owner for independent native life, never a playable faction.
 	faction('Planet', 'believe', {is_native: true, starting_technologies: []}),
-	faction('Consciousness', 'cyborg', {starting_technologies: ['AppliedPhysics', 'InformationNetworks']}),
-	faction('Pirates', 'pirates', {is_naval: true, starting_technologies: ['DoctrineMobility']}),
-	faction('Drones', 'drone', {starting_technologies: ['IndustrialBase']}),
-	faction('Angels', 'angels', {starting_technologies: ['InformationNetworks', 'PlanetaryNetworks']}),
-	faction('Planetcult', 'fungboy', {starting_technologies: ['CentauriEcology', 'SocialPsych']}),
-	faction('Caretakers', 'caretake', {is_progenitor: true, starting_technologies: ['Biogenetics', 'CentauriEcology', 'InformationNetworks']}),
-	faction('Usurpers', 'usurper', {is_progenitor: true, starting_technologies: ['AppliedPhysics', 'Biogenetics', 'CentauriEcology']}),
 ];
 
 return {

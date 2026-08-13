@@ -64,6 +64,7 @@ def main():
     if not save_path.is_file() or save_path.stat().st_size == 0:
         raise RuntimeError("save phase did not produce a non-empty quicksave")
 
+    run_phase(args, "SAVE_LOAD_RUNTIME_RESUME_PASS")
     first_load = run_phase(args, "SAVE_LOAD_RUNTIME_LOAD_PASS")
     second_load = run_phase(args, "SAVE_LOAD_RUNTIME_LOAD_PASS")
     pattern = re.compile(r"SAVE_LOAD_RUNTIME_RANDOM_(\d+)")

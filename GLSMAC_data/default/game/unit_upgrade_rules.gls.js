@@ -108,7 +108,7 @@ const find_definition = (game, id) => {
 const get_targets = (game, player, source) => {
 	let result = [];
 	for (target of game.get_um().get_unit_defs()) {
-		if (is_compatible(source, target) && is_available(player, target)) {
+		if (is_available(player, target) && is_compatible(source, target)) {
 			result :+target;
 		}
 	}
@@ -305,6 +305,9 @@ const choose_ai_target = (game, player, unit) => {
 	const energy_credits = get_energy_credits(player);
 	const reserve = #max(20, #floor(#to_float(energy_credits) * 0.4));
 	const budget = #max(0, energy_credits - reserve);
+	if (budget == 0) {
+		return null;
+	}
 	let best = null;
 	let best_value = source_value;
 	let best_cost = 0;

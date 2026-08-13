@@ -64,3 +64,8 @@ best = pathfinding.find_best_reachable(tm, unit, can_enter, source_score);
 test.assert(best.target == source);
 test.assert(best.step == null);
 test.assert(best.distance == 0);
+
+detour_b.passable = true;
+test.assert(pathfinding.find_best_reachable(tm, unit, can_enter, destination_score, 2) == null);
+best = pathfinding.find_best_reachable(tm, unit, can_enter, destination_score, 3);
+test.assert(best.target == destination && best.distance == 3);

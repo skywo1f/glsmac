@@ -1,8 +1,5 @@
 return (i) => {
 	const game = i.glsmac.game;
-	if (#sizeof(game.get_players()) == 0) {
-		i.glsmac.add_single_player();
-	}
 
 	let starting = false;
 	const start = (faction_id) => {
@@ -10,7 +7,11 @@ return (i) => {
 			return;
 		}
 		starting = true;
-		game.event('select_faction', {faction: faction_id});
+		if (faction_id == 'RANDOM') {
+			i.glsmac.add_single_player();
+		} else {
+			i.glsmac.add_single_player(faction_id);
+		}
 		for (let opponent = 0; opponent < 6; opponent++) {
 			i.glsmac.add_ai_player();
 		}

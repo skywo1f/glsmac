@@ -865,6 +865,56 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( SMALL_MAP_STARTUP_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/small-map-startup-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${SMALL_MAP_STARTUP_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME small_map_startup_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${SMALL_MAP_STARTUP_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_small_map_startup_runtime_smoke"
+			--quickstart
+			--quickstart-ai "6"
+			--quickstart-mapsize "88x44"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1280x720"
+		)
+		SET_TESTS_PROPERTIES( small_map_startup_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "SMALL_MAP_STARTUP_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "SMALL_MAP_STARTUP_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 240
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
+		SET( SMALL_MAP_FRONTEND_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/small-map-frontend-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${SMALL_MAP_FRONTEND_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME small_map_frontend_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${SMALL_MAP_FRONTEND_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_small_map_frontend_runtime_smoke"
+			--quickstart
+			--quickstart-ai "6"
+			--quickstart-mapsize "88x44"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1280x720"
+		)
+		SET_TESTS_PROPERTIES( small_map_frontend_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "SMALL_MAP_FRONTEND_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "SMALL_MAP_FRONTEND_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 240
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
 		IF ( Python3_Interpreter_FOUND )
 			SET( SAVE_LOAD_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/save-load-runtime-smoke" )

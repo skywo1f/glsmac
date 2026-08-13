@@ -540,7 +540,7 @@ const choose_hurry = (candidates) => {
 const choose = (base, unit_defs, facility_defs, context) => {
 	let best = null;
 	const consider = (kind, def, score) => {
-		if (score == null || !base.can_set_production(kind, def.id)) {
+		if (score == null) {
 			return;
 		}
 		if (
@@ -552,9 +552,18 @@ const choose = (base, unit_defs, facility_defs, context) => {
 		}
 	};
 	for (def of unit_defs) {
+		if (
+			(#is_defined(context.is_unit_available) && !context.is_unit_available(def)) ||
+			!base.can_set_production('unit', def.id)
+		) {
+			continue;
+		}
 		consider('unit', def, score_unit(def, context));
 	}
 	for (def of facility_defs) {
+		if (!base.can_set_production(def.production_kind, def.id)) {
+			continue;
+		}
 		consider(
 			def.production_kind,
 			def,

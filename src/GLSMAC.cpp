@@ -286,7 +286,7 @@ WRAPIMPL_BEGIN( GLSMAC )
 		{
 			"add_single_player",
 			NATIVE_CALL( this ) {
-				N_EXPECT_ARGS( 0 );
+				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
 				if ( !m_state ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
 				}
@@ -296,7 +296,18 @@ WRAPIMPL_BEGIN( GLSMAC )
 				if ( !m_state->m_slots->GetSlots().empty() ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Single player is already prepared" );
 				}
-				AddSinglePlayerSlot( nullptr );
+				game::backend::faction::Faction* faction = nullptr;
+				if ( !arguments.empty() ) {
+					N_GETVALUE( faction_id, 0, String );
+					faction = m_state->GetFM()->Get( faction_id );
+					if ( !faction ) {
+						GSE_ERROR( gse::EC.GAME_ERROR, "Unknown playable faction: " + faction_id );
+					}
+					if ( faction->m_flags & game::backend::faction::Faction::FF_NATIVE ) {
+						GSE_ERROR( gse::EC.GAME_ERROR, "Planet cannot be selected as a playable faction" );
+					}
+				}
+				AddSinglePlayerSlot( faction );
 				return m_state->m_slots->GetSlot( 0 ).GetPlayer()->Wrap( GSE_CALL );
 			} )
 		},

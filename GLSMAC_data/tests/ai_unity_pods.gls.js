@@ -28,9 +28,22 @@ const tm = {
 		return null;
 	},
 };
-const game = {get_tm: () => { return tm; }};
+let explored = [source, near, detour, far];
+const player = {
+	has_explored: (candidate) => {
+		for (tile of explored) {
+			if (tile == candidate) { return true; }
+		}
+		return false;
+	},
+};
+const game = {
+	get_tm: () => { return tm; },
+	get_player: (id) => { return player; },
+};
 const definition = {weapon: 'HandWeapons'};
 let unit = {
+	owner: 1,
 	is_air: false,
 	is_immovable: false,
 	get_tile: () => { return source; },
@@ -43,6 +56,10 @@ test.assert(destination.target == near && destination.step == near && destinatio
 near.features.unity_pod = false;
 destination = unity_pods.choose_destination(game, unit, can_enter);
 test.assert(destination.target == far && destination.step == detour && destination.distance == 2);
+
+explored = [source, detour];
+test.assert(unity_pods.choose_destination(game, unit, can_enter) == null);
+explored = [source, near, detour, far];
 
 unit.is_air = true;
 test.assert(unity_pods.choose_destination(game, unit, can_enter) == null);

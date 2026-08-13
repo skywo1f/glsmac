@@ -1448,11 +1448,12 @@ void Game::InitializeFog() {
 	for ( size_t y = 0 ; y < m_map_data.height ; y++ ) {
 		for ( size_t x = y & 1 ; x < m_map_data.width ; x += 2 ) {
 			const auto& coords = m_tm->GetTile( x, y )->GetRenderData().selection_coords;
-			const auto center = mesh->AddVertex( coords.center, { 0.5f, 0.5f } );
-			const auto left = mesh->AddVertex( coords.left, { 0.0f, 1.0f } );
-			const auto top = mesh->AddVertex( coords.top, { 0.0f, 0.0f } );
-			const auto right = mesh->AddVertex( coords.right, { 1.0f, 0.0f } );
-			const auto bottom = mesh->AddVertex( coords.bottom, { 1.0f, 1.0f } );
+			const types::Color::color_t unexplored_tint = { 1.0f, 1.0f, 1.0f, 0.96f };
+			const auto center = mesh->AddVertex( coords.center, { 0.5f, 0.5f }, unexplored_tint );
+			const auto left = mesh->AddVertex( coords.left, { 0.0f, 1.0f }, unexplored_tint );
+			const auto top = mesh->AddVertex( coords.top, { 0.0f, 0.0f }, unexplored_tint );
+			const auto right = mesh->AddVertex( coords.right, { 1.0f, 0.0f }, unexplored_tint );
+			const auto bottom = mesh->AddVertex( coords.bottom, { 1.0f, 1.0f }, unexplored_tint );
 			mesh->AddSurface( { center, left, top } );
 			mesh->AddSurface( { center, top, right } );
 			mesh->AddSurface( { center, right, bottom } );
@@ -1838,6 +1839,7 @@ void Game::RefreshMapVisibility() {
 	const size_t selected_unit_id = selected_unit ? selected_unit->GetId() : 0;
 	size_t concealed_visible_count = 0;
 	size_t concealed_hidden_count = 0;
+	bool fog_mesh_changed = false;
 	for ( auto& it : m_tm->GetTiles() ) {
 		auto* const tile = &it.second;
 		const auto& coords = tile->GetCoords();
@@ -1890,6 +1892,7 @@ void Game::RefreshMapVisibility() {
 		const size_t fog_index = coords.y * ( m_map_data.width / 2 ) + coords.x / 2;
 		if ( m_fog_states.at( fog_index ) != fog_state ) {
 			m_fog_states.at( fog_index ) = fog_state;
+			fog_mesh_changed = true;
 			const float alpha = fog_state == FS_VISIBLE
 				? 0.0f
 				: ( fog_state == FS_EXPLORED ? 0.48f : 0.96f );
@@ -1900,6 +1903,9 @@ void Game::RefreshMapVisibility() {
 				);
 			}
 		}
+	}
+	if ( fog_mesh_changed ) {
+		fog_mesh->Update();
 	}
 
 	m_currently_visible_tiles = std::move( visible_tiles );

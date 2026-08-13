@@ -6,25 +6,34 @@ return (game) => {
 		let resolution_pending = false;
 		let accession_resolution_pending = false;
 		let defiance_victory_pending = false;
+		let ai_votes_pending = {};
+		let ai_supreme_responses_pending = {};
 
 		const process_session = () => {
 			if (!game.is_master() || game.is_game_over()) { return; }
 			const session = rules.get_session(game);
 			if (session == null) {
 				resolution_pending = false;
+				ai_votes_pending = {};
 				return;
 			}
+			let still_pending = {};
 			for (player of rules.get_voters(game)) {
 				if (
 					player.type == 'ai' &&
 					player.get_council_state().vote_id == rules.vote_pending
 				) {
-					game.event_as(player.id, 'cast_council_vote', {
-						player: player,
-						vote_id: council_ai.choose_vote(game, player, session),
-					});
+					const key = 'p' + #to_string(player.id);
+					still_pending[key] = true;
+					if (!#is_defined(ai_votes_pending[key])) {
+						game.event_as(player.id, 'cast_council_vote', {
+							player: player,
+							vote_id: council_ai.choose_vote(game, player, session),
+						});
+					}
 				}
 			}
+			ai_votes_pending = still_pending;
 			const tally = rules.get_tally(game);
 			if (tally != null && tally.all_voted && !resolution_pending) {
 				resolution_pending = true;
@@ -84,18 +93,25 @@ return (game) => {
 			if (supreme == null) {
 				accession_resolution_pending = false;
 				defiance_victory_pending = false;
+				ai_supreme_responses_pending = {};
 				return;
 			}
 			if (!supreme.resolved) {
 				defiance_victory_pending = false;
+				let still_pending = {};
 				for (player of rules.get_pending_supreme_players(game)) {
 					if (player.type == 'ai') {
-						game.event_as(player.id, 'respond_supreme_leader', {
-							player: player,
-							defy: council_ai.choose_supreme_defiance(player, supreme.leader),
-						});
+						const key = 'p' + #to_string(player.id);
+						still_pending[key] = true;
+						if (!#is_defined(ai_supreme_responses_pending[key])) {
+							game.event_as(player.id, 'respond_supreme_leader', {
+								player: player,
+								defy: council_ai.choose_supreme_defiance(player, supreme.leader),
+							});
+						}
 					}
 				}
+				ai_supreme_responses_pending = still_pending;
 				if (
 					(!rules.has_surviving_faction(game, supreme.leader) ||
 						#sizeof(rules.get_pending_supreme_players(game)) == 0) &&
@@ -108,6 +124,7 @@ return (game) => {
 			}
 
 			accession_resolution_pending = false;
+			ai_supreme_responses_pending = {};
 			if (
 				rules.get_supreme_defiance_winner(game) != null &&
 				!defiance_victory_pending

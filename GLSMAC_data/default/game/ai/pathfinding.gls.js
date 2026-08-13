@@ -45,7 +45,7 @@ const find_path_step = (tm, unit, destination, can_enter) => {
 	return null;
 };
 
-const find_best_reachable = (tm, unit, can_enter, score) => {
+const find_best_reachable = (tm, unit, can_enter, score, max_distance) => {
 	const source = unit.get_tile();
 	let visited = {};
 	let queue_x = [source.x];
@@ -92,6 +92,9 @@ const find_best_reachable = (tm, unit, can_enter, score) => {
 			best_distance = distance;
 			best_first_x = first_x;
 			best_first_y = first_y;
+		}
+		if (#is_defined(max_distance) && distance >= max_distance) {
+			continue;
 		}
 
 		for (candidate of current.get_surrounding_tiles()) {

@@ -110,5 +110,5 @@ test.assert(result.counts == {
 	abilities: 24,
 	predefined_units: 14,
 	moralesets: 2,
-	factions: 15,
+	factions: 8,
 });
