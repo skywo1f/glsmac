@@ -228,6 +228,12 @@ const update_diplomacy = (game, player) => {
 			const request_contact = (
 				#typeof(trade.request_contact) != 'Int' || trade.request_contact < 0
 			) ? null : game.get_player(trade.request_contact);
+			const find_trade_base = game.get('f_diplomacy_find_base');
+			const get_base_value = game.get('f_diplomacy_get_base_trade_value');
+			const offer_base = #typeof(trade.offer_base) == 'Int' && trade.offer_base >= 0
+				? find_trade_base(trade.offer_base) : null;
+			const request_base = #typeof(trade.request_base) == 'Int' && trade.request_base >= 0
+				? find_trade_base(trade.request_base) : null;
 			const count_shareable = game.get('f_exploration_count_shareable_tiles');
 			const map_area = #max(
 				1,
@@ -256,6 +262,8 @@ const update_diplomacy = (game, player) => {
 						? 0 : 20 + #ceil(#to_float(offer_map_tiles * 160) / #to_float(map_area)),
 					request_map_value: request_map_tiles == 0
 						? 0 : 20 + #ceil(#to_float(request_map_tiles * 160) / #to_float(map_area)),
+					offer_base_value: offer_base == null ? 0 : get_base_value(offer_base),
+					request_base_value: request_base == null ? 0 : get_base_value(request_base),
 				}) >= 0.0,
 			});
 			return;

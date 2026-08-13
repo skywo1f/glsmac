@@ -117,6 +117,16 @@ const get_map_value = (state, key) => {
 	return #typeof(value) == 'Int' ? value : 0;
 };
 
+const get_base_id = (terms, key) => {
+	const value = terms[key];
+	return #typeof(value) == 'Int' ? value : 0 - 1;
+};
+
+const get_base_value = (state, key) => {
+	const value = state[key];
+	return #typeof(value) == 'Int' ? value : 0;
+};
+
 const get_trade_acceptance_score = (state) => {
 	if (state.relation == 'vendetta') {
 		return 0.0 - 100000.0;
@@ -148,6 +158,12 @@ const get_trade_acceptance_score = (state) => {
 		given += #to_float(get_map_value(state, 'request_map_value')) *
 			get_shared_contact_multiplier(state.relation);
 	}
+	if (get_base_id(state.terms, 'offer_base') >= 0) {
+		received += #to_float(get_base_value(state, 'offer_base_value'));
+	}
+	if (get_base_id(state.terms, 'request_base') >= 0) {
+		given += #to_float(get_base_value(state, 'request_base_value'));
+	}
 	return received - given - 5.0;
 };
 
@@ -161,6 +177,8 @@ const reverse_terms = (terms) => {
 		request_contact: get_contact_id(terms, 'offer_contact'),
 		offer_map: has_map_term(terms, 'request_map'),
 		request_map: has_map_term(terms, 'offer_map'),
+		offer_base: get_base_id(terms, 'request_base'),
+		request_base: get_base_id(terms, 'offer_base'),
 	};
 };
 
@@ -183,6 +201,8 @@ const score_trade_proposal = (
 		request_contact_value: request_contact_value,
 		offer_map_value: get_map_value(state, 'own_map_value'),
 		request_map_value: get_map_value(state, 'other_map_value'),
+		offer_base_value: get_base_value(state, 'offer_base_value'),
+		request_base_value: get_base_value(state, 'request_base_value'),
 	});
 	if (recipient_score < 0.0) {
 		return null;
@@ -198,6 +218,8 @@ const score_trade_proposal = (
 		request_contact_value: offer_contact_value,
 		offer_map_value: get_map_value(state, 'other_map_value'),
 		request_map_value: get_map_value(state, 'own_map_value'),
+		offer_base_value: get_base_value(state, 'request_base_value'),
+		request_base_value: get_base_value(state, 'offer_base_value'),
 	});
 	if (proposer_score < 0.0) {
 		return null;

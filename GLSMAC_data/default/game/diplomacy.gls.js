@@ -1,3 +1,5 @@
+const diplomatic_base_transfer = #include('./diplomatic_base_transfer');
+
 const is_player = (player) => {
 	return (
 		#typeof(player) == 'Object' &&
@@ -309,6 +311,14 @@ const get_request_map = (terms) => {
 	return #typeof(terms.request_map) == 'Bool' ? terms.request_map : false;
 };
 
+const get_offer_base = (terms) => {
+	return #typeof(terms.offer_base) == 'Int' ? terms.offer_base : 0 - 1;
+};
+
+const get_request_base = (terms) => {
+	return #typeof(terms.request_base) == 'Int' ? terms.request_base : 0 - 1;
+};
+
 const find_player = (game, player_id) => {
 	if (#typeof(game.get_players) != 'Callable') {
 		return null;
@@ -349,7 +359,9 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(#is_defined(terms.offer_contact) && #typeof(terms.offer_contact) != 'Int') ||
 		(#is_defined(terms.request_contact) && #typeof(terms.request_contact) != 'Int') ||
 		(#is_defined(terms.offer_map) && #typeof(terms.offer_map) != 'Bool') ||
-		(#is_defined(terms.request_map) && #typeof(terms.request_map) != 'Bool')
+		(#is_defined(terms.request_map) && #typeof(terms.request_map) != 'Bool') ||
+		(#is_defined(terms.offer_base) && #typeof(terms.offer_base) != 'Int') ||
+		(#is_defined(terms.request_base) && #typeof(terms.request_base) != 'Int')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
 	}
@@ -366,11 +378,19 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	const request_contact = get_request_contact(terms);
 	const offer_map = get_offer_map(terms);
 	const request_map = get_request_map(terms);
+	const offer_base = get_offer_base(terms);
+	const request_base = get_request_base(terms);
 	if (
 		offer_contact < -1 || offer_contact >= 64 ||
 		request_contact < -1 || request_contact >= 64
 	) {
 		return 'Diplomatic trade commlink is out of range';
+	}
+	if (
+		offer_base < -1 || offer_base > 1000000000 ||
+		request_base < -1 || request_base > 1000000000
+	) {
+		return 'Diplomatic trade base ID is out of range';
 	}
 	if (offer_contact >= 0 && offer_contact == request_contact) {
 		return 'Diplomatic trade cannot exchange a commlink for itself';
@@ -379,7 +399,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		terms.offer_energy == 0 && terms.offer_technology == '' &&
 		terms.request_energy == 0 && terms.request_technology == '' &&
 		offer_contact < 0 && request_contact < 0 &&
-		!offer_map && !request_map
+		!offer_map && !request_map && offer_base < 0 && request_base < 0
 	) {
 		return 'Diplomatic trade cannot be empty';
 	}
@@ -451,6 +471,18 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		if (request_map && count_shareable(recipient, proposer) == 0) {
 			return 'The requested world map contains no new exploration data';
 		}
+	}
+	const offer_base_error = diplomatic_base_transfer.validate_transfer(
+		game, offer_base, proposer, recipient, 'offered'
+	);
+	if (#is_defined(offer_base_error)) {
+		return offer_base_error;
+	}
+	const request_base_error = diplomatic_base_transfer.validate_transfer(
+		game, request_base, recipient, proposer, 'requested'
+	);
+	if (#is_defined(request_base_error)) {
+		return request_base_error;
 	}
 };
 
@@ -650,6 +682,20 @@ return (game) => {
 		game.set('f_diplomacy_clear_offers', clear_offers);
 		game.set('f_diplomacy_validate_trade', (proposer, recipient, terms) => {
 			return validate_trade(game, proposer, recipient, terms);
+		});
+		game.set('f_diplomacy_get_offer_base', get_offer_base);
+		game.set('f_diplomacy_get_request_base', get_request_base);
+		game.set('f_diplomacy_find_base', (base_id) => {
+			return diplomatic_base_transfer.find_base(game, base_id);
+		});
+		game.set('f_diplomacy_get_base_trade_value', (base) => {
+			return diplomatic_base_transfer.get_base_trade_value(game, base);
+		});
+		game.set('f_diplomacy_transfer_base', (base, new_owner) => {
+			return diplomatic_base_transfer.transfer_base(game, base, new_owner);
+		});
+		game.set('f_diplomacy_restore_base_transfer', (snapshot) => {
+			return diplomatic_base_transfer.restore_transfer(game, snapshot);
 		});
 		game.set('f_diplomacy_get_loan_parties', get_loan_parties);
 		game.set('f_diplomacy_validate_loan_offer', validate_loan_offer);

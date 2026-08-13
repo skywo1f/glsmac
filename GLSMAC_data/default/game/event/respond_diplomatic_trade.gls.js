@@ -53,6 +53,7 @@ return {
 			previous_counter: proposer.get_diplomatic_trade(player),
 			contacts: [],
 			maps: [],
+			bases: [],
 		};
 		player.clear_diplomatic_trade(proposer);
 		if (e.data.accept) {
@@ -77,6 +78,20 @@ return {
 			}
 			if (#is_defined(terms.request_map) && terms.request_map) {
 				snapshot.maps :+e.game.get('f_exploration_apply_map_share')(player, proposer);
+			}
+			const offer_base_id = e.game.get('f_diplomacy_get_offer_base')(terms);
+			if (offer_base_id >= 0) {
+				snapshot.bases :+e.game.get('f_diplomacy_transfer_base')(
+					e.game.get('f_diplomacy_find_base')(offer_base_id),
+					player
+				);
+			}
+			const request_base_id = e.game.get('f_diplomacy_get_request_base')(terms);
+			if (request_base_id >= 0) {
+				snapshot.bases :+e.game.get('f_diplomacy_transfer_base')(
+					e.game.get('f_diplomacy_find_base')(request_base_id),
+					proposer
+				);
 			}
 			if (terms.offer_energy > 0 || terms.request_energy > 0) {
 				e.game.trigger('economy_updated', {player: player});
@@ -121,6 +136,9 @@ return {
 		}
 		for (let map_index = #sizeof(e.applied.maps) - 1; map_index >= 0; map_index--) {
 			e.game.get('f_exploration_rollback_reveal')(e.applied.maps[map_index]);
+		}
+		for (let base_index = #sizeof(e.applied.bases) - 1; base_index >= 0; base_index--) {
+			e.game.get('f_diplomacy_restore_base_transfer')(e.applied.bases[base_index]);
 		}
 		if (e.applied.previous_counter == null) {
 			proposer.clear_diplomatic_trade(player);

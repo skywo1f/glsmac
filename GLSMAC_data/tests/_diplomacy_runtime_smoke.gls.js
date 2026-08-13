@@ -111,6 +111,48 @@
 				e.data.target.set_contact(e.data.player, e.applied.target_player);
 			},
 		});
+		game.register_event('diplomacy_runtime_create_trade_bases', {
+			validate: (e) => {
+				if (e.caller != 0 && e.caller != e.data.player.id) {
+					return 'Only the runtime test player may create trade bases';
+				}
+			},
+			apply: (e) => {
+				const bm = e.game.get_bm();
+				const tm = e.game.get_tm();
+				let player_base = null;
+				let target_base = null;
+				for (let y = 0; y < tm.get_map_height() && target_base == null; y++) {
+					for (let x = y % 2; x < tm.get_map_width() && target_base == null; x += 2) {
+						const tile = tm.get_tile(x, y);
+						if (
+							!tile.is_land || tile.is_locked() || tile.get_base() != null ||
+							#sizeof(tile.get_units(true)) > 0
+						) {
+							continue;
+						}
+						if (player_base == null) {
+							player_base = bm.spawn_base(e.data.player, tile, {
+								name: 'Runtime Exchange Alpha', production: 'ScoutPatrol',
+							});
+						} else {
+							target_base = bm.spawn_base(e.data.target, tile, {
+								name: 'Runtime Exchange Beta', production: 'ScoutPatrol',
+							});
+						}
+					}
+				}
+				return {player_base: player_base, target_base: target_base};
+			},
+			rollback: (e) => {
+				if (e.applied.target_base != null) {
+					e.game.get_bm().despawn_base(e.applied.target_base);
+				}
+				if (e.applied.player_base != null) {
+					e.game.get_bm().despawn_base(e.applied.player_base);
+				}
+			},
+		});
 		game.register_event('diplomacy_runtime_prepare_surrender', {
 			validate: (e) => {
 				if (e.caller != 0 && e.caller != e.data.player.id) {
@@ -129,6 +171,8 @@
 		game.on('start_ui', (e) => {
 			let player = game.get_player();
 			let debt_before_vendetta = 0;
+			let player_trade_base = null;
+			let other_trade_base = null;
 			const get_owned_base = (owner) => {
 				for (base of game.get_bm().get_bases()) {
 					if (base.get_owner().id == owner.id) {
@@ -148,6 +192,44 @@
 				fail('quickstart did not create an opponent');
 				return;
 			}
+			const create_trade_bases = (done) => {
+				game.event('diplomacy_runtime_create_trade_bases', {
+					player: player,
+					target: other,
+				});
+				wait_for(
+					() => {
+						for (base of game.get_bm().get_bases()) {
+							if (base.name == 'Runtime Exchange Alpha') {
+								player_trade_base = base;
+							} else if (base.name == 'Runtime Exchange Beta') {
+								other_trade_base = base;
+							}
+						}
+						return player_trade_base != null && other_trade_base != null;
+					},
+					'could not create deterministic bases for diplomatic exchange',
+					done
+				);
+			};
+			const prepare_manual_opponent = (done) => {
+				game.event_as(other.id, 'complete_turn', {});
+				wait_for(
+					() => { return game.is_turn_complete(other.id); },
+					'could not pause the quickstart AI before manual diplomacy',
+					() => {
+						#async(750, () => {
+							game.event_as(other.id, 'uncomplete_turn', {});
+							wait_for(
+								() => { return !game.is_turn_complete(other.id); },
+								'could not reopen the quickstart AI turn for manual diplomacy',
+								done
+							);
+							return false;
+						});
+					}
+				);
+			};
 			const exercise_diplomacy = () => {
 			if (
 				!player.has_contact(other) || !other.has_contact(player) ||
@@ -200,7 +282,7 @@
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology and world-map counteroffers, loan repayment, betrayal integrity, vendetta debt, and AI submission conquest'
+									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology, world-map and base counteroffers, loan repayment, betrayal integrity, vendetta debt, and AI submission conquest'
 								);
 								glsmac.exit();
 							}
@@ -401,6 +483,8 @@
 									request_technology: requested_technology,
 									offer_map: true,
 									request_map: true,
+									offer_base: player_trade_base.id,
+									request_base: other_trade_base.id,
 								},
 							});
 							wait_for(
@@ -420,12 +504,14 @@
 											request_contact: 0 - 1,
 											offer_map: true,
 											request_map: true,
+											offer_base: other_trade_base.id,
+											request_base: player_trade_base.id,
 										},
 									});
 									wait_for(
 										() => { return player.get_diplomatic_trade(other) != null; },
 										'counteroffer was not stored',
-										() => {
+									() => {
 											game.event('respond_diplomatic_trade', {
 												player: player,
 												proposer: other,
@@ -436,12 +522,14 @@
 													return (
 														player.get_diplomatic_trade(other) == null &&
 														player.has_technology(requested_technology) &&
-														other.has_technology(offered_technology) &&
-														player.has_explored(other_map_tile) &&
-														other.has_explored(player_map_tile)
-													);
-												},
-												'accepted counteroffer did not transfer its technologies and world maps',
+													other.has_technology(offered_technology) &&
+													player.has_explored(other_map_tile) &&
+													other.has_explored(player_map_tile) &&
+													player_trade_base.get_owner().id == other.id &&
+													other_trade_base.get_owner().id == player.id
+												);
+											},
+												'accepted counteroffer did not transfer its technologies, world maps, and bases',
 												() => { exercise_loan(); }
 											);
 										}
@@ -453,17 +541,19 @@
 				}
 			);
 			};
-			game.event('diplomacy_runtime_prepare_contacts', {
-				player: player,
-				target: other,
+			prepare_manual_opponent(() => {
+				game.event('diplomacy_runtime_prepare_contacts', {
+					player: player,
+					target: other,
+				});
+				wait_for(
+					() => {
+						return player.has_contact(other) && other.has_contact(player);
+					},
+					'could not prepare deterministic commlink state',
+					() => { create_trade_bases(exercise_diplomacy); }
+				);
 			});
-			wait_for(
-				() => {
-					return player.has_contact(other) && other.has_contact(player);
-				},
-				'could not prepare deterministic commlink state',
-				exercise_diplomacy
-			);
 		});
 	});
 

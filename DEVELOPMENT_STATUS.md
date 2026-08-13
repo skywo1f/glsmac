@@ -218,11 +218,14 @@ scenarios, for:
 - persistent eight-level diplomatic integrity, with treaty and pact betrayal
   consequences shared by declarations of war, direct attacks, and detected
   covert operations, plus rollback, player diagnostics, and trust-aware AI;
-- persistent structured energy, technology, commlink, and world-map trade
-  offers; human players can build bundled deals and atomically replace an
-  incoming offer with an editable reverse counteroffer, with exact event
-  rollback, while relation-, strength-, opponent-, and value-aware AI proposes
-  and responds to the same terms;
+- persistent structured energy, technology, commlink, world-map, and base trade
+  offers; human players can build bundled gifts, purchases, and swaps and
+  atomically replace an incoming offer with an editable reverse counteroffer,
+  with exact event rollback; Headquarters and last-base transfers are rejected,
+  supported units are rehomed, production queues are revalidated, project
+  acquisition effects are applied, and AI factions value and respond to base
+  terms alongside the other relation-, strength-, opponent-, and value-aware
+  trade terms;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
@@ -349,8 +352,9 @@ not mean that the game is feature-complete or balanced.
 The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper original diplomacy branches beyond the implemented relations, bundled
-  trade and counteroffers, loans, and surrender, including base exchange,
-  coercive demands, and coordinated military requests;
+  trade and counteroffers, loans, surrender, and player-authored base exchange,
+  including autonomous AI base purchases/swaps, coercive demands, and
+  coordinated military requests;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots and subsequent entity events so concealed information
   is not present client-side;
@@ -821,6 +825,20 @@ native/script tests passed in 309.67 seconds. The installed-asset diplomacy
 runtime passed in 36.55 seconds after proposing, countering, and accepting a
 reciprocal technology and world-map exchange. Ordinary multiplayer passed in
 66.87 seconds, and running reconnect passed in 63.06 seconds.
+
+After diplomatic base gifts, purchases, and swaps were added, the final Windows
+x64 Release rebuild succeeded in 64.6 seconds and all 111 isolated
+native/script tests passed in 307.75 seconds. The installed-asset diplomacy
+runtime carried a reciprocal base swap through a native counteroffer, verified
+both new owners, and passed three consecutive stress runs in 30.70, 29.88, and
+29.43 seconds. The fixture now pauses the quickstart AI before manually driving
+the second faction, removing a real scheduler race exposed by the final rerun.
+Opponent base selectors hide unexplored bases unless an incoming offer
+explicitly discloses one. Ordinary multiplayer passed in 67.62 seconds, and
+running reconnect passed in 62.01 seconds. Pending trade base IDs use player
+serialization extension version 3; direct fixtures verify that version 1 and
+version 2 data still load with absent base terms, while new data preserves the
+IDs through cloning, save round trips, and network state.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -75,6 +75,31 @@ fair_swap.relation = 'treaty';
 fair_swap.terms.offer_technology = '';
 test.assert(diplomacy.get_trade_acceptance_score(fair_swap) < 0.0);
 
+const base_purchase = {
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	terms: {
+		offer_energy: 0,
+		offer_technology: '',
+		request_energy: 200,
+		request_technology: '',
+		offer_base: 11,
+		request_base: 0 - 1,
+	},
+	offer_base_value: 300,
+	request_base_value: 0,
+};
+test.assert(diplomacy.get_trade_acceptance_score(base_purchase) >= 0.0);
+base_purchase.terms.request_energy = 325;
+test.assert(diplomacy.get_trade_acceptance_score(base_purchase) < 0.0);
+base_purchase.terms.request_energy = 0;
+base_purchase.terms.offer_base = 0 - 1;
+base_purchase.terms.offer_energy = 100;
+base_purchase.terms.request_base = 21;
+base_purchase.request_base_value = 300;
+test.assert(diplomacy.get_trade_acceptance_score(base_purchase) < 0.0);
+
 let trade_proposal = diplomacy.get_trade_proposal({
 	relation: 'treaty',
 	own_power: 10.0,

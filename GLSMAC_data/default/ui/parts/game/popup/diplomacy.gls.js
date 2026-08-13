@@ -17,7 +17,15 @@ const contact_name = (game, id) => {
 	return id < 0 ? '' : #to_string(game.get_player(id).name);
 };
 
-const trade_side_text = (game, energy, technology, contact, world_map) => {
+const base_name = (game, id) => {
+	if (#typeof(id) != 'Int' || id < 0) {
+		return '';
+	}
+	const base = game.get('f_diplomacy_find_base')(id);
+	return base == null ? 'Unknown base' : #to_string(base.name);
+};
+
+const trade_side_text = (game, energy, technology, contact, world_map, base_id) => {
 	let parts = [];
 	if (energy > 0) {
 		parts :+(#to_string(energy) + ' EC');
@@ -30,6 +38,9 @@ const trade_side_text = (game, energy, technology, contact, world_map) => {
 	}
 	if (#typeof(world_map) == 'Bool' && world_map) {
 		parts :+'World map';
+	}
+	if (#typeof(base_id) == 'Int' && base_id >= 0) {
+		parts :+('Base: ' + base_name(game, base_id));
 	}
 	if (#sizeof(parts) == 0) {
 		return 'nothing';
@@ -45,10 +56,10 @@ const trade_text = (game, terms) => {
 	return (
 		'Offers ' + trade_side_text(
 			game, terms.offer_energy, terms.offer_technology, terms.offer_contact,
-			terms.offer_map
+			terms.offer_map, terms.offer_base
 		) + '; requests ' + trade_side_text(
 			game, terms.request_energy, terms.request_technology, terms.request_contact,
-			terms.request_map
+			terms.request_map, terms.request_base
 		)
 	);
 };
@@ -104,6 +115,8 @@ return {
 		this.offer_technology = null;
 		this.offer_contact_label = null;
 		this.offer_contact = null;
+		this.offer_base_label = null;
+		this.offer_base = null;
 		this.offer_energy_label = null;
 		this.offer_energy = null;
 		this.offer_map = null;
@@ -111,6 +124,8 @@ return {
 		this.request_technology = null;
 		this.request_contact_label = null;
 		this.request_contact = null;
+		this.request_base_label = null;
+		this.request_base = null;
 		this.request_energy_label = null;
 		this.request_energy = null;
 		this.request_map = null;
@@ -190,7 +205,7 @@ return {
 			});
 		}
 
-		return p.create('DIPLOMACY', 600, 710, (body, cb) => {
+		return p.create('DIPLOMACY', 600, 760, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});
 			this.opponent_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -292,54 +307,68 @@ return {
 				class: 'popup-list-select', align: 'top right', right: 10, top: 222,
 				width: 360, items: [['-1', 'No commlink']], value: '-1',
 			});
+			this.offer_base_label = body.text({
+				class: 'game-popup-text', text: 'Offer base:', left: 10, top: 254,
+			});
+			this.offer_base = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 250,
+				width: 360, items: [['-1', 'No base']], value: '-1',
+			});
 			this.offer_energy_label = body.text({
-				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 254,
+				class: 'game-popup-text', text: 'Offer energy:', left: 10, top: 282,
 			});
 			this.offer_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 210, top: 250,
+				class: 'popup-input', align: 'top right', right: 210, top: 278,
 				width: 120, value: '0',
 			});
 			this.offer_map = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 250,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 278,
 				width: 190, items: [['0', 'No world map'], ['1', 'World map']], value: '0',
 			});
 			this.request_technology_label = body.text({
-				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 282,
+				class: 'game-popup-text', text: 'Request technology:', left: 10, top: 310,
 			});
 			this.request_technology = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 278,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 306,
 				width: 360, items: [['', 'No technology']], value: '',
 			});
 			this.request_contact_label = body.text({
-				class: 'game-popup-text', text: 'Request commlink:', left: 10, top: 310,
+				class: 'game-popup-text', text: 'Request commlink:', left: 10, top: 338,
 			});
 			this.request_contact = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 306,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 334,
 				width: 360, items: [['-1', 'No commlink']], value: '-1',
 			});
+			this.request_base_label = body.text({
+				class: 'game-popup-text', text: 'Request base:', left: 10, top: 366,
+			});
+			this.request_base = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 362,
+				width: 360, items: [['-1', 'No base']], value: '-1',
+			});
 			this.request_energy_label = body.text({
-				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 338,
+				class: 'game-popup-text', text: 'Request energy:', left: 10, top: 394,
 			});
 			this.request_energy = body.input({
-				class: 'popup-input', align: 'top right', right: 210, top: 334,
+				class: 'popup-input', align: 'top right', right: 210, top: 390,
 				width: 120, value: '0',
 			});
 			this.request_map = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 334,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 390,
 				width: 190, items: [['0', 'No world map'], ['1', 'World map']], value: '0',
 			});
 			this.trade_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 366,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 422,
 			});
 			this.propose_trade_button = body.button({
-				class: 'game-popup-button', text: 'Propose Trade', top: 390,
+				class: 'game-popup-button', text: 'Propose Trade', top: 446,
 			});
 			this.propose_trade_button.on('click', (e) => {
 				this.propose_trade();
 				return true;
 			});
 			this.accept_trade = body.button({
-				class: 'game-popup-button', text: 'Accept Trade', left: 10, top: 390,
+				class: 'game-popup-button', text: 'Accept Trade', left: 10, top: 446,
 				width: 180,
 			});
 			this.accept_trade.on('click', (e) => {
@@ -347,7 +376,7 @@ return {
 				return true;
 			});
 			this.counter_trade = body.button({
-				class: 'game-popup-button', text: 'Counter Trade', left: 210, top: 390,
+				class: 'game-popup-button', text: 'Counter Trade', left: 210, top: 446,
 				width: 180,
 			});
 			this.counter_trade.on('click', (e) => {
@@ -355,7 +384,7 @@ return {
 				return true;
 			});
 			this.reject_trade = body.button({
-				class: 'game-popup-button', text: 'Reject Trade', right: 10, top: 390,
+				class: 'game-popup-button', text: 'Reject Trade', right: 10, top: 446,
 				width: 180,
 			});
 			this.reject_trade.on('click', (e) => {
@@ -364,55 +393,55 @@ return {
 			});
 
 			this.loan_text = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 442,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 494,
 			});
 			this.loan_principal_label = body.text({
-				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 470,
+				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 522,
 			});
 			this.loan_principal = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 466,
+				class: 'popup-input', align: 'top right', right: 10, top: 518,
 				width: 160, value: '100',
 			});
 			this.loan_payment_label = body.text({
-				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 498,
+				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 550,
 			});
 			this.loan_payment = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 494,
+				class: 'popup-input', align: 'top right', right: 10, top: 546,
 				width: 160, value: '7',
 			});
 			this.loan_turns_label = body.text({
-				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 526,
+				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 578,
 			});
 			this.loan_turns = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 522,
+				class: 'popup-input', align: 'top right', right: 10, top: 574,
 				width: 160, value: '20',
 			});
 			this.loan_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 550,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 606,
 			});
 			this.offer_loan_button = body.button({
-				class: 'game-popup-button', text: 'Offer Loan', top: 578,
+				class: 'game-popup-button', text: 'Offer Loan', top: 634,
 			});
 			this.offer_loan_button.on('click', (e) => {
 				this.propose_loan(true);
 				return true;
 			});
 			this.request_loan_button = body.button({
-				class: 'game-popup-button', text: 'Request Loan', top: 602,
+				class: 'game-popup-button', text: 'Request Loan', top: 658,
 			});
 			this.request_loan_button.on('click', (e) => {
 				this.propose_loan(false);
 				return true;
 			});
 			this.accept_loan = body.button({
-				class: 'game-popup-button', text: 'Accept Loan', top: 578,
+				class: 'game-popup-button', text: 'Accept Loan', top: 634,
 			});
 			this.accept_loan.on('click', (e) => {
 				this.respond_loan(true);
 				return true;
 			});
 			this.reject_loan = body.button({
-				class: 'game-popup-button', text: 'Reject Loan', top: 602,
+				class: 'game-popup-button', text: 'Reject Loan', top: 658,
 			});
 			this.reject_loan.on('click', (e) => {
 				this.respond_loan(false);
@@ -420,7 +449,7 @@ return {
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Close', top: 674, is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 724, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -434,6 +463,8 @@ return {
 		this.request_energy.value = '0';
 		this.offer_contact.value = '-1';
 		this.request_contact.value = '-1';
+		this.offer_base.value = '-1';
+		this.request_base.value = '-1';
 		this.offer_map.value = '0';
 		this.request_map.value = '0';
 		this.countering_trade = false;
@@ -507,6 +538,8 @@ return {
 				request_contact: #to_int(this.request_contact.value),
 				offer_map: this.offer_map.value == '1',
 				request_map: this.request_map.value == '1',
+				offer_base: #to_int(this.offer_base.value),
+				request_base: #to_int(this.request_base.value),
 		};
 		const action = get_trade_action(
 			this.player,
@@ -534,6 +567,9 @@ return {
 		);
 		this.offer_map.value = #typeof(incoming.request_map) == 'Bool' && incoming.request_map
 			? '1' : '0';
+		this.offer_base.value = #to_string(
+			#typeof(incoming.request_base) == 'Int' ? incoming.request_base : 0 - 1
+		);
 		this.request_energy.value = #to_string(incoming.offer_energy);
 		this.request_technology.value = incoming.offer_technology;
 		this.request_contact.value = #to_string(
@@ -541,6 +577,9 @@ return {
 		);
 		this.request_map.value = #typeof(incoming.offer_map) == 'Bool' && incoming.offer_map
 			? '1' : '0';
+		this.request_base.value = #to_string(
+			#typeof(incoming.offer_base) == 'Int' ? incoming.offer_base : 0 - 1
+		);
 	},
 
 	respond_trade: (accept) => {
@@ -623,6 +662,32 @@ return {
 			: [['0', 'No world map']];
 	},
 
+	get_base_items: (source, viewer, disclosed_base_id) => {
+		let items = [['-1', 'No base']];
+		let owned = [];
+		for (base of this.p.game.get_bm().get_bases()) {
+			if (base.get_owner().id == source.id) {
+				owned :+base;
+			}
+		}
+		if (#sizeof(owned) <= 1) {
+			return items;
+		}
+		for (base of owned) {
+			const is_disclosed = (
+				#typeof(disclosed_base_id) == 'Int' && base.id == disclosed_base_id
+			);
+			const is_known = (
+				viewer == null || source.id == viewer.id ||
+				#typeof(viewer.has_explored) != 'Callable' || viewer.has_explored(base.get_tile())
+			);
+			if (!base.has_facility('Headquarters') && (is_known || is_disclosed)) {
+				items :+[#to_string(base.id), #to_string(base.name)];
+			}
+		}
+		return items;
+	},
+
 	refresh: () => {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
@@ -633,10 +698,12 @@ return {
 		const trade_editor = [
 			this.offer_technology_label, this.offer_technology,
 			this.offer_contact_label, this.offer_contact,
+			this.offer_base_label, this.offer_base,
 			this.offer_energy_label, this.offer_energy,
 			this.offer_map,
 			this.request_technology_label, this.request_technology,
 			this.request_contact_label, this.request_contact,
+			this.request_base_label, this.request_base,
 			this.request_energy_label, this.request_energy,
 			this.request_map,
 			this.propose_trade_button,
@@ -798,6 +865,14 @@ return {
 		this.request_contact.items = this.get_contact_items(this.target, this.player);
 		this.offer_map.items = this.get_map_items(this.player, this.target);
 		this.request_map.items = this.get_map_items(this.target, this.player);
+		this.offer_base.items = this.get_base_items(this.player, this.player, 0 - 1);
+		this.request_base.items = this.get_base_items(
+			this.target,
+			this.player,
+			this.countering_trade && incoming_trade != null &&
+				#typeof(incoming_trade.offer_base) == 'Int'
+				? incoming_trade.offer_base : 0 - 1
+		);
 		if (!this.countering_trade) {
 			this.offer_technology.value = '';
 			this.request_technology.value = '';
@@ -805,6 +880,8 @@ return {
 			this.request_contact.value = '-1';
 			this.offer_map.value = '0';
 			this.request_map.value = '0';
+			this.offer_base.value = '-1';
+			this.request_base.value = '-1';
 		}
 		this.propose_trade_button.text = this.countering_trade
 			? 'Send Counter' : 'Propose Trade';

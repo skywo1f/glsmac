@@ -352,6 +352,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					-1,
 					true,
 					false,
+					11,
+					21,
 				};
 				source.SetDiplomaticTrade( 5, trade );
 				const Player::diplomatic_trade_t commlink_trade = {
@@ -537,7 +539,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				const auto retired_designs_field_size = retired_designs_field.ToString().size();
 				types::Buffer player_extension;
-				player_extension.WriteInt( 2 );
+				player_extension.WriteInt( 3 );
 				player_extension.WriteBool( false );
 				player_extension.WriteInt( source.GetContactedPlayers().size() );
 				for ( const auto player_id : source.GetContactedPlayers() ) {
@@ -549,6 +551,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				player_extension.WriteInt( trade.request_contact );
 				player_extension.WriteBool( trade.offer_map );
 				player_extension.WriteBool( trade.request_map );
+				player_extension.WriteInt( trade.offer_base );
+				player_extension.WriteInt( trade.request_base );
 				player_extension.WriteBool( false );
 				player_extension.WriteInt( source.GetExploredTiles().size() );
 				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
@@ -788,8 +792,41 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT(
 					version_one.GetDiplomaticTrade( 5 ) &&
-					!version_one.GetDiplomaticTrade( 5 )->offer_map,
+					!version_one.GetDiplomaticTrade( 5 )->offer_map &&
+					version_one.GetDiplomaticTrade( 5 )->offer_base == -1 &&
+					version_one.GetDiplomaticTrade( 5 )->request_base == -1,
 					"version-one diplomatic trade unexpectedly gained a map term"
+				);
+				types::Buffer version_two_extension;
+				version_two_extension.WriteInt( 2 );
+				version_two_extension.WriteBool( false );
+				version_two_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_two_extension.WriteInt( player_id );
+				}
+				version_two_extension.WriteInt( 1 );
+				version_two_extension.WriteInt( 5 );
+				version_two_extension.WriteInt( trade.offer_contact );
+				version_two_extension.WriteInt( trade.request_contact );
+				version_two_extension.WriteBool( trade.offer_map );
+				version_two_extension.WriteBool( trade.request_map );
+				version_two_extension.WriteBool( false );
+				version_two_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					version_two_extension.WriteInt( x );
+					version_two_extension.WriteInt( y );
+				}
+				auto version_two_data = source.Serialize().ToString();
+				version_two_data.resize( version_two_data.size() - player_extension_size );
+				version_two_data += version_two_extension.ToString();
+				Player version_two( version_two_data );
+				GT_ASSERT(
+					version_two.GetDiplomaticTrade( 5 ) &&
+					version_two.GetDiplomaticTrade( 5 )->offer_map == trade.offer_map &&
+					version_two.GetDiplomaticTrade( 5 )->request_map == trade.request_map &&
+					version_two.GetDiplomaticTrade( 5 )->offer_base == -1 &&
+					version_two.GetDiplomaticTrade( 5 )->request_base == -1,
+					"version-two diplomatic trade did not preserve map terms or default base terms"
 				);
 				auto pre_retirement_data = source.Serialize().ToString();
 				pre_retirement_data.resize(
@@ -1214,6 +1251,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					rejected_bidirectional_energy_trade,
 					"bidirectional diplomatic energy trade accepted"
+				);
+
+				bool rejected_invalid_trade_base = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_trade = {};
+					invalid_trade.offer_base = Player::MAX_DIPLOMATIC_TRADE_BASE_ID + 1;
+					invalid.SetDiplomaticTrade( 1, invalid_trade );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_trade_base = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_trade_base,
+					"out-of-range diplomatic trade base ID accepted"
 				);
 
 				bool rejected_underfunded_loan_offer = false;

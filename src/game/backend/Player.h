@@ -262,6 +262,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		int64_t request_contact = -1;
 		bool offer_map = false;
 		bool request_map = false;
+		int64_t offer_base = -1;
+		int64_t request_base = -1;
 
 		bool operator==( const diplomatic_trade_t& other ) const {
 			return
@@ -272,12 +274,15 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				offer_contact == other.offer_contact &&
 				request_contact == other.request_contact &&
 				offer_map == other.offer_map &&
-				request_map == other.request_map;
+				request_map == other.request_map &&
+				offer_base == other.offer_base &&
+				request_base == other.request_base;
 		}
 	};
 	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
 	static constexpr size_t MAX_DIPLOMATIC_TRADES = 64;
 	static constexpr size_t MAX_DIPLOMATIC_TRADE_TECHNOLOGY_ID_LENGTH = 128;
+	static constexpr int64_t MAX_DIPLOMATIC_TRADE_BASE_ID = 1000000000;
 	const diplomatic_trades_t& GetDiplomaticTrades() const;
 	const diplomatic_trade_t* GetDiplomaticTrade( const size_t player_id ) const;
 	void SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_t& trade );

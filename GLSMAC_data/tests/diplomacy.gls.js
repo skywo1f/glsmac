@@ -19,6 +19,8 @@ let triggers = [];
 let messages = [];
 let datalinks_queues = 0;
 let players = [];
+let bases = [];
+let units = [];
 let event_calls = [];
 let turn = 40;
 const game = {
@@ -28,6 +30,13 @@ const game = {
 	is_turn_complete: (player_id) => { return false; },
 	is_master: () => { return true; },
 	get_players: () => { return players; },
+	get_bm: () => { return {get_bases: () => { return bases; }}; },
+	get_um: () => { return {get_units: () => { return units; }}; },
+	get_tm: () => {
+		return {get_distance: (first, second) => {
+			return #abs(first.x - second.x) + #abs(first.y - second.y);
+		}};
+	},
 	get_turn: () => { return turn; },
 	event: (name, data) => { event_calls :+{name: name, data: data}; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
@@ -196,6 +205,65 @@ const beta = make_player(2, 'Beta');
 const gamma = make_player(3, 'Gamma');
 const delta = make_player(4, 'Delta');
 players = [alpha, beta, gamma, delta];
+
+const make_base = (id, name, owner, x, facilities, production_ids) => {
+	let current_owner = owner;
+	let queue = [];
+	for (production_id of production_ids) {
+		queue :+{production_kind: 'unit', id: production_id};
+	}
+	const tile = {x: x, y: 0};
+	const base = {
+		id: id,
+		name: name,
+		get_owner: () => { return current_owner; },
+		set_owner: (new_owner) => { current_owner = new_owner; },
+		get_size: () => { return 3; },
+		get_tile: () => { return tile; },
+		get_facilities: () => { return facilities; },
+		has_facility: (facility_id) => {
+			for (facility of facilities) {
+				if (facility.id == facility_id) { return true; }
+			}
+			return false;
+		},
+		get_production_queue: () => { return queue; },
+		can_produce: (kind, production_id) => {
+			return production_id != 'AlphaOnly' || current_owner.id == alpha.id;
+		},
+		set_production_queue: (specs) => {
+			queue = [];
+			for (spec of specs) {
+				queue :+{production_kind: spec.kind, id: spec.id};
+			}
+		},
+	};
+	tile.get_base = () => { return base; };
+	return base;
+};
+
+const headquarters = {id: 'Headquarters', mineral_cost: 0, is_project: false};
+const alpha_headquarters = make_base(10, 'Alpha Prime', alpha, 0, [headquarters], ['Scout']);
+const alpha_trade_base = make_base(11, 'Alpha Annex', alpha, 4, [], ['AlphaOnly', 'Scout']);
+const beta_headquarters = make_base(20, 'Beta Prime', beta, 20, [headquarters], ['Scout']);
+const beta_trade_base = make_base(21, 'Beta Annex', beta, 16, [], ['Scout']);
+bases = [alpha_headquarters, alpha_trade_base, beta_headquarters, beta_trade_base];
+
+const make_supported_unit = (id, owner, home_base, tile) => {
+	let unit = null;
+	unit = {
+		id: id,
+		owner: owner.id,
+		home_base_id: home_base.id,
+		get_tile: () => { return tile; },
+		get_def: () => { return {mineral_cost: 20}; },
+		set_home_base_id: (base_id) => { unit.home_base_id = base_id; },
+	};
+	return unit;
+};
+const alpha_supported = make_supported_unit(100, alpha, alpha_trade_base, alpha_trade_base.get_tile());
+const beta_supported = make_supported_unit(101, beta, beta_trade_base, beta_trade_base.get_tile());
+units = [alpha_supported, beta_supported];
 values.f_exploration_count_shareable_tiles = (sender, recipient) => {
 	let count = 0;
 	for (tile of sender.get_explored_tiles()) {
@@ -425,6 +493,16 @@ const beta_map_tile = {x: 4, y: 2};
 alpha.set_explored(alpha_map_tile, true);
 beta.set_explored(beta_map_tile, true);
 
+diplomacy_popup.p = {game: game};
+let base_items = diplomacy_popup.get_base_items(beta, alpha, 0 - 1);
+test.assert(#sizeof(base_items) == 1);
+base_items = diplomacy_popup.get_base_items(beta, alpha, beta_trade_base.id);
+test.assert(#sizeof(base_items) == 2 && base_items[1][0] == #to_string(beta_trade_base.id));
+alpha.set_explored(beta_trade_base.get_tile(), true);
+base_items = diplomacy_popup.get_base_items(beta, alpha, 0 - 1);
+test.assert(#sizeof(base_items) == 2 && base_items[1][0] == #to_string(beta_trade_base.id));
+alpha.set_explored(beta_trade_base.get_tile(), false);
+
 let trade = {
 	caller: 1,
 	game: game,
@@ -440,12 +518,15 @@ let trade = {
 			request_contact: delta.id,
 			offer_map: true,
 			request_map: true,
+			offer_base: alpha_trade_base.id,
+			request_base: beta_trade_base.id,
 		},
 	},
 };
 test.assert(!#is_defined(propose_trade.validate(trade)));
 trade.applied = propose_trade.apply(trade);
 test.assert(beta.get_diplomatic_trade(alpha).offer_energy == 20);
+test.assert(beta.get_diplomatic_trade(alpha).offer_base == alpha_trade_base.id);
 test.assert(#is_defined(propose_trade.validate(trade)));
 
 let trade_response = {
@@ -456,6 +537,7 @@ let trade_response = {
 test.assert(!#is_defined(respond_trade.validate(trade_response)));
 trade_response.applied = respond_trade.apply(trade_response);
 test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(#sizeof(trade_response.applied.bases) == 2);
 test.assert(alpha.energy_credits == 80);
 test.assert(beta.energy_credits == 70);
 test.assert(alpha.has_technology('IndustrialBase'));
@@ -464,6 +546,13 @@ test.assert(beta.has_contact(gamma) && gamma.has_contact(beta));
 test.assert(alpha.has_contact(delta) && delta.has_contact(alpha));
 test.assert(beta.has_explored(alpha_map_tile));
 test.assert(alpha.has_explored(beta_map_tile));
+test.assert(alpha_trade_base.get_owner().id == beta.id);
+test.assert(beta_trade_base.get_owner().id == alpha.id);
+test.assert(alpha_supported.home_base_id == alpha_headquarters.id);
+test.assert(beta_supported.home_base_id == beta_headquarters.id);
+const transferred_alpha_queue = alpha_trade_base.get_production_queue();
+test.assert(#sizeof(transferred_alpha_queue) == 1);
+test.assert(transferred_alpha_queue[0].id == 'Scout');
 test.assert(alpha.get_research_state().target == 'Biogenetics');
 test.assert(alpha.get_research_state().progress == 12);
 test.assert(beta.get_research_state().target == 'Biogenetics');
@@ -480,6 +569,11 @@ test.assert(!beta.has_contact(gamma) && !gamma.has_contact(beta));
 test.assert(!alpha.has_contact(delta) && !delta.has_contact(alpha));
 test.assert(!beta.has_explored(alpha_map_tile));
 test.assert(!alpha.has_explored(beta_map_tile));
+test.assert(alpha_trade_base.get_owner().id == alpha.id);
+test.assert(beta_trade_base.get_owner().id == beta.id);
+test.assert(alpha_supported.home_base_id == alpha_trade_base.id);
+test.assert(beta_supported.home_base_id == beta_trade_base.id);
+test.assert(#sizeof(alpha_trade_base.get_production_queue()) == 2);
 
 trade_response.data.accept = false;
 trade_response.applied = respond_trade.apply(trade_response);
@@ -495,6 +589,8 @@ trade_response.data.counter_terms = {
 	request_contact: gamma.id,
 	offer_map: true,
 	request_map: true,
+	offer_base: beta_trade_base.id,
+	request_base: alpha_trade_base.id,
 };
 trade_response.data.accept = true;
 test.assert(#is_defined(respond_trade.validate(trade_response)));
@@ -519,10 +615,12 @@ diplomacy_popup.offer_energy = {value: ''};
 diplomacy_popup.offer_technology = {value: ''};
 diplomacy_popup.offer_contact = {value: ''};
 diplomacy_popup.offer_map = {value: ''};
+diplomacy_popup.offer_base = {value: ''};
 diplomacy_popup.request_energy = {value: ''};
 diplomacy_popup.request_technology = {value: ''};
 diplomacy_popup.request_contact = {value: ''};
 diplomacy_popup.request_map = {value: ''};
+diplomacy_popup.request_base = {value: ''};
 diplomacy_popup.trade_error = {text: ''};
 diplomacy_popup.begin_counter_trade();
 test.assert(diplomacy_popup.countering_trade);
@@ -530,10 +628,12 @@ test.assert(diplomacy_popup.offer_energy.value == '0');
 test.assert(diplomacy_popup.offer_technology.value == 'IndustrialBase');
 test.assert(diplomacy_popup.offer_contact.value == #to_string(delta.id));
 test.assert(diplomacy_popup.offer_map.value == '1');
+test.assert(diplomacy_popup.offer_base.value == #to_string(beta_trade_base.id));
 test.assert(diplomacy_popup.request_energy.value == '20');
 test.assert(diplomacy_popup.request_technology.value == 'CentauriEcology');
 test.assert(diplomacy_popup.request_contact.value == #to_string(gamma.id));
 test.assert(diplomacy_popup.request_map.value == '1');
+test.assert(diplomacy_popup.request_base.value == #to_string(alpha_trade_base.id));
 diplomacy_popup.request_energy.value = '25';
 const popup_action = diplomacy_popup.get_trade_action(beta, alpha, {
 	offer_energy: 0,
@@ -544,6 +644,8 @@ const popup_action = diplomacy_popup.get_trade_action(beta, alpha, {
 	request_contact: #to_int(diplomacy_popup.request_contact.value),
 	offer_map: diplomacy_popup.offer_map.value == '1',
 	request_map: diplomacy_popup.request_map.value == '1',
+	offer_base: #to_int(diplomacy_popup.offer_base.value),
+	request_base: #to_int(diplomacy_popup.request_base.value),
 }, true);
 test.assert(popup_action.name == 'respond_diplomatic_trade');
 test.assert(popup_action.data.player == beta && popup_action.data.proposer == alpha);
@@ -564,6 +666,32 @@ trade.data.terms.offer_energy = 20;
 trade.data.terms.request_energy = 10;
 test.assert(#is_defined(propose_trade.validate(trade)));
 trade.data.terms.request_energy = 0;
+
+const base_only_terms = {
+	offer_energy: 0,
+	offer_technology: '',
+	request_energy: 0,
+	request_technology: '',
+	offer_base: alpha_headquarters.id,
+	request_base: 0 - 1,
+};
+test.assert(
+	values.f_diplomacy_validate_trade(alpha, beta, base_only_terms) ==
+	'A faction cannot cede its Headquarters'
+);
+base_only_terms.offer_base = 999999;
+test.assert(
+	values.f_diplomacy_validate_trade(alpha, beta, base_only_terms) ==
+	'The offered base does not exist'
+);
+base_only_terms.offer_base = alpha_trade_base.id;
+const all_bases = bases;
+bases = [alpha_trade_base, beta_headquarters, beta_trade_base];
+test.assert(
+	values.f_diplomacy_validate_trade(alpha, beta, base_only_terms) ==
+	'A faction cannot cede its last base'
+);
+bases = all_bases;
 
 beta.clear_diplomatic_trade(alpha);
 alpha.set_sanction_turns(10);
