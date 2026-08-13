@@ -218,9 +218,11 @@ scenarios, for:
 - persistent eight-level diplomatic integrity, with treaty and pact betrayal
   consequences shared by declarations of war, direct attacks, and detected
   covert operations, plus rollback, player diagnostics, and trust-aware AI;
-- persistent structured energy, technology, and commlink trade offers, atomic
-  reversible settlement, human negotiation controls, and relation-, strength-,
-  opponent-, and value-aware AI proposals and responses;
+- persistent structured energy, technology, commlink, and world-map trade
+  offers; human players can build bundled deals and atomically replace an
+  incoming offer with an editable reverse counteroffer, with exact event
+  rollback, while relation-, strength-, opponent-, and value-aware AI proposes
+  and responds to the same terms;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
@@ -346,8 +348,9 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper diplomacy with richer bundled and counteroffers beyond the implemented
-  energy, technology, commlink, world-map, loan, and surrender terms;
+- deeper original diplomacy branches beyond the implemented relations, bundled
+  trade and counteroffers, loans, and surrender, including base exchange,
+  coercive demands, and coordinated military requests;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots and subsequent entity events so concealed information
   is not present client-side;
@@ -808,6 +811,16 @@ runtime passed in 52.57 seconds while directly verifying all 14 landmarks, the
 Cluster's three Thermal Boreholes, and the Nexus's nine land tiles. Ordinary
 multiplayer passed in 64.35 seconds, and the compact-map running reconnect
 passed in 57.21 seconds without changing its deterministic six-landmark set.
+
+After editable diplomatic counteroffers were added, the Windows x64 Release
+build succeeded. Incoming energy, technology, commlink, and world-map terms can
+be reversed into an editable bundle and atomically replace the rejected offer;
+validation rejects simultaneous acceptance or a second pending counteroffer,
+and event rollback restores both directions exactly. All 111 isolated
+native/script tests passed in 309.67 seconds. The installed-asset diplomacy
+runtime passed in 36.55 seconds after proposing, countering, and accepting a
+reciprocal technology and world-map exchange. Ordinary multiplayer passed in
+66.87 seconds, and running reconnect passed in 63.06 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

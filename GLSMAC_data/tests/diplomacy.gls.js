@@ -10,6 +10,7 @@ const diplomacy_popup = #include('../default/ui/parts/game/popup/diplomacy');
 
 test.assert(#typeof(diplomacy_popup.init) == 'Callable');
 test.assert(#typeof(diplomacy_popup.propose_trade) == 'Callable');
+test.assert(#typeof(diplomacy_popup.begin_counter_trade) == 'Callable');
 test.assert(#typeof(diplomacy_popup.respond_excuse) == 'Callable');
 
 const callbacks = {};
@@ -484,6 +485,71 @@ trade_response.data.accept = false;
 trade_response.applied = respond_trade.apply(trade_response);
 test.assert(beta.get_diplomatic_trade(alpha) == null);
 respond_trade.rollback(trade_response);
+
+trade_response.data.counter_terms = {
+	offer_energy: 0,
+	offer_technology: 'IndustrialBase',
+	request_energy: 20,
+	request_technology: 'CentauriEcology',
+	offer_contact: delta.id,
+	request_contact: gamma.id,
+	offer_map: true,
+	request_map: true,
+};
+trade_response.data.accept = true;
+test.assert(#is_defined(respond_trade.validate(trade_response)));
+trade_response.data.accept = false;
+test.assert(!#is_defined(respond_trade.validate(trade_response)));
+trade_response.applied = respond_trade.apply(trade_response);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(alpha.get_diplomatic_trade(beta).request_energy == 20);
+test.assert(alpha.get_diplomatic_trade(beta).offer_technology == 'IndustrialBase');
+test.assert(alpha.energy_credits == 100 && beta.energy_credits == 50);
+respond_trade.rollback(trade_response);
+test.assert(alpha.get_diplomatic_trade(beta) == null);
+test.assert(beta.get_diplomatic_trade(alpha).offer_energy == 20);
+trade_response.data.counter_terms = #undefined;
+
+const popup_refresh = diplomacy_popup.refresh;
+diplomacy_popup.refresh = () => {};
+diplomacy_popup.p = {game: game};
+diplomacy_popup.player = beta;
+diplomacy_popup.target = alpha;
+diplomacy_popup.offer_energy = {value: ''};
+diplomacy_popup.offer_technology = {value: ''};
+diplomacy_popup.offer_contact = {value: ''};
+diplomacy_popup.offer_map = {value: ''};
+diplomacy_popup.request_energy = {value: ''};
+diplomacy_popup.request_technology = {value: ''};
+diplomacy_popup.request_contact = {value: ''};
+diplomacy_popup.request_map = {value: ''};
+diplomacy_popup.trade_error = {text: ''};
+diplomacy_popup.begin_counter_trade();
+test.assert(diplomacy_popup.countering_trade);
+test.assert(diplomacy_popup.offer_energy.value == '0');
+test.assert(diplomacy_popup.offer_technology.value == 'IndustrialBase');
+test.assert(diplomacy_popup.offer_contact.value == #to_string(delta.id));
+test.assert(diplomacy_popup.offer_map.value == '1');
+test.assert(diplomacy_popup.request_energy.value == '20');
+test.assert(diplomacy_popup.request_technology.value == 'CentauriEcology');
+test.assert(diplomacy_popup.request_contact.value == #to_string(gamma.id));
+test.assert(diplomacy_popup.request_map.value == '1');
+diplomacy_popup.request_energy.value = '25';
+const popup_action = diplomacy_popup.get_trade_action(beta, alpha, {
+	offer_energy: 0,
+	offer_technology: diplomacy_popup.offer_technology.value,
+	request_energy: 25,
+	request_technology: diplomacy_popup.request_technology.value,
+	offer_contact: #to_int(diplomacy_popup.offer_contact.value),
+	request_contact: #to_int(diplomacy_popup.request_contact.value),
+	offer_map: diplomacy_popup.offer_map.value == '1',
+	request_map: diplomacy_popup.request_map.value == '1',
+}, true);
+test.assert(popup_action.name == 'respond_diplomatic_trade');
+test.assert(popup_action.data.player == beta && popup_action.data.proposer == alpha);
+test.assert(!popup_action.data.accept);
+test.assert(popup_action.data.counter_terms.request_energy == 25);
+diplomacy_popup.refresh = popup_refresh;
 
 alpha.set_research_state({technologies: [], target: 'CentauriEcology', progress: 0});
 trade_response.data.accept = true;

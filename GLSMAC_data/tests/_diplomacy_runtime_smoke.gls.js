@@ -29,6 +29,7 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.set('f_ui_should_auto_open_diplomacy', () => { return false; });
 		game.register_event('diplomacy_runtime_seed_energy', {
 			validate: (e) => {
 				if (e.caller != 0 && e.caller != e.data.player.id) {
@@ -199,7 +200,7 @@
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology and world-map trade, loan repayment, betrayal integrity, vendetta debt, and AI submission conquest'
+									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology and world-map counteroffers, loan repayment, betrayal integrity, vendetta debt, and AI submission conquest'
 								);
 								glsmac.exit();
 							}
@@ -409,20 +410,41 @@
 									game.event_as(other.id, 'respond_diplomatic_trade', {
 										player: other,
 										proposer: player,
-										accept: true,
+										accept: false,
+										counter_terms: {
+											offer_energy: 0,
+											offer_technology: requested_technology,
+											request_energy: 0,
+											request_technology: offered_technology,
+											offer_contact: 0 - 1,
+											request_contact: 0 - 1,
+											offer_map: true,
+											request_map: true,
+										},
 									});
 									wait_for(
+										() => { return player.get_diplomatic_trade(other) != null; },
+										'counteroffer was not stored',
 										() => {
-											return (
-												other.get_diplomatic_trade(player) == null &&
-												player.has_technology(requested_technology) &&
-												other.has_technology(offered_technology) &&
-												player.has_explored(other_map_tile) &&
-												other.has_explored(player_map_tile)
+											game.event('respond_diplomatic_trade', {
+												player: player,
+												proposer: other,
+												accept: true,
+											});
+											wait_for(
+												() => {
+													return (
+														player.get_diplomatic_trade(other) == null &&
+														player.has_technology(requested_technology) &&
+														other.has_technology(offered_technology) &&
+														player.has_explored(other_map_tile) &&
+														other.has_explored(player_map_tile)
+													);
+												},
+												'accepted counteroffer did not transfer its technologies and world maps',
+												() => { exercise_loan(); }
 											);
-										},
-									'accepted trade did not transfer its technologies and world maps',
-									() => { exercise_loan(); }
+										}
 									);
 								}
 							);

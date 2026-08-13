@@ -14,7 +14,7 @@ const technology_name = (game, id) => {
 };
 
 const contact_name = (game, id) => {
-	return id < 0 ? '' : game.get_player(id).name;
+	return id < 0 ? '' : #to_string(game.get_player(id).name);
 };
 
 const trade_side_text = (game, energy, technology, contact, world_map) => {
@@ -57,13 +57,30 @@ const loan_terms_text = (terms, proposer, recipient) => {
 	const lender = terms.proposer_is_lender ? proposer : recipient;
 	const borrower = terms.proposer_is_lender ? recipient : proposer;
 	return (
-		lender.name + ' lends ' + borrower.name + ' ' + #to_string(terms.principal) +
+		#to_string(lender.name) + ' lends ' + #to_string(borrower.name) + ' ' +
+		#to_string(terms.principal) +
 		' EC; ' + #to_string(terms.payment) + ' EC/year for ' +
 		#to_string(terms.turns) + ' years'
 	);
 };
 
+const get_trade_action = (player, target, terms, countering) => {
+	return countering ? {
+		name: 'respond_diplomatic_trade',
+		data: {
+			player: player,
+			proposer: target,
+			accept: false,
+			counter_terms: terms,
+		},
+	} : {
+		name: 'propose_diplomatic_trade',
+		data: {player: player, target: target, terms: terms},
+	};
+};
+
 return {
+	get_trade_action: get_trade_action,
 
 	init: (p) => {
 		this.p = p;
@@ -99,7 +116,10 @@ return {
 		this.request_map = null;
 		this.propose_trade_button = null;
 		this.accept_trade = null;
+		this.counter_trade = null;
 		this.reject_trade = null;
+		this.countering_trade = false;
+		this.pending_popup = false;
 		this.loan_text = null;
 		this.loan_error = null;
 		this.loan_principal_label = null;
@@ -150,12 +170,22 @@ return {
 				const incoming_excuse = observed_event_name == 'diplomatic_excuse_updated' &&
 					e.expiry_turn >= p.game.get_turn() &&
 					e.player.id == p.game.get_player().id;
-				if (incoming_diplomacy || incoming_excuse) {
-					p.modules.popup.show('diplomacy');
-					if (observed_event_name == 'diplomatic_excuse_updated') {
-						this.opponent_select.value = '' + e.target.id;
-						this.select_target(this.opponent_select.value);
-					}
+				const should_auto_open = p.game.get('f_ui_should_auto_open_diplomacy');
+				if (
+					(incoming_diplomacy || incoming_excuse) && !this.pending_popup &&
+					(!#is_defined(should_auto_open) || should_auto_open())
+				) {
+					const target_id = e.target.id;
+					this.pending_popup = true;
+					#async(0, () => {
+						this.pending_popup = false;
+						p.modules.popup.show('diplomacy');
+						if (incoming_excuse) {
+							this.opponent_select.value = #to_string(target_id);
+							this.select_target(this.opponent_select.value);
+						}
+						return false;
+					});
 				}
 			});
 		}
@@ -309,14 +339,24 @@ return {
 				return true;
 			});
 			this.accept_trade = body.button({
-				class: 'game-popup-button', text: 'Accept Trade', top: 390,
+				class: 'game-popup-button', text: 'Accept Trade', left: 10, top: 390,
+				width: 180,
 			});
 			this.accept_trade.on('click', (e) => {
 				this.respond_trade(true);
 				return true;
 			});
+			this.counter_trade = body.button({
+				class: 'game-popup-button', text: 'Counter Trade', left: 210, top: 390,
+				width: 180,
+			});
+			this.counter_trade.on('click', (e) => {
+				this.begin_counter_trade();
+				return true;
+			});
 			this.reject_trade = body.button({
-				class: 'game-popup-button', text: 'Reject Trade', top: 414,
+				class: 'game-popup-button', text: 'Reject Trade', right: 10, top: 390,
+				width: 180,
 			});
 			this.reject_trade.on('click', (e) => {
 				this.respond_trade(false);
@@ -396,6 +436,7 @@ return {
 		this.request_contact.value = '-1';
 		this.offer_map.value = '0';
 		this.request_map.value = '0';
+		this.countering_trade = false;
 		this.trade_error.text = '';
 		this.loan_error.text = '';
 		this.refresh();
@@ -457,10 +498,7 @@ return {
 			return;
 		}
 		this.trade_error.text = '';
-		this.p.game.event('propose_diplomatic_trade', {
-			player: this.player,
-			target: this.target,
-			terms: {
+		const terms = {
 				offer_energy: offer_energy,
 				offer_technology: this.offer_technology.value,
 				request_energy: request_energy,
@@ -469,8 +507,40 @@ return {
 				request_contact: #to_int(this.request_contact.value),
 				offer_map: this.offer_map.value == '1',
 				request_map: this.request_map.value == '1',
-			},
-		});
+		};
+		const action = get_trade_action(
+			this.player,
+			this.target,
+			terms,
+			this.countering_trade
+		);
+		this.p.game.event(action.name, action.data);
+	},
+
+	begin_counter_trade: () => {
+		if (this.player == null || this.target == null) {
+			return;
+		}
+		const incoming = this.player.get_diplomatic_trade(this.target);
+		if (incoming == null) {
+			return;
+		}
+		this.countering_trade = true;
+		this.refresh();
+		this.offer_energy.value = #to_string(incoming.request_energy);
+		this.offer_technology.value = incoming.request_technology;
+		this.offer_contact.value = #to_string(
+			#typeof(incoming.request_contact) == 'Int' ? incoming.request_contact : 0 - 1
+		);
+		this.offer_map.value = #typeof(incoming.request_map) == 'Bool' && incoming.request_map
+			? '1' : '0';
+		this.request_energy.value = #to_string(incoming.offer_energy);
+		this.request_technology.value = incoming.offer_technology;
+		this.request_contact.value = #to_string(
+			#typeof(incoming.offer_contact) == 'Int' ? incoming.offer_contact : 0 - 1
+		);
+		this.request_map.value = #typeof(incoming.offer_map) == 'Bool' && incoming.offer_map
+			? '1' : '0';
 	},
 
 	respond_trade: (accept) => {
@@ -540,7 +610,7 @@ return {
 				source.has_contact(contact) && contact.has_contact(source) &&
 				(!recipient.has_contact(contact) || !contact.has_contact(recipient))
 			) {
-				items :+['' + contact.id, '' + contact.name];
+				items :+[#to_string(contact.id), #to_string(contact.name)];
 			}
 		}
 		return items;
@@ -587,6 +657,7 @@ return {
 			control.hide();
 		}
 		this.accept_trade.hide();
+		this.counter_trade.hide();
 		this.reject_trade.hide();
 		this.accept_loan.hide();
 		this.reject_loan.hide();
@@ -666,7 +737,8 @@ return {
 			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
 				#to_string(player_debt.payment) + ' EC/year'
 			: (target_debt != null
-				? this.target.name + ' owes you ' + #to_string(target_debt.balance) + ' EC; ' +
+				? #to_string(this.target.name) + ' owes you ' +
+					#to_string(target_debt.balance) + ' EC; ' +
 					#to_string(target_debt.payment) + ' EC/year'
 				: (incoming_loan != null
 					? 'Incoming loan: ' + loan_terms_text(incoming_loan, this.target, this.player)
@@ -704,9 +776,14 @@ return {
 		}
 
 		if (incoming_trade != null) {
-			this.accept_trade.show();
-			this.reject_trade.show();
-			return;
+			if (!this.countering_trade) {
+				this.accept_trade.show();
+				this.counter_trade.show();
+				this.reject_trade.show();
+				return;
+			}
+		} else {
+			this.countering_trade = false;
 		}
 		if (
 			outgoing_trade != null || relation == 'vendetta' ||
@@ -721,14 +798,21 @@ return {
 		this.request_contact.items = this.get_contact_items(this.target, this.player);
 		this.offer_map.items = this.get_map_items(this.player, this.target);
 		this.request_map.items = this.get_map_items(this.target, this.player);
-		this.offer_technology.value = '';
-		this.request_technology.value = '';
-		this.offer_contact.value = '-1';
-		this.request_contact.value = '-1';
-		this.offer_map.value = '0';
-		this.request_map.value = '0';
+		if (!this.countering_trade) {
+			this.offer_technology.value = '';
+			this.request_technology.value = '';
+			this.offer_contact.value = '-1';
+			this.request_contact.value = '-1';
+			this.offer_map.value = '0';
+			this.request_map.value = '0';
+		}
+		this.propose_trade_button.text = this.countering_trade
+			? 'Send Counter' : 'Propose Trade';
 		for (control of trade_editor) {
 			control.show();
+		}
+		if (this.countering_trade) {
+			return;
 		}
 
 		if (incoming_loan != null) {
@@ -755,7 +839,7 @@ return {
 				player.id != this.player.id &&
 				this.player.has_contact(player) && player.has_contact(this.player)
 			) {
-				items :+['' + player.id, '' + player.name];
+				items :+[#to_string(player.id), #to_string(player.name)];
 			}
 		}
 		this.opponent_select.items = #sizeof(items) > 0 ? items : [['', 'No other factions']];
