@@ -219,8 +219,7 @@ return {
 		const target_base = e.data.tile.get_base();
 		let defense = {
 			player_id: 0 - 1,
-			count: 0,
-			deployments: 0,
+			player: null,
 			attempted: false,
 			intercepted: false,
 			sacrificed: false,
@@ -229,12 +228,13 @@ return {
 			const defender = target_base.get_owner();
 			if (defender.id != e.caller) {
 				defense.player_id = defender.id;
-				defense.count = defender.get_orbital_facility_count(ORBITAL_DEFENSE);
-				defense.deployments = defender.get_orbital_defense_deployments();
-				if (defense.deployments < defense.count) {
+				defense.player = defender;
+				const count = defender.get_orbital_facility_count(ORBITAL_DEFENSE);
+				const deployments = defender.get_orbital_defense_deployments();
+				if (deployments < count) {
 					defense.attempted = true;
 					defense.intercepted = e.game.random.get_int(0, 1) == 0;
-				} else if (defense.count > 0) {
+				} else if (count > 0) {
 					defense.intercepted = true;
 					defense.sacrificed = true;
 				}
@@ -258,18 +258,33 @@ return {
 			actor_sanction_turns: actor.get_sanction_turns(),
 			actor_council_state: actor.get_council_state(),
 			diplomacy: snapshot_diplomacy(e.game, actor),
-			defense: e.resolved.defense,
+			defense: {
+				player_id: e.resolved.defense.player_id,
+				player: e.resolved.defense.player,
+				count: 0,
+				deployments: 0,
+				attempted: e.resolved.defense.attempted,
+				intercepted: e.resolved.defense.intercepted,
+				sacrificed: e.resolved.defense.sacrificed,
+			},
 			terrain_snapshot: null,
 		};
 
 		const defense = e.resolved.defense;
-		if (defense.player_id >= 0) {
-			const defender = e.game.get_player(defense.player_id);
+		if (defense.player != null) {
+			const defender = defense.player;
+			applied.defense.count = defender.get_orbital_facility_count(ORBITAL_DEFENSE);
+			applied.defense.deployments = defender.get_orbital_defense_deployments();
 			if (defense.attempted) {
-				defender.set_orbital_defense_deployments(defense.deployments + 1);
+				defender.set_orbital_defense_deployments(applied.defense.deployments + 1);
 			} else if (defense.sacrificed) {
-				defender.set_orbital_facility_count(ORBITAL_DEFENSE, defense.count - 1);
-				defender.set_orbital_defense_deployments(#max(0, defense.deployments - 1));
+				defender.set_orbital_facility_count(
+					ORBITAL_DEFENSE,
+					applied.defense.count - 1
+				);
+				defender.set_orbital_defense_deployments(
+					#max(0, applied.defense.deployments - 1)
+				);
 			}
 		}
 

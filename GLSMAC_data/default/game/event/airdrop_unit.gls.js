@@ -13,7 +13,7 @@ const collect_group = (unit, result) => {
 
 const find_damage = (resolved, unit_id) => {
 	for (entry of resolved.units) {
-		if (entry.id == unit_id) {
+		if (entry.unit.id == unit_id) {
 			return entry.damage;
 		}
 	}
@@ -32,7 +32,7 @@ return {
 		collect_group(e.data.unit, group);
 		let units = [];
 		for (unit of group) {
-			units :+{id: unit.id, damage: rules.get_damage(unit)};
+			units :+{unit: unit, damage: rules.get_damage(unit)};
 		}
 		return {units: units};
 	},

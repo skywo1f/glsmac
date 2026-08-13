@@ -126,23 +126,16 @@ const get_interception = (game, interceptor, defender) => {
 const resolve = (game, interceptor, defender) => {
 	const interception = get_interception(game, interceptor, defender);
 	return interception == null ? null : {
+		probe: interception.probe,
 		probe_id: interception.probe.id,
+		return_base: interception.return_base,
 		return_base_id: interception.return_base.id,
 	};
 };
 
-const find_base = (game, id) => {
-	for (base of get_base_manager(game).get_bases()) {
-		if (base.id == id) {
-			return base;
-		}
-	}
-	return null;
-};
-
 const apply = (game, interceptor, resolved) => {
-	const probe = get_unit_manager(game).get_unit(resolved.probe_id);
-	const return_base = find_base(game, resolved.return_base_id);
+	const probe = resolved.probe;
+	const return_base = resolved.return_base;
 	if (return_base == null) {
 		throw Error('Probe interception return base no longer exists');
 	}

@@ -37,6 +37,7 @@
 	let client_base_snapshot_probe_complete = false;
 	let client_base_infiltration_probe_complete = false;
 	let client_player_privacy_probe_complete = false;
+	let client_live_visibility_probe_complete = false;
 	let mixed_unit_privacy_acknowledged = false;
 	let private_map_projection_phase = 0;
 	let private_map_probe = null;
@@ -1312,6 +1313,7 @@
 				else if (revealed && !game.get_um().has_unit(1)) {
 					#print('MULTIPLAYER_SMOKE_LIVE_HIDE_PASS_CLIENT');
 					#print('MULTIPLAYER_SMOKE_LIVE_VISIBILITY_PASS_CLIENT');
+					client_live_visibility_probe_complete = true;
 					game.event('multiplayer_smoke_visibility_hidden', {});
 					return false;
 				}
@@ -1576,7 +1578,28 @@
 			}
 
 			const pop = pops[0];
+			const base_id = base.id;
+			const pop_id = pop.id;
 			const target_tile = unworked_tiles[0];
+			const get_active_base = () => {
+				for (candidate of game.get_bm().get_bases()) {
+					if (candidate.id == base_id) {
+						return candidate;
+					}
+				}
+				return null;
+			};
+			const get_active_pop = (active_base) => {
+				if (active_base == null) {
+					return null;
+				}
+				for (candidate of active_base.get_pops()) {
+					if (candidate.id == pop_id) {
+						return candidate;
+					}
+				}
+				return null;
+			};
 			game.event('work_base_tile', {
 				base: base,
 				pop: pop,
@@ -1588,20 +1611,31 @@
 			#async(100, () => {
 				wait_ticks++;
 				if (phase == 'work' && target_tile.has('working_pop')) {
+					const active_base = get_active_base();
+					const active_pop = get_active_pop(active_base);
 					const working_pop = target_tile.get('working_pop');
-					if (working_pop != pop || working_pop.get_base() != base) {
+					if (
+						active_base == null || active_pop == null ||
+						working_pop != active_pop || working_pop.get_base() != active_base
+					) {
 						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: worker assignment is inconsistent');
 						glsmac.exit();
 						return false;
 					}
 					phase = 'unwork';
 					game.event('unwork_base_tile', {
-						base: base,
+						base: active_base,
 						tile: target_tile,
 					});
 				}
 				else if (phase == 'unwork' && !target_tile.has('working_pop')) {
-					if (#sizeof(base.get_worked_tiles()) != 0 || pop.get_type() != 'DOCTOR') {
+					const active_base = get_active_base();
+					const active_pop = get_active_pop(active_base);
+					if (
+						active_base == null || active_pop == null ||
+						#sizeof(active_base.get_worked_tiles()) != 0 ||
+						active_pop.get_type() != 'DOCTOR'
+					) {
 						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: worker unassignment is inconsistent');
 						glsmac.exit();
 						return false;
@@ -1736,7 +1770,14 @@
 					let wait_ticks = 0;
 					#async(100, () => {
 						wait_ticks++;
-						if (accepted_event_count == 1 && rejected_event_count == 0) {
+						if (
+							accepted_event_count == 1 && rejected_event_count == 0 &&
+							client_base_snapshot_probe_complete &&
+							client_base_infiltration_probe_complete &&
+							client_player_privacy_probe_complete &&
+							client_terraform_probe_complete &&
+							client_live_visibility_probe_complete
+						) {
 							if (!client_event_probe_complete) {
 								client_event_probe_complete = true;
 								#print('MULTIPLAYER_SMOKE_EVENT_RESPONSE_PASS_CLIENT');

@@ -264,16 +264,19 @@ return {
 				(movement >= movement_cost) // unit has enough moves
 				||
 				(e.game.random.get_float(0.0, movement_cost) < movement); // unit doesn't have enough moves but was lucky
+		const unity_pod =
+			is_movement_successful &&
+			#is_defined(dst_tile.features.unity_pod) &&
+			dst_tile.features.unity_pod
+				? unity_pods.resolve(e.game, e.data.unit, dst_tile)
+				: null;
 		return {
 			is_no_op: false,
 			is_movement_successful: is_movement_successful,
 			transport_id: transport == null ? 0 : transport.id,
-			unity_pod:
-				is_movement_successful &&
-				#is_defined(dst_tile.features.unity_pod) &&
-				dst_tile.features.unity_pod
-					? unity_pods.resolve(e.game, e.data.unit, dst_tile)
-					: null,
+			transport_reference: transport,
+			unity_pod: unity_pod,
+			unity_pod_player: unity_pod == null ? null : unit.get_owner(),
 		};
 	},
 

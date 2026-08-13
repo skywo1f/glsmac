@@ -283,6 +283,11 @@ test.assert(#sizeof(active_bases) == 5);
 test.assert(#typeof(active_bases[0]) == 'Object');
 test.assert(active_bases[0].id > 0);
 event.resolved = change_sea_level.resolve(event);
+test.assert(#sizeof(event.resolved.base_losses) == #sizeof(active_bases));
+for (let i = 0; i < #sizeof(event.resolved.base_losses); i++) {
+	test.assert(event.resolved.base_losses[i].base == active_bases[i]);
+	test.assert(!#is_defined(event.resolved.base_losses[i].base_id));
+}
 event.applied = change_sea_level.apply(event);
 test.assert(world.game.tm.get_sea_level() == 100);
 test.assert(world.bases.damaged.get_size() == 2);

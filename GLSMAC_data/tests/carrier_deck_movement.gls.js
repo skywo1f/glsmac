@@ -94,6 +94,7 @@ test.assert(resolved.transport_id == 0);
 water.set_units([ordinary_transport, carrier]);
 resolved = move_unit.resolve({game: game, data: {unit: aircraft, tile: water}});
 test.assert(resolved.transport_id == carrier.id);
+test.assert(resolved.transport_reference == carrier);
 
 let event = {
 	caller: owner.id,

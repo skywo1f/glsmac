@@ -72,6 +72,8 @@ let event = {caller: player.id, game: game, data: {unit: artifact}};
 test.assert(artifact_rules.contribution_minerals == 50);
 test.assert(artifact_rules.get_contribution_target(base).kind == 'project');
 test.assert(!#is_defined(contribute.validate(event)));
+event.resolved = contribute.resolve(event);
+test.assert(event.resolved.base == base);
 event.applied = contribute.apply(event);
 test.assert(event.applied.target_kind == 'project');
 test.assert(minerals == 67);

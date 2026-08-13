@@ -118,6 +118,8 @@ let artifact = make_artifact(7);
 let event = {caller: player.id, game: game, data: {unit: artifact}};
 test.assert(!#is_defined(study_alien_artifact.validate(event)));
 test.assert(artifact_rules.get_study_method(base) == 'network_node');
+event.resolved = study_alien_artifact.resolve(event);
+test.assert(event.resolved.base == base);
 event.applied = study_alien_artifact.apply(event);
 test.assert(event.applied.method == 'network_node');
 test.assert(custom.network_node_artifact_linked);

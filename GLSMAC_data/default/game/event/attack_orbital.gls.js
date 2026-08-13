@@ -10,6 +10,7 @@ const get_definition = (game, id) => {
 };
 
 return {
+	player_visibility: 'private',
 
 	validate: (e) => {
 		const player = e.game.get_player(e.caller);

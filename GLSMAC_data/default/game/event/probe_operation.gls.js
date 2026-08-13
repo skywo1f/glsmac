@@ -331,6 +331,7 @@ const validate_base_operation = (e, actor, target_player) => {
 
 return {
 	unit_visibility: 'private',
+	player_visibility: 'private',
 
 	validate: (e) => {
 		const probe = e.data.unit;

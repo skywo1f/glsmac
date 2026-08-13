@@ -173,6 +173,7 @@ event = {caller: player.id, game: game, data: {unit: crawler}};
 test.assert(!#is_defined(contribute.validate(event)));
 event.resolved = contribute.resolve(event);
 test.assert(event.resolved.minerals == supply_def.mineral_cost);
+test.assert(event.resolved.base == base_b);
 event.applied = contribute.apply(event);
 test.assert(base_b_minerals == 50);
 test.assert(despawned == crawler);

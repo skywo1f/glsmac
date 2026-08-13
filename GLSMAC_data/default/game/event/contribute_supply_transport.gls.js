@@ -8,7 +8,10 @@ return {
 	},
 
 	resolve: (e) => {
-		return {minerals: e.data.unit.get_def().mineral_cost + 0};
+		return {
+			base: e.data.unit.get_tile().get_base(),
+			minerals: e.data.unit.get_def().mineral_cost + 0,
+		};
 	},
 
 	apply: (e) => {

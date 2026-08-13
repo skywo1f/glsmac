@@ -135,6 +135,8 @@ const prompt_event = {
 };
 prompt_event.resolved = attack_unit.resolve(prompt_event);
 test.assert(prompt_event.resolved.probe_interception_prompt.probe_id == probe.id);
+test.assert(prompt_event.resolved.probe_interception_prompt.probe == probe);
+test.assert(prompt_event.resolved.probe_interception_prompt.return_base == near_base);
 prompt_event.applied = attack_unit.apply(prompt_event);
 test.assert(prompt_event.applied.probe_interception_prompt);
 test.assert(prompted);
@@ -153,6 +155,8 @@ const event = {
 event.resolved = attack_unit.resolve(event);
 test.assert(event.resolved.probe_interception.probe_id == probe.id);
 test.assert(event.resolved.probe_interception.return_base_id == near_base.id);
+test.assert(event.resolved.probe_interception.probe == probe);
+test.assert(event.resolved.probe_interception.return_base == near_base);
 event.applied = attack_unit.apply(event);
 test.assert(probe_tile == near_base_tile);
 test.assert(probe.movement == 2.0);

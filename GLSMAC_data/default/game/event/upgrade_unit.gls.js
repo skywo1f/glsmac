@@ -8,6 +8,7 @@ const restore_unit = (game, snapshot) => {
 
 return {
 	unit_visibility: 'private',
+	player_visibility: 'private',
 	validate: (e) => {
 		return rules.get_error(e.game, e.data.unit, e.caller, e.data.target_def_id);
 	},

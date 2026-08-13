@@ -390,6 +390,24 @@ scenarios, for:
   climate state instead. This
   prevents hidden-base fungal blooms, major volcanic eruptions, and future
   terrain-changing private events from silently diverging the client map.
+  Sea-level casualty rolls carry tracked base references so clients without
+  full access cannot infer hidden base IDs or casualty data from the event
+  payload before receiving their filtered projections. Planet Buster outcome
+  payloads expose whether interception occurred without serializing the
+  defender's exact Orbital Defense Pod inventory or turn deployments, and
+  track the defender so redacted clients cannot apply a Pod sacrifice. The
+  air-drop damage rows use tracked unit references so visible carriers cannot
+  disclose hidden cargo IDs or damage. Selected boarding transports are also
+  tracked, and Unity Pod movement resolutions carry the owning player reference
+  so private rewards are withheld from observers without full intelligence.
+  Supply Transport and Alien Artifact contribution/study resolutions track the
+  affected base, preventing public redacted base shells from trying to apply
+  private production, facility, mineral, or research changes. Probe operations,
+  orbital attacks, and individual unit upgrades are explicitly player-private,
+  preventing observers from applying operational or treasury changes against
+  redacted rival state. Probe-interrogation resolutions track both the Probe
+  Team and its repatriation base, preventing hidden return-base IDs from being
+  disclosed or looked up in an observer's filtered world.
 
 The base-game content validator currently reports:
 
@@ -980,6 +998,19 @@ an event referencing a private host base is not delivered to the client, its
 tile and climate mutations still arrive authoritatively without revealing the
 base, and the existing visibility, movement, combat, capture, founding,
 terraforming, malformed-packet, reconnect, and conquest checks remain intact.
+
+After the derived-reference event audit, all 112 isolated native/script tests
+passed in 254.56 seconds. Sea-level casualty rolls, air-drop cargo damage,
+boarding transports, Unity Pod rewards, Supply Transport and Alien Artifact
+base effects, Probe repatriation, Probe operations, orbital attacks, individual
+upgrades, and Planet Buster interception payloads now preserve their required
+visibility boundaries or omit private counters. Ordinary multiplayer passed in
+59.32 seconds. Two preceding runs exposed a fixture race in which its worker
+probe overlapped authoritative base replacement; stable base/pop IDs and
+serialized projection-sensitive phases removed that stale-reference path
+without extending the timeout. The prior map-projection checkpoint completed
+Ubuntu Debug and Windows Clang Release CI plus scan-build and package workflows
+successfully.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -13,7 +13,7 @@ return {
 	},
 
 	resolve: (e) => {
-		return {};
+		return {base: e.data.unit.get_tile().get_base()};
 	},
 
 	apply: (e) => {

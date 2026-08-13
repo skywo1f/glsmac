@@ -212,6 +212,7 @@ event.resolved = move_unit.resolve(event);
 test.assert(event.resolved.is_movement_successful);
 test.assert(event.resolved.unity_pod.kind == 'resource');
 test.assert(event.resolved.unity_pod.bonus == 'minerals');
+test.assert(event.resolved.unity_pod_player == unit.get_owner());
 
 event.applied = move_unit.apply(event);
 test.assert(current_tile.x == destination.x && current_tile.y == destination.y);
@@ -233,6 +234,7 @@ event = {
 };
 event.resolved = move_unit.resolve(event);
 test.assert(event.resolved.unity_pod.kind == 'gate');
+test.assert(event.resolved.unity_pod_player == unit.get_owner());
 test.assert(
 	event.resolved.unity_pod.destination.x == gate_destination.x &&
 	event.resolved.unity_pod.destination.y == gate_destination.y
@@ -255,6 +257,7 @@ event = {
 };
 event.resolved = move_unit.resolve(event);
 test.assert(event.resolved.unity_pod == null);
+test.assert(event.resolved.unity_pod_player == null);
 event.applied = move_unit.apply(event);
 test.assert(current_tile == destination);
 test.assert(

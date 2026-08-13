@@ -38,7 +38,7 @@ const find_base = (game, base_id) => {
 
 const get_resolved_loss = (resolved, base_id) => {
 	for (loss of resolved.base_losses) {
-		if (loss.base_id == base_id) {
+		if (loss.base.id == base_id) {
 			return loss.population;
 		}
 	}
@@ -129,13 +129,12 @@ return {
 		let base_losses = [];
 		const bases = e.game.bm.get_bases();
 		for (let i = 0; i < #sizeof(bases); i++) {
-			const base_id = bases[i].id;
 			const population = #min(
 				10,
 				#max(bases[i].get_size() / 2, e.game.random.get_int(2, 4))
 			);
 			base_losses :+{
-				base_id: base_id,
+				base: bases[i],
 				population: population,
 			};
 		}
