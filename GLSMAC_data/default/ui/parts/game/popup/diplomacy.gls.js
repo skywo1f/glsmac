@@ -77,6 +77,8 @@ return {
 		this.offer_treaty = null;
 		this.offer_pact = null;
 		this.declare_vendetta = null;
+		this.use_excuse = null;
+		this.overlook_excuse = null;
 		this.accept_offer = null;
 		this.reject_offer = null;
 		this.accept_surrender = null;
@@ -128,6 +130,7 @@ return {
 			'diplomatic_loan_resolved',
 			'diplomatic_sanctions_updated',
 			'diplomatic_integrity_updated',
+			'diplomatic_excuse_updated',
 			'diplomatic_contact_established',
 			'diplomatic_contact_updated',
 			'map_visibility_updated',
@@ -137,14 +140,21 @@ return {
 				if (this.player != null) {
 					this.refresh();
 				}
-				if (
+				const incoming_diplomacy =
 					(observed_event_name == 'diplomatic_proposal' ||
 						observed_event_name == 'diplomatic_trade_proposed' ||
 						observed_event_name == 'diplomatic_loan_proposed' ||
 						observed_event_name == 'diplomatic_surrender_offered') &&
-					e.target.id == p.game.get_player().id
-				) {
+					e.target.id == p.game.get_player().id;
+				const incoming_excuse = observed_event_name == 'diplomatic_excuse_updated' &&
+					e.expiry_turn >= p.game.get_turn() &&
+					e.player.id == p.game.get_player().id;
+				if (incoming_diplomacy || incoming_excuse) {
 					p.modules.popup.show('diplomacy');
+					if (observed_event_name == 'diplomatic_excuse_updated') {
+						this.opponent_select.value = '' + e.target.id;
+						this.select_target(this.opponent_select.value);
+					}
 				}
 			});
 		}
@@ -188,6 +198,20 @@ return {
 				if (this.player != null && this.target != null) {
 					p.game.event('declare_vendetta', {player: this.player, target: this.target});
 				}
+				return true;
+			});
+			this.use_excuse = body.button({
+				class: 'game-popup-button', text: 'Use Justification', top: 94,
+			});
+			this.use_excuse.on('click', (e) => {
+				this.respond_excuse(true);
+				return true;
+			});
+			this.overlook_excuse = body.button({
+				class: 'game-popup-button', text: 'Overlook Framing Attempt', top: 118,
+			});
+			this.overlook_excuse.on('click', (e) => {
+				this.respond_excuse(false);
 				return true;
 			});
 
@@ -400,6 +424,16 @@ return {
 		}
 	},
 
+	respond_excuse: (use_excuse) => {
+		if (this.player != null && this.target != null) {
+			this.p.game.event('respond_diplomatic_excuse', {
+				player: this.player,
+				target: this.target,
+				use_excuse: use_excuse,
+			});
+		}
+	},
+
 	parse_energy: (value) => {
 		let amount = 0;
 		let valid = true;
@@ -521,6 +555,7 @@ return {
 	refresh: () => {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
+			this.use_excuse, this.overlook_excuse,
 			this.accept_offer, this.reject_offer,
 			this.accept_surrender, this.reject_surrender,
 		];
@@ -580,6 +615,8 @@ return {
 		const target_master = this.target.get_submissive_to_id();
 		const incoming_surrender = this.target.get_surrender_offer_to_id() == this.player.id;
 		const outgoing_surrender = this.player.get_surrender_offer_to_id() == this.target.id;
+		const excuse_turn = this.player.get_diplomatic_excuse_turn(this.target);
+		const has_excuse = relation != 'vendetta' && excuse_turn >= this.p.game.get_turn();
 		const integrity_name = this.p.game.get('f_diplomacy_get_integrity_name');
 		let sanction_text = '';
 		if (player_sanctions > 0) {
@@ -599,13 +636,16 @@ return {
 			'Relation: ' + relation_name(relation) + '; integrity: you ' +
 			integrity_name(this.player.get_integrity_blemishes()) + ' / them ' +
 			integrity_name(this.target.get_integrity_blemishes()) + sanction_text + submission_text;
-		this.offer_text.text = incoming_surrender
+		this.offer_text.text = has_excuse
+			? 'Exposed framing attempt; justification valid through year ' +
+				#to_string(excuse_turn)
+			: (incoming_surrender
 			? 'Incoming unconditional surrender offer'
 			: (outgoing_surrender
 				? 'Surrender awaiting response'
 				: (incoming != ''
 			? 'Incoming proposal: ' + relation_name(incoming)
-			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : '')));
+			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
 		this.trade_text.text = incoming_trade != null
 			? 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)
 			: (outgoing_trade != null
@@ -627,7 +667,13 @@ return {
 						)
 						: '')));
 
-		if (incoming_surrender) {
+		if (has_excuse) {
+			this.use_excuse.text = relation == 'pact' || relation == 'treaty'
+				? 'Renounce ' + relation_name(relation) + ' (Justified)'
+				: 'Declare Vendetta (Justified)';
+			this.use_excuse.show();
+			this.overlook_excuse.show();
+		} else if (incoming_surrender) {
 			this.accept_surrender.show();
 			this.reject_surrender.show();
 		} else if (incoming != '') {

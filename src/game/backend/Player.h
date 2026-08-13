@@ -205,6 +205,13 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	void SetDiplomaticOffer( const size_t player_id, const diplomatic_relation_t relation );
 	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
 	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
+	using diplomatic_excuses_t = std::map< size_t, int64_t >;
+	static constexpr size_t MAX_DIPLOMATIC_EXCUSES = 64;
+	static constexpr int64_t NO_DIPLOMATIC_EXCUSE = -1;
+	static constexpr int64_t MAX_DIPLOMATIC_EXCUSE_TURN = 1000000;
+	const diplomatic_excuses_t& GetDiplomaticExcuses() const;
+	int64_t GetDiplomaticExcuseTurn( const size_t player_id ) const;
+	void SetDiplomaticExcuseTurn( const size_t player_id, const int64_t expiry_turn );
 	static constexpr int64_t NO_DIPLOMATIC_PLAYER = -1;
 	static constexpr size_t MAX_DIPLOMATIC_PLAYER_ID = 64;
 	int64_t GetSubmissiveToId() const;
@@ -342,6 +349,7 @@ private:
 	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
+	diplomatic_excuses_t m_diplomatic_excuses = {};
 	contacted_players_t m_contacted_players = {};
 	bool m_legacy_unrestricted_contact = false;
 	explored_tiles_t m_explored_tiles = {};

@@ -17,6 +17,7 @@
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const mind_control_total_stamp = 12;
+	const diplomatic_excuse_turn_stamp = 77;
 	const nerve_stapling_turns_stamp = 6;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
@@ -190,6 +191,7 @@
 					sanction_turns: borrower.get_sanction_turns(),
 					integrity_blemishes: borrower.get_integrity_blemishes(),
 					mind_control_total: borrower.get_mind_control_total(),
+					diplomatic_excuse_turn: borrower.get_diplomatic_excuse_turn(e.data.lender),
 					prototyped_components: borrower.get_prototyped_components(),
 					sky_hydroponics: borrower.get_orbital_facility_count('SkyHydroponicsLab'),
 					orbital_defense_pods: borrower.get_orbital_facility_count('OrbitalDefensePod'),
@@ -205,6 +207,7 @@
 				borrower.set_sanction_turns(sanction_turns_stamp);
 				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
 				borrower.set_mind_control_total(mind_control_total_stamp);
+				borrower.set_diplomatic_excuse_turn(e.data.lender, diplomatic_excuse_turn_stamp);
 				borrower.set_prototyped_components(prototyped_components_stamp);
 				borrower.set_orbital_facility_count('SkyHydroponicsLab', sky_hydroponics_stamp);
 				borrower.set_orbital_facility_count('OrbitalDefensePod', orbital_defense_pods_stamp);
@@ -229,6 +232,10 @@
 				borrower.set_sanction_turns(e.applied.sanction_turns);
 				borrower.set_integrity_blemishes(e.applied.integrity_blemishes);
 				borrower.set_mind_control_total(e.applied.mind_control_total);
+				borrower.set_diplomatic_excuse_turn(
+					e.data.lender,
+					e.applied.diplomatic_excuse_turn
+				);
 				borrower.set_prototyped_components(e.applied.prototyped_components);
 				borrower.set_orbital_facility_count(
 					'SkyHydroponicsLab',
@@ -555,6 +562,8 @@
 							game.get_player().get_sanction_turns() != sanction_turns_stamp ||
 							game.get_player().get_integrity_blemishes() != integrity_blemishes_stamp ||
 							game.get_player().get_mind_control_total() != mind_control_total_stamp ||
+							game.get_player().get_diplomatic_excuse_turn(lender) !=
+								diplomatic_excuse_turn_stamp ||
 							game.get_player().get_prototyped_components() != prototyped_components_stamp ||
 							game.get_player().get_orbital_facility_count('SkyHydroponicsLab') !=
 								sky_hydroponics_stamp ||

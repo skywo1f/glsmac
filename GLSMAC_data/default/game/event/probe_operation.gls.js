@@ -727,45 +727,85 @@ return {
 
 		if (frame_player_id >= 0) {
 			const framed_player = e.game.get_player(frame_player_id);
-			applied.framed_diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
-				framed_player,
-				target_player
-			);
-			e.game.get('f_diplomacy_set_bilateral_relation')(
-				framed_player,
-				target_player,
-				'vendetta'
-			);
-			e.game.get('f_diplomacy_clear_offers')(framed_player, target_player);
-			e.game.trigger('diplomacy_updated', {
-				player: target_player,
-				target: framed_player,
-				relation: 'vendetta',
-			});
-			if (!e.resolved.success && framed_player.type == 'ai') {
+			if (e.resolved.success) {
+				applied.framed_diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
+					framed_player,
+					target_player
+				);
+				e.game.get('f_diplomacy_set_bilateral_relation')(
+					target_player,
+					framed_player,
+					'vendetta',
+					true
+				);
+				e.game.get('f_diplomacy_clear_offers')(framed_player, target_player);
+				e.game.trigger('diplomacy_updated', {
+					player: target_player,
+					target: framed_player,
+					relation: 'vendetta',
+				});
+			} else {
+				applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
+					actor,
+					target_player
+				);
+				e.game.get('f_diplomacy_set_bilateral_relation')(
+					target_player,
+					actor,
+					'vendetta',
+					true
+				);
+				e.game.get('f_diplomacy_clear_offers')(actor, target_player);
+				e.game.trigger('diplomacy_updated', {
+					player: target_player,
+					target: actor,
+					relation: 'vendetta',
+				});
 				applied.exposed_diplomacy = e.game.get('f_diplomacy_snapshot_pair')(
 					actor,
 					framed_player
 				);
-				e.game.get('f_diplomacy_set_bilateral_relation')(
-					actor,
-					framed_player,
-					'vendetta'
-				);
-				e.game.get('f_diplomacy_clear_offers')(actor, framed_player);
-				e.game.trigger('diplomacy_updated', {
-					player: actor,
-					target: framed_player,
-					relation: 'vendetta',
-				});
+				if (framed_player.type == 'ai') {
+					e.game.get('f_diplomacy_set_bilateral_relation')(
+						framed_player,
+						actor,
+						'vendetta',
+						true
+					);
+					e.game.get('f_diplomacy_clear_offers')(actor, framed_player);
+					e.game.trigger('diplomacy_updated', {
+						player: framed_player,
+						target: actor,
+						relation: 'vendetta',
+					});
+				} else if (framed_player.get_diplomatic_relation(actor) != 'vendetta') {
+					const expiry_turn = #min(1000000, e.game.get_turn() + 1);
+					framed_player.set_diplomatic_excuse_turn(actor, expiry_turn);
+					applied.exposed_excuse = true;
+					e.game.trigger('diplomatic_excuse_updated', {
+						player: framed_player,
+						target: actor,
+						expiry_turn: expiry_turn,
+						used: false,
+					});
+					e.game.message(
+						framed_player.name + ' has cause against ' + actor.name +
+						' after the exposed framing attempt.'
+					);
+				}
 			}
 		} else if (e.resolved.detected) {
 			applied.diplomacy = e.game.get('f_diplomacy_snapshot_pair')(actor, target_player);
-			e.game.get('f_diplomacy_set_bilateral_relation')(actor, target_player, 'vendetta');
+			e.game.get('f_diplomacy_set_bilateral_relation')(
+				target_player,
+				actor,
+				'vendetta',
+				true
+			);
 			e.game.get('f_diplomacy_clear_offers')(actor, target_player);
 			e.game.trigger('diplomacy_updated', {
-				player: actor,
-				target: target_player,
+				player: target_player,
+				target: actor,
 				relation: 'vendetta',
 			});
 		}
@@ -875,6 +915,14 @@ return {
 				target: framed_player,
 				relation: e.applied.exposed_diplomacy.player_relation,
 			});
+			if (#is_defined(e.applied.exposed_excuse) && e.applied.exposed_excuse) {
+				e.game.trigger('diplomatic_excuse_updated', {
+					player: framed_player,
+					target: actor,
+					expiry_turn: e.applied.exposed_diplomacy.other_excuse_turn,
+					used: false,
+				});
+			}
 		}
 		if (#is_defined(e.applied.framed_diplomacy)) {
 			const framed_player = e.game.get_player(e.applied.frame_player_id);

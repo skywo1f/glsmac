@@ -270,6 +270,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
 				source.SetMindControlTotal( 12 );
+				source.SetDiplomaticExcuseTurn( 5, 44 );
 				source.SetObsoleteUnitDesigns( {
 					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 				} );
@@ -377,6 +378,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player mind control total was not cloned"
 				);
 				GT_ASSERT(
+					cloned.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"player diplomatic excuse was not cloned"
+				);
+				GT_ASSERT(
 					cloned.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -478,6 +483,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player mind control total was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"player diplomatic excuse was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -544,6 +553,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 				player_extension.WriteInt( source.GetSubmissiveToId() );
 				player_extension.WriteInt( source.GetSurrenderOfferToId() );
 				player_extension.WriteInt( source.GetMindControlTotal() );
+				player_extension.WriteInt( source.GetDiplomaticExcuses().size() );
+				for ( const auto& [ player_id, expiry_turn ] : source.GetDiplomaticExcuses() ) {
+					player_extension.WriteInt( player_id );
+					player_extension.WriteInt( expiry_turn );
+				}
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
@@ -565,10 +579,62 @@ void AddTests( task::gsetests::GSETests* task ) {
 				mind_control_total_field.WriteInt( source.GetMindControlTotal() );
 				const auto mind_control_total_field_size =
 					mind_control_total_field.ToString().size();
+				types::Buffer diplomatic_excuses_field;
+				diplomatic_excuses_field.WriteInt( source.GetDiplomaticExcuses().size() );
+				for ( const auto& [ player_id, expiry_turn ] : source.GetDiplomaticExcuses() ) {
+					diplomatic_excuses_field.WriteInt( player_id );
+					diplomatic_excuses_field.WriteInt( expiry_turn );
+				}
+				const auto diplomatic_excuses_field_size =
+					diplomatic_excuses_field.ToString().size();
+				auto pre_diplomatic_excuses_data = source.Serialize().ToString();
+				pre_diplomatic_excuses_data.resize(
+					pre_diplomatic_excuses_data.size() - diplomatic_excuses_field_size
+				);
+				Player pre_diplomatic_excuses( pre_diplomatic_excuses_data );
+				GT_ASSERT(
+					pre_diplomatic_excuses.GetMindControlTotal() == 12 &&
+					pre_diplomatic_excuses.GetDiplomaticExcuses().empty(),
+					"older player data did not default diplomatic excuses"
+				);
+				bool rejected_serialized_diplomatic_excuse = false;
+				try {
+					types::Buffer invalid_excuse;
+					invalid_excuse.WriteInt( 1 );
+					invalid_excuse.WriteInt( 5 );
+					invalid_excuse.WriteInt( Player::MAX_DIPLOMATIC_EXCUSE_TURN + 1 );
+					auto invalid_data = pre_diplomatic_excuses_data + invalid_excuse.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_serialized_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_serialized_diplomatic_excuse,
+					"out-of-range serialized diplomatic excuse was accepted"
+				);
+				bool rejected_duplicate_diplomatic_excuse = false;
+				try {
+					types::Buffer duplicate_excuse;
+					duplicate_excuse.WriteInt( 2 );
+					duplicate_excuse.WriteInt( 5 );
+					duplicate_excuse.WriteInt( 44 );
+					duplicate_excuse.WriteInt( 5 );
+					duplicate_excuse.WriteInt( 45 );
+					auto invalid_data = pre_diplomatic_excuses_data + duplicate_excuse.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_duplicate_diplomatic_excuse,
+					"duplicate serialized diplomatic excuse was accepted"
+				);
 				auto pre_submission_data = source.Serialize().ToString();
 				pre_submission_data.resize(
 					pre_submission_data.size() - submission_state_fields_size -
-						mind_control_total_field_size
+						mind_control_total_field_size - diplomatic_excuses_field_size
 				);
 				Player pre_submission( pre_submission_data );
 				GT_ASSERT(
@@ -580,7 +646,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				auto pre_supreme_data = source.Serialize().ToString();
 				pre_supreme_data.resize(
 					pre_supreme_data.size() - submission_state_fields_size -
-						supreme_state_fields_size - mind_control_total_field_size
+						supreme_state_fields_size - mind_control_total_field_size -
+						diplomatic_excuses_field_size
 				);
 				Player pre_supreme( pre_supreme_data );
 				GT_ASSERT(
@@ -595,7 +662,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				pre_expulsion_data.resize(
 					pre_expulsion_data.size() - council_expulsion_field_size -
 						supreme_state_fields_size - submission_state_fields_size -
-						mind_control_total_field_size
+						mind_control_total_field_size - diplomatic_excuses_field_size
 				);
 				Player pre_expulsion( pre_expulsion_data );
 				GT_ASSERT(
@@ -607,7 +674,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				pre_clean_mineral_data.resize(
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
 						council_expulsion_field_size - supreme_state_fields_size -
-						submission_state_fields_size - mind_control_total_field_size
+						submission_state_fields_size - mind_control_total_field_size -
+						diplomatic_excuses_field_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(
@@ -749,6 +817,26 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					rejected_invalid_mind_control_total && roundtrip.GetMindControlTotal() == 12,
 					"out-of-range mind control total was accepted or partially mutated"
+				);
+				bool rejected_invalid_diplomatic_excuse = false;
+				try {
+					roundtrip.SetDiplomaticExcuseTurn(
+						5,
+						Player::MAX_DIPLOMATIC_EXCUSE_TURN + 1
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_diplomatic_excuse &&
+						roundtrip.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"out-of-range diplomatic excuse was accepted or partially mutated"
+				);
+				roundtrip.SetDiplomaticExcuseTurn( 5, Player::NO_DIPLOMATIC_EXCUSE );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticExcuses().empty(),
+					"cleared diplomatic excuse was retained"
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				roundtrip.ClearDiplomaticTrade( 4 );
@@ -915,6 +1003,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					legacy.GetMindControlTotal() == 0,
 					"legacy player mind control total did not default to zero"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticExcuses().empty(),
+					"legacy player diplomatic excuses did not default to empty"
 				);
 				GT_ASSERT(
 					legacy.GetOrbitalFacilities().empty(),

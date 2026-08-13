@@ -25,8 +25,25 @@ return {
 
 	apply: (e) => {
 		const snapshot = e.game.get('f_diplomacy_snapshot_pair')(e.data.player, e.data.target);
-		e.game.get('f_diplomacy_set_bilateral_relation')(e.data.player, e.data.target, 'vendetta');
+		const justified = e.game.get('f_diplomacy_has_active_excuse')(
+			e.data.player,
+			e.data.target
+		);
+		e.game.get('f_diplomacy_set_bilateral_relation')(
+			e.data.player,
+			e.data.target,
+			'vendetta',
+			justified
+		);
 		e.game.get('f_diplomacy_clear_offers')(e.data.player, e.data.target);
+		if (justified) {
+			e.game.trigger('diplomatic_excuse_updated', {
+				player: e.data.player,
+				target: e.data.target,
+				expiry_turn: 0 - 1,
+				used: true,
+			});
+		}
 		e.game.trigger('diplomacy_updated', {
 			player: e.data.player,
 			target: e.data.target,
@@ -42,6 +59,14 @@ return {
 			target: e.data.target,
 			relation: e.applied.player_relation,
 		});
+		if (e.applied.player_excuse_turn >= 0) {
+			e.game.trigger('diplomatic_excuse_updated', {
+				player: e.data.player,
+				target: e.data.target,
+				expiry_turn: e.applied.player_excuse_turn,
+				used: false,
+			});
+		}
 	},
 
 };

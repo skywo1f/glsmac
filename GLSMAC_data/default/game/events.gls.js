@@ -53,6 +53,7 @@ return (game) => {
 		'resolve_supreme_defiance',
 		'corner_global_energy_market',
 		'declare_vendetta',
+		'respond_diplomatic_excuse',
 		'establish_diplomatic_contact',
 		'propose_diplomatic_relation',
 		'respond_diplomatic_proposal',

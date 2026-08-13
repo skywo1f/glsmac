@@ -24,6 +24,17 @@ const is_player = (player) => {
 	);
 };
 
+const get_diplomatic_excuse_turn = (player, other) => {
+	return #typeof(player.get_diplomatic_excuse_turn) == 'Callable'
+		? player.get_diplomatic_excuse_turn(other) : 0 - 1;
+};
+
+const set_diplomatic_excuse_turn = (player, other, expiry_turn) => {
+	if (#typeof(player.set_diplomatic_excuse_turn) == 'Callable') {
+		player.set_diplomatic_excuse_turn(other, expiry_turn);
+	}
+};
+
 const validate_players = (player, other) => {
 	if (!is_player(player) || !is_player(other)) {
 		return 'Diplomacy requires two players';
@@ -101,6 +112,8 @@ const snapshot_pair = (player, other) => {
 		other_relation: other.get_diplomatic_relation(player),
 		player_offer: player.get_diplomatic_offer(other),
 		other_offer: other.get_diplomatic_offer(player),
+		player_excuse_turn: get_diplomatic_excuse_turn(player, other),
+		other_excuse_turn: get_diplomatic_excuse_turn(other, player),
 		player_contact: player.has_contact(other),
 		other_contact: other.has_contact(player),
 		player_trade: player.get_diplomatic_trade(other),
@@ -137,6 +150,8 @@ const restore_pair = (player, other, snapshot) => {
 	other.set_diplomatic_relation(player, snapshot.other_relation);
 	player.set_diplomatic_offer(other, snapshot.player_offer);
 	other.set_diplomatic_offer(player, snapshot.other_offer);
+	set_diplomatic_excuse_turn(player, other, snapshot.player_excuse_turn);
+	set_diplomatic_excuse_turn(other, player, snapshot.other_excuse_turn);
 	player.set_contact(other, snapshot.player_contact);
 	other.set_contact(player, snapshot.other_contact);
 	restore_trade(player, other, snapshot.player_trade);
@@ -193,8 +208,8 @@ const record_betrayal = (game, player, other) => {
 	return penalty;
 };
 
-const set_bilateral_relation = (game, player, other, relation) => {
-	if (relation == 'vendetta') {
+const set_bilateral_relation = (game, player, other, relation, justified) => {
+	if (relation == 'vendetta' && (!#is_defined(justified) || !justified)) {
 		record_betrayal(game, player, other);
 	}
 	const established_contact = !player.has_contact(other) || !other.has_contact(player);
@@ -205,6 +220,15 @@ const set_bilateral_relation = (game, player, other, relation) => {
 	}
 	player.set_diplomatic_relation(other, relation);
 	other.set_diplomatic_relation(player, relation);
+	if (relation == 'vendetta') {
+		set_diplomatic_excuse_turn(player, other, 0 - 1);
+		set_diplomatic_excuse_turn(other, player, 0 - 1);
+	}
+};
+
+const has_active_excuse = (game, player, other) => {
+	const turn = #typeof(game.get_turn) == 'Callable' ? game.get_turn() : 0;
+	return get_diplomatic_excuse_turn(player, other) >= turn;
 };
 
 const clear_relation_offers = (player, other) => {
@@ -569,6 +593,9 @@ return (game) => {
 		game.set('f_diplomacy_restore_pair', restore_pair);
 		game.set('f_diplomacy_get_integrity_name', get_integrity_name);
 		game.set('f_diplomacy_get_betrayal_penalty', get_betrayal_penalty);
+		game.set('f_diplomacy_has_active_excuse', (player, other) => {
+			return has_active_excuse(game, player, other);
+		});
 		game.set('f_diplomacy_get_submissive_to_id', get_submissive_to_id);
 		game.set('f_diplomacy_get_surrender_offer_to_id', get_surrender_offer_to_id);
 		game.set('f_diplomacy_is_submission_pair', (player, other) => {
@@ -577,8 +604,8 @@ return (game) => {
 		game.set('f_diplomacy_get_submission_master', (player) => {
 			return get_submission_master(game, player);
 		});
-		game.set('f_diplomacy_set_bilateral_relation', (player, other, relation) => {
-			return set_bilateral_relation(game, player, other, relation);
+		game.set('f_diplomacy_set_bilateral_relation', (player, other, relation, justified) => {
+			return set_bilateral_relation(game, player, other, relation, justified);
 		});
 		game.set('f_diplomacy_clear_relation_offers', clear_relation_offers);
 		game.set('f_diplomacy_clear_offers', clear_offers);

@@ -1,5 +1,6 @@
 const define_diplomacy = #include('../default/game/diplomacy');
 const declare_vendetta = #include('../default/game/event/declare_vendetta');
+const respond_excuse = #include('../default/game/event/respond_diplomatic_excuse');
 const propose_relation = #include('../default/game/event/propose_diplomatic_relation');
 const respond_proposal = #include('../default/game/event/respond_diplomatic_proposal');
 const propose_trade = #include('../default/game/event/propose_diplomatic_trade');
@@ -9,6 +10,7 @@ const diplomacy_popup = #include('../default/ui/parts/game/popup/diplomacy');
 
 test.assert(#typeof(diplomacy_popup.init) == 'Callable');
 test.assert(#typeof(diplomacy_popup.propose_trade) == 'Callable');
+test.assert(#typeof(diplomacy_popup.respond_excuse) == 'Callable');
 
 const callbacks = {};
 const values = {};
@@ -17,6 +19,7 @@ let messages = [];
 let datalinks_queues = 0;
 let players = [];
 let event_calls = [];
+let turn = 40;
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
@@ -24,6 +27,7 @@ const game = {
 	is_turn_complete: (player_id) => { return false; },
 	is_master: () => { return true; },
 	get_players: () => { return players; },
+	get_turn: () => { return turn; },
 	event: (name, data) => { event_calls :+{name: name, data: data}; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
 	message: (text) => { messages :+text; },
@@ -64,6 +68,7 @@ const make_player = (id, name) => {
 	let loan_offers = {};
 	let loans = {};
 	let contacts = {};
+	let excuses = {};
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
@@ -86,6 +91,14 @@ const make_player = (id, name) => {
 		},
 		set_diplomatic_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
+		},
+		get_diplomatic_excuse_turn: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(excuses[key]) ? excuses[key] : 0 - 1;
+		},
+		set_diplomatic_excuse_turn: (other, expiry_turn) => {
+			excuses['p' + #to_string(other.id)] = expiry_turn < 0
+				? #undefined : expiry_turn;
 		},
 		get_diplomatic_offer: (other) => {
 			const key = 'p' + #to_string(other.id);
@@ -307,6 +320,52 @@ test.assert(alpha.get_integrity_blemishes() == 7);
 declare_vendetta.rollback(vendetta);
 test.assert(alpha.get_integrity_blemishes() == 7);
 alpha.set_integrity_blemishes(0);
+
+alpha.set_diplomatic_excuse_turn(beta, turn + 1);
+vendetta.applied = declare_vendetta.apply(vendetta);
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(alpha.get_integrity_blemishes() == 0);
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == 0 - 1);
+declare_vendetta.rollback(vendetta);
+test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == turn + 1);
+
+let excuse_response = {
+	caller: 1,
+	game: game,
+	data: {player: alpha, target: beta, use_excuse: true},
+};
+test.assert(!#is_defined(respond_excuse.validate(excuse_response)));
+excuse_response.applied = respond_excuse.apply(excuse_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'neutral');
+test.assert(beta.get_diplomatic_relation(alpha) == 'neutral');
+test.assert(alpha.get_integrity_blemishes() == 0);
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == 0 - 1);
+respond_excuse.rollback(excuse_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
+test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == turn + 1);
+
+excuse_response.data.use_excuse = false;
+excuse_response.applied = respond_excuse.apply(excuse_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == 0 - 1);
+respond_excuse.rollback(excuse_response);
+test.assert(alpha.get_diplomatic_excuse_turn(beta) == turn + 1);
+
+alpha.set_diplomatic_relation(beta, 'neutral');
+beta.set_diplomatic_relation(alpha, 'neutral');
+excuse_response.data.use_excuse = true;
+excuse_response.applied = respond_excuse.apply(excuse_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(alpha.get_integrity_blemishes() == 0);
+respond_excuse.rollback(excuse_response);
+turn += 2;
+test.assert(
+	respond_excuse.validate(excuse_response) ==
+	'No current diplomatic excuse exists against this faction'
+);
+turn -= 2;
 
 proposal.data.relation = 'ceasefire';
 test.assert(#is_defined(propose_relation.validate(proposal)));

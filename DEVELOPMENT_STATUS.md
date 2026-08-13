@@ -278,9 +278,13 @@ scenarios, for:
   stacks, cargo, and inaccessible air units, and base capture resets prior-owner
   research-raid state; eligible operations can frame a contacted third faction
   against an AI target at the original +1 difficulty, redirect blame on success,
-  expose failed attempts to AI scapegoats, and roll every changed relationship
-  back exactly; elite AI probes use the same framing rules; resident Probe Team
-  defense, neutral/treaty Probe Team
+  expose the real operator to both the victim and scapegoat on failure, and roll
+  every changed relationship back exactly; AI scapegoats retaliate immediately,
+  while human scapegoats receive a persisted excuse through the following turn
+  with justified vendetta, treaty/pact renunciation, and overlook controls;
+  justified Probe retaliation does not blemish diplomatic integrity, and elite
+  AI probes use the same framing rules; resident Probe Team defense,
+  neutral/treaty Probe Team
   interception with leave/interrogate/eliminate player controls and
   domain-compatible repatriation, infiltration- or Planetary Governor-gated
   intelligence reports for rival research, economy, bases, social model, and
@@ -328,9 +332,9 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining probe-team parity: the human framed-faction excuse response, exact
-  resident Probe-versus-Probe combat resolution, active nerve-stapling gameplay,
-  and per-pair atrocity-victim and revenge-state mind-control modifiers;
+- remaining probe-team parity: exact resident Probe-versus-Probe combat
+  resolution, active nerve-stapling gameplay, and per-pair atrocity-victim and
+  revenge-state mind-control modifiers;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -735,6 +739,16 @@ history increments, and rollback. The installed-asset Probe scenario passed in
 the faction capture total plus base research-theft, energy-drain, genetic-plague,
 former-owner, and nerve-stapling fields; this also corrected a pre-existing
 omission that discarded the three per-base Probe operation flags on save.
+
+After human failed-frame responses and justified Probe retaliation were added,
+the Windows x64 Release build succeeded in 121.9 seconds and all 109 isolated
+native/script tests passed in 233.27 seconds. Coverage verifies correct blame on
+successful and failed frames, immediate AI retaliation, the persisted one-turn
+human excuse, ordinary justified vendettas, treaty/pact renunciation, overlook,
+integrity preservation, legacy-save defaults, invalid-data rejection, and exact
+rollback. The installed-asset Probe scenario passed in 28.51 seconds, and
+running reconnect passed in 50.77 seconds while directly restoring the new
+per-faction excuse expiry.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

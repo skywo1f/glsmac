@@ -12,6 +12,7 @@
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const mind_control_total_stamp = 12;
+	const diplomatic_excuse_turn_stamp = 77;
 	const nerve_stapling_turns_stamp = 6;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
@@ -310,6 +311,12 @@
 			}
 			if (game.get_player().get_mind_control_total() != mind_control_total_stamp) {
 				return 'mind-control history was not restored';
+			}
+			if (
+				game.get_player().get_diplomatic_excuse_turn(lender) !=
+					diplomatic_excuse_turn_stamp
+			) {
+				return 'diplomatic excuse was not restored';
 			}
 			if (game.get_player().get_prototyped_components() != prototyped_components_stamp) {
 				return 'prototyped unit components were not restored';

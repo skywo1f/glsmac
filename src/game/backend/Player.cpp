@@ -65,6 +65,7 @@ Player::Player( const Player* const other ) {
 	m_social_engineering = other->m_social_engineering;
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
+	m_diplomatic_excuses = other->m_diplomatic_excuses;
 	m_contacted_players = other->m_contacted_players;
 	m_legacy_unrestricted_contact = other->m_legacy_unrestricted_contact;
 	m_explored_tiles = other->m_explored_tiles;
@@ -465,6 +466,30 @@ bool Player::ParseDiplomaticRelation( const std::string& name, diplomatic_relati
 		return true;
 	}
 	return false;
+}
+
+const Player::diplomatic_excuses_t& Player::GetDiplomaticExcuses() const {
+	return m_diplomatic_excuses;
+}
+
+int64_t Player::GetDiplomaticExcuseTurn( const size_t player_id ) const {
+	const auto it = m_diplomatic_excuses.find( player_id );
+	return it == m_diplomatic_excuses.end() ? NO_DIPLOMATIC_EXCUSE : it->second;
+}
+
+void Player::SetDiplomaticExcuseTurn( const size_t player_id, const int64_t expiry_turn ) {
+	if ( player_id >= MAX_DIPLOMATIC_EXCUSES ) {
+		THROW( "diplomatic excuse player ID is out of range" );
+	}
+	if ( expiry_turn < NO_DIPLOMATIC_EXCUSE || expiry_turn > MAX_DIPLOMATIC_EXCUSE_TURN ) {
+		THROW( "diplomatic excuse expiry turn is out of range" );
+	}
+	if ( expiry_turn == NO_DIPLOMATIC_EXCUSE ) {
+		m_diplomatic_excuses.erase( player_id );
+	}
+	else {
+		m_diplomatic_excuses[ player_id ] = expiry_turn;
+	}
 }
 
 int64_t Player::GetSubmissiveToId() const {
@@ -1263,6 +1288,42 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_diplomatic_excuse_turn",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR(
+							gse::EC.INVALID_CALL,
+							"A player cannot have a diplomatic excuse against itself"
+						);
+					}
+					return VALUE( gse::value::Int, , GetDiplomaticExcuseTurn( other->m_slotnum ) );
+				} )
+			},
+			{
+				"set_diplomatic_excuse_turn",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( expiry_turn, 1, Int );
+					if ( other == this ) {
+						GSE_ERROR(
+							gse::EC.INVALID_CALL,
+							"A player cannot have a diplomatic excuse against itself"
+						);
+					}
+					try {
+						SetDiplomaticExcuseTurn( other->m_slotnum, expiry_turn );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_diplomatic_offer",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -1871,6 +1932,11 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteInt( m_submissive_to_id );
 	buf.WriteInt( m_surrender_offer_to_id );
 	buf.WriteInt( m_mind_control_total );
+	buf.WriteInt( m_diplomatic_excuses.size() );
+	for ( const auto& [ player_id, expiry_turn ] : m_diplomatic_excuses ) {
+		buf.WriteInt( player_id );
+		buf.WriteInt( expiry_turn );
+	}
 
 	return buf;
 }
@@ -2274,6 +2340,22 @@ void Player::Deserialize( types::Buffer buf ) {
 			THROW( "invalid serialized player mind control total" );
 		}
 	}
+	diplomatic_excuses_t diplomatic_excuses = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto excuse_count = buf.ReadCollectionSize( "player diplomatic excuse" );
+		if ( excuse_count > MAX_DIPLOMATIC_EXCUSES ) {
+			THROW( "invalid serialized player diplomatic excuse count" );
+		}
+		for ( size_t i = 0 ; i < excuse_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic excuse player ID" );
+			const auto expiry_turn = buf.ReadInt();
+			Player validator( "diplomatic excuse validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticExcuseTurn( player_id, expiry_turn );
+			if ( !diplomatic_excuses.emplace( player_id, expiry_turn ).second ) {
+				THROW( "duplicate serialized diplomatic excuse player ID" );
+			}
+		}
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2318,6 +2400,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_submissive_to_id = submissive_to_id;
 	m_surrender_offer_to_id = surrender_offer_to_id;
 	m_mind_control_total = mind_control_total;
+	m_diplomatic_excuses = std::move( diplomatic_excuses );
 
 }
 

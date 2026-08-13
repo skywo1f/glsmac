@@ -10,6 +10,7 @@ const make_player = (id, energy, technologies, target, type) => {
 	let loan_offers = {};
 	let loans = {};
 	let contacts = {};
+	let excuses = {};
 	let major_atrocities = 0;
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
@@ -60,8 +61,15 @@ const make_player = (id, energy, technologies, target, type) => {
 			return #is_defined(relations[key]) ? relations[key] : 'neutral';
 		};
 	player.set_diplomatic_relation = (other, value) => {
-			relations['p' + #to_string(other.id)] = value;
-		};
+		relations['p' + #to_string(other.id)] = value;
+	};
+	player.get_diplomatic_excuse_turn = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(excuses[key]) ? excuses[key] : 0 - 1;
+	};
+	player.set_diplomatic_excuse_turn = (other, expiry_turn) => {
+		excuses['p' + #to_string(other.id)] = expiry_turn < 0 ? #undefined : expiry_turn;
+	};
 	player.get_diplomatic_offer = (other) => {
 			const key = 'p' + #to_string(other.id);
 			return #is_defined(offers[key]) ? offers[key] : '';
@@ -300,6 +308,7 @@ const make_fixture = (charter_repealed, framed_type) => {
 		get_bm: () => { return bm; },
 		get_player: (id) => { return players['p' + #to_string(id)]; },
 		get_players: () => { return [actor, target_player, framed_player]; },
+		get_turn: () => { return 40; },
 		is_turn_complete: (id) => { return false; },
 		trigger: (name, data) => { triggers :+{name: name, data: data}; },
 		message: (text) => { last_message = text; },
@@ -372,17 +381,21 @@ test.assert(
 f.game.set('f_council_get_forced_relation', (player, other) => { return ''; });
 f.actor.set_diplomatic_relation(f.target_player, 'treaty');
 f.target_player.set_diplomatic_relation(f.actor, 'treaty');
+f.target_player.set_diplomatic_excuse_turn(f.actor, 41);
 e.resolved = result(true, true, true);
 e.applied = probe_operation.apply(e);
 test.assert(f.actor.has_infiltrated(f.target_player));
 test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'vendetta');
-test.assert(f.actor.get_integrity_blemishes() == 1);
+test.assert(f.actor.get_integrity_blemishes() == 0);
+test.assert(f.target_player.get_integrity_blemishes() == 0);
+test.assert(f.target_player.get_diplomatic_excuse_turn(f.actor) == 0 - 1);
 test.assert(e.data.unit.morale == 3 && e.data.unit.movement == 0.0);
 test.assert(f.read_message() == 'Datalinks infiltrated. The operation was detected.');
 probe_operation.rollback(e);
 test.assert(!f.actor.has_infiltrated(f.target_player));
 test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
 test.assert(f.actor.get_integrity_blemishes() == 0);
+test.assert(f.target_player.get_diplomatic_excuse_turn(f.actor) == 41);
 test.assert(f.um.get_unit(1).morale == 2 && f.um.get_unit(1).movement == 1.0);
 
 f = make_fixture();
@@ -415,7 +428,8 @@ e.resolved.frame_player_id = 3;
 e.applied = probe_operation.apply(e);
 test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
 test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
-test.assert(f.framed_player.get_integrity_blemishes() == 1);
+test.assert(f.framed_player.get_integrity_blemishes() == 0);
+test.assert(f.target_player.get_integrity_blemishes() == 0);
 test.assert(
 	f.read_message() == 'Destroyed accumulated minerals at Base 10. Evidence implicated Player 3.'
 );
@@ -440,11 +454,12 @@ e = {caller: 1, game: f.game, data: {
 e.resolved = result(false, true, false);
 e.resolved.frame_player_id = 3;
 e.applied = probe_operation.apply(e);
-test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
-test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'vendetta');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'treaty');
 test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'vendetta');
-test.assert(f.framed_player.get_integrity_blemishes() == 1);
-test.assert(f.actor.get_integrity_blemishes() == 1);
+test.assert(f.framed_player.get_integrity_blemishes() == 0);
+test.assert(f.actor.get_integrity_blemishes() == 0);
+test.assert(f.target_player.get_integrity_blemishes() == 0);
 test.assert(
 	f.read_message() ==
 	'Probe operation failed. The attempt to implicate Player 3 was exposed. Probe Team lost.'
@@ -459,6 +474,7 @@ test.assert(f.actor.get_integrity_blemishes() == 0);
 f = make_fixture(false, 'human');
 f.actor.set_diplomatic_relation(f.framed_player, 'treaty');
 f.framed_player.set_diplomatic_relation(f.actor, 'treaty');
+f.framed_player.set_diplomatic_excuse_turn(f.actor, 30);
 test.assert(f.framed_player.type == 'human');
 test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
 e = {caller: 1, game: f.game, data: {
@@ -471,10 +487,14 @@ e.resolved = result(false, true, false);
 e.resolved.frame_player_id = 3;
 e.applied = probe_operation.apply(e);
 test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
-test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'vendetta');
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'vendetta');
+test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'neutral');
+test.assert(f.framed_player.get_diplomatic_excuse_turn(f.actor) == 41);
 probe_operation.rollback(e);
 test.assert(f.actor.get_diplomatic_relation(f.framed_player) == 'treaty');
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
 test.assert(f.target_player.get_diplomatic_relation(f.framed_player) == 'neutral');
+test.assert(f.framed_player.get_diplomatic_excuse_turn(f.actor) == 30);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {
