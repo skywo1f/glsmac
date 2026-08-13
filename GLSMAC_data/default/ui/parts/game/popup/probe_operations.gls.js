@@ -125,6 +125,15 @@ return {
 		}
 		const actor = this.p.game.get_player();
 		const target_player = this.get_target_player();
+		if (
+			#classof(this.target) == 'Base' &&
+			this.p.game.get('f_probe_get_defending_probe')(
+				target_player,
+				this.target
+			) != null
+		) {
+			return [['infiltrate', 'Engage Resident Probe Team']];
+		}
 		if (this.p.game.get('f_probe_has_project')(
 			target_player,
 			'TheHunterSeekerAlgorithm'
@@ -316,11 +325,25 @@ return {
 
 	refresh_status: () => {
 		this.execute_button.hide();
+		this.execute_button.text = 'Execute Operation';
 		if (this.target == null) {
 			this.status_text.text = 'Move next to a foreign base or unit.';
 			return;
 		}
 		const target_player = this.get_target_player();
+		if (
+			#classof(this.target) == 'Base' &&
+			this.p.game.get('f_probe_get_defending_probe')(
+				target_player,
+				this.target
+			) != null
+		) {
+			this.status_text.text =
+				'The resident Probe Team must be defeated before an operation can begin.';
+			this.execute_button.text = 'Engage Probe Team';
+			this.execute_button.show();
+			return;
+		}
 		if (this.p.game.get('f_probe_has_project')(
 			target_player,
 			'TheHunterSeekerAlgorithm'

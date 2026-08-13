@@ -284,8 +284,11 @@ scenarios, for:
   while human scapegoats receive a persisted excuse through the following turn
   with justified vendetta, treaty/pact renunciation, and overlook controls;
   justified Probe retaliation does not blemish diplomatic integrity, and elite
-  AI probes use the same framing rules; resident Probe Team defense,
-  neutral/treaty Probe Team
+  AI probes use the same framing rules; resident Probe Team defense uses a
+  separate original-style morale, hasty-attack, and reactor-scaled round battle,
+  selects the strongest healthy resident, consumes both teams' actions, delays
+  the intended mission without charging for it or causing a diplomatic incident,
+  and is available to human and AI factions; neutral/treaty Probe Team
   interception with leave/interrogate/eliminate player controls and
   domain-compatible repatriation, infiltration- or Planetary Governor-gated
   intelligence reports for rival research, economy, bases, social model, and
@@ -333,8 +336,7 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining probe-team parity: exact resident Probe-versus-Probe combat
-  resolution and active nerve-stapling gameplay;
+- remaining probe-team parity: active nerve-stapling gameplay;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -760,6 +762,16 @@ implications, malformed and duplicate save-data rejection, legacy defaults,
 monotonic upgrades, event attribution, and exact rollback. The
 installed-asset Probe scenario passed in 28.79 seconds, and running reconnect
 passed in 51.29 seconds while directly restoring all three grievance flags.
+
+After resident Probe Team defense was replaced with original-style
+Probe-versus-Probe combat, the Windows x64 Release build succeeded and all 109
+isolated native/script tests passed in 230.10 seconds. Focused coverage verifies
+effective-morale and health-based defender selection, hasty-attack strength,
+reactor-scaled damage, both winners, partial damage, promotion, action
+consumption, zero operation cost and effect, unchanged diplomacy, AI engagement,
+human-facing controls, stable notification data, and exact rollback. The
+installed-asset Probe scenario passed in 30.10 seconds while resolving a live
+resident battle before continuing through interrogation and unit subversion.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

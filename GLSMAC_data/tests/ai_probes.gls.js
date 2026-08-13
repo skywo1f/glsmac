@@ -19,6 +19,7 @@ let map_data = 0;
 let is_headquarters = false;
 let subversion_error = '';
 let frame_candidates = [];
+let defending_probe = null;
 
 const player = {
 	id: 0,
@@ -58,6 +59,9 @@ const game = {
 	get: (key) => {
 		if (key == 'f_probe_has_project') {
 			return (owner, project) => { return hunter_seeker; };
+		}
+		if (key == 'f_probe_get_defending_probe') {
+			return (owner, target) => { return defending_probe; };
 		}
 		if (key == 'f_probe_get_mind_control_cost') {
 			return (actor, target) => { return mind_control_cost; };
@@ -121,6 +125,12 @@ const probe = {
 test.assert(probes.get_base_action(game, player, probe, base).operation == 'infiltrate');
 infiltrated = true;
 test.assert(probes.get_base_action(game, player, probe, base) == null);
+defending_probe = {id: 30};
+const resident_action = probes.get_base_action(game, player, probe, base);
+test.assert(
+	resident_action.operation == 'infiltrate' && resident_action.resident_probe_combat
+);
+defending_probe = null;
 relation = 'treaty';
 infiltrated = false;
 test.assert(probes.get_base_action(game, player, probe, base) == null);
@@ -140,6 +150,9 @@ map_data = 0;
 player.energy_credits = 1000;
 hunter_seeker = true;
 test.assert(probes.get_base_action(game, player, probe, base) == null);
+defending_probe = {id: 30};
+test.assert(probes.get_base_action(game, player, probe, base).resident_probe_combat);
+defending_probe = null;
 hunter_seeker = false;
 
 test.assert(probes.get_unit_action(game, player, probe, unit).operation == 'subvert_unit');

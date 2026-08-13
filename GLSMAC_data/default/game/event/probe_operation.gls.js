@@ -392,6 +392,12 @@ return {
 		) {
 			return 'Factions loyal to the Supreme Leader cannot target each other with Probe Teams';
 		}
+		if (
+			operations[operation].target == 'base' &&
+			e.game.get('f_probe_get_defending_probe')(target_player, target) != null
+		) {
+			return;
+		}
 		if (e.game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')) {
 			return 'The Hunter-Seeker Algorithm blocks this probe operation';
 		}
@@ -450,6 +456,28 @@ return {
 		const defender = operations[operation].target == 'base'
 			? e.game.get('f_probe_get_defending_probe')(target_player, e.data.target)
 			: null;
+		if (defender != null) {
+			const combat = e.game.get('f_probe_resolve_combat')(e.data.unit, defender);
+			return {
+				success: false,
+				detected: false,
+				survives: !combat.attacker_dead,
+				chance: 0,
+				survival_chance: 0,
+				cost: 0,
+				technology_id: '',
+				stole_map: false,
+				sabotage_facility_id: '',
+				drain_amount: 0,
+				research_loss: 0,
+				population_loss: 0,
+				unit_damage: [],
+				defender_id: defender.id,
+				frame_player_id: #is_defined(e.data.frame_player_id)
+					? e.data.frame_player_id : 0 - 1,
+				probe_combat: combat,
+			};
+		}
 		const chance = e.game.get('f_probe_get_success_chance')(
 			e.data.unit,
 			target_player,
@@ -457,7 +485,6 @@ return {
 			e.data.target,
 			e.data
 		);
-		const intercepted = defender != null;
 		const success = e.game.random.get_int(1, 100) <= chance;
 		const survival_chance = e.game.get('f_probe_get_survival_chance')(
 			e.data.unit,
@@ -468,7 +495,7 @@ return {
 		);
 		const paid = operation == 'subvert_unit' || operation == 'mind_control_base';
 		const untraceable = paid && #is_defined(e.data.untraceable) && e.data.untraceable;
-		const detected = operation == 'genetic_plague' || intercepted || !success ||
+		const detected = operation == 'genetic_plague' || !success ||
 			(!untraceable && (paid || e.game.random.get_int(1, 100) <= 35));
 		const survives = success && e.game.random.get_int(1, 100) <= survival_chance;
 		let result = {
@@ -556,12 +583,6 @@ return {
 		const target_player = get_target_player(e.game, operation, e.data.target);
 		const frame_player_id = #is_defined(e.resolved.frame_player_id)
 			? e.resolved.frame_player_id : 0 - 1;
-		const result_message = get_result_message(
-			e.game,
-			operation,
-			e.data.target,
-			e.resolved
-		);
 		let applied = {
 			probe: snapshot_unit(probe),
 			target_player_id: target_player.id,
@@ -584,14 +605,60 @@ return {
 		}
 		probe.movement = 0.0;
 		probe.moved_this_turn = true;
-		if (
-			e.resolved.success && e.resolved.defender_id > 0 &&
-			e.game.um.has_unit(e.resolved.defender_id)
-		) {
+		if (#is_defined(e.resolved.probe_combat)) {
 			const defender = e.game.um.get_unit(e.resolved.defender_id);
 			applied.defending_probe = snapshot_unit(defender);
-			e.game.um.despawn_unit(defender);
+			defender.movement = 0.0;
+			defender.moved_this_turn = true;
+			for (step of e.resolved.probe_combat.sequence) {
+				if (step[0]) {
+					defender.health = #max(0.0, defender.health - step[1]);
+				} else {
+					probe.health = #max(0.0, probe.health - step[1]);
+				}
+			}
+			if (e.resolved.probe_combat.attacker_dead) {
+				probe.health = 0.0;
+			}
+			if (e.resolved.probe_combat.defender_dead) {
+				defender.health = 0.0;
+			}
+			const attacker_won = !e.resolved.probe_combat.attacker_dead &&
+				e.resolved.probe_combat.defender_dead;
+			if (attacker_won) {
+				promote_probe(e.game, probe);
+			} else {
+				promote_probe(e.game, defender);
+			}
+			e.game.trigger('probe_operation', {
+				player: actor,
+				target: target_player,
+				operation: operation,
+				success: false,
+				detected: false,
+				probe_combat: true,
+				attacker_id: probe.id,
+				defender_id: defender.id,
+				attacker_won: attacker_won,
+			});
+			if (e.resolved.probe_combat.attacker_dead) {
+				e.game.um.despawn_unit(probe);
+			}
+			if (e.resolved.probe_combat.defender_dead) {
+				e.game.um.despawn_unit(defender);
+			}
+			e.game.message(attacker_won
+				? 'Infiltrating Probe Team defeated the resident Probe Team. Operation delayed.'
+				: 'Resident Probe Team defeated the infiltrating Probe Team. Operation aborted.'
+			);
+			return applied;
 		}
+		const result_message = get_result_message(
+			e.game,
+			operation,
+			e.data.target,
+			e.resolved
+		);
 
 		if (e.resolved.success && operation == 'infiltrate') {
 			actor.set_infiltrated(target_player, true);

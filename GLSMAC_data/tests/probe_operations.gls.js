@@ -159,6 +159,12 @@ const make_fixture = (charter_repealed, framed_type) => {
 		ProbeTeam: {
 			id: 'ProbeTeam', weapon: 'ProbeTeam', mineral_cost: 40,
 			can_found_base: false, can_terraform: false, abilities: [], morale_set: 'STANDARD',
+			reactor_power: 1,
+		},
+		FusionProbeTeam: {
+			id: 'FusionProbeTeam', weapon: 'ProbeTeam', mineral_cost: 40,
+			can_found_base: false, can_terraform: false, abilities: [], morale_set: 'STANDARD',
+			reactor_power: 2,
 		},
 		Defender: {
 			id: 'Defender', weapon: 'HandWeapons', mineral_cost: 40,
@@ -304,11 +310,23 @@ const make_fixture = (charter_repealed, framed_type) => {
 		get_distance: (first, second) => { return 3; },
 	};
 	const bm = {get_bases: () => { return bases; }};
+	let random_values = [];
+	let random_index = 0;
 	const game = {
 		um: um,
 		tm: tm,
 		bm: bm,
-		random: {get_int: (minimum, maximum) => { return minimum; }},
+		random: {get_int: (minimum, maximum) => {
+			if (random_index >= #sizeof(random_values)) {
+				return minimum;
+			}
+			const value = random_values[random_index];
+			random_index++;
+			if (#typeof(value) == 'String') {
+				return value == 'max' ? maximum : minimum;
+			}
+			return #max(minimum, #min(maximum, value));
+		}},
 		on: (name, callback) => {
 			if (!#is_defined(callbacks[name])) { callbacks[name] = []; }
 			callbacks[name] :+callback;
@@ -358,10 +376,15 @@ const make_fixture = (charter_repealed, framed_type) => {
 	return {
 		game: game, actor: actor, target_player: target_player,
 		framed_player: framed_player, target_base: target_base,
-		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um, triggers: triggers,
+		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um,
 		read_message: () => { return last_message; },
+		read_triggers: () => { return triggers; },
 		read_datalinks_queues: () => { return datalinks_queues; },
 		read_map_shares: () => { return map_shares; },
+		set_random_values: (new_values) => {
+			random_values = new_values;
+			random_index = 0;
+		},
 	};
 };
 
@@ -783,26 +806,99 @@ e = {caller: 1, game: f.game, data: {
 }};
 test.assert(!#is_defined(probe_operation.validate(e)));
 e.resolved = probe_operation.resolve(e);
-test.assert(e.resolved.success && e.resolved.detected && e.resolved.defender_id == 5);
+test.assert(
+	!e.resolved.success && !e.resolved.detected && !e.resolved.survives &&
+	e.resolved.defender_id == 5 && e.resolved.cost == 0 &&
+	e.resolved.probe_combat.attacker_dead && !e.resolved.probe_combat.defender_dead
+);
+const defending_energy = f.actor.energy_credits;
 e.applied = probe_operation.apply(e);
-test.assert(!f.um.has_unit(5));
+test.assert(!f.um.has_unit(1) && f.um.has_unit(5));
+test.assert(
+	f.um.get_unit(5).morale == 3 && f.um.get_unit(5).movement == 0.0 &&
+	f.um.get_unit(5).moved_this_turn
+);
+test.assert(!f.actor.has_infiltrated(f.target_player));
+test.assert(f.actor.energy_credits == defending_energy);
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
+test.assert(f.read_message() ==
+	'Resident Probe Team defeated the infiltrating Probe Team. Operation aborted.');
+let combat_event = null;
+for (trigger of f.read_triggers()) {
+	if (trigger.name == 'probe_operation' && trigger.data.probe_combat) {
+		combat_event = trigger.data;
+	}
+}
+test.assert(combat_event != null && !combat_event.attacker_won);
 probe_operation.rollback(e);
-test.assert(f.um.has_unit(5) && f.um.get_unit(5).owner == 2);
+test.assert(f.um.has_unit(1) && f.um.has_unit(5));
+test.assert(f.um.get_unit(1).morale == 2 && f.um.get_unit(1).movement == 1.0);
+test.assert(
+	f.um.get_unit(5).morale == 2 && f.um.get_unit(5).movement == 1.0 &&
+	!f.um.get_unit(5).moved_this_turn
+);
 
 f = make_fixture();
 f.um.spawn_unit({
 	id: 5, def: 'ProbeTeam', owner: f.target_player, tile: f.target_base.get_tile(),
-	morale: 3, health: 1.0, movement: 1.0, home_base_id: f.target_base.id,
+	morale: 2, health: 1.0, movement: 1.0, home_base_id: f.target_base.id,
 });
+let attacker_wins = [];
+for (let i = 0; i < 10; i++) {
+	attacker_wins :+'max';
+	attacker_wins :+'min';
+}
+f.set_random_values(attacker_wins);
 e = {caller: 1, game: f.game, data: {
 	unit: f.probe, operation: 'infiltrate', target: f.target_base,
 }};
-e.resolved = result(false, true, false);
-e.resolved.defender_id = 5;
+test.assert(!#is_defined(probe_operation.validate(e)));
+e.resolved = probe_operation.resolve(e);
+test.assert(
+	!e.resolved.success && !e.resolved.detected && e.resolved.survives &&
+	!e.resolved.probe_combat.attacker_dead && e.resolved.probe_combat.defender_dead
+);
 e.applied = probe_operation.apply(e);
-test.assert(!f.um.has_unit(1) && f.um.has_unit(5));
+test.assert(f.um.has_unit(1) && !f.um.has_unit(5));
+test.assert(e.data.unit.morale == 3);
+test.assert(e.data.unit.movement == 0.0);
+test.assert(e.data.unit.moved_this_turn && !f.actor.has_infiltrated(f.target_player));
+test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'neutral');
+test.assert(f.read_message() ==
+	'Infiltrating Probe Team defeated the resident Probe Team. Operation delayed.');
+combat_event = null;
+for (trigger of f.read_triggers()) {
+	if (trigger.name == 'probe_operation' && trigger.data.probe_combat) {
+		combat_event = trigger.data;
+	}
+}
+test.assert(combat_event != null && combat_event.attacker_won);
 probe_operation.rollback(e);
 test.assert(f.um.has_unit(1) && f.um.has_unit(5));
+test.assert(f.um.get_unit(1).morale == 2 && !f.um.get_unit(1).moved_this_turn);
+test.assert(f.um.get_unit(5).morale == 2 && !f.um.get_unit(5).moved_this_turn);
+
+f = make_fixture();
+f.um.spawn_unit({
+	id: 5, def: 'FusionProbeTeam', owner: f.target_player, tile: f.target_base.get_tile(),
+	morale: 2, health: 1.0, movement: 1.0, home_base_id: f.target_base.id,
+});
+let wounded_attacker_wins = ['min', 'max'];
+for (let j = 0; j < 20; j++) {
+	wounded_attacker_wins :+'max';
+	wounded_attacker_wins :+'min';
+}
+f.set_random_values(wounded_attacker_wins);
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe, operation: 'infiltrate', target: f.target_base,
+}};
+e.resolved = probe_operation.resolve(e);
+test.assert(#sizeof(e.resolved.probe_combat.sequence) == 21);
+e.applied = probe_operation.apply(e);
+test.assert(f.um.has_unit(1) && !f.um.has_unit(5));
+test.assert(e.data.unit.health > 0.89 && e.data.unit.health < 0.91);
+probe_operation.rollback(e);
+test.assert(f.um.get_unit(1).health == 1.0 && f.um.get_unit(5).health == 1.0);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'drain_energy', target: f.target_base}};

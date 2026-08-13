@@ -443,6 +443,7 @@ const get_plague_unit_damage = (game, base, random) => {
 
 const get_defending_probe = (game, target_player, base) => {
 	let defender = null;
+	let defender_score = 0.0;
 	for (unit of game.get_um().get_units()) {
 		if (
 			unit.owner != target_player.id || unit.get_tile() != base.get_tile() ||
@@ -451,11 +452,12 @@ const get_defending_probe = (game, target_player, base) => {
 		) {
 			continue;
 		}
-		if (
-			defender == null || unit.morale > defender.morale ||
-			(unit.morale == defender.morale && unit.id < defender.id)
-		) {
+		const score = #to_float(get_probe_morale(game, unit) + 6) * unit.health;
+		if (defender == null || score > defender_score || (
+			score == defender_score && unit.id < defender.id
+		)) {
 			defender = unit;
+			defender_score = score;
 		}
 	}
 	return defender;
@@ -478,6 +480,58 @@ const get_probe_morale = (game, probe) => {
 		}
 	}
 	return #max(2, #min(6, morale));
+};
+
+const get_probe_reactor_power = (probe) => {
+	const definition = probe.get_def();
+	return #is_defined(definition.reactor_power)
+		? #max(1, definition.reactor_power) : 1;
+};
+
+const get_probe_combat_strength = (game, probe, attacking) => {
+	let strength = (get_probe_morale(game, probe) + 6) * 64;
+	if (attacking) {
+		strength = #max(1, #floor(
+			#to_float(strength) * #min(1.0, #max(0.0, probe.movement))
+		));
+	}
+	return strength;
+};
+
+const resolve_probe_combat = (game, attacker, defender) => {
+	const attacker_strength = get_probe_combat_strength(game, attacker, true);
+	const defender_strength = get_probe_combat_strength(game, defender, false);
+	const attacker_damage = 0.1 / #to_float(get_probe_reactor_power(attacker));
+	const defender_damage = 0.1 / #to_float(get_probe_reactor_power(defender));
+	let attacker_health = attacker.health;
+	let defender_health = defender.health;
+	let sequence = [];
+	while (attacker_health > 0.0 && defender_health > 0.0) {
+		const attacker_roll = game.random.get_int(0, attacker_strength - 1);
+		const defender_roll = game.random.get_int(0, defender_strength - 1);
+		if (attacker_roll > defender_roll) {
+			const damage = #min(defender_health, defender_damage);
+			sequence :+[true, damage];
+			defender_health = #max(0.0, defender_health - damage);
+			if (defender_health < 0.000001) {
+				defender_health = 0.0;
+			}
+		} else {
+			const damage = #min(attacker_health, attacker_damage);
+			sequence :+[false, damage];
+			attacker_health = #max(0.0, attacker_health - damage);
+			if (attacker_health < 0.000001) {
+				attacker_health = 0.0;
+			}
+		}
+	}
+	return {
+		sequence: sequence,
+		attacker_dead: attacker_health <= 0.0,
+		defender_dead: defender_health <= 0.0,
+		attacker_strength: attacker_strength,
+		defender_strength: defender_strength,
+	};
 };
 
 const get_probe_defense = (game, target_player) => {
@@ -573,22 +627,9 @@ const get_success_chance = (game, probe, target_player, operation, target, optio
 	const morale = get_probe_morale(game, probe);
 	const defense = get_probe_defense(game, target_player);
 	const attempts = #max(1, #floor(#to_float(morale) / 2.0) - defense + 1);
-	let chance = #max(0, #min(100, 100 - #floor(
+	return #max(0, #min(100, 100 - #floor(
 		#to_float(difficulty * 100) / #to_float(attempts)
 	)));
-	const definition = operations[operation];
-	const defending_probe = definition.target == 'base' && #typeof(target) == 'Object'
-		? get_defending_probe(game, target_player, target)
-		: null;
-	if (defending_probe != null) {
-		const defender_morale = get_probe_morale(game, defending_probe);
-		const interception_chance = #max(5, #min(
-			95,
-			65 + (morale - defender_morale) * 5
-		));
-		chance = #min(chance, interception_chance);
-	}
-	return chance;
 };
 
 const get_survival_chance = (game, probe, target_player, operation, target, options) => {
@@ -790,6 +831,12 @@ return (game) => {
 		});
 		game.set('f_probe_get_defending_probe', (target_player, base) => {
 			return get_defending_probe(game, target_player, base);
+		});
+		game.set('f_probe_get_combat_strength', (probe, attacking) => {
+			return get_probe_combat_strength(game, probe, attacking);
+		});
+		game.set('f_probe_resolve_combat', (attacker, defender) => {
+			return resolve_probe_combat(game, attacker, defender);
 		});
 		game.set('f_probe_get_success_chance', (probe, target_player, operation, target, options) => {
 			return get_success_chance(game, probe, target_player, operation, target, options);

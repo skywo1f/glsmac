@@ -132,6 +132,7 @@ bases = [headquarters, target_base];
 const probe = {
 	owner: 1,
 	morale: 2,
+	movement: 1.0,
 	get_def: () => { return {weapon: 'ProbeTeam'}; },
 };
 const target_def = {
@@ -155,6 +156,11 @@ units = [target_unit];
 target_tile.get_units = () => { return units; };
 
 test.assert(values.f_probe_is_unit(probe));
+test.assert(values.f_probe_get_combat_strength(probe, true) == 512);
+probe.movement = 0.5;
+test.assert(values.f_probe_get_combat_strength(probe, true) == 256);
+test.assert(values.f_probe_get_combat_strength(probe, false) == 512);
+probe.movement = 1.0;
 test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate') == 100);
 test.assert(values.f_probe_get_success_chance(probe, target_player, 'infiltrate', target_base) == 100);
 test.assert(values.f_probe_get_survival_chance(probe, target_player, 'infiltrate') == 50);
@@ -269,7 +275,21 @@ units :+defending_probe;
 test.assert(values.f_probe_get_defending_probe(target_player, target_base) == defending_probe);
 test.assert(values.f_probe_get_success_chance(
 	probe, target_player, 'infiltrate', target_base
-) == 65);
+) == 100);
+const damaged_veteran_probe = {
+	id: 6, owner: 2, morale: 4, health: 0.5, transport_id: 0,
+	get_tile: () => { return target_base.get_tile(); },
+	get_def: () => { return {weapon: 'ProbeTeam'}; },
+};
+units :+damaged_veteran_probe;
+test.assert(values.f_probe_get_defending_probe(target_player, target_base) == defending_probe);
+const veteran_probe = {
+	id: 9, owner: 2, morale: 3, health: 1.0, transport_id: 0,
+	get_tile: () => { return target_base.get_tile(); },
+	get_def: () => { return {weapon: 'ProbeTeam'}; },
+};
+units :+veteran_probe;
+test.assert(values.f_probe_get_defending_probe(target_player, target_base) == veteran_probe);
 units = [target_unit];
 
 target_def.abilities = ['PolymorphicEncryption'];

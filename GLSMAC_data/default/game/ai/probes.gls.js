@@ -17,10 +17,16 @@ const get_base_action = (game, player, probe, base) => {
 		return null;
 	}
 	const relation = player.get_diplomatic_relation(target_player);
-	if (
-		relation == 'treaty' || relation == 'pact' ||
-		game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')
-	) {
+	if (relation == 'treaty' || relation == 'pact') {
+		return null;
+	}
+	if (game.get('f_probe_get_defending_probe')(target_player, base) != null) {
+		return {
+			operation: 'infiltrate', target: base, score: 160000,
+			resident_probe_combat: true,
+		};
+	}
+	if (game.get('f_probe_has_project')(target_player, 'TheHunterSeekerAlgorithm')) {
 		return null;
 	}
 	const has_intelligence = game.get('f_council_has_intelligence');
@@ -122,7 +128,8 @@ const get_unit_action = (game, player, probe, unit) => {
 
 const add_ai_framing = (game, player, probe, action) => {
 	if (
-		action == null || !#is_defined(player.type) || player.type != 'ai' ||
+		action == null || #is_defined(action.resident_probe_combat) ||
+		!#is_defined(player.type) || player.type != 'ai' ||
 		#typeof(action.target.get_owner) != 'Callable' ||
 		game.get('f_probe_get_morale')(probe) < 5 ||
 		game.get('f_probe_get_operation_difficulty')(

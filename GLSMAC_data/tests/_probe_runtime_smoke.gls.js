@@ -45,7 +45,6 @@
 				e.unit.id == intercepted_probe_id &&
 				e.player.id == game.get_um().get_unit(interceptor_id).owner;
 		});
-
 		game.on('start_ui', (e) => {
 			ui_started = true;
 			start_if_ready();
@@ -189,6 +188,10 @@
 				def: 'ScoutPatrol', owner: target_player, tile: target_unit_tile,
 				morale: 2, health: 1.0, home_base_id: target_base.id,
 			});
+			const combat_attacker_for_runtime = game.get_um().spawn_unit({
+				def: 'ProbeTeam', owner: actor, tile: subversion_probe_tile,
+				morale: 2, health: 1.0,
+			});
 			runtime_probe_id = probe.id;
 			const target_id = target.id;
 			let probe_morale_expected = 0;
@@ -302,9 +305,89 @@
 					}
 					finished = true;
 					#print(
-						'PROBE_RUNTIME_PASS: validated probe catalog, intelligence, neutral probe interrogation/repatriation, persisted subversion history, promotion, diplomacy, and notification'
+						'PROBE_RUNTIME_PASS: validated probe catalog, intelligence, neutral probe interrogation/repatriation, resident Probe combat, persisted subversion history, promotion, diplomacy, and notification'
 					);
 					#async(2500, () => { glsmac.exit(); });
+					return false;
+				});
+			};
+
+			const run_base_probe_combat = () => {
+				const combat_attacker = combat_attacker_for_runtime;
+				let existing_unit_ids = {};
+				for (existing_unit of game.get_um().get_units()) {
+					existing_unit_ids['u' + #to_string(existing_unit.id)] = true;
+				}
+				game.event('spawn_unit', {
+					owner: target_player,
+					tile: target_base.get_tile(),
+					type: 'ProbeTeam',
+					morale: 2,
+					health: 1.0,
+					movement: 0.0,
+					moved_this_turn: true,
+					home_base_id: target_base.id,
+				});
+				let resident_setup_ticks = 0;
+				#async(50, () => {
+					resident_setup_ticks++;
+					let resident_probe = null;
+					for (candidate of game.get_um().get_units()) {
+						if (
+							!#is_defined(existing_unit_ids['u' + #to_string(candidate.id)]) &&
+							candidate.owner == target_player.id &&
+							candidate.get_tile() == target_base.get_tile() &&
+							game.get('f_probe_is_unit')(candidate)
+						) {
+							resident_probe = candidate;
+							break;
+						}
+					}
+					if (resident_probe == null) {
+						if (resident_setup_ticks >= 100) {
+							fail('resident Probe Team setup event did not complete');
+							return false;
+						}
+						return true;
+					}
+					const combat_attacker_id = combat_attacker.id;
+					const resident_probe_id = resident_probe.id;
+					const combat_energy = actor.energy_credits;
+					const actor_relation = actor.get_diplomatic_relation(target_player);
+					const target_relation = target_player.get_diplomatic_relation(actor);
+					game.event('probe_operation', {
+						unit: combat_attacker,
+						operation: 'infiltrate',
+						target: target_base,
+					});
+					let combat_ticks = 0;
+					#async(50, () => {
+						combat_ticks++;
+						const attacker_exists = game.get_um().has_unit(combat_attacker_id);
+						const resident_exists = game.get_um().has_unit(resident_probe_id);
+						if (attacker_exists == resident_exists) {
+							if (combat_ticks >= 100) {
+								fail('resident Probe Team combat did not resolve');
+								return false;
+							}
+							return true;
+						}
+						const survivor = attacker_exists
+							? game.get_um().get_unit(combat_attacker_id)
+							: game.get_um().get_unit(resident_probe_id);
+						if (
+							survivor.morale != 3 || !survivor.moved_this_turn ||
+							actor.energy_credits != combat_energy ||
+							actor.has_infiltrated(target_player) ||
+							actor.get_diplomatic_relation(target_player) != actor_relation ||
+							target_player.get_diplomatic_relation(actor) != target_relation
+						) {
+							fail('resident Probe Team combat side effects are invalid');
+							return false;
+						}
+						run_subversion();
+						return false;
+					});
 					return false;
 				});
 			};
@@ -363,7 +446,7 @@
 						fail('live probe interrogation side effects are invalid');
 						return false;
 					}
-					run_subversion();
+					run_base_probe_combat();
 					return false;
 				});
 			};
