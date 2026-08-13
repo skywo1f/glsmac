@@ -162,6 +162,14 @@ protected:
 		std::unordered_map< network::cid_t, base_projection_t > base_projections = {};
 		std::unordered_set< size_t > referenced_player_ids = {};
 		std::unordered_map< network::cid_t, player_projection_t > player_projections = {};
+		bool map_projection_capture = false;
+		std::map< size_t, std::string > projected_map_tiles = {};
+		bool projected_map_state_changed = false;
+		int64_t projected_sea_level = 0;
+		int64_t projected_climate_level = 0;
+		int64_t projected_climate_future_change = 0;
+		int64_t projected_climate_progress = 0;
+		int64_t projected_dust_cloud_duration = 0;
 	};
 	typedef std::vector< game_event_t > game_events_t;
 	game_state_t m_game_state = GS_NONE;

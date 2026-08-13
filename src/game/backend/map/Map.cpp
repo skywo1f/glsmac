@@ -689,10 +689,137 @@ void Map::SetClimateState( const climate_state_t& state ) {
 	m_climate_state = state;
 }
 
+bool Map::BeginEventProjectionCapture() {
+	if ( !m_tiles || m_tiles->GetWidth() == 0 || m_tiles->GetHeight() == 0 ) {
+		return false;
+	}
+	m_event_projection_captures.push_back({ m_sea_level, m_climate_state, {} });
+	return true;
+}
+
+const Map::event_projection_t Map::FinishEventProjectionCapture() {
+	ASSERT( !m_event_projection_captures.empty(), "no active map event projection capture" );
+	auto capture = std::move( m_event_projection_captures.back() );
+	m_event_projection_captures.pop_back();
+
+	event_projection_t result = {};
+	result.map_state_changed =
+		capture.sea_level != m_sea_level ||
+		capture.climate.level != m_climate_state.level ||
+		capture.climate.future_change != m_climate_state.future_change ||
+		capture.climate.progress != m_climate_state.progress ||
+		capture.climate.dust_cloud_duration != m_climate_state.dust_cloud_duration;
+	result.sea_level = m_sea_level;
+	result.climate = m_climate_state;
+	for ( const auto* const map_tile : capture.changed_tiles ) {
+		const auto key = map_tile->coord.y * GetWidth() + map_tile->coord.x;
+		result.tiles.insert_or_assign( key, map_tile->Serialize().ToString() );
+	}
+	return result;
+}
+
+void Map::ApplyEventProjection(
+	const std::map< size_t, std::string >& tile_snapshots,
+	const bool map_state_changed,
+	const tile::elevation_t sea_level,
+	const climate_state_t& climate
+) {
+	ASSERT( m_tiles, "cannot apply a projection without map tiles" );
+	const auto tile_limit = GetWidth() * GetHeight() / 2;
+	if ( tile_snapshots.size() > tile_limit ) {
+		THROW( "too many projected map tiles" );
+	}
+	if (
+		map_state_changed &&
+		( sea_level < tile::ELEVATION_MIN || sea_level > tile::ELEVATION_MAX )
+	) {
+		THROW( "projected map sea level is invalid" );
+	}
+	if (
+		map_state_changed &&
+		(
+			climate.level < 0 || climate.level > 1000000 ||
+			climate.future_change < tile::ELEVATION_MIN ||
+			climate.future_change > tile::ELEVATION_MAX ||
+			climate.future_change % 100 != 0 ||
+			climate.progress < 0 || climate.progress > 1000000 ||
+			climate.dust_cloud_duration < 0 || climate.dust_cloud_duration > 1000000
+		)
+	) {
+		THROW( "projected map climate state is invalid" );
+	}
+
+	const auto previous_tiles = m_tiles->Serialize().ToString();
+	tile::Tiles validated_tiles( this );
+	validated_tiles.Deserialize( types::Buffer( previous_tiles ) );
+	std::map< size_t, std::pair< size_t, size_t > > projected_coords = {};
+	for ( const auto& [ key, snapshot ] : tile_snapshots ) {
+		auto coord_buf = types::Buffer( snapshot );
+		const auto x = coord_buf.ReadInt< size_t >( "projected tile x coordinate" );
+		const auto y = coord_buf.ReadInt< size_t >( "projected tile y coordinate" );
+		if (
+			x >= GetWidth() || y >= GetHeight() || ( x & 1 ) != ( y & 1 ) ||
+			key != y * GetWidth() + x
+		) {
+			THROW( "projected tile coordinates are invalid" );
+		}
+		validated_tiles.At( x, y ).Deserialize( types::Buffer( snapshot ) );
+		projected_coords.insert_or_assign( key, std::make_pair( x, y ) );
+	}
+	for ( const auto& [ key, coords ] : projected_coords ) {
+		if (
+			validated_tiles.AtConst( coords.first, coords.second ).Serialize().ToString() !=
+			tile_snapshots.at( key )
+		) {
+			THROW( "projected tiles contain inconsistent shared elevation data" );
+		}
+	}
+
+	const auto previous_sea_level = m_sea_level;
+	const auto previous_climate = m_climate_state;
+	try {
+		m_tiles->Restore( validated_tiles.Serialize() );
+		if ( map_state_changed ) {
+			m_sea_level = sea_level;
+			SetClimateState( climate );
+		}
+		const auto all_tiles = GetAllTiles();
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->Update();
+			map_tile->RefreshWrappers();
+		}
+		tile_set_t refresh_tiles = {};
+		if ( map_state_changed && previous_sea_level != m_sea_level ) {
+			refresh_tiles.insert( all_tiles.begin(), all_tiles.end() );
+		}
+		else {
+			for ( const auto& [ key, coords ] : projected_coords ) {
+				auto* const map_tile = GetTile( coords.first, coords.second );
+				refresh_tiles.insert( map_tile );
+				refresh_tiles.insert( map_tile->neighbours.begin(), map_tile->neighbours.end() );
+			}
+		}
+		RefreshTerrain( refresh_tiles );
+	}
+	catch ( ... ) {
+		m_sea_level = previous_sea_level;
+		m_climate_state = previous_climate;
+		m_tiles->Restore( types::Buffer( previous_tiles ) );
+		for ( auto* const map_tile : GetAllTiles() ) {
+			map_tile->Update();
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+}
+
 void Map::RefreshTile( tile::Tile* tile ) {
 	ASSERT( tile, "cannot refresh a null tile" );
 	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
 	ASSERT( GetTile( tile->coord.x, tile->coord.y ) == tile, "tile does not belong to map" );
+	for ( auto& capture : m_event_projection_captures ) {
+		capture.changed_tiles.insert( tile );
+	}
 
 	const auto random_state = GetRandom()->GetState();
 	try {
@@ -1189,6 +1316,9 @@ void Map::RestoreSeaLevel( const std::string& snapshot ) {
 void Map::RefreshTerrain( const tile_set_t& changed_tiles ) {
 	if ( changed_tiles.empty() ) {
 		return;
+	}
+	for ( auto& capture : m_event_projection_captures ) {
+		capture.changed_tiles.insert( changed_tiles.begin(), changed_tiles.end() );
 	}
 	ASSERT( m_map_state && m_textures.terrain, "cannot refresh an uninitialized map" );
 

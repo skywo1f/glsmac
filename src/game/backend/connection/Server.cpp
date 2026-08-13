@@ -735,6 +735,45 @@ bool Server::DeliverPlayerVisibilityUpdate(
 	return DeliverSerializedGameEvent( cid, update, deferred );
 }
 
+bool Server::DeliverMapProjectionUpdate(
+	const network::cid_t cid,
+	const game_event_t& projected_event,
+	const std::string& after_event_id,
+	const bool deferred
+) {
+	if (
+		projected_event.projected_map_tiles.empty() &&
+		!projected_event.projected_map_state_changed
+	) {
+		return true;
+	}
+	types::Buffer payload;
+	payload.WriteString( after_event_id );
+	payload.WriteInt( projected_event.projected_map_tiles.size() );
+	for ( const auto& [ key, snapshot ] : projected_event.projected_map_tiles ) {
+		payload.WriteInt( key );
+		payload.WriteString( snapshot );
+	}
+	payload.WriteBool( projected_event.projected_map_state_changed );
+	if ( projected_event.projected_map_state_changed ) {
+		payload.WriteInt( projected_event.projected_sea_level );
+		payload.WriteInt( projected_event.projected_climate_level );
+		payload.WriteInt( projected_event.projected_climate_future_change );
+		payload.WriteInt( projected_event.projected_climate_progress );
+		payload.WriteInt( projected_event.projected_dust_cloud_duration );
+	}
+
+	game_event_t update = {};
+	update.caller = 0;
+	update.id = "__map_projection_" + std::to_string( m_map_projection_event_id++ );
+	update.name = "__map_projection";
+	update.serialized_data = event::Event::SerializeMapProjectionUpdate(
+		update.id,
+		payload.ToString()
+	);
+	return DeliverSerializedGameEvent( cid, update, deferred );
+}
+
 const std::map< size_t, std::string > Server::GetProjectedUnitsForSlot(
 	const size_t slot_num
 ) const {
@@ -915,6 +954,17 @@ void Server::DeliverProjectedGameEvent(
 	}
 	if ( deliver_original ) {
 		known_unit_ids.insert( event.created_unit_ids.begin(), event.created_unit_ids.end() );
+	}
+	if (
+		!deliver_original &&
+		!DeliverMapProjectionUpdate(
+			cid,
+			event,
+			is_sender ? event.id : "",
+			deferred
+		)
+	) {
+		return;
 	}
 
 	std::unordered_set< size_t > hidden = projection.created_hidden;
@@ -1128,6 +1178,7 @@ void Server::ResetHandlers() {
 	m_delivered_players.clear();
 	m_projected_full_player_ids.clear();
 	m_player_visibility_event_id = 1;
+	m_map_projection_event_id = 1;
 }
 
 void Server::UpdateGameSettings() {

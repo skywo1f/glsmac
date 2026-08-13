@@ -38,6 +38,8 @@
 	let client_base_infiltration_probe_complete = false;
 	let client_player_privacy_probe_complete = false;
 	let mixed_unit_privacy_acknowledged = false;
+	let private_map_projection_phase = 0;
+	let private_map_probe = null;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -839,6 +841,90 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_private_map_probe_ready', {
+			validate: (e) => {
+				if (
+					e.caller != 0 || #typeof(e.data.x) != 'Int' ||
+					#typeof(e.data.y) != 'Int' || #typeof(e.data.initial_fungus) != 'Bool' ||
+					#typeof(e.data.initial_climate_level) != 'Int'
+				) {
+					return 'Private map projection setup is invalid';
+				}
+			},
+			apply: (e) => {
+				const previous = private_map_probe;
+				private_map_probe = {
+					x: e.data.x,
+					y: e.data.y,
+					initial_fungus: e.data.initial_fungus,
+					initial_climate_level: e.data.initial_climate_level,
+				};
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				private_map_probe = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_private_map_projection', {
+			validate: (e) => {
+				if (
+					e.caller != 0 || e.data.base.get_owner().id != 0 ||
+					#typeof(e.data.fungus) != 'Bool' ||
+					#typeof(e.data.climate_level) != 'Int'
+				) {
+					return 'Private map projection request is invalid';
+				}
+			},
+			apply: (e) => {
+				if (!e.game.is_master()) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: private map event was delivered');
+					glsmac.exit();
+				}
+				const tm = e.game.get_tm();
+				const climate = tm.get_climate_state();
+				const previous = {
+					fungus: e.data.tile.features.xenofungus,
+					climate: climate,
+				};
+				e.data.tile.update_features({xenofungus: e.data.fungus});
+				tm.set_climate_state(
+					e.data.climate_level,
+					climate.future_change,
+					climate.progress
+				);
+				return previous;
+			},
+			rollback: (e) => {
+				e.data.tile.update_features({xenofungus: e.applied.fungus});
+				e.game.get_tm().set_climate_state(
+					e.applied.climate.level,
+					e.applied.climate.future_change,
+					e.applied.climate.progress
+				);
+			},
+		});
+
+		game.register_event('multiplayer_smoke_private_map_projection_seen', {
+			validate: (e) => {
+				if (
+					e.caller != get_client_player_id() ||
+					#typeof(e.data.phase) != 'Int' ||
+					e.data.phase != 1
+				) {
+					return 'Private map projection acknowledgement is invalid';
+				}
+			},
+			apply: (e) => {
+				const previous = private_map_projection_phase;
+				private_map_projection_phase = e.data.phase;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				private_map_projection_phase = e.applied.previous;
+			},
+		});
+
 		game.register_event('multiplayer_smoke_relocate_hidden_unit', {
 			unit_visibility: 'private',
 			validate: (e) => {
@@ -1076,6 +1162,53 @@
 			wait_for_client_live_visibility_probe();
 		};
 
+		const find_private_map_probe_tile = () => {
+			const tm = game.get_tm();
+			return tm.get_tile(tm.get_map_width() - 2, 0);
+		};
+
+		const start_host_private_map_projection_probe = () => {
+			const tile = find_private_map_probe_tile();
+			const base = find_base_for_player(0);
+			if (tile == null || base == null) {
+				#print('MULTIPLAYER_SMOKE_FAIL_HOST: private map projection target is unavailable');
+				glsmac.exit();
+				return;
+			}
+			const initial_fungus = tile.features.xenofungus;
+			const initial_climate_level = game.get_tm().get_climate_state().level;
+			game.event('multiplayer_smoke_private_map_probe_ready', {
+				x: tile.x,
+				y: tile.y,
+				initial_fungus: initial_fungus,
+				initial_climate_level: initial_climate_level,
+			});
+			game.event('multiplayer_smoke_private_map_projection', {
+				base: base,
+				tile: tile,
+				fungus: !initial_fungus,
+				climate_level: initial_climate_level + 1,
+			});
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (private_map_projection_phase == 1) {
+					#print('MULTIPLAYER_SMOKE_PRIVATE_MAP_PROJECTION_PASS_HOST');
+					continue_host_turn_one();
+					return false;
+				}
+				if (wait_ticks >= 300) {
+					#print(
+						'MULTIPLAYER_SMOKE_FAIL_HOST: private map projection probe timed out at phase ' +
+						#to_string(private_map_projection_phase)
+					);
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
 		const start_host_mixed_unit_privacy_probe = () => {
 			game.event('multiplayer_smoke_mixed_unit_privacy', {
 				hidden_unit: game.get_um().get_unit(1),
@@ -1086,7 +1219,7 @@
 				wait_ticks++;
 				if (mixed_unit_privacy_acknowledged) {
 					#print('MULTIPLAYER_SMOKE_MIXED_UNIT_PRIVACY_PASS_HOST');
-					continue_host_turn_one();
+					start_host_private_map_projection_probe();
 					return false;
 				}
 				if (wait_ticks >= 100) {
@@ -1117,6 +1250,41 @@
 				}
 				if (wait_ticks >= 100) {
 					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: mixed unit privacy state timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const start_client_private_map_projection_probe = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (private_map_probe != null) {
+					const tile = game.get_tm().get_tile(private_map_probe.x, private_map_probe.y);
+					const climate_level = game.get_tm().get_climate_state().level;
+					if (
+						tile.features.xenofungus != private_map_probe.initial_fungus &&
+						climate_level == private_map_probe.initial_climate_level + 1
+					) {
+						for (base of game.get_bm().get_bases()) {
+							if (base.get_owner().id == 0 && !base.is_redacted) {
+								#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: map projection revealed private base state');
+								glsmac.exit();
+								return false;
+							}
+						}
+						#print('MULTIPLAYER_SMOKE_PRIVATE_MAP_MUTATION_PASS_CLIENT');
+						#print('MULTIPLAYER_SMOKE_PRIVATE_MAP_PROJECTION_PASS_CLIENT');
+						start_client_live_visibility_probe();
+						run_client_terraform_probe();
+						game.event('multiplayer_smoke_private_map_projection_seen', {phase: 1});
+						return false;
+					}
+				}
+				if (wait_ticks >= 300) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: private map projection probe timed out');
 					glsmac.exit();
 					return false;
 				}
@@ -1562,8 +1730,7 @@
 				else {
 					wait_for_player_privacy_update();
 					start_client_mixed_unit_privacy_probe();
-					start_client_live_visibility_probe();
-					run_client_terraform_probe();
+					start_client_private_map_projection_probe();
 					game.event('multiplayer_smoke_accept_once', {});
 					game.event('multiplayer_smoke_reject_and_rollback', {});
 					let wait_ticks = 0;

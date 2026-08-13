@@ -61,6 +61,10 @@ public:
 		const std::string& id,
 		const std::string& payload
 	);
+	static const std::string SerializeMapProjectionUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
 
 	void SetResolved( gse::Value* const resolved );
 	gse::Value* GetResolved();

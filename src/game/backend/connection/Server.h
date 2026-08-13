@@ -84,6 +84,7 @@ private:
 	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_delivered_players = {};
 	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_projected_full_player_ids = {};
 	size_t m_player_visibility_event_id = 1;
+	size_t m_map_projection_event_id = 1;
 
 	void SendSerializedGameEvent( const network::cid_t cid, const game_event_t& event );
 	bool QueueDeferredGameEvent( const network::cid_t cid, const game_event_t& event );
@@ -107,6 +108,12 @@ private:
 	bool DeliverPlayerVisibilityUpdate(
 		const network::cid_t cid,
 		const std::map< size_t, std::string >& projected_player_snapshots,
+		const std::string& after_event_id,
+		const bool deferred
+	);
+	bool DeliverMapProjectionUpdate(
+		const network::cid_t cid,
+		const game_event_t& projected_event,
 		const std::string& after_event_id,
 		const bool deferred
 	);

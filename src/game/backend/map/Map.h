@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include <map>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
@@ -62,6 +63,12 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 		int64_t future_change = 0;
 		int64_t progress = 0;
 		int64_t dust_cloud_duration = 0;
+	};
+	struct event_projection_t {
+		std::map< size_t, std::string > tiles = {};
+		bool map_state_changed = false;
+		tile::elevation_t sea_level = tile::ELEVATION_LEVEL_COAST;
+		climate_state_t climate = {};
 	};
 
 	Map( Game* game );
@@ -129,6 +136,14 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	const tile::elevation_t GetSeaLevel() const;
 	const climate_state_t& GetClimateState() const;
 	void SetClimateState( const climate_state_t& state );
+	bool BeginEventProjectionCapture();
+	const event_projection_t FinishEventProjectionCapture();
+	void ApplyEventProjection(
+		const std::map< size_t, std::string >& tile_snapshots,
+		const bool map_state_changed,
+		const tile::elevation_t sea_level,
+		const climate_state_t& climate
+	);
 	void RefreshTile( tile::Tile* tile );
 	std::string ApplyCrater( tile::Tile* center, const size_t radius );
 	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
@@ -191,6 +206,12 @@ private:
 	MapState* m_map_state = nullptr;
 	tile::elevation_t m_sea_level = tile::ELEVATION_LEVEL_COAST;
 	climate_state_t m_climate_state = {};
+	struct event_projection_capture_t {
+		tile::elevation_t sea_level = tile::ELEVATION_LEVEL_COAST;
+		climate_state_t climate = {};
+		std::unordered_set< tile::Tile* > changed_tiles = {};
+	};
+	std::vector< event_projection_capture_t > m_event_projection_captures = {};
 
 	typedef std::vector< tile::Tile* > tiles_t;
 	typedef std::unordered_set< tile::Tile* > tile_set_t;

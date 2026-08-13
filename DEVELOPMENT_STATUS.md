@@ -383,6 +383,12 @@ scenarios, for:
   unit references and pre-event locations from leaking without invalidating
   existing script references. Base founding and Probe operations are explicitly
   unit-private, while bulk unit-design upgrades are player-private.
+- terrain and planetary climate mutations made by an event are captured while
+  the authoritative host applies it. When a private base, unit, or player
+  reference causes that event to be withheld, affected clients receive bounded,
+  validated final tile snapshots plus sea-level and climate state instead. This
+  prevents hidden-base fungal blooms, major volcanic eruptions, and future
+  terrain-changing private events from silently diverging the client map.
 
 The base-game content validator currently reports:
 
@@ -963,6 +969,16 @@ live visibility, combat, capture, founding, and terraforming. The AddressSanitiz
 Release build succeeded and a bounded 557-second run emitted no sanitizer
 report, but instrumentation was too slow to finish the gameplay phase, so that
 run is not counted as a pass.
+
+After authoritative map and climate deltas were added for withheld events, the
+Windows x64 Release build succeeded and all 112 isolated native/script tests
+passed in 235.55 seconds. Focused ecology, fungal-bloom, volcano, and major
+eruption tests passed together in 4.76 seconds, and running reconnect passed in
+52.17 seconds. Ordinary multiplayer passed in 62.08 seconds while proving that
+an event referencing a private host base is not delivered to the client, its
+tile and climate mutations still arrive authoritatively without revealing the
+base, and the existing visibility, movement, combat, capture, founding,
+terraforming, malformed-packet, reconnect, and conquest checks remain intact.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

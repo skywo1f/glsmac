@@ -308,6 +308,22 @@ const std::string Event::SerializePlayerVisibilityUpdate(
 	return buf.ToString();
 }
 
+const std::string Event::SerializeMapProjectionUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__map_projection" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
+}
+
 void Event::SetResolved( gse::Value* const resolved ) {
 	std::lock_guard guard( m_resolved_mutex );
 	ASSERT( !m_resolved, "event already resolved" );

@@ -2245,6 +2245,42 @@ void Game::ProcessEvents() {
 					} );
 					continue;
 				}
+				if ( event->GetEventName() == "__map_projection" ) {
+					const auto& data = event->GetOriginalData();
+					const auto payload_it = data.find( "payload" );
+					if (
+						m_state->IsMaster() || event->GetSource() != event::Event::ES_SERVER ||
+						data.size() != 1 || payload_it == data.end() ||
+						!payload_it->second || payload_it->second->type != gse::VT_STRING
+					) {
+						THROW( "invalid internal map projection event" );
+					}
+					const auto payload = ( (gse::value::String*)payload_it->second )->value;
+					auto dependency_buf = types::Buffer( payload );
+					const auto after_event_id = dependency_buf.ReadString();
+					if ( !after_event_id.empty() ) {
+						bool is_waiting_for_response = false;
+						{
+							std::lock_guard guard( m_events_waiting_for_responses_mutex );
+							is_waiting_for_response =
+								m_events_waiting_for_responses.find( after_event_id ) !=
+								m_events_waiting_for_responses.end();
+						}
+						if ( is_waiting_for_response ) {
+							std::lock_guard guard( m_pending_events_mutex );
+							m_pending_events.insert(
+								m_pending_events.begin(),
+								events.begin() + event_index,
+								events.end()
+							);
+							break;
+						}
+					}
+					WithRW( [ this, &ctx, &gc_space, &si, &ep, &payload ]() {
+						ApplyMapProjectionUpdate( GSE_CALL, payload );
+					} );
+					continue;
+				}
 				auto* obj = VALUE( gse::value::Object, , GSE_CALL_NOGC, event->GetData() );
 				const auto fargs = gse::value::function_arguments_t{ obj };
 				event::EventHandler* handler = nullptr;
@@ -2556,6 +2592,41 @@ void Game::ApplyPlayerVisibilityUpdate( GSE_CALLABLE, const std::string& payload
 			}; }
 		);
 	}
+}
+
+void Game::ApplyMapProjectionUpdate( GSE_CALLABLE, const std::string& payload ) {
+	ASSERT( !m_state->IsMaster(), "map projection update applied on master" );
+	ASSERT( m_map, "map projection update applied without a map" );
+	auto buf = types::Buffer( payload );
+	buf.ReadString(); // optional local event response dependency, handled by ProcessEvents
+	const auto tile_count = buf.ReadCollectionSize( "projected map tile" );
+	const auto tile_limit = m_map->GetWidth() * m_map->GetHeight() / 2;
+	if ( tile_count > tile_limit ) {
+		THROW( "too many projected map tiles" );
+	}
+	std::map< size_t, std::string > tile_snapshots = {};
+	for ( size_t i = 0 ; i < tile_count ; i++ ) {
+		const auto key = buf.ReadInt< size_t >( "projected map tile key" );
+		const auto snapshot = buf.ReadString();
+		if ( !tile_snapshots.insert({ key, snapshot }).second ) {
+			THROW( "duplicate projected map tile key" );
+		}
+	}
+
+	const auto map_state_changed = buf.ReadBool();
+	auto sea_level = m_map->GetSeaLevel();
+	auto climate = m_map->GetClimateState();
+	if ( map_state_changed ) {
+		sea_level = buf.ReadInt< map::tile::elevation_t >( "projected map sea level" );
+		climate.level = buf.ReadInt< int64_t >( "projected climate level" );
+		climate.future_change = buf.ReadInt< int64_t >( "projected climate future change" );
+		climate.progress = buf.ReadInt< int64_t >( "projected climate progress" );
+		climate.dust_cloud_duration = buf.ReadInt< int64_t >( "projected dust-cloud duration" );
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after map projection update" );
+	}
+	m_map->ApplyEventProjection( tile_snapshots, map_state_changed, sea_level, climate );
 }
 
 void Game::CheckRW( GSE_CALLABLE ) const {

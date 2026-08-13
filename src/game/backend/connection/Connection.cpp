@@ -11,6 +11,7 @@
 #include "game/backend/unit/UnitManager.h"
 #include "game/backend/base/Base.h"
 #include "game/backend/base/BaseManager.h"
+#include "game/backend/map/Map.h"
 #include "Server.h"
 
 namespace game {
@@ -310,6 +311,10 @@ void Connection::SendGameEvent(
 	queued.unit_snapshot_event = unit_snapshot_event;
 	queued.private_player_event = private_player_event;
 	if ( IsServer() ) {
+		auto* const game = g_engine->GetGame();
+		if ( game && game->GetMap() ) {
+			queued.map_projection_capture = game->GetMap()->BeginEventProjectionCapture();
+		}
 		for ( const auto* const unit : event->GetReferencedUnits() ) {
 			queued.referenced_unit_ids.insert( unit->m_id );
 			if ( unit->m_health > 0.0f ) {
@@ -327,7 +332,6 @@ void Connection::SendGameEvent(
 			ASSERT( player_slot, "event references an unslotted player" );
 			queued.referenced_player_ids.insert( player_slot->GetIndex() );
 		}
-		auto* const game = g_engine->GetGame();
 		if ( game && game->GetUM() ) {
 			for ( const auto& it : game->GetUM()->GetUnits() ) {
 				if ( it.second->m_health > 0.0f ) {
@@ -355,6 +359,18 @@ void Connection::FinalizeGameEvent( backend::event::Event* event ) {
 	}
 	for ( auto it = m_prepared_server_game_events.rbegin() ; it != m_prepared_server_game_events.rend() ; it++ ) {
 		if ( it->id == event->GetId() ) {
+			if ( it->map_projection_capture ) {
+				auto* const game = g_engine->GetGame();
+				ASSERT( game && game->GetMap(), "captured map event finalized without a map" );
+				const auto projection = game->GetMap()->FinishEventProjectionCapture();
+				it->projected_map_tiles = projection.tiles;
+				it->projected_map_state_changed = projection.map_state_changed;
+				it->projected_sea_level = projection.sea_level;
+				it->projected_climate_level = projection.climate.level;
+				it->projected_climate_future_change = projection.climate.future_change;
+				it->projected_climate_progress = projection.climate.progress;
+				it->projected_dust_cloud_duration = projection.climate.dust_cloud_duration;
+			}
 			AsServer()->FinalizeGameEventProjection( *it );
 			if ( m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
 				SendGameEvents( m_pending_game_events );
