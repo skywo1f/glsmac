@@ -685,13 +685,33 @@
 
 			if (turn_id == 1) {
 				for (player of game.get_players()) {
-					const research_error = get_research_state_error(player);
-					if (#is_defined(research_error)) {
-						#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + research_error);
-						glsmac.exit();
-						return;
+					if (player.id != game.get_player().id) {
+						const state = player.get_research_state();
+						if (
+							!player.is_redacted || player.get_energy_credits() != 0 ||
+							#sizeof(state.technologies) != 0 || state.target != '' ||
+							state.progress != 0 || #sizeof(player.get_explored_tiles()) != 0
+						) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: foreign player snapshot leaked private state');
+							glsmac.exit();
+							return;
+						}
+					}
+					else {
+						if (player.is_redacted) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: local player snapshot was redacted');
+							glsmac.exit();
+							return;
+						}
+						const research_error = get_research_state_error(player);
+						if (#is_defined(research_error)) {
+							#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + research_error);
+							glsmac.exit();
+							return;
+						}
 					}
 				}
+				#print('RUNNING_RECONNECT_PLAYER_PRIVACY_RESUMED_CLIENT');
 				const base_state_error = get_base_state_error();
 				if (#is_defined(base_state_error)) {
 					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + base_state_error);

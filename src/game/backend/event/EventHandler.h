@@ -17,7 +17,8 @@ public:
 		gse::value::Callable* const apply,
 		gse::value::Callable* const rollback,
 		const bool private_unit_event,
-		const bool unit_snapshot_event
+		const bool unit_snapshot_event,
+		const bool private_player_event
 	);
 
 	void GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) override;
@@ -26,6 +27,7 @@ public:
 	const bool HasResolve() const;
 	const bool IsPrivateUnitEvent() const;
 	const bool IsUnitSnapshotEvent() const;
+	const bool IsPrivatePlayerEvent() const;
 	gse::Value* const Resolve( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
 	gse::Value* const Apply( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
 	void Rollback( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
@@ -38,6 +40,7 @@ private:
 	gse::value::Callable* m_rollback;
 	const bool m_private_unit_event;
 	const bool m_unit_snapshot_event;
+	const bool m_private_player_event;
 
 };
 

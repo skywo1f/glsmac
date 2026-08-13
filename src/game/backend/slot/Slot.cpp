@@ -144,11 +144,15 @@ void Slot::SetPlayerFlags( const player_flag_t flags ) {
 }
 
 const types::Buffer Slot::Serialize() const {
+	return Serialize( nullptr );
+}
+
+const types::Buffer Slot::Serialize( const Player* viewer ) const {
 	types::Buffer buf;
 
 	buf.WriteInt( m_slot_state );
 	if ( m_slot_state == SS_PLAYER ) {
-		buf.WriteString( m_player_data.player->Serialize().ToString() );
+		buf.WriteString( m_player_data.player->Serialize( viewer ).ToString() );
 		// not sending cid
 		// not sending remote address
 		buf.WriteInt( m_player_data.flags );

@@ -70,6 +70,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const role_t GetRole() const;
 	const bool IsAI() const;
 	const bool IsNative() const;
+	const bool IsRedacted() const;
+	bool CanViewPrivateStateOf( const Player* target ) const;
 
 	const bool IsTurnCompleted() const;
 	void CompleteTurn();
@@ -338,6 +340,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
+	const types::Buffer Serialize( const Player* viewer ) const;
 	void Deserialize( types::Buffer buf ) override;
 
 	WRAPDEF_SERIALIZABLE;
@@ -357,6 +360,7 @@ private:
 	std::string m_difficulty_level = "";
 
 	bool m_is_turn_completed = false;
+	bool m_is_redacted = false;
 	technologies_t m_technologies = {};
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;

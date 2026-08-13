@@ -367,6 +367,16 @@ scenarios, for:
   Probe-operation state, and nerve stapling. Infiltration changes upgrade or
   revoke projections live, and conquest victory remains server-authoritative
   when clients have an intentionally incomplete base roster.
+- authoritative per-client player projections for initial rosters, live events,
+  and running-game reconnects: factions receive their own full state plus full
+  state for infiltrated rivals, while ordinary rivals expose only public and
+  bilateral information. Research, energy, social choices, ecology, clean
+  minerals, mind-control history, prototypes, obsolete and retired designs,
+  explored tiles, third-party diplomacy and intelligence, pending surrender
+  offers, active Council ballots, and unresolved Supreme Leader responses are
+  redacted. Planetary Governors retain their original non-Progenitor
+  intelligence benefit, explicitly private player events are recipient-gated,
+  and public changes reconcile through authoritative filtered snapshots.
 
 The base-game content validator currently reports:
 
@@ -387,11 +397,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   trade and counteroffers, loans, surrender, player-authored base exchange,
   coercive demands, and joint Vendetta requests, including richer negotiated
   packages and faction-specific dialogue behavior;
-- remaining multiplayer information-boundary hardening beyond unit and base
-  projection, especially recipient-specific player economy, research, social,
-  and intelligence state plus globally consequential events that must update
-  shared world state; foreign bases currently disappear outside present sight
-  instead of retaining a polished last-known public record;
+- remaining multiplayer information-boundary hardening around less common
+  event payloads, adversarial multi-client soak coverage, and polished
+  last-known public records; foreign bases currently disappear outside present
+  sight instead of retaining a historical public shell;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
   and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -925,6 +934,17 @@ infiltration reveal and revocation, unit visibility, worker assignment, combat,
 capture, founding, terraforming, and server-authored conquest. Running reconnect
 passed in 52.13 seconds while restoring the same redacted snapshot boundary and
 the existing research, production, diplomacy, unit-definition, and world state.
+
+After authoritative per-client player privacy was added, the Windows x64
+Release build succeeded and all 112 isolated native/script tests passed in
+237.69 seconds. Native coverage checks self, infiltrated, ordinary-rival,
+reserialized-redacted, active Council ballot, and unresolved Supreme Leader
+projections. Ordinary multiplayer passed in 55.64 seconds while proving that
+private rival events, including an implicit-caller event with no Player object
+in its payload, are suppressed and replaced by a filtered live update. Running
+reconnect passed in 51.91 seconds while restoring the same research, economy,
+social, map, intelligence, design, and bilateral-diplomacy boundary from a
+fresh snapshot.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -5,6 +5,8 @@
 #include "network/Network.h"
 #include "game/backend/event/Event.h"
 #include "game/backend/Game.h"
+#include "game/backend/Player.h"
+#include "game/backend/slot/Slot.h"
 #include "game/backend/unit/Unit.h"
 #include "game/backend/unit/UnitManager.h"
 #include "game/backend/base/Base.h"
@@ -292,7 +294,8 @@ void Connection::IfServer( std::function< void( Server* ) > cb ) {
 void Connection::SendGameEvent(
 	backend::event::Event* event,
 	const bool private_unit_event,
-	const bool unit_snapshot_event
+	const bool unit_snapshot_event,
+	const bool private_player_event
 ) {
 	if ( !IsServer() && m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
 		SendGameEvents( m_pending_game_events );
@@ -305,6 +308,7 @@ void Connection::SendGameEvent(
 	queued.serialized_data = event->Serialize().ToString();
 	queued.private_unit_event = private_unit_event;
 	queued.unit_snapshot_event = unit_snapshot_event;
+	queued.private_player_event = private_player_event;
 	if ( IsServer() ) {
 		for ( const auto* const unit : event->GetReferencedUnits() ) {
 			queued.referenced_unit_ids.insert( unit->m_id );
@@ -317,6 +321,11 @@ void Connection::SendGameEvent(
 		}
 		for ( const auto* const base : event->GetReferencedBases() ) {
 			queued.referenced_base_ids.insert( base->m_id );
+		}
+		for ( const auto* const player : event->GetReferencedPlayers() ) {
+			const auto* const player_slot = player->GetSlot();
+			ASSERT( player_slot, "event references an unslotted player" );
+			queued.referenced_player_ids.insert( player_slot->GetIndex() );
 		}
 		auto* const game = g_engine->GetGame();
 		if ( game && game->GetUM() ) {

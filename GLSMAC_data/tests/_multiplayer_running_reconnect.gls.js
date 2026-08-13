@@ -360,6 +360,24 @@
 			return #undefined;
 		};
 
+		const get_projected_research_state_error = (player, expect_progress) => {
+			if (!game.is_master() && player.id != game.get_player().id) {
+				const state = player.get_research_state();
+				if (
+					!player.is_redacted || player.get_energy_credits() != 0 ||
+					#sizeof(state.technologies) != 0 || state.target != '' ||
+					state.progress != 0 || #sizeof(player.get_explored_tiles()) != 0
+				) {
+					return 'foreign player snapshot leaked private state';
+				}
+				return #undefined;
+			}
+			if (player.is_redacted) {
+				return 'visible player snapshot was redacted';
+			}
+			return get_research_state_error(player, expect_progress);
+		};
+
 		const find_founding_site_coords = () => {
 			const tm = game.get_tm();
 			let result = null;
@@ -1014,7 +1032,10 @@
 
 			if (turn_id == 1) {
 				for (player of game.get_players()) {
-					const research_error = get_research_state_error(player, !game.is_master());
+					const research_error = get_projected_research_state_error(
+						player,
+						!game.is_master()
+					);
 					if (#is_defined(research_error)) {
 						#print('RUNNING_RECONNECT_FAIL_' + role + ': ' + research_error);
 						glsmac.exit();

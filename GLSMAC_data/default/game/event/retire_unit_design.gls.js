@@ -14,6 +14,7 @@ const set_retired = (player, id, retired) => {
 };
 
 return {
+	player_visibility: 'private',
 	validate: (e) => {
 		if (!e.game.is_started()) {
 			return 'Unit designs can only be retired during a game';

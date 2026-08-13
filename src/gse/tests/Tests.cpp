@@ -270,6 +270,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetSanctionTurns( 10 );
 				source.SetIntegrityBlemishes( 4 );
 				source.SetMindControlTotal( 12 );
+				source.SetPrototypedComponents({ "Laser" });
 				source.SetDiplomaticExcuseTurn( 5, 44 );
 				const Player::diplomatic_grievance_t grievance = { true, true, true };
 				source.SetDiplomaticGrievance( 6, grievance );
@@ -538,6 +539,90 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetCouncilState() == council_state,
 					"Planetary Council state was not serialized"
+				);
+				Player viewer( "Observer", Player::PR_SINGLE, nullptr, "Citizen" );
+				Player redacted( source.Serialize( &viewer ) );
+				GT_ASSERT( redacted.IsRedacted(), "foreign player projection was not marked redacted" );
+				GT_ASSERT(
+					redacted.GetTechnologies().empty() && redacted.GetResearchTarget().empty() &&
+					redacted.GetResearchProgress() == 0 && redacted.GetEnergyCredits() == 0,
+					"foreign player projection exposed research or energy"
+				);
+				const Player::social_engineering_t default_social_engineering =
+					{{ "Frontier", "Simple", "Survival", "None" }};
+				GT_ASSERT(
+					redacted.GetSocialEngineering() == default_social_engineering &&
+					redacted.GetEcologicalDamageEvents() == 0 &&
+					redacted.GetCleanMineralFacilities() == 0 &&
+					redacted.GetMindControlTotal() == 0,
+					"foreign player projection exposed private economic state"
+				);
+				GT_ASSERT(
+					redacted.GetDiplomaticRelations().empty() &&
+					redacted.GetDiplomaticOffers().empty() &&
+					redacted.GetDiplomaticTrades().empty() &&
+					redacted.GetDiplomaticLoanOffers().empty() &&
+					redacted.GetDiplomaticLoans().empty() &&
+					redacted.GetDiplomaticExcuses().empty() &&
+					redacted.GetDiplomaticGrievances().empty(),
+					"foreign player projection exposed third-party diplomacy"
+				);
+				GT_ASSERT(
+					redacted.GetInfiltratedPlayers().empty() &&
+					redacted.GetPrototypedComponents().empty() &&
+					redacted.GetObsoleteUnitDesigns().empty() &&
+					redacted.GetRetiredUnitDesigns().empty() &&
+					redacted.GetExploredTiles().empty(),
+					"foreign player projection exposed intelligence or map state"
+				);
+				GT_ASSERT(
+					redacted.GetMajorAtrocities() == 2 && redacted.GetSanctionTurns() == 10 &&
+					redacted.GetIntegrityBlemishes() == 4 &&
+					redacted.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3 &&
+					redacted.GetOrbitalDefenseDeployments() == 2 &&
+					redacted.GetCouncilState() == council_state &&
+					redacted.GetSubmissiveToId() == 4 &&
+					redacted.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER,
+					"foreign player projection lost public state or exposed a private surrender offer"
+				);
+				Player redacted_roundtrip( redacted.Serialize() );
+				GT_ASSERT(
+					redacted_roundtrip.IsRedacted() && redacted_roundtrip.GetEnergyCredits() == 0,
+					"redacted player became authoritative when reserialized"
+				);
+				Player private_council_source( "Voter", Player::PR_SINGLE, nullptr, "Citizen" );
+				private_council_source.SetCouncilState({
+					false, 43, "trade_pact", 1, Player::COUNCIL_VOTE_YES,
+					Player::COUNCIL_VOTE_NO, Player::COUNCIL_VOTE_YES,
+					false, false, false, false,
+				});
+				Player private_vote( private_council_source.Serialize( &viewer ) );
+				GT_ASSERT(
+					private_vote.GetCouncilState().vote_id == Player::COUNCIL_VOTE_PENDING,
+					"foreign player projection exposed an active Planetary Council ballot"
+				);
+				private_council_source.SetCouncilState({
+					false, 43, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+					false, false, false, false, 2, Player::SUPREME_RESPONSE_DEFY, false,
+				});
+				Player private_supreme_response( private_council_source.Serialize( &viewer ) );
+				GT_ASSERT(
+					private_supreme_response.GetCouncilState().supreme_response ==
+						Player::SUPREME_RESPONSE_PENDING,
+					"foreign player projection exposed an unresolved Supreme Leader response"
+				);
+				viewer.SetInfiltrated( 0, true );
+				Player infiltrated( source.Serialize( &viewer ) );
+				GT_ASSERT(
+					!infiltrated.IsRedacted() && infiltrated.GetEnergyCredits() == 73 &&
+					infiltrated.HasTechnology( "CentauriEcology" ) &&
+					infiltrated.GetExploredTiles() == source.GetExploredTiles(),
+					"infiltrated player projection did not include private state"
+				);
+				Player self_view( source.Serialize( &source ) );
+				GT_ASSERT(
+					!self_view.IsRedacted() && self_view.GetEnergyCredits() == 73,
+					"self player projection was redacted"
 				);
 				source.ClearDiplomaticTrade( 4 );
 				source.ClearDiplomaticTrade( 8 );

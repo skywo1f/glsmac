@@ -39,12 +39,16 @@ void Slots::Clear() {
 }
 
 const types::Buffer Slots::Serialize() const {
+	return Serialize( nullptr );
+}
+
+const types::Buffer Slots::Serialize( const Player* viewer ) const {
 	types::Buffer buf;
 
 	buf.WriteInt( m_slots.size() );
 
 	for ( auto& slot : m_slots ) {
-		buf.WriteString( slot.Serialize().ToString() );
+		buf.WriteString( slot.Serialize( viewer ).ToString() );
 	}
 
 	return buf;

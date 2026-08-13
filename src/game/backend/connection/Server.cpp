@@ -94,6 +94,13 @@ void Server::ProcessEvent( const network::Event& event ) {
 			m_projected_unit_ids.erase( event.cid );
 			m_delivered_unit_ids.erase( event.cid );
 			m_delivered_next_unit_ids.erase( event.cid );
+			m_projected_bases.erase( event.cid );
+			m_delivered_bases.erase( event.cid );
+			m_projected_full_base_ids.erase( event.cid );
+			m_delivered_next_base_ids.erase( event.cid );
+			m_projected_players.erase( event.cid );
+			m_delivered_players.erase( event.cid );
+			m_projected_full_player_ids.erase( event.cid );
 			auto it = m_state->GetCidSlots().find( event.cid );
 			if ( it != m_state->GetCidSlots().end() ) {
 				const auto slot_num = it->second;
@@ -356,6 +363,14 @@ void Server::ProcessEvent( const network::Event& event ) {
 							);
 							m_projected_full_base_ids[ event.cid ] = full_base_ids;
 							m_delivered_next_base_ids[ event.cid ] = base::Base::GetNextId();
+							std::unordered_set< size_t > full_player_ids = {};
+							const auto projected_players = GetProjectedPlayersForSlot(
+								cid_slot_it->second,
+								&full_player_ids
+							);
+							m_projected_players[ event.cid ] = projected_players;
+							m_delivered_players[ event.cid ] = projected_players;
+							m_projected_full_player_ids[ event.cid ] = std::move( full_player_ids );
 							// The snapshot and this roster are the consistency boundary. Events
 							// processed after it are replayed once the client finishes loading.
 							SendPlayersList( event.cid, cid_slot_it->second );
@@ -563,6 +578,24 @@ void Server::FinalizeGameEventProjection( game_event_t& event ) {
 		it.second = std::move( projected_after );
 		full_it->second = std::move( full_after );
 	}
+	for ( auto& it : m_projected_players ) {
+		const auto cid = it.first;
+		const auto slot_it = m_state->GetCidSlots().find( cid );
+		if ( slot_it == m_state->GetCidSlots().end() ) {
+			continue;
+		}
+		auto& projection = event.player_projections[ cid ];
+		projection.projected_before = it.second;
+		const auto full_it = m_projected_full_player_ids.find( cid );
+		ASSERT( full_it != m_projected_full_player_ids.end(), "projected client has no full player state" );
+		projection.full_before = full_it->second;
+		std::unordered_set< size_t > full_after = {};
+		auto projected_after = GetProjectedPlayersForSlot( slot_it->second, &full_after );
+		projection.projected_after = projected_after;
+		projection.full_after = full_after;
+		it.second = std::move( projected_after );
+		full_it->second = std::move( full_after );
+	}
 }
 
 void Server::SendSerializedGameEvent( const network::cid_t cid, const game_event_t& event ) {
@@ -663,6 +696,58 @@ bool Server::DeliverBaseVisibilityUpdate(
 	return DeliverSerializedGameEvent( cid, update, deferred );
 }
 
+bool Server::DeliverPlayerVisibilityUpdate(
+	const network::cid_t cid,
+	const std::map< size_t, std::string >& projected_player_snapshots,
+	const std::string& after_event_id,
+	const bool deferred
+) {
+	if ( projected_player_snapshots.empty() ) {
+		return true;
+	}
+	types::Buffer payload;
+	payload.WriteString( after_event_id );
+	payload.WriteInt( projected_player_snapshots.size() );
+	for ( const auto& [ slot_num, snapshot ] : projected_player_snapshots ) {
+		payload.WriteInt( slot_num );
+		payload.WriteString( snapshot );
+	}
+
+	game_event_t update = {};
+	update.caller = 0;
+	update.id = "__player_visibility_" + std::to_string( m_player_visibility_event_id++ );
+	update.name = "__player_visibility";
+	update.serialized_data = event::Event::SerializePlayerVisibilityUpdate(
+		update.id,
+		payload.ToString()
+	);
+	return DeliverSerializedGameEvent( cid, update, deferred );
+}
+
+const std::map< size_t, std::string > Server::GetProjectedPlayersForSlot(
+	const size_t slot_num,
+	std::unordered_set< size_t >* const full_player_ids
+) const {
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "player projection slot index overflow" );
+	const auto& viewer_slot = m_state->m_slots->GetSlot( slot_num );
+	ASSERT( viewer_slot.GetState() == slot::Slot::SS_PLAYER, "player projection viewer has no player" );
+	const auto* const viewer = viewer_slot.GetPlayer();
+	ASSERT( viewer, "player projection viewer has no player data" );
+	std::map< size_t, std::string > result = {};
+	for ( const auto& target_slot : m_state->m_slots->GetSlots() ) {
+		if ( target_slot.GetState() != slot::Slot::SS_PLAYER ) {
+			continue;
+		}
+		const auto* const target = target_slot.GetPlayer();
+		ASSERT( target, "player projection target has no player data" );
+		result.insert({ target_slot.GetIndex(), target->Serialize( viewer ).ToString() });
+		if ( full_player_ids && viewer->CanViewPrivateStateOf( target ) ) {
+			full_player_ids->insert( target_slot.GetIndex() );
+		}
+	}
+	return result;
+}
+
 void Server::DeliverProjectedGameEvent(
 	const network::cid_t cid,
 	const game_event_t& event,
@@ -681,18 +766,23 @@ void Server::DeliverProjectedGameEvent(
 	const auto base_projection_it = event.base_projections.find( cid );
 	const auto delivered_bases_it = m_delivered_bases.find( cid );
 	const auto next_base_id_it = m_delivered_next_base_ids.find( cid );
+	const auto player_projection_it = event.player_projections.find( cid );
+	const auto delivered_players_it = m_delivered_players.find( cid );
 	ASSERT(
 		delivered_it != m_delivered_unit_ids.end() &&
 		next_id_it != m_delivered_next_unit_ids.end() &&
 		base_projection_it != event.base_projections.end() &&
 		delivered_bases_it != m_delivered_bases.end() &&
-		next_base_id_it != m_delivered_next_base_ids.end(),
+		next_base_id_it != m_delivered_next_base_ids.end() &&
+		player_projection_it != event.player_projections.end() &&
+		delivered_players_it != m_delivered_players.end(),
 		"projected client has no delivered world state"
 	);
 	auto known_unit_ids = delivered_it->second;
 	const auto& projection = projection_it->second;
 	auto known_bases = delivered_bases_it->second;
 	const auto& base_projection = base_projection_it->second;
+	const auto& player_projection = player_projection_it->second;
 
 	bool has_known_reference = false;
 	bool can_deserialize_references = true;
@@ -725,11 +815,25 @@ void Server::DeliverProjectedGameEvent(
 			can_deserialize_base_references = false;
 		}
 	}
+	bool has_private_player_reference =
+		event.private_player_event &&
+		player_projection.full_before.find( event.caller ) == player_projection.full_before.end();
+	for ( const auto player_id : event.referenced_player_ids ) {
+		if (
+			player_projection.projected_before.find( player_id ) ==
+			player_projection.projected_before.end() ||
+			player_projection.full_before.find( player_id ) == player_projection.full_before.end()
+		) {
+			has_private_player_reference = true;
+			break;
+		}
+	}
 	const bool suppress_hidden_event =
 		event.unit_snapshot_event ||
 		!can_deserialize_references ||
 		!can_deserialize_base_references ||
 		has_private_base_reference ||
+		has_private_player_reference ||
 		(
 			!event.referenced_unit_ids.empty() && !has_known_reference &&
 			event.private_unit_event
@@ -851,6 +955,23 @@ void Server::DeliverProjectedGameEvent(
 	if ( event.next_base_id_after != 0 ) {
 		next_base_id_it->second = event.next_base_id_after;
 	}
+
+	std::map< size_t, std::string > post_projected_players = {};
+	for ( const auto& it : player_projection.projected_after ) {
+		const auto known_it = delivered_players_it->second.find( it.first );
+		if ( known_it == delivered_players_it->second.end() || known_it->second != it.second ) {
+			post_projected_players.insert( it );
+		}
+	}
+	if ( !DeliverPlayerVisibilityUpdate(
+		cid,
+		post_projected_players,
+		is_sender ? event.id : "",
+		deferred
+	) ) {
+		return;
+	}
+	delivered_players_it->second = player_projection.projected_after;
 }
 
 void Server::FlushDeferredGameEvents( const network::cid_t cid ) {
@@ -904,7 +1025,10 @@ void Server::SetGameState( const game_state_t game_state ) {
 void Server::SendPlayersList() {
 	Broadcast(
 		[ this ]( const network::cid_t cid ) -> void {
-			SendPlayersList( cid );
+			const auto slot_it = m_state->GetCidSlots().find( cid );
+			if ( slot_it != m_state->GetCidSlots().end() ) {
+				SendPlayersList( cid, slot_it->second );
+			}
 		}
 	);
 }
@@ -959,6 +1083,10 @@ void Server::ResetHandlers() {
 	m_projected_full_base_ids.clear();
 	m_delivered_next_base_ids.clear();
 	m_base_visibility_event_id = 1;
+	m_projected_players.clear();
+	m_delivered_players.clear();
+	m_projected_full_player_ids.clear();
+	m_player_visibility_event_id = 1;
 }
 
 void Server::UpdateGameSettings() {
@@ -1022,9 +1150,12 @@ void Server::SendGameState( const network::cid_t cid ) {
 
 void Server::SendPlayersList( const network::cid_t cid, const size_t slot_num ) {
 	Log( "Sending players list to " + std::to_string( cid ) );
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "player-list viewer slot index overflow" );
+	const auto& viewer_slot = m_state->m_slots->GetSlot( slot_num );
+	ASSERT( viewer_slot.GetState() == slot::Slot::SS_PLAYER, "player-list viewer slot has no player" );
 	types::Packet p( types::Packet::PT_PLAYERS );
 	p.data.num = slot_num;
-	p.data.str = m_state->m_slots->Serialize().ToString();
+	p.data.str = m_state->m_slots->Serialize( viewer_slot.GetPlayer() ).ToString();
 	g_engine->GetNetwork()->MT_SendPacket( &p, cid );
 }
 
@@ -1032,10 +1163,16 @@ void Server::SendSlotUpdate( const size_t slot_num, const slot::Slot* slot, netw
 	Broadcast(
 		[ this, slot_num, slot, skip_cid ]( const network::cid_t cid ) -> void {
 			if ( cid != skip_cid ) {
+				const auto viewer_it = m_state->GetCidSlots().find( cid );
+				if ( viewer_it == m_state->GetCidSlots().end() ) {
+					return;
+				}
+				const auto* const viewer = m_state->m_slots->GetSlot( viewer_it->second ).GetPlayer();
+				ASSERT( viewer, "slot-update viewer has no player" );
 				Log( "Sending slot update to " + std::to_string( cid ) );
 				types::Packet p( types::Packet::PT_SLOT_UPDATE );
 				p.data.num = slot_num;
-				p.data.str = slot->Serialize().ToString();
+				p.data.str = slot->Serialize( viewer ).ToString();
 				m_network->MT_SendPacket( &p, cid );
 			}
 		}

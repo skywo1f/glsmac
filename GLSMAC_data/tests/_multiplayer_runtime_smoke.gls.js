@@ -36,6 +36,7 @@
 	let host_base_snapshot_probe_started = false;
 	let client_base_snapshot_probe_complete = false;
 	let client_base_infiltration_probe_complete = false;
+	let client_player_privacy_probe_complete = false;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -615,6 +616,34 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_player_privacy_update', {
+			player_visibility: 'private',
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Player privacy update probe is invalid';
+				}
+			},
+			apply: (e) => {
+				if (!e.game.is_master()) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: private rival player event was delivered');
+					glsmac.exit();
+				}
+				const player = e.game.get_player(e.caller);
+				const previous = {
+					energy: player.get_energy_credits(),
+					atrocities: player.get_major_atrocities(),
+				};
+				player.set_energy_credits(707);
+				player.set_major_atrocities(17);
+				return previous;
+			},
+			rollback: (e) => {
+				const player = e.game.get_player(e.caller);
+				player.set_energy_credits(e.applied.energy);
+				player.set_major_atrocities(e.applied.atrocities);
+			},
+		});
+
 		game.register_event('multiplayer_smoke_base_snapshot_probe', {
 			validate: (e) => {
 				if (e.caller != 0) {
@@ -1076,6 +1105,30 @@
 			});
 		};
 
+		const wait_for_player_privacy_update = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				const host = game.get_player(0);
+				if (host.get_major_atrocities() == 17) {
+					if (!host.is_redacted || host.get_energy_credits() != 0) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: live rival player private state leaked');
+						glsmac.exit();
+						return false;
+					}
+					client_player_privacy_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_PLAYER_PRIVACY_PASS_CLIENT');
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: live player projection timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
 		const run_client_combat_probe = () => {
 			let phase = 'wait_for_defender';
 			let wait_ticks = 0;
@@ -1360,15 +1413,35 @@
 					return;
 				}
 				for (player of players) {
-					const research_error = get_research_state_error(player, !game.is_master());
-					if (#is_defined(research_error)) {
-						#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
-						glsmac.exit();
-						return;
+					if (!game.is_master() && player.id != game.get_player().id) {
+						const state = player.get_research_state();
+						if (
+							!player.is_redacted || player.get_energy_credits() != 0 ||
+							#sizeof(state.technologies) != 0 || state.target != '' ||
+							state.progress != 0 || #sizeof(player.get_explored_tiles()) != 0
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: foreign player snapshot leaked private state');
+							glsmac.exit();
+							return;
+						}
+					}
+					else {
+						if (player.is_redacted) {
+							#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': visible player snapshot was redacted');
+							glsmac.exit();
+							return;
+						}
+						const research_error = get_research_state_error(player, !game.is_master());
+						if (#is_defined(research_error)) {
+							#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
+							glsmac.exit();
+							return;
+						}
 					}
 				}
 				#print('MULTIPLAYER_SMOKE_RESEARCH_INITIAL_PASS_' + role);
 				if (game.is_master()) {
+					game.event('multiplayer_smoke_player_privacy_update', {});
 					if (!prepare_client_movement_probe()) {
 						#print('MULTIPLAYER_SMOKE_FAIL_HOST: movement probe could not be prepared');
 						glsmac.exit();
@@ -1391,6 +1464,7 @@
 					wait_for_client_live_visibility_probe();
 				}
 				else {
+					wait_for_player_privacy_update();
 					start_client_live_visibility_probe();
 					run_client_terraform_probe();
 					game.event('multiplayer_smoke_accept_once', {});
@@ -1422,11 +1496,25 @@
 			}
 			else if (turn_id == 2 && !exit_scheduled) {
 				for (player of players) {
-					const research_error = get_research_state_error(player, true);
-					if (#is_defined(research_error)) {
-						#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
-						glsmac.exit();
-						return;
+					if (!game.is_master() && player.id != game.get_player().id) {
+						const state = player.get_research_state();
+						if (
+							!player.is_redacted || player.get_energy_credits() != 0 ||
+							#sizeof(state.technologies) != 0 || state.target != '' ||
+							state.progress != 0 || #sizeof(player.get_explored_tiles()) != 0
+						) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: foreign player live state leaked');
+							glsmac.exit();
+							return;
+						}
+					}
+					else {
+						const research_error = get_research_state_error(player, true);
+						if (#is_defined(research_error)) {
+							#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
+							glsmac.exit();
+							return;
+						}
 					}
 				}
 				#print('MULTIPLAYER_SMOKE_RESEARCH_SYNC_PASS_' + role);
@@ -1481,6 +1569,7 @@
 					(!game.is_master() && !client_terraform_probe_complete) ||
 					(!game.is_master() && !client_base_snapshot_probe_complete) ||
 					(!game.is_master() && !client_base_infiltration_probe_complete) ||
+					(!game.is_master() && !client_player_privacy_probe_complete) ||
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||

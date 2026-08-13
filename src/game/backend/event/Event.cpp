@@ -1,6 +1,7 @@
 #include "Event.h"
 
 #include "game/backend/Game.h"
+#include "game/backend/Player.h"
 #include "game/backend/unit/Unit.h"
 #include "game/backend/base/Base.h"
 #include "gse/value/Array.h"
@@ -42,11 +43,12 @@ const bool HasInvalidatedReference( const gse::Value* const value, std::unordere
 	return false;
 }
 
-void CollectReferencedWorldObjects(
+void CollectReferencedObjects(
 	const gse::Value* const value,
 	std::unordered_set< const gse::Value* >& visited,
 	std::unordered_set< const unit::Unit* >* const units,
-	std::unordered_set< const base::Base* >* const bases
+	std::unordered_set< const base::Base* >* const bases,
+	std::unordered_set< const Player* >* const players
 ) {
 	if ( !value || !visited.insert( value ).second ) {
 		return;
@@ -54,12 +56,13 @@ void CollectReferencedWorldObjects(
 	switch ( value->type ) {
 		case gse::VT_ARRAY: {
 			for ( const auto* const element : ( (const gse::value::Array*)value )->value ) {
-				CollectReferencedWorldObjects( element, visited, units, bases );
+				CollectReferencedObjects( element, visited, units, bases, players );
 			}
 			break;
 		}
 		case gse::VT_OBJECT: {
 			const auto* const object = (const gse::value::Object*)value;
+			auto* const nested_players = object->wrapobj ? nullptr : players;
 			if ( object->wrapobj ) {
 				if ( units ) {
 					const auto* const referenced_unit = dynamic_cast< const unit::Unit* >( object->wrapobj );
@@ -73,9 +76,15 @@ void CollectReferencedWorldObjects(
 						bases->insert( referenced_base );
 					}
 				}
+				if ( players ) {
+					const auto* const referenced_player = dynamic_cast< const Player* >( object->wrapobj );
+					if ( referenced_player ) {
+						players->insert( referenced_player );
+					}
+				}
 			}
 			for ( const auto& property : object->value ) {
-				CollectReferencedWorldObjects( property.second, visited, units, bases );
+				CollectReferencedObjects( property.second, visited, units, bases, nested_players );
 			}
 			break;
 		}
@@ -216,11 +225,11 @@ const std::unordered_set< const unit::Unit* > Event::GetReferencedUnits() {
 	std::unordered_set< const gse::Value* > visited = {};
 	std::unordered_set< const unit::Unit* > units = {};
 	for ( const auto& property : m_original_data ) {
-		CollectReferencedWorldObjects( property.second, visited, &units, nullptr );
+		CollectReferencedObjects( property.second, visited, &units, nullptr, nullptr );
 	}
 	{
 		std::lock_guard guard( m_resolved_mutex );
-		CollectReferencedWorldObjects( m_resolved, visited, &units, nullptr );
+		CollectReferencedObjects( m_resolved, visited, &units, nullptr, nullptr );
 	}
 	return units;
 }
@@ -229,13 +238,26 @@ const std::unordered_set< const base::Base* > Event::GetReferencedBases() {
 	std::unordered_set< const gse::Value* > visited = {};
 	std::unordered_set< const base::Base* > bases = {};
 	for ( const auto& property : m_original_data ) {
-		CollectReferencedWorldObjects( property.second, visited, nullptr, &bases );
+		CollectReferencedObjects( property.second, visited, nullptr, &bases, nullptr );
 	}
 	{
 		std::lock_guard guard( m_resolved_mutex );
-		CollectReferencedWorldObjects( m_resolved, visited, nullptr, &bases );
+		CollectReferencedObjects( m_resolved, visited, nullptr, &bases, nullptr );
 	}
 	return bases;
+}
+
+const std::unordered_set< const Player* > Event::GetReferencedPlayers() {
+	std::unordered_set< const gse::Value* > visited = {};
+	std::unordered_set< const Player* > players = {};
+	for ( const auto& property : m_original_data ) {
+		CollectReferencedObjects( property.second, visited, nullptr, nullptr, &players );
+	}
+	{
+		std::lock_guard guard( m_resolved_mutex );
+		CollectReferencedObjects( m_resolved, visited, nullptr, nullptr, &players );
+	}
+	return players;
 }
 
 const std::string Event::SerializeUnitVisibilityUpdate(
@@ -261,6 +283,22 @@ const std::string Event::SerializeBaseVisibilityUpdate(
 	types::Buffer buf;
 	buf.WriteString( id );
 	buf.WriteString( "__base_visibility" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
+}
+
+const std::string Event::SerializePlayerVisibilityUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__player_visibility" );
 	buf.WriteInt( 0 );
 	buf.WriteInt( 1 );
 	buf.WriteString( "payload" );

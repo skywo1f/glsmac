@@ -46,6 +46,7 @@ Player::Player( const Player* const other ) {
 	m_faction = other->m_faction;
 	m_difficulty_level = other->m_difficulty_level;
 	m_is_turn_completed = other->m_is_turn_completed;
+	m_is_redacted = other->m_is_redacted;
 	m_technologies = other->m_technologies;
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
@@ -151,6 +152,23 @@ const bool Player::IsAI() const {
 
 const bool Player::IsNative() const {
 	return m_role == PR_NATIVE;
+}
+
+const bool Player::IsRedacted() const {
+	return m_is_redacted;
+}
+
+bool Player::CanViewPrivateStateOf( const Player* target ) const {
+	if ( !target ) {
+		return false;
+	}
+	if ( target == this || HasInfiltrated( target->m_slotnum ) ) {
+		return true;
+	}
+	return
+		m_council_state.is_governor &&
+		target->m_faction &&
+		!( target->m_faction->m_flags & faction::Faction::FF_PROGENITOR );
 }
 
 const bool Player::IsTurnCompleted() const {
@@ -830,6 +848,10 @@ WRAPIMPL_BEGIN( Player )
 			{
 				"energy_credits",
 				VALUE( gse::value::Int, , m_energy_credits )
+			},
+			{
+				"is_redacted",
+				VALUE( gse::value::Bool, , m_is_redacted )
 			},
 			{
 				"is_ready",
@@ -1936,6 +1958,17 @@ WRAPIMPL_END_PTR()
 UNWRAPIMPL_PTR( Player )
 
 const types::Buffer Player::Serialize() const {
+	return Serialize( nullptr );
+}
+
+const types::Buffer Player::Serialize( const Player* viewer ) const {
+	const bool include_private_state =
+		!m_is_redacted && ( !viewer || viewer->CanViewPrivateStateOf( this ) );
+	const bool is_redacted = !include_private_state;
+	const size_t viewer_id = viewer ? viewer->m_slotnum : 0;
+	const auto visible_count = [ include_private_state, viewer_id ]( const auto& values ) {
+		return include_private_state ? values.size() : values.count( viewer_id );
+	};
 	types::Buffer buf;
 
 	buf.WriteString( m_name );
@@ -1946,60 +1979,88 @@ const types::Buffer Player::Serialize() const {
 	}
 	buf.WriteString( m_difficulty_level );
 	buf.WriteBool( m_is_turn_completed );
-	buf.WriteInt( m_technologies.size() );
-	for ( const auto& id : m_technologies ) {
-		buf.WriteString( id );
+	buf.WriteInt( include_private_state ? m_technologies.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto& id : m_technologies ) {
+			buf.WriteString( id );
+		}
 	}
-	buf.WriteString( m_research_target );
-	buf.WriteInt( m_research_progress );
-	buf.WriteInt( m_energy_credits );
+	buf.WriteString( include_private_state ? m_research_target : "" );
+	buf.WriteInt( include_private_state ? m_research_progress : 0 );
+	buf.WriteInt( include_private_state ? m_energy_credits : 0 );
 	buf.WriteInt( m_social_engineering.size() );
-	for ( const auto& id : m_social_engineering ) {
-		buf.WriteString( id );
+	if ( include_private_state ) {
+		for ( const auto& id : m_social_engineering ) {
+			buf.WriteString( id );
+		}
 	}
-	buf.WriteInt( m_ecological_damage_events );
-	buf.WriteInt( m_diplomatic_relations.size() );
+	else {
+		for ( const auto& id : social_engineering_t{{ "Frontier", "Simple", "Survival", "None" }} ) {
+			buf.WriteString( id );
+		}
+	}
+	buf.WriteInt( include_private_state ? m_ecological_damage_events : 0 );
+	buf.WriteInt( visible_count( m_diplomatic_relations ) );
 	for ( const auto& [ player_id, relation ] : m_diplomatic_relations ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( relation );
 	}
-	buf.WriteInt( m_diplomatic_offers.size() );
+	buf.WriteInt( visible_count( m_diplomatic_offers ) );
 	for ( const auto& [ player_id, relation ] : m_diplomatic_offers ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( relation );
 	}
-	buf.WriteInt( m_infiltrated_players.size() );
-	for ( const auto player_id : m_infiltrated_players ) {
-		buf.WriteInt( player_id );
+	buf.WriteInt( include_private_state ? m_infiltrated_players.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto player_id : m_infiltrated_players ) {
+			buf.WriteInt( player_id );
+		}
 	}
 	buf.WriteInt( m_major_atrocities );
-	buf.WriteInt( m_diplomatic_trades.size() );
+	buf.WriteInt( visible_count( m_diplomatic_trades ) );
 	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( trade.offer_energy );
 		buf.WriteString( trade.offer_technology );
 		buf.WriteInt( trade.request_energy );
 		buf.WriteString( trade.request_technology );
 	}
-	buf.WriteInt( m_diplomatic_loan_offers.size() );
+	buf.WriteInt( visible_count( m_diplomatic_loan_offers ) );
 	for ( const auto& [ player_id, offer ] : m_diplomatic_loan_offers ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteBool( offer.proposer_is_lender );
 		buf.WriteInt( offer.principal );
 		buf.WriteInt( offer.payment );
 		buf.WriteInt( offer.turns );
 	}
-	buf.WriteInt( m_diplomatic_loans.size() );
+	buf.WriteInt( visible_count( m_diplomatic_loans ) );
 	for ( const auto& [ player_id, loan ] : m_diplomatic_loans ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( loan.balance );
 		buf.WriteInt( loan.payment );
 	}
 	buf.WriteInt( m_sanction_turns );
 	buf.WriteInt( m_integrity_blemishes );
-	buf.WriteInt( m_prototyped_components.size() );
-	for ( const auto& id : m_prototyped_components ) {
-		buf.WriteString( id );
+	buf.WriteInt( include_private_state ? m_prototyped_components.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto& id : m_prototyped_components ) {
+			buf.WriteString( id );
+		}
 	}
 	buf.WriteInt( m_orbital_facilities.size() );
 	for ( const auto& [ id, count ] : m_orbital_facilities ) {
@@ -2013,38 +2074,51 @@ const types::Buffer Player::Serialize() const {
 	buf.WriteInt( m_council_state.caller_id );
 	buf.WriteInt( m_council_state.candidate_a_id );
 	buf.WriteInt( m_council_state.candidate_b_id );
-	buf.WriteInt( m_council_state.vote_id );
+	buf.WriteInt( include_private_state ? m_council_state.vote_id : COUNCIL_VOTE_PENDING );
 	buf.WriteBool( m_council_state.global_trade_pact );
 	buf.WriteBool( m_council_state.unity_core_salvaged );
 	buf.WriteBool( m_council_state.un_charter_repealed );
-	buf.WriteInt( m_obsolete_unit_designs.size() );
-	for ( const auto& id : m_obsolete_unit_designs ) {
-		buf.WriteString( id );
+	buf.WriteInt( include_private_state ? m_obsolete_unit_designs.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto& id : m_obsolete_unit_designs ) {
+			buf.WriteString( id );
+		}
 	}
-	buf.WriteInt( m_retired_unit_designs.size() );
-	for ( const auto& id : m_retired_unit_designs ) {
-		buf.WriteString( id );
+	buf.WriteInt( include_private_state ? m_retired_unit_designs.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto& id : m_retired_unit_designs ) {
+			buf.WriteString( id );
+		}
 	}
-	buf.WriteInt( 5 );
-	buf.WriteBool( m_legacy_unrestricted_contact );
-	buf.WriteInt( m_contacted_players.size() );
+	buf.WriteInt( is_redacted ? 6 : 5 );
+	buf.WriteBool( include_private_state && m_legacy_unrestricted_contact );
+	buf.WriteInt( visible_count( m_contacted_players ) );
 	for ( const auto player_id : m_contacted_players ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 	}
 	size_t extended_trade_count = 0;
 	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
 		if (
-			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
-			trade.offer_map || trade.request_map ||
-			trade.offer_base >= 0 || trade.request_base >= 0 ||
-			trade.request_vendetta_player >= 0 ||
-			trade.is_ultimatum
+			( include_private_state || player_id == viewer_id ) &&
+			(
+				trade.offer_contact >= 0 || trade.request_contact >= 0 ||
+				trade.offer_map || trade.request_map ||
+				trade.offer_base >= 0 || trade.request_base >= 0 ||
+				trade.request_vendetta_player >= 0 ||
+				trade.is_ultimatum
+			)
 		) {
 			extended_trade_count++;
 		}
 	}
 	buf.WriteInt( extended_trade_count );
 	for ( const auto& [ player_id, trade ] : m_diplomatic_trades ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		if (
 			trade.offer_contact < 0 && trade.request_contact < 0 &&
 			!trade.offer_map && !trade.request_map &&
@@ -2064,31 +2138,51 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteBool( trade.is_ultimatum );
 		buf.WriteInt( trade.request_vendetta_player );
 	}
-	buf.WriteBool( m_legacy_full_map_visibility );
-	buf.WriteInt( m_explored_tiles.size() );
-	for ( const auto& [ x, y ] : m_explored_tiles ) {
-		buf.WriteInt( x );
-		buf.WriteInt( y );
+	buf.WriteBool( include_private_state && m_legacy_full_map_visibility );
+	buf.WriteInt( include_private_state ? m_explored_tiles.size() : 0 );
+	if ( include_private_state ) {
+		for ( const auto& [ x, y ] : m_explored_tiles ) {
+			buf.WriteInt( x );
+			buf.WriteInt( y );
+		}
 	}
-	buf.WriteInt( m_clean_mineral_facilities );
+	buf.WriteInt( include_private_state ? m_clean_mineral_facilities : 0 );
 	buf.WriteBool( m_council_state.is_expelled );
 	buf.WriteInt( m_council_state.supreme_leader_id );
-	buf.WriteInt( m_council_state.supreme_response );
+	buf.WriteInt(
+		include_private_state || m_council_state.supreme_resolved ||
+		m_council_state.supreme_response == SUPREME_RESPONSE_NONE
+			? m_council_state.supreme_response
+			: SUPREME_RESPONSE_PENDING
+	);
 	buf.WriteBool( m_council_state.supreme_resolved );
 	buf.WriteInt( m_submissive_to_id );
-	buf.WriteInt( m_surrender_offer_to_id );
-	buf.WriteInt( m_mind_control_total );
-	buf.WriteInt( m_diplomatic_excuses.size() );
+	buf.WriteInt(
+		include_private_state || m_surrender_offer_to_id == static_cast< int64_t >( viewer_id )
+			? m_surrender_offer_to_id
+			: NO_DIPLOMATIC_PLAYER
+	);
+	buf.WriteInt( include_private_state ? m_mind_control_total : 0 );
+	buf.WriteInt( visible_count( m_diplomatic_excuses ) );
 	for ( const auto& [ player_id, expiry_turn ] : m_diplomatic_excuses ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteInt( expiry_turn );
 	}
-	buf.WriteInt( m_diplomatic_grievances.size() );
+	buf.WriteInt( visible_count( m_diplomatic_grievances ) );
 	for ( const auto& [ player_id, grievance ] : m_diplomatic_grievances ) {
+		if ( !include_private_state && player_id != viewer_id ) {
+			continue;
+		}
 		buf.WriteInt( player_id );
 		buf.WriteBool( grievance.wants_revenge );
 		buf.WriteBool( grievance.atrocity_victim );
 		buf.WriteBool( grievance.major_atrocity_victim );
+	}
+	if ( is_redacted ) {
+		buf.WriteBool( true );
 	}
 
 	return buf;
@@ -2396,11 +2490,13 @@ void Player::Deserialize( types::Buffer buf ) {
 	explored_tiles_t explored_tiles = {};
 	bool legacy_full_map_visibility = true;
 	int64_t clean_mineral_facilities = 0;
+	int64_t contact_version = 0;
 	if ( buf.GetRemaining() > 0 ) {
-		const auto contact_version = buf.ReadInt();
+		contact_version = buf.ReadInt();
 		if (
 			contact_version != 1 && contact_version != 2 &&
-			contact_version != 3 && contact_version != 4 && contact_version != 5
+			contact_version != 3 && contact_version != 4 && contact_version != 5 &&
+			contact_version != 6
 		) {
 			THROW( "unsupported serialized player contact version" );
 		}
@@ -2540,6 +2636,7 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	const bool is_redacted = contact_version >= 6 ? buf.ReadBool() : false;
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2555,6 +2652,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_owns_faction = m_faction != nullptr;
 	m_difficulty_level = difficulty_level;
 	m_is_turn_completed = is_turn_completed;
+	m_is_redacted = is_redacted;
 	m_technologies = std::move( technologies );
 	m_research_target = research_target;
 	m_research_progress = research_progress;

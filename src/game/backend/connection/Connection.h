@@ -90,7 +90,8 @@ public:
 	void SendGameEvent(
 		backend::event::Event* event,
 		const bool private_unit_event,
-		const bool unit_snapshot_event
+		const bool unit_snapshot_event,
+		const bool private_player_event
 	);
 	void FinalizeGameEvent( backend::event::Event* event );
 
@@ -133,6 +134,12 @@ protected:
 			std::unordered_set< size_t > full_before = {};
 			std::unordered_set< size_t > full_after = {};
 		};
+		struct player_projection_t {
+			std::map< size_t, std::string > projected_before = {};
+			std::map< size_t, std::string > projected_after = {};
+			std::unordered_set< size_t > full_before = {};
+			std::unordered_set< size_t > full_after = {};
+		};
 		size_t caller = 0;
 		std::string id = "";
 		std::string name = "";
@@ -144,12 +151,15 @@ protected:
 		size_t next_unit_id_after = 0;
 		bool private_unit_event = false;
 		bool unit_snapshot_event = false;
+		bool private_player_event = false;
 		std::unordered_map< network::cid_t, unit_projection_t > unit_projections = {};
 		std::unordered_set< size_t > referenced_base_ids = {};
 		std::unordered_set< size_t > base_ids_before = {};
 		std::unordered_set< size_t > created_base_ids = {};
 		size_t next_base_id_after = 0;
 		std::unordered_map< network::cid_t, base_projection_t > base_projections = {};
+		std::unordered_set< size_t > referenced_player_ids = {};
+		std::unordered_map< network::cid_t, player_projection_t > player_projections = {};
 	};
 	typedef std::vector< game_event_t > game_events_t;
 	game_state_t m_game_state = GS_NONE;

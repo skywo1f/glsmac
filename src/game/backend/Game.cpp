@@ -1114,6 +1114,7 @@ WRAPIMPL_BEGIN( Game )
 				}
 				bool private_unit_event = false;
 				bool unit_snapshot_event = false;
+				bool private_player_event = false;
 				const auto visibility_it = def.find( "unit_visibility" );
 				if ( visibility_it != def.end() ) {
 					if ( visibility_it->second->type != gse::VT_STRING ) {
@@ -1133,6 +1134,22 @@ WRAPIMPL_BEGIN( Game )
 						);
 					}
 				}
+				const auto player_visibility_it = def.find( "player_visibility" );
+				if ( player_visibility_it != def.end() ) {
+					if ( player_visibility_it->second->type != gse::VT_STRING ) {
+						GSE_ERROR( gse::EC.INVALID_HANDLER, "Event player_visibility must be a string" );
+					}
+					const auto& visibility = ( (gse::value::String*)player_visibility_it->second )->value;
+					if ( visibility == "private" ) {
+						private_player_event = true;
+					}
+					else if ( visibility != "public" ) {
+						GSE_ERROR(
+							gse::EC.INVALID_HANDLER,
+							"Event player_visibility must be public or private"
+						);
+					}
+				}
 				{
 					std::lock_guard guard( m_event_handlers_mutex );
 					m_event_handlers.insert(
@@ -1143,7 +1160,8 @@ WRAPIMPL_BEGIN( Game )
 							(gse::value::Callable*)apply_it->second,
 							(gse::value::Callable*)rollback_it->second,
 							private_unit_event,
-							unit_snapshot_event
+							unit_snapshot_event,
+							private_player_event
 						) }
 					);
 				}
@@ -2191,6 +2209,42 @@ void Game::ProcessEvents() {
 					} );
 					continue;
 				}
+				if ( event->GetEventName() == "__player_visibility" ) {
+					const auto& data = event->GetOriginalData();
+					const auto payload_it = data.find( "payload" );
+					if (
+						m_state->IsMaster() || event->GetSource() != event::Event::ES_SERVER ||
+						data.size() != 1 || payload_it == data.end() ||
+						!payload_it->second || payload_it->second->type != gse::VT_STRING
+					) {
+						THROW( "invalid internal player visibility event" );
+					}
+					const auto payload = ( (gse::value::String*)payload_it->second )->value;
+					auto dependency_buf = types::Buffer( payload );
+					const auto after_event_id = dependency_buf.ReadString();
+					if ( !after_event_id.empty() ) {
+						bool is_waiting_for_response = false;
+						{
+							std::lock_guard guard( m_events_waiting_for_responses_mutex );
+							is_waiting_for_response =
+								m_events_waiting_for_responses.find( after_event_id ) !=
+								m_events_waiting_for_responses.end();
+						}
+						if ( is_waiting_for_response ) {
+							std::lock_guard guard( m_pending_events_mutex );
+							m_pending_events.insert(
+								m_pending_events.begin(),
+								events.begin() + event_index,
+								events.end()
+							);
+							break;
+						}
+					}
+					WithRW( [ this, &ctx, &gc_space, &si, &ep, &payload ]() {
+						ApplyPlayerVisibilityUpdate( GSE_CALL, payload );
+					} );
+					continue;
+				}
 				auto* obj = VALUE( gse::value::Object, , GSE_CALL_NOGC, event->GetData() );
 				const auto fargs = gse::value::function_arguments_t{ obj };
 				event::EventHandler* handler = nullptr;
@@ -2244,7 +2298,8 @@ void Game::ProcessEvents() {
 							m_state->m_connection->SendGameEvent(
 								event,
 								handler->IsPrivateUnitEvent(),
-								handler->IsUnitSnapshotEvent()
+								handler->IsUnitSnapshotEvent(),
+								handler->IsPrivatePlayerEvent()
 							);
 						}
 						WithRW( f_process );
@@ -2296,7 +2351,8 @@ void Game::ProcessEvents() {
 							m_state->m_connection->SendGameEvent(
 								event,
 								handler->IsPrivateUnitEvent(),
-								handler->IsUnitSnapshotEvent()
+								handler->IsUnitSnapshotEvent(),
+								handler->IsPrivatePlayerEvent()
 							);
 						}
 					}
@@ -2463,6 +2519,41 @@ void Game::ApplyBaseVisibilityUpdate( GSE_CALLABLE, const std::string& payload )
 			THROW( "invalid authoritative next base id" );
 		}
 		base::Base::SetNextId( next_base_id );
+	}
+}
+
+void Game::ApplyPlayerVisibilityUpdate( GSE_CALLABLE, const std::string& payload ) {
+	ASSERT( !m_state->IsMaster(), "player visibility update applied on master" );
+	auto buf = types::Buffer( payload );
+	buf.ReadString(); // optional local event response dependency, handled by ProcessEvents
+	const auto projected_count = buf.ReadCollectionSize( "projected player" );
+	std::map< size_t, std::string > projected_players = {};
+	for ( size_t i = 0 ; i < projected_count ; i++ ) {
+		const auto slot_num = buf.ReadInt< size_t >( "projected player slot" );
+		const auto serialized_player = buf.ReadString();
+		if (
+			slot_num >= m_state->m_slots->GetCount() ||
+			m_state->m_slots->GetSlot( slot_num ).GetState() != slot::Slot::SS_PLAYER ||
+			!projected_players.insert({ slot_num, serialized_player }).second
+		) {
+			THROW( "invalid or duplicate projected player slot" );
+		}
+		Player validation{ types::Buffer( serialized_player ) };
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after player visibility update" );
+	}
+
+	for ( const auto& [ slot_num, serialized_player ] : projected_players ) {
+		auto& player_slot = m_state->m_slots->GetSlot( slot_num );
+		player_slot.GetPlayer()->Deserialize( types::Buffer( serialized_player ) );
+		Trigger(
+			GSE_CALL, "player_update", ARGS_F( &player_slot ) {
+				{
+					"player", player_slot.Wrap( GSE_CALL )
+				}
+			}; }
+		);
 	}
 }
 

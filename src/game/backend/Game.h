@@ -487,6 +487,7 @@ private:
 	void ProcessEvents();
 	void ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
 	void ApplyBaseVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
+	void ApplyPlayerVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
 
 private:
 	friend class map::Map;

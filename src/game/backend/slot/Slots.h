@@ -22,6 +22,7 @@ CLASS( Slots, types::Serializable )
 	void Clear();
 
 	const types::Buffer Serialize() const override;
+	const types::Buffer Serialize( const Player* viewer ) const;
 	void Deserialize( types::Buffer buf ) override;
 	void DeserializeUpdate( types::Buffer buf );
 

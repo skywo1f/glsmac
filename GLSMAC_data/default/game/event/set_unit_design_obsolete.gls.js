@@ -25,6 +25,7 @@ const set_obsolete = (player, id, obsolete) => {
 };
 
 return {
+	player_visibility: 'private',
 	validate: (e) => {
 		if (!e.game.is_started()) {
 			return 'Unit designs can only be managed during a game';
