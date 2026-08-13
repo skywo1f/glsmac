@@ -66,6 +66,7 @@ Player::Player( const Player* const other ) {
 	m_diplomatic_relations = other->m_diplomatic_relations;
 	m_diplomatic_offers = other->m_diplomatic_offers;
 	m_diplomatic_excuses = other->m_diplomatic_excuses;
+	m_diplomatic_grievances = other->m_diplomatic_grievances;
 	m_contacted_players = other->m_contacted_players;
 	m_legacy_unrestricted_contact = other->m_legacy_unrestricted_contact;
 	m_explored_tiles = other->m_explored_tiles;
@@ -489,6 +490,39 @@ void Player::SetDiplomaticExcuseTurn( const size_t player_id, const int64_t expi
 	}
 	else {
 		m_diplomatic_excuses[ player_id ] = expiry_turn;
+	}
+}
+
+const Player::diplomatic_grievances_t& Player::GetDiplomaticGrievances() const {
+	return m_diplomatic_grievances;
+}
+
+Player::diplomatic_grievance_t Player::GetDiplomaticGrievance( const size_t player_id ) const {
+	const auto it = m_diplomatic_grievances.find( player_id );
+	return it == m_diplomatic_grievances.end() ? diplomatic_grievance_t{} : it->second;
+}
+
+void Player::SetDiplomaticGrievance(
+	const size_t player_id,
+	const diplomatic_grievance_t& grievance
+) {
+	if ( player_id >= MAX_DIPLOMATIC_GRIEVANCES ) {
+		THROW( "diplomatic grievance player ID is out of range" );
+	}
+	if (
+		( grievance.atrocity_victim && !grievance.wants_revenge ) ||
+		( grievance.major_atrocity_victim && !grievance.atrocity_victim )
+	) {
+		THROW( "diplomatic grievance flags are inconsistent" );
+	}
+	if (
+		!grievance.wants_revenge && !grievance.atrocity_victim &&
+		!grievance.major_atrocity_victim
+	) {
+		m_diplomatic_grievances.erase( player_id );
+	}
+	else {
+		m_diplomatic_grievances[ player_id ] = grievance;
 	}
 }
 
@@ -1324,6 +1358,57 @@ WRAPIMPL_BEGIN( Player )
 				} )
 			},
 			{
+				"get_diplomatic_grievance",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					if ( other == this ) {
+						GSE_ERROR(
+							gse::EC.INVALID_CALL,
+							"A player cannot have a diplomatic grievance against itself"
+						);
+					}
+					const auto grievance = GetDiplomaticGrievance( other->m_slotnum );
+					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{ "wants_revenge", VALUE( gse::value::Bool, , grievance.wants_revenge ) },
+						{ "atrocity_victim", VALUE( gse::value::Bool, , grievance.atrocity_victim ) },
+						{
+							"major_atrocity_victim",
+							VALUE( gse::value::Bool, , grievance.major_atrocity_victim )
+						},
+					} );
+				} )
+			},
+			{
+				"set_diplomatic_grievance",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 2 );
+					N_GETVALUE_UNWRAP( other, 0, Player );
+					N_GETVALUE( value, 1, Object );
+					if ( other == this ) {
+						GSE_ERROR(
+							gse::EC.INVALID_CALL,
+							"A player cannot have a diplomatic grievance against itself"
+						);
+					}
+					N_GETPROP( wants_revenge, value, "wants_revenge", Bool );
+					N_GETPROP( atrocity_victim, value, "atrocity_victim", Bool );
+					N_GETPROP( major_atrocity_victim, value, "major_atrocity_victim", Bool );
+					try {
+						SetDiplomaticGrievance( other->m_slotnum, {
+							wants_revenge,
+							atrocity_victim,
+							major_atrocity_victim,
+						} );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"get_diplomatic_offer",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
@@ -1937,6 +2022,13 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteInt( player_id );
 		buf.WriteInt( expiry_turn );
 	}
+	buf.WriteInt( m_diplomatic_grievances.size() );
+	for ( const auto& [ player_id, grievance ] : m_diplomatic_grievances ) {
+		buf.WriteInt( player_id );
+		buf.WriteBool( grievance.wants_revenge );
+		buf.WriteBool( grievance.atrocity_victim );
+		buf.WriteBool( grievance.major_atrocity_victim );
+	}
 
 	return buf;
 }
@@ -2356,6 +2448,26 @@ void Player::Deserialize( types::Buffer buf ) {
 			}
 		}
 	}
+	diplomatic_grievances_t diplomatic_grievances = {};
+	if ( buf.GetRemaining() > 0 ) {
+		const auto grievance_count = buf.ReadCollectionSize( "player diplomatic grievance" );
+		if ( grievance_count > MAX_DIPLOMATIC_GRIEVANCES ) {
+			THROW( "invalid serialized player diplomatic grievance count" );
+		}
+		for ( size_t i = 0 ; i < grievance_count ; i++ ) {
+			const auto player_id = buf.ReadInt< size_t >( "diplomatic grievance player ID" );
+			const diplomatic_grievance_t grievance = {
+				buf.ReadBool(),
+				buf.ReadBool(),
+				buf.ReadBool(),
+			};
+			Player validator( "diplomatic grievance validator", PR_NONE, nullptr, "" );
+			validator.SetDiplomaticGrievance( player_id, grievance );
+			if ( !diplomatic_grievances.emplace( player_id, grievance ).second ) {
+				THROW( "duplicate serialized diplomatic grievance player ID" );
+			}
+		}
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2401,6 +2513,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_surrender_offer_to_id = surrender_offer_to_id;
 	m_mind_control_total = mind_control_total;
 	m_diplomatic_excuses = std::move( diplomatic_excuses );
+	m_diplomatic_grievances = std::move( diplomatic_grievances );
 
 }
 

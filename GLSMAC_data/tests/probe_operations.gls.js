@@ -11,6 +11,7 @@ const make_player = (id, energy, technologies, target, type) => {
 	let loans = {};
 	let contacts = {};
 	let excuses = {};
+	let grievances = {};
 	let major_atrocities = 0;
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
@@ -69,6 +70,17 @@ const make_player = (id, energy, technologies, target, type) => {
 	};
 	player.set_diplomatic_excuse_turn = (other, expiry_turn) => {
 		excuses['p' + #to_string(other.id)] = expiry_turn < 0 ? #undefined : expiry_turn;
+	};
+	player.get_diplomatic_grievance = (other) => {
+		const key = 'p' + #to_string(other.id);
+		return #is_defined(grievances[key]) ? #clone(grievances[key]) : {
+			wants_revenge: false,
+			atrocity_victim: false,
+			major_atrocity_victim: false,
+		};
+	};
+	player.set_diplomatic_grievance = (other, grievance) => {
+		grievances['p' + #to_string(other.id)] = #clone(grievance);
 	};
 	player.get_diplomatic_offer = (other) => {
 			const key = 'p' + #to_string(other.id);
@@ -659,6 +671,9 @@ test.assert(plagued_defender.health == 0.5);
 test.assert(f.target_base.get('probe_genetic_plague_introduced') == true);
 test.assert(f.actor.get_major_atrocities() == 1);
 test.assert(f.actor.get_sanction_turns() == 10);
+const plague_grievance = f.target_player.get_diplomatic_grievance(f.actor);
+test.assert(plague_grievance.wants_revenge && plague_grievance.atrocity_victim);
+test.assert(!plague_grievance.major_atrocity_victim);
 test.assert(f.target_base.get('accumulated_nutrients') == 0);
 probe_operation.rollback(e);
 test.assert(f.target_base.get_size() == 4);
@@ -667,6 +682,7 @@ test.assert(restored_plague_defender.health == 1.0);
 test.assert(!f.target_base.has('probe_genetic_plague_introduced'));
 test.assert(f.actor.get_major_atrocities() == 0);
 test.assert(f.actor.get_sanction_turns() == 0);
+test.assert(!f.target_player.get_diplomatic_grievance(f.actor).wants_revenge);
 test.assert(f.target_base.get('accumulated_nutrients') == 18);
 
 f = make_fixture(true);

@@ -318,6 +318,13 @@
 			) {
 				return 'diplomatic excuse was not restored';
 			}
+			const grievance = game.get_player().get_diplomatic_grievance(lender);
+			if (
+				!grievance.wants_revenge || !grievance.atrocity_victim ||
+				!grievance.major_atrocity_victim
+			) {
+				return 'diplomatic grievance was not restored';
+			}
 			if (game.get_player().get_prototyped_components() != prototyped_components_stamp) {
 				return 'prototyped unit components were not restored';
 			}

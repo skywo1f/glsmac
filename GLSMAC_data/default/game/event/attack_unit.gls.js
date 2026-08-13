@@ -425,6 +425,19 @@ return {
 				target: defender_owner,
 				relation: 'vendetta',
 			});
+			if (nerve_gas) {
+				e.game.get('f_diplomacy_add_grievance')(
+					defender_owner,
+					attacker_owner,
+					true,
+					true,
+					false
+				);
+				e.game.trigger('diplomatic_grievance_updated', {
+					player: defender_owner,
+					target: attacker_owner,
+				});
+			}
 		}
 
 		attacker.movement = #max(0.0, attacker.movement - 1.0);
@@ -652,6 +665,12 @@ return {
 				target: defender_owner,
 				relation: a.diplomacy.player_relation,
 			});
+			if (#is_defined(a.nerve_gas)) {
+				e.game.trigger('diplomatic_grievance_updated', {
+					player: defender_owner,
+					target: attacker_owner,
+				});
+			}
 		}
 	},
 

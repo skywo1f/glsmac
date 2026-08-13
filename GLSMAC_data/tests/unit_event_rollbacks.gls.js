@@ -1145,6 +1145,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let attacker_player = null;
 	let defender_player = null;
 	const make_combat_player = (id, other_id) => {
+		let grievances = {};
 		return {
 			id: id,
 			name: id == 1 ? 'Attacker' : 'Defender',
@@ -1153,6 +1154,17 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			set_diplomatic_relation: (other, relation) => { combat_relation = relation; },
 			get_diplomatic_offer: (other) => { return ''; },
 			set_diplomatic_offer: (other, offer) => {},
+			get_diplomatic_grievance: (other) => {
+				const key = 'p' + #to_string(other.id);
+				return #is_defined(grievances[key]) ? #clone(grievances[key]) : {
+					wants_revenge: false,
+					atrocity_victim: false,
+					major_atrocity_victim: false,
+				};
+			},
+			set_diplomatic_grievance: (other, grievance) => {
+				grievances['p' + #to_string(other.id)] = #clone(grievance);
+			},
 			get_major_atrocities: () => { return major_atrocities; },
 			set_major_atrocities: (value) => { major_atrocities = value; },
 			get_sanction_turns: () => { return sanction_turns; },
@@ -1304,6 +1316,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 						other_relation: other.get_diplomatic_relation(player),
 						player_offer: '',
 						other_offer: '',
+						player_grievance: player.get_diplomatic_grievance(other),
+						other_grievance: other.get_diplomatic_grievance(player),
 					};
 				};
 			}
@@ -1316,10 +1330,24 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			if (name == 'f_diplomacy_clear_offers') {
 				return (player, other) => {};
 			}
+			if (name == 'f_diplomacy_add_grievance') {
+				return (player, other, wants_revenge, atrocity_victim, major_victim) => {
+					const current = player.get_diplomatic_grievance(other);
+					player.set_diplomatic_grievance(other, {
+						wants_revenge: current.wants_revenge || wants_revenge ||
+							atrocity_victim || major_victim,
+						atrocity_victim: current.atrocity_victim || atrocity_victim ||
+							major_victim,
+						major_atrocity_victim: current.major_atrocity_victim || major_victim,
+					});
+				};
+			}
 			test.assert(name == 'f_diplomacy_restore_pair');
 			return (player, other, snapshot) => {
 				player.set_diplomatic_relation(other, snapshot.player_relation);
 				other.set_diplomatic_relation(player, snapshot.other_relation);
+				player.set_diplomatic_grievance(other, snapshot.player_grievance);
+				other.set_diplomatic_grievance(player, snapshot.other_grievance);
 			};
 		},
 		trigger: (name, data) => {},
@@ -1593,6 +1621,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_gas_base.get_size() == 1);
 	test.assert(active_gas_base.get('accumulated_nutrients') == 0);
 	test.assert(event.applied.nerve_gas.population_loss == 2);
+	const gas_grievance = defender_player.get_diplomatic_grievance(attacker_player);
+	test.assert(gas_grievance.wants_revenge && gas_grievance.atrocity_victim);
+	test.assert(!gas_grievance.major_atrocity_victim);
 	attack_unit.rollback(event);
 	test.assert(major_atrocities == 2);
 	test.assert(sanction_turns == 3);
@@ -1601,6 +1632,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(gas_pops[0].get_type() == 'WORKER');
 	test.assert(gas_pops[1].get_type() == 'TALENT');
 	test.assert(gas_pops[2].get_type() == 'DRONE');
+	test.assert(!defender_player.get_diplomatic_grievance(attacker_player).wants_revenge);
 
 	gas_pops = [make_gas_pop('WORKER', #undefined)];
 	let supported = null;

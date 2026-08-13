@@ -192,6 +192,7 @@
 					integrity_blemishes: borrower.get_integrity_blemishes(),
 					mind_control_total: borrower.get_mind_control_total(),
 					diplomatic_excuse_turn: borrower.get_diplomatic_excuse_turn(e.data.lender),
+					diplomatic_grievance: borrower.get_diplomatic_grievance(e.data.lender),
 					prototyped_components: borrower.get_prototyped_components(),
 					sky_hydroponics: borrower.get_orbital_facility_count('SkyHydroponicsLab'),
 					orbital_defense_pods: borrower.get_orbital_facility_count('OrbitalDefensePod'),
@@ -208,6 +209,11 @@
 				borrower.set_integrity_blemishes(integrity_blemishes_stamp);
 				borrower.set_mind_control_total(mind_control_total_stamp);
 				borrower.set_diplomatic_excuse_turn(e.data.lender, diplomatic_excuse_turn_stamp);
+				borrower.set_diplomatic_grievance(e.data.lender, {
+					wants_revenge: true,
+					atrocity_victim: true,
+					major_atrocity_victim: true,
+				});
 				borrower.set_prototyped_components(prototyped_components_stamp);
 				borrower.set_orbital_facility_count('SkyHydroponicsLab', sky_hydroponics_stamp);
 				borrower.set_orbital_facility_count('OrbitalDefensePod', orbital_defense_pods_stamp);
@@ -235,6 +241,10 @@
 				borrower.set_diplomatic_excuse_turn(
 					e.data.lender,
 					e.applied.diplomatic_excuse_turn
+				);
+				borrower.set_diplomatic_grievance(
+					e.data.lender,
+					e.applied.diplomatic_grievance
 				);
 				borrower.set_prototyped_components(e.applied.prototyped_components);
 				borrower.set_orbital_facility_count(
@@ -548,6 +558,7 @@
 						energy_requested = false;
 						const lender = game.get_player(get_remote_player_id());
 						const loan = game.get_player().get_diplomatic_loan(lender);
+						const grievance = game.get_player().get_diplomatic_grievance(lender);
 						if (loan == null) {
 							if (!loan_requested) {
 								loan_requested = true;
@@ -564,6 +575,8 @@
 							game.get_player().get_mind_control_total() != mind_control_total_stamp ||
 							game.get_player().get_diplomatic_excuse_turn(lender) !=
 								diplomatic_excuse_turn_stamp ||
+							!grievance.wants_revenge || !grievance.atrocity_victim ||
+							!grievance.major_atrocity_victim ||
 							game.get_player().get_prototyped_components() != prototyped_components_stamp ||
 							game.get_player().get_orbital_facility_count('SkyHydroponicsLab') !=
 								sky_hydroponics_stamp ||

@@ -309,6 +309,14 @@ const get_mind_control_cost = (game, actor, base) => {
 	if (population_state.is_golden_age) {
 		cost *= 2;
 	}
+	if (#typeof(target_player.get_diplomatic_grievance) == 'Callable') {
+		const grievance = target_player.get_diplomatic_grievance(actor);
+		if (grievance.atrocity_victim) {
+			cost *= 2;
+		} else if (grievance.wants_revenge) {
+			cost += #floor(#to_float(cost) / 2.0);
+		}
+	}
 	return cost;
 };
 

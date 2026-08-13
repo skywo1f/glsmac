@@ -809,6 +809,19 @@ return {
 				relation: 'vendetta',
 			});
 		}
+		if (e.resolved.success && operation == 'genetic_plague') {
+			e.game.get('f_diplomacy_add_grievance')(
+				target_player,
+				actor,
+				true,
+				true,
+				false
+			);
+			e.game.trigger('diplomatic_grievance_updated', {
+				player: target_player,
+				target: actor,
+			});
+		}
 		e.game.trigger('economy_updated', {player: actor});
 		e.game.trigger('economy_updated', {player: target_player});
 		e.game.trigger('probe_operation', {
@@ -935,6 +948,12 @@ return {
 				player: target_player,
 				target: framed_player,
 				relation: e.applied.framed_diplomacy.other_relation,
+			});
+		}
+		if (operation == 'genetic_plague') {
+			e.game.trigger('diplomatic_grievance_updated', {
+				player: target_player,
+				target: actor,
 			});
 		}
 		e.game.trigger('economy_updated', {player: actor});

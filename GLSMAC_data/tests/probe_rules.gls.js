@@ -36,6 +36,7 @@ const make_player = (id, energy, rating, technologies) => {
 	let research_progress = 0;
 	let known_technologies = technologies;
 	let mind_control_total = 0;
+	let grievances = {};
 	return {
 		id: id,
 		type: 'human',
@@ -68,6 +69,17 @@ const make_player = (id, energy, rating, technologies) => {
 			};
 		},
 		get_diplomatic_relation: (other) => { return 'neutral'; },
+		get_diplomatic_grievance: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(grievances[key]) ? #clone(grievances[key]) : {
+				wants_revenge: false,
+				atrocity_victim: false,
+				major_atrocity_victim: false,
+			};
+		},
+		set_diplomatic_grievance: (other, grievance) => {
+			grievances['p' + #to_string(other.id)] = #clone(grievance);
+		},
 		has_infiltrated: (other) => { return infiltrated; },
 		set_test_infiltrated: (value) => { infiltrated = value; },
 		get_mind_control_total: () => { return mind_control_total; },
@@ -306,6 +318,29 @@ target_base.has_facility = (id) => { return id == 'ChildrenSCreche'; };
 test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1165);
 target_base.has_facility = (id) => { return id == 'PunishmentSphere'; };
 test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1165);
+target_player.set_diplomatic_grievance(actor, {
+	wants_revenge: true,
+	atrocity_victim: false,
+	major_atrocity_victim: false,
+});
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 1747);
+target_player.set_diplomatic_grievance(actor, {
+	wants_revenge: true,
+	atrocity_victim: true,
+	major_atrocity_victim: false,
+});
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 2330);
+target_player.set_diplomatic_grievance(actor, {
+	wants_revenge: true,
+	atrocity_victim: true,
+	major_atrocity_victim: true,
+});
+test.assert(values.f_probe_get_mind_control_cost(actor, target_base) == 2330);
+target_player.set_diplomatic_grievance(actor, {
+	wants_revenge: false,
+	atrocity_victim: false,
+	major_atrocity_victim: false,
+});
 target_base.has_facility = (id) => { return id == 'ResearchHospital'; };
 test.assert(values.f_probe_get_plague_population_loss(target_base) == 2);
 target_base.has_facility = (id) => { return false; };

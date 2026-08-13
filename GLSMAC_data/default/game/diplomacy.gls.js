@@ -35,6 +35,38 @@ const set_diplomatic_excuse_turn = (player, other, expiry_turn) => {
 	}
 };
 
+const get_diplomatic_grievance = (player, other) => {
+	return #typeof(player.get_diplomatic_grievance) == 'Callable'
+		? player.get_diplomatic_grievance(other)
+		: {
+			wants_revenge: false,
+			atrocity_victim: false,
+			major_atrocity_victim: false,
+		};
+};
+
+const set_diplomatic_grievance = (player, other, grievance) => {
+	if (#typeof(player.set_diplomatic_grievance) == 'Callable') {
+		player.set_diplomatic_grievance(other, grievance);
+	}
+};
+
+const add_diplomatic_grievance = (
+	player,
+	other,
+	wants_revenge,
+	atrocity_victim,
+	major_atrocity_victim
+) => {
+	const current = get_diplomatic_grievance(player, other);
+	set_diplomatic_grievance(player, other, {
+		wants_revenge: current.wants_revenge || wants_revenge ||
+			atrocity_victim || major_atrocity_victim,
+		atrocity_victim: current.atrocity_victim || atrocity_victim || major_atrocity_victim,
+		major_atrocity_victim: current.major_atrocity_victim || major_atrocity_victim,
+	});
+};
+
 const validate_players = (player, other) => {
 	if (!is_player(player) || !is_player(other)) {
 		return 'Diplomacy requires two players';
@@ -114,6 +146,8 @@ const snapshot_pair = (player, other) => {
 		other_offer: other.get_diplomatic_offer(player),
 		player_excuse_turn: get_diplomatic_excuse_turn(player, other),
 		other_excuse_turn: get_diplomatic_excuse_turn(other, player),
+		player_grievance: get_diplomatic_grievance(player, other),
+		other_grievance: get_diplomatic_grievance(other, player),
 		player_contact: player.has_contact(other),
 		other_contact: other.has_contact(player),
 		player_trade: player.get_diplomatic_trade(other),
@@ -152,6 +186,8 @@ const restore_pair = (player, other, snapshot) => {
 	other.set_diplomatic_offer(player, snapshot.other_offer);
 	set_diplomatic_excuse_turn(player, other, snapshot.player_excuse_turn);
 	set_diplomatic_excuse_turn(other, player, snapshot.other_excuse_turn);
+	set_diplomatic_grievance(player, other, snapshot.player_grievance);
+	set_diplomatic_grievance(other, player, snapshot.other_grievance);
 	player.set_contact(other, snapshot.player_contact);
 	other.set_contact(player, snapshot.other_contact);
 	restore_trade(player, other, snapshot.player_trade);
@@ -195,6 +231,7 @@ const record_betrayal = (game, player, other) => {
 	}
 	const updated = #min(7, player.get_integrity_blemishes() + penalty);
 	player.set_integrity_blemishes(updated);
+	add_diplomatic_grievance(other, player, true, false, false);
 	game.trigger('diplomatic_integrity_updated', {
 		player: player,
 		target: other,
@@ -596,6 +633,8 @@ return (game) => {
 		game.set('f_diplomacy_has_active_excuse', (player, other) => {
 			return has_active_excuse(game, player, other);
 		});
+		game.set('f_diplomacy_get_grievance', get_diplomatic_grievance);
+		game.set('f_diplomacy_add_grievance', add_diplomatic_grievance);
 		game.set('f_diplomacy_get_submissive_to_id', get_submissive_to_id);
 		game.set('f_diplomacy_get_surrender_offer_to_id', get_surrender_offer_to_id);
 		game.set('f_diplomacy_is_submission_pair', (player, other) => {

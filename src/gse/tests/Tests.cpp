@@ -271,6 +271,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.SetIntegrityBlemishes( 4 );
 				source.SetMindControlTotal( 12 );
 				source.SetDiplomaticExcuseTurn( 5, 44 );
+				const Player::diplomatic_grievance_t grievance = { true, true, true };
+				source.SetDiplomaticGrievance( 6, grievance );
 				source.SetObsoleteUnitDesigns( {
 					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 				} );
@@ -382,6 +384,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player diplomatic excuse was not cloned"
 				);
 				GT_ASSERT(
+					cloned.GetDiplomaticGrievance( 6 ) == grievance,
+					"player diplomatic grievance was not cloned"
+				);
+				GT_ASSERT(
 					cloned.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -487,6 +493,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"player diplomatic excuse was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.GetDiplomaticGrievance( 6 ) == grievance,
+					"player diplomatic grievance was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.IsUnitDesignObsolete(
 						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
 					),
@@ -558,6 +568,13 @@ void AddTests( task::gsetests::GSETests* task ) {
 					player_extension.WriteInt( player_id );
 					player_extension.WriteInt( expiry_turn );
 				}
+				player_extension.WriteInt( source.GetDiplomaticGrievances().size() );
+				for ( const auto& [ player_id, state ] : source.GetDiplomaticGrievances() ) {
+					player_extension.WriteInt( player_id );
+					player_extension.WriteBool( state.wants_revenge );
+					player_extension.WriteBool( state.atrocity_victim );
+					player_extension.WriteBool( state.major_atrocity_victim );
+				}
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
@@ -587,14 +604,36 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				const auto diplomatic_excuses_field_size =
 					diplomatic_excuses_field.ToString().size();
+				types::Buffer diplomatic_grievances_field;
+				diplomatic_grievances_field.WriteInt( source.GetDiplomaticGrievances().size() );
+				for ( const auto& [ player_id, state ] : source.GetDiplomaticGrievances() ) {
+					diplomatic_grievances_field.WriteInt( player_id );
+					diplomatic_grievances_field.WriteBool( state.wants_revenge );
+					diplomatic_grievances_field.WriteBool( state.atrocity_victim );
+					diplomatic_grievances_field.WriteBool( state.major_atrocity_victim );
+				}
+				const auto diplomatic_grievances_field_size =
+					diplomatic_grievances_field.ToString().size();
+				auto pre_diplomatic_grievances_data = source.Serialize().ToString();
+				pre_diplomatic_grievances_data.resize(
+					pre_diplomatic_grievances_data.size() - diplomatic_grievances_field_size
+				);
+				Player pre_diplomatic_grievances( pre_diplomatic_grievances_data );
+				GT_ASSERT(
+					pre_diplomatic_grievances.GetDiplomaticExcuseTurn( 5 ) == 44 &&
+						pre_diplomatic_grievances.GetDiplomaticGrievances().empty(),
+					"older player data did not default diplomatic grievances"
+				);
 				auto pre_diplomatic_excuses_data = source.Serialize().ToString();
 				pre_diplomatic_excuses_data.resize(
-					pre_diplomatic_excuses_data.size() - diplomatic_excuses_field_size
+					pre_diplomatic_excuses_data.size() - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
 				);
 				Player pre_diplomatic_excuses( pre_diplomatic_excuses_data );
 				GT_ASSERT(
 					pre_diplomatic_excuses.GetMindControlTotal() == 12 &&
-					pre_diplomatic_excuses.GetDiplomaticExcuses().empty(),
+						pre_diplomatic_excuses.GetDiplomaticExcuses().empty() &&
+						pre_diplomatic_excuses.GetDiplomaticGrievances().empty(),
 					"older player data did not default diplomatic excuses"
 				);
 				bool rejected_serialized_diplomatic_excuse = false;
@@ -631,10 +670,51 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_duplicate_diplomatic_excuse,
 					"duplicate serialized diplomatic excuse was accepted"
 				);
+				bool rejected_inconsistent_diplomatic_grievance = false;
+				try {
+					types::Buffer invalid_grievance;
+					invalid_grievance.WriteInt( 1 );
+					invalid_grievance.WriteInt( 6 );
+					invalid_grievance.WriteBool( false );
+					invalid_grievance.WriteBool( true );
+					invalid_grievance.WriteBool( false );
+					auto invalid_data =
+						pre_diplomatic_grievances_data + invalid_grievance.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inconsistent_diplomatic_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_inconsistent_diplomatic_grievance,
+					"inconsistent serialized diplomatic grievance was accepted"
+				);
+				bool rejected_duplicate_diplomatic_grievance = false;
+				try {
+					types::Buffer duplicate_grievance;
+					duplicate_grievance.WriteInt( 2 );
+					for ( size_t i = 0 ; i < 2 ; ++i ) {
+						duplicate_grievance.WriteInt( 6 );
+						duplicate_grievance.WriteBool( true );
+						duplicate_grievance.WriteBool( false );
+						duplicate_grievance.WriteBool( false );
+					}
+					auto invalid_data =
+						pre_diplomatic_grievances_data + duplicate_grievance.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_diplomatic_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_duplicate_diplomatic_grievance,
+					"duplicate serialized diplomatic grievance was accepted"
+				);
 				auto pre_submission_data = source.Serialize().ToString();
 				pre_submission_data.resize(
 					pre_submission_data.size() - submission_state_fields_size -
-						mind_control_total_field_size - diplomatic_excuses_field_size
+						mind_control_total_field_size - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
 				);
 				Player pre_submission( pre_submission_data );
 				GT_ASSERT(
@@ -647,7 +727,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				pre_supreme_data.resize(
 					pre_supreme_data.size() - submission_state_fields_size -
 						supreme_state_fields_size - mind_control_total_field_size -
-						diplomatic_excuses_field_size
+						diplomatic_excuses_field_size - diplomatic_grievances_field_size
 				);
 				Player pre_supreme( pre_supreme_data );
 				GT_ASSERT(
@@ -662,7 +742,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				pre_expulsion_data.resize(
 					pre_expulsion_data.size() - council_expulsion_field_size -
 						supreme_state_fields_size - submission_state_fields_size -
-						mind_control_total_field_size - diplomatic_excuses_field_size
+						mind_control_total_field_size - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
 				);
 				Player pre_expulsion( pre_expulsion_data );
 				GT_ASSERT(
@@ -675,7 +756,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
 						council_expulsion_field_size - supreme_state_fields_size -
 						submission_state_fields_size - mind_control_total_field_size -
-						diplomatic_excuses_field_size
+						diplomatic_excuses_field_size - diplomatic_grievances_field_size
 				);
 				Player pre_clean_mineral( pre_clean_mineral_data );
 				GT_ASSERT(
@@ -837,6 +918,23 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					roundtrip.GetDiplomaticExcuses().empty(),
 					"cleared diplomatic excuse was retained"
+				);
+				bool rejected_inconsistent_grievance = false;
+				try {
+					roundtrip.SetDiplomaticGrievance( 6, { false, true, false } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inconsistent_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_inconsistent_grievance &&
+						roundtrip.GetDiplomaticGrievance( 6 ) == grievance,
+					"inconsistent diplomatic grievance was accepted or partially mutated"
+				);
+				roundtrip.SetDiplomaticGrievance( 6, {} );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticGrievances().empty(),
+					"cleared diplomatic grievance was retained"
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				roundtrip.ClearDiplomaticTrade( 4 );
@@ -1007,6 +1105,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					legacy.GetDiplomaticExcuses().empty(),
 					"legacy player diplomatic excuses did not default to empty"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticGrievances().empty(),
+					"legacy player diplomatic grievances did not default to empty"
 				);
 				GT_ASSERT(
 					legacy.GetOrbitalFacilities().empty(),

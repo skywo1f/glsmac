@@ -84,6 +84,7 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 			pods: id == 1 ? pod_count : 0,
 			deployments: id == 1 ? deployments : 0,
 			relations: {},
+			grievances: {},
 		};
 		player.get_major_atrocities = () => { return player.major_atrocities; };
 		player.set_major_atrocities = (value) => { player.major_atrocities = value; };
@@ -101,6 +102,20 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 		};
 		player.get_orbital_defense_deployments = () => { return player.deployments; };
 		player.set_orbital_defense_deployments = (value) => { player.deployments = value; };
+		player.get_diplomatic_grievance = (other) => {
+			const other_key = key(other.id);
+			return #is_defined(player.grievances[other_key])
+				? #clone(player.grievances[other_key])
+				: {
+					wants_revenge: false,
+					atrocity_victim: false,
+					major_atrocity_victim: false,
+				};
+		};
+		player.set_diplomatic_grievance = (other, grievance) => {
+			const other_key = key(other.id);
+			player.grievances[other_key] = #clone(grievance);
+		};
 		return player;
 	};
 
@@ -307,6 +322,8 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 					return {
 						player_relation: player.relations[other_key],
 						other_relation: other.relations[player_key],
+						player_grievance: player.get_diplomatic_grievance(other),
+						other_grievance: other.get_diplomatic_grievance(player),
 					};
 				};
 			}
@@ -321,12 +338,26 @@ const make_world = (random_roll, pod_count, deployments, charter_repealed) => {
 			if (name == 'f_diplomacy_clear_offers') {
 				return (player, other) => {};
 			}
+			if (name == 'f_diplomacy_add_grievance') {
+				return (player, other, wants_revenge, atrocity_victim, major_victim) => {
+					const current = player.get_diplomatic_grievance(other);
+					player.set_diplomatic_grievance(other, {
+						wants_revenge: current.wants_revenge || wants_revenge ||
+							atrocity_victim || major_victim,
+						atrocity_victim: current.atrocity_victim || atrocity_victim ||
+							major_victim,
+						major_atrocity_victim: current.major_atrocity_victim || major_victim,
+					});
+				};
+			}
 			if (name == 'f_diplomacy_restore_pair') {
 				return (player, other, snapshot) => {
 					const other_key = key(other.id);
 					const player_key = key(player.id);
 					player.relations[other_key] = snapshot.player_relation;
 					other.relations[player_key] = snapshot.other_relation;
+					player.set_diplomatic_grievance(other, snapshot.player_grievance);
+					other.set_diplomatic_grievance(player, snapshot.other_grievance);
 				};
 			}
 			throw Error('unexpected game function: ' + name);
@@ -415,6 +446,19 @@ let observer_key = key(world.observer.id);
 test.assert(live_actor.relations[victim_key] == 'vendetta');
 test.assert(live_actor.relations[bystander_key] == 'vendetta');
 test.assert(live_actor.relations[observer_key] == 'neutral');
+let live_victim = world.game.get_player(world.victim.id);
+let live_bystander = world.game.get_player(world.bystander.id);
+const victim_grievance = live_victim.get_diplomatic_grievance(live_actor);
+const bystander_grievance = live_bystander.get_diplomatic_grievance(live_actor);
+test.assert(
+	victim_grievance.wants_revenge && victim_grievance.atrocity_victim &&
+	victim_grievance.major_atrocity_victim
+);
+test.assert(
+	bystander_grievance.wants_revenge && bystander_grievance.atrocity_victim &&
+	bystander_grievance.major_atrocity_victim
+);
+test.assert(!world.observer.get_diplomatic_grievance(live_actor).wants_revenge);
 test.assert(live_actor.get_council_state().is_expelled);
 test.assert(!live_actor.get_council_state().is_governor);
 test.assert(world.get_message_count() == 3);
@@ -435,6 +479,10 @@ test.assert(live_actor.get_council_state().is_governor);
 test.assert(live_actor.relations[victim_key] == 'neutral');
 test.assert(live_actor.relations[bystander_key] == 'neutral');
 test.assert(live_actor.relations[observer_key] == 'neutral');
+live_victim = world.game.get_player(world.victim.id);
+live_bystander = world.game.get_player(world.bystander.id);
+test.assert(!live_victim.get_diplomatic_grievance(live_actor).wants_revenge);
+test.assert(!live_bystander.get_diplomatic_grievance(live_actor).wants_revenge);
 test.assert(world.get_stopped_animation() == 44);
 test.assert(world.get_crater_restore_count() == 1);
 
@@ -469,7 +517,7 @@ test.assert(event.resolved.defense.attempted);
 test.assert(event.resolved.defense.intercepted);
 test.assert(!event.resolved.defense.sacrificed);
 event.applied = planet_buster.apply(event);
-let live_victim = world.game.get_player(world.victim.id);
+live_victim = world.game.get_player(world.victim.id);
 test.assert(
 	live_victim.get_orbital_facility_count('OrbitalDefensePod') == 1 &&
 	live_victim.get_orbital_defense_deployments() == 1

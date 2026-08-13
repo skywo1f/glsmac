@@ -131,6 +131,7 @@ return {
 			'diplomatic_sanctions_updated',
 			'diplomatic_integrity_updated',
 			'diplomatic_excuse_updated',
+			'diplomatic_grievance_updated',
 			'diplomatic_contact_established',
 			'diplomatic_contact_updated',
 			'map_visibility_updated',
@@ -617,6 +618,7 @@ return {
 		const outgoing_surrender = this.player.get_surrender_offer_to_id() == this.target.id;
 		const excuse_turn = this.player.get_diplomatic_excuse_turn(this.target);
 		const has_excuse = relation != 'vendetta' && excuse_turn >= this.p.game.get_turn();
+		const grievance = this.player.get_diplomatic_grievance(this.target);
 		const integrity_name = this.p.game.get('f_diplomacy_get_integrity_name');
 		let sanction_text = '';
 		if (player_sanctions > 0) {
@@ -632,10 +634,19 @@ return {
 		} else if (player_master == this.target.id) {
 			submission_text = '; submission: you serve them';
 		}
+		let grievance_text = '';
+		if (grievance.major_atrocity_victim) {
+			grievance_text = '; grievance: major atrocity victim';
+		} else if (grievance.atrocity_victim) {
+			grievance_text = '; grievance: atrocity victim';
+		} else if (grievance.wants_revenge) {
+			grievance_text = '; grievance: revenge';
+		}
 		this.relation_text.text =
 			'Relation: ' + relation_name(relation) + '; integrity: you ' +
 			integrity_name(this.player.get_integrity_blemishes()) + ' / them ' +
-			integrity_name(this.target.get_integrity_blemishes()) + sanction_text + submission_text;
+			integrity_name(this.target.get_integrity_blemishes()) + sanction_text + submission_text +
+			grievance_text;
 		this.offer_text.text = has_excuse
 			? 'Exposed framing attempt; justification valid through year ' +
 				#to_string(excuse_turn)

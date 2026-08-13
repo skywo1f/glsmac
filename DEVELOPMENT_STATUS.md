@@ -271,8 +271,9 @@ scenarios, for:
   garrison, population, social PROBE, encryption, pact, Children's Creche,
   Genejack Factory, Punishment Sphere, prior capture history, former ownership,
   drone riot, Golden Age, active Energy Market bid, AI-versus-human difficulty,
-  and supported nerve-stapling-state modifiers; successful subversion and mind
-  control update persistent capture history, and base captures retain the
+  supported nerve-stapling state, and per-opponent revenge and atrocity-victim
+  modifiers; successful subversion and mind control update persistent capture
+  history, and base captures retain the
   former owner across saves and reconnects; paid operations expose
   standard and untraceable approaches, unit targeting rejects native life,
   stacks, cargo, and inaccessible air units, and base capture resets prior-owner
@@ -333,8 +334,7 @@ The following original-SMAC systems remain absent or materially incomplete:
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
 - remaining probe-team parity: exact resident Probe-versus-Probe combat
-  resolution, active nerve-stapling gameplay, and per-pair atrocity-victim and
-  revenge-state mind-control modifiers;
+  resolution and active nerve-stapling gameplay;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -749,6 +749,17 @@ integrity preservation, legacy-save defaults, invalid-data rejection, and exact
 rollback. The installed-asset Probe scenario passed in 28.51 seconds, and
 running reconnect passed in 50.77 seconds while directly restoring the new
 per-faction excuse expiry.
+
+After persistent per-opponent diplomatic grievances were added, the Windows
+x64 Release build succeeded and all 109 isolated native/script tests passed in
+231.55 seconds. Betrayal now records revenge, nerve gas and genetic plague mark
+the victim of an atrocity, and Planet Busters mark every directly affected
+faction as a major atrocity victim. Base mind control applies the original
+revenge and atrocity-victim price increases. Focused coverage verifies flag
+implications, malformed and duplicate save-data rejection, legacy defaults,
+monotonic upgrades, event attribution, and exact rollback. The
+installed-asset Probe scenario passed in 28.79 seconds, and running reconnect
+passed in 51.29 seconds while directly restoring all three grievance flags.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

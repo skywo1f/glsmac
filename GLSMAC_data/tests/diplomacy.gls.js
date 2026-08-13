@@ -69,6 +69,7 @@ const make_player = (id, name) => {
 	let loans = {};
 	let contacts = {};
 	let excuses = {};
+	let grievances = {};
 	let sanction_turns = 0;
 	let integrity_blemishes = 0;
 	let research_state = {technologies: [], target: '', progress: 0};
@@ -99,6 +100,17 @@ const make_player = (id, name) => {
 		set_diplomatic_excuse_turn: (other, expiry_turn) => {
 			excuses['p' + #to_string(other.id)] = expiry_turn < 0
 				? #undefined : expiry_turn;
+		},
+		get_diplomatic_grievance: (other) => {
+			const key = 'p' + #to_string(other.id);
+			return #is_defined(grievances[key]) ? #clone(grievances[key]) : {
+				wants_revenge: false,
+				atrocity_victim: false,
+				major_atrocity_victim: false,
+			};
+		},
+		set_diplomatic_grievance: (other, grievance) => {
+			grievances['p' + #to_string(other.id)] = #clone(grievance);
 		},
 		get_diplomatic_offer: (other) => {
 			const key = 'p' + #to_string(other.id);
@@ -299,10 +311,27 @@ test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
 test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
 test.assert(alpha.get_integrity_blemishes() == 2);
 test.assert(beta.get_integrity_blemishes() == 0);
+test.assert(beta.get_diplomatic_grievance(alpha).wants_revenge);
+test.assert(!beta.get_diplomatic_grievance(alpha).atrocity_victim);
 declare_vendetta.rollback(vendetta);
 test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
 test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
 test.assert(alpha.get_integrity_blemishes() == 0);
+test.assert(!beta.get_diplomatic_grievance(alpha).wants_revenge);
+
+const grievance_snapshot = values.f_diplomacy_snapshot_pair(alpha, beta);
+values.f_diplomacy_add_grievance(beta, alpha, false, true, false);
+let grievance = beta.get_diplomatic_grievance(alpha);
+test.assert(grievance.wants_revenge && grievance.atrocity_victim);
+test.assert(!grievance.major_atrocity_victim);
+values.f_diplomacy_add_grievance(beta, alpha, false, false, true);
+grievance = beta.get_diplomatic_grievance(alpha);
+test.assert(
+	grievance.wants_revenge && grievance.atrocity_victim &&
+	grievance.major_atrocity_victim
+);
+values.f_diplomacy_restore_pair(alpha, beta, grievance_snapshot);
+test.assert(!beta.get_diplomatic_grievance(alpha).wants_revenge);
 
 alpha.set_diplomatic_relation(beta, 'treaty');
 beta.set_diplomatic_relation(alpha, 'treaty');

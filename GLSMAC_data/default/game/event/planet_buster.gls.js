@@ -100,6 +100,25 @@ const set_affected_vendettas = (game, actor, snapshots, applied) => {
 	}
 };
 
+const mark_affected_grievances = (game, actor, snapshots, applied) => {
+	let affected = {};
+	if (applied.defense.player_id >= 0) {
+		affected['p' + #to_string(applied.defense.player_id)] = true;
+	}
+	for (unit of applied.units) {
+		affected['p' + #to_string(unit.owner)] = true;
+	}
+	for (base of applied.bases) {
+		affected['p' + #to_string(base.owner_id)] = true;
+	}
+	for (snapshot of snapshots) {
+		if (!#is_defined(affected['p' + #to_string(snapshot.player_id)])) { continue; }
+		const victim = game.get_player(snapshot.player_id);
+		game.get('f_diplomacy_add_grievance')(victim, actor, true, true, true);
+		game.trigger('diplomatic_grievance_updated', {player: victim, target: actor});
+	}
+};
+
 const restore_diplomacy = (game, actor, snapshots) => {
 	for (snapshot of snapshots) {
 		const other = game.get_player(snapshot.player_id);
@@ -109,6 +128,7 @@ const restore_diplomacy = (game, actor, snapshots) => {
 			target: other,
 			relation: snapshot.state.player_relation,
 		});
+		game.trigger('diplomatic_grievance_updated', {player: other, target: actor});
 	}
 };
 
@@ -290,6 +310,7 @@ return {
 		}
 
 		actor.set_major_atrocities(applied.actor_atrocities + 1);
+		mark_affected_grievances(e.game, actor, applied.diplomacy, applied);
 		const charter_active = is_un_charter_active(e.game);
 		if (charter_active) {
 			actor.set_sanction_turns(#min(

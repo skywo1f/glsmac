@@ -212,6 +212,26 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const diplomatic_excuses_t& GetDiplomaticExcuses() const;
 	int64_t GetDiplomaticExcuseTurn( const size_t player_id ) const;
 	void SetDiplomaticExcuseTurn( const size_t player_id, const int64_t expiry_turn );
+	struct diplomatic_grievance_t {
+		bool wants_revenge = false;
+		bool atrocity_victim = false;
+		bool major_atrocity_victim = false;
+
+		bool operator==( const diplomatic_grievance_t& other ) const {
+			return
+				wants_revenge == other.wants_revenge &&
+				atrocity_victim == other.atrocity_victim &&
+				major_atrocity_victim == other.major_atrocity_victim;
+		}
+	};
+	using diplomatic_grievances_t = std::map< size_t, diplomatic_grievance_t >;
+	static constexpr size_t MAX_DIPLOMATIC_GRIEVANCES = 64;
+	const diplomatic_grievances_t& GetDiplomaticGrievances() const;
+	diplomatic_grievance_t GetDiplomaticGrievance( const size_t player_id ) const;
+	void SetDiplomaticGrievance(
+		const size_t player_id,
+		const diplomatic_grievance_t& grievance
+	);
 	static constexpr int64_t NO_DIPLOMATIC_PLAYER = -1;
 	static constexpr size_t MAX_DIPLOMATIC_PLAYER_ID = 64;
 	int64_t GetSubmissiveToId() const;
@@ -350,6 +370,7 @@ private:
 	diplomatic_relations_t m_diplomatic_relations = {};
 	diplomatic_relations_t m_diplomatic_offers = {};
 	diplomatic_excuses_t m_diplomatic_excuses = {};
+	diplomatic_grievances_t m_diplomatic_grievances = {};
 	contacted_players_t m_contacted_players = {};
 	bool m_legacy_unrestricted_contact = false;
 	explored_tiles_t m_explored_tiles = {};
