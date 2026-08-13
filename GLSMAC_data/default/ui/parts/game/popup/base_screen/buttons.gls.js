@@ -14,13 +14,17 @@ return {
 			const owner = this.base.get_owner();
 			const player = this.p.game.get_player();
 			const cost = this.p.game.get('f_economy_get_hurry_cost')(this.base);
+			const is_owned = owner.id == player.id;
+			const is_turn_active = !this.p.game.is_turn_complete(player.id);
+			const affordable = owner.energy_credits >= cost;
 			return {
 				cost: cost,
+				affordable: affordable,
 				can_hurry:
 					cost > 0 &&
-					owner.id == player.id &&
-					!this.p.game.is_turn_complete(player.id) &&
-					owner.energy_credits >= cost,
+					is_owned &&
+					is_turn_active &&
+					affordable,
 			};
 		};
 
@@ -73,9 +77,13 @@ return {
 	set: (data) => {
 		this.base = data.base;
 		const state = this.get_hurry_state();
-		this.btn_hurry.text = state.cost > 0
-			? 'HURRY (' + #to_string(state.cost) + ')'
-			: 'HURRY';
+		this.btn_hurry.text = state.cost <= 0
+			? 'HURRY'
+			: (
+				state.affordable
+					? 'HURRY (' + #to_string(state.cost) + ')'
+					: 'NEED ' + #to_string(state.cost) + ' EC'
+			);
 	},
 
 };
