@@ -998,12 +998,19 @@
 			handled_turns[turn_key] = true;
 			if (
 				#sizeof(game.get_players()) != 2 ||
-				#sizeof(game.get_bm().get_bases()) < 2 ||
-				!game.get_um().has_unit(1)
+				#sizeof(game.get_bm().get_bases()) < 2
 			) {
 				#print('RUNNING_RECONNECT_FAIL_' + role + ': synchronized state is incomplete');
 				glsmac.exit();
 				return;
+			}
+			if (game.is_master() ? !game.get_um().has_unit(1) : game.get_um().has_unit(1)) {
+				#print('RUNNING_RECONNECT_FAIL_' + role + ': hidden host unit snapshot visibility is invalid');
+				glsmac.exit();
+				return;
+			}
+			if (!game.is_master()) {
+				#print('RUNNING_RECONNECT_SNAPSHOT_REDACTION_INITIAL_CLIENT');
 			}
 
 			if (turn_id == 1) {

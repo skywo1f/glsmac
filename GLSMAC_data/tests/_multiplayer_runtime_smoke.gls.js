@@ -29,6 +29,10 @@
 	let combat_defender_spawn_requested = false;
 	let colony_pod_spawn_requested = false;
 	let former_spawn_requested = false;
+	let live_visibility_seen = false;
+	let live_visibility_hidden = false;
+	let live_visibility_client_ready = false;
+	let live_visibility_probe_started = false;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -634,6 +638,74 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_relocate_hidden_unit', {
+			unit_visibility: 'private',
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can relocate the visibility probe';
+				}
+				if (e.data.unit.id != 1) {
+					return 'Visibility probe must use the hidden host unit';
+				}
+			},
+			apply: (e) => {
+				const previous = e.data.unit.get_tile();
+				e.data.unit.teleport_to_tile(e.data.tile);
+				return {tile: previous};
+			},
+			rollback: (e) => {
+				e.data.unit.teleport_to_tile(e.applied.tile);
+			},
+		});
+
+		game.register_event('multiplayer_smoke_visibility_seen', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Only the client can acknowledge a revealed unit';
+				}
+			},
+			apply: (e) => {
+				const previous = live_visibility_seen;
+				live_visibility_seen = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				live_visibility_seen = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_visibility_client_ready', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Only the client can signal visibility readiness';
+				}
+			},
+			apply: (e) => {
+				const previous = live_visibility_client_ready;
+				live_visibility_client_ready = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				live_visibility_client_ready = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_visibility_hidden', {
+			validate: (e) => {
+				if (e.caller == 0) {
+					return 'Only the client can acknowledge a hidden unit';
+				}
+			},
+			apply: (e) => {
+				const previous = live_visibility_hidden;
+				live_visibility_hidden = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				live_visibility_hidden = e.applied.previous;
+			},
+		});
+
 		game.register_event('multiplayer_smoke_conquest_ready', {
 			validate: (e) => {
 				if (e.caller == 0) {
@@ -690,6 +762,117 @@
 				post_victory_mutations = e.applied.previous;
 			},
 		});
+
+		const find_live_visibility_target = () => {
+			const base = find_base_for_player(get_client_player_id());
+			if (base == null) {
+				return null;
+			}
+			for (tile of base.get_tile().get_surrounding_tiles()) {
+				if (
+					tile.is_land && !tile.is_locked() && tile.get_base() == null &&
+					#sizeof(tile.get_units()) == 0 && !tile.features.xenofungus &&
+					(tile.x != client_movement_target_x || tile.y != client_movement_target_y) &&
+					(tile.x != client_combat_target_x || tile.y != client_combat_target_y)
+				) {
+					return tile;
+				}
+			}
+			return null;
+		};
+
+		const start_host_live_visibility_probe = () => {
+			if (live_visibility_probe_started) {
+				return true;
+			}
+			const target = find_live_visibility_target();
+			if (target == null || !game.get_um().has_unit(1)) {
+				return false;
+			}
+			live_visibility_probe_started = true;
+			const unit = game.get_um().get_unit(1);
+			const source = unit.get_tile();
+			game.event('multiplayer_smoke_relocate_hidden_unit', {
+				unit: unit,
+				tile: target,
+			});
+			let returned = false;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (!returned && live_visibility_seen) {
+					returned = true;
+					game.event('multiplayer_smoke_relocate_hidden_unit', {
+						unit: game.get_um().get_unit(1),
+						tile: source,
+					});
+				}
+				else if (returned && live_visibility_hidden) {
+					#print('MULTIPLAYER_SMOKE_LIVE_VISIBILITY_PASS_HOST');
+					game.event('complete_turn', {});
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: live visibility probe timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+			return true;
+		};
+
+		const wait_for_client_live_visibility_probe = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (live_visibility_client_ready) {
+					if (!start_host_live_visibility_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: live visibility probe could not start');
+						glsmac.exit();
+					}
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: client visibility readiness timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const start_client_live_visibility_probe = () => {
+			game.event('multiplayer_smoke_visibility_client_ready', {});
+			let revealed = false;
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (!revealed && game.get_um().has_unit(1)) {
+					const unit = game.get_um().get_unit(1);
+					if (unit.owner != 0) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: revealed hidden unit owner is invalid');
+						glsmac.exit();
+						return false;
+					}
+					revealed = true;
+					#print('MULTIPLAYER_SMOKE_LIVE_REVEAL_PASS_CLIENT');
+					game.event('multiplayer_smoke_visibility_seen', {});
+				}
+				else if (revealed && !game.get_um().has_unit(1)) {
+					#print('MULTIPLAYER_SMOKE_LIVE_HIDE_PASS_CLIENT');
+					#print('MULTIPLAYER_SMOKE_LIVE_VISIBILITY_PASS_CLIENT');
+					game.event('multiplayer_smoke_visibility_hidden', {});
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: live visibility probe timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
 
 		const start_victory_poll = () => {
 			if (victory_poll_started) {
@@ -977,12 +1160,19 @@
 			const bases = game.get_bm().get_bases();
 			if (
 				#sizeof(players) != 2 ||
-				#sizeof(bases) < 2 ||
-				!game.get_um().has_unit(1)
+				#sizeof(bases) < 2
 			) {
 				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': synchronized game state is incomplete');
 				glsmac.exit();
 				return;
+			}
+			if (game.is_master() ? !game.get_um().has_unit(1) : game.get_um().has_unit(1)) {
+				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': hidden host unit snapshot visibility is invalid');
+				glsmac.exit();
+				return;
+			}
+			if (!game.is_master()) {
+				#print('MULTIPLAYER_SMOKE_SNAPSHOT_REDACTION_PASS_CLIENT');
 			}
 			if (!prepare_client_movement_probe()) {
 				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': client movement probe could not be prepared');
@@ -1022,9 +1212,10 @@
 						glsmac.exit();
 						return;
 					}
-					game.event('complete_turn', {});
+					wait_for_client_live_visibility_probe();
 				}
 				else {
+					start_client_live_visibility_probe();
 					run_client_terraform_probe();
 					game.event('multiplayer_smoke_accept_once', {});
 					game.event('multiplayer_smoke_reject_and_rollback', {});

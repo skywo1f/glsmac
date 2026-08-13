@@ -45,6 +45,7 @@ const mover = {
 	terraforming: 'none',
 	movement: 1.0,
 	health: 1.0,
+	moved_this_turn: false,
 	get_tile: () => { return source; },
 	get_owner: () => { return owner; },
 	get_def: () => { return {weapon: 'Laser', abilities: []}; },
@@ -93,6 +94,22 @@ test.assert(move_unit.validate({
 	data: {unit: mover, tile: destination},
 }) == 'Factions loyal to the Supreme Leader cannot capture each other\'s bases');
 destination.set_base(null);
+
+const no_op_event = {
+	caller: owner.id,
+	game: {is_turn_complete: () => { return false; }},
+	data: {unit: mover, tile: source},
+};
+test.assert(!#is_defined(move_unit.validate(no_op_event)));
+no_op_event.resolved = move_unit.resolve(no_op_event);
+test.assert(no_op_event.resolved.is_no_op);
+no_op_event.applied = move_unit.apply(no_op_event);
+test.assert(!no_op_event.applied.movement_started);
+test.assert(mover.movement == 1.0);
+test.assert(!mover.moved_this_turn);
+move_unit.rollback(no_op_event);
+test.assert(mover.movement == 1.0);
+test.assert(!mover.moved_this_turn);
 
 destination.set_units([{owner: owner.id, is_land: true, is_water: false, is_air: false}]);
 test.assert(!movement_rules.is_zoc_move_blocked(mover, source, destination));

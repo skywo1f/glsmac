@@ -385,7 +385,7 @@
 			if (#is_defined(workshop_state_error)) {
 				return workshop_state_error;
 			}
-			const restored_unit = game.get_um().get_unit(1);
+			const restored_unit = game.get_um().get_unit(2);
 			if (restored_unit.get_def().id != restored_unit.def) {
 				return 'unit definition link is inconsistent';
 			}
@@ -676,12 +676,13 @@
 			if (
 				#sizeof(game.get_players()) != 2 ||
 				#sizeof(game.get_bm().get_bases()) < 2 ||
-				!game.get_um().has_unit(1)
+				game.get_um().has_unit(1)
 			) {
 				#print('RUNNING_RECONNECT_FAIL_CLIENT: restored state is incomplete');
 				glsmac.exit();
 				return;
 			}
+			#print('RUNNING_RECONNECT_SNAPSHOT_REDACTION_RESUMED_CLIENT');
 
 			if (turn_id == 1) {
 				for (player of game.get_players()) {

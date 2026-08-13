@@ -4,6 +4,10 @@
 #include "engine/Engine.h"
 #include "network/Network.h"
 #include "game/backend/event/Event.h"
+#include "game/backend/Game.h"
+#include "game/backend/unit/Unit.h"
+#include "game/backend/unit/UnitManager.h"
+#include "Server.h"
 
 namespace game {
 namespace backend {
@@ -283,16 +287,66 @@ void Connection::IfServer( std::function< void( Server* ) > cb ) {
 	}
 }
 
-void Connection::SendGameEvent( backend::event::Event* event ) {
-	if ( m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
+void Connection::SendGameEvent(
+	backend::event::Event* event,
+	const bool private_unit_event,
+	const bool unit_snapshot_event
+) {
+	if ( !IsServer() && m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
 		SendGameEvents( m_pending_game_events );
 		m_pending_game_events.clear();
 	}
-	m_pending_game_events.push_back({
-		event->GetCaller(),
-		event->GetEventName(),
-		event->Serialize().ToString()
-	});
+	game_event_t queued = {};
+	queued.caller = event->GetCaller();
+	queued.id = event->GetId();
+	queued.name = event->GetEventName();
+	queued.serialized_data = event->Serialize().ToString();
+	queued.private_unit_event = private_unit_event;
+	queued.unit_snapshot_event = unit_snapshot_event;
+	if ( IsServer() ) {
+		for ( const auto* const unit : event->GetReferencedUnits() ) {
+			queued.referenced_unit_ids.insert( unit->m_id );
+			if ( unit->m_health > 0.0f ) {
+				queued.referenced_unit_snapshots.insert({
+					unit->m_id,
+					unit::Unit::Serialize( unit ).ToString()
+				});
+			}
+		}
+		auto* const game = g_engine->GetGame();
+		if ( game && game->GetUM() ) {
+			for ( const auto& it : game->GetUM()->GetUnits() ) {
+				if ( it.second->m_health > 0.0f ) {
+					queued.unit_ids_before.insert( it.first );
+				}
+			}
+		}
+	}
+	if ( IsServer() ) {
+		m_prepared_server_game_events.push_back( std::move( queued ) );
+	}
+	else {
+		m_pending_game_events.push_back( std::move( queued ) );
+	}
+}
+
+void Connection::FinalizeGameEvent( backend::event::Event* event ) {
+	if ( !IsServer() ) {
+		return;
+	}
+	for ( auto it = m_prepared_server_game_events.rbegin() ; it != m_prepared_server_game_events.rend() ; it++ ) {
+		if ( it->id == event->GetId() ) {
+			AsServer()->FinalizeGameEventProjection( *it );
+			if ( m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
+				SendGameEvents( m_pending_game_events );
+				m_pending_game_events.clear();
+			}
+			m_pending_game_events.push_back( std::move( *it ) );
+			m_prepared_server_game_events.erase( std::next( it ).base() );
+			return;
+		}
+	}
+	THROW( "queued game event not found for projection: " + event->GetId() );
 }
 
 const bool Connection::IsConnected() const {
@@ -440,6 +494,7 @@ void Connection::FlushPendingGameEvents() {
 }
 
 void Connection::ClearPending() {
+	m_prepared_server_game_events.clear();
 	m_pending_game_events.clear();
 }
 

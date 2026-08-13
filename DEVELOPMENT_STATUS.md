@@ -342,7 +342,13 @@ scenarios, for:
   stop cleanly when the turn advances;
 - seven-player startup, multiplayer turn/event synchronization, and reconnect
   restoration of a running game; clients consume synchronized content definitions
-  without redundantly submitting host-only initialization events.
+  without redundantly submitting host-only initialization events;
+- authoritative per-client unit rosters for initial snapshots and running-game
+  reconnects, including own-unit visibility, base sight, Deep Radar, Sensor
+  Arrays, fungal and ability concealment, and foreign transport-cargo filtering;
+  live unit events now preserve stream order while revealing and hiding units as
+  sight changes, and sender-side projections wait for the authoritative response
+  to the local event they depend on.
 
 The base-game content validator currently reports:
 
@@ -363,9 +369,9 @@ The following original-SMAC systems remain absent or materially incomplete:
   trade and counteroffers, loans, surrender, player-authored base exchange, and
   coercive demands, including autonomous AI base purchases/swaps and coordinated
   military requests;
-- remaining multiplayer visibility hardening: authoritative per-client filtering
-  of hidden-unit snapshots and subsequent entity events so concealed information
-  is not present client-side;
+- remaining multiplayer information-boundary hardening beyond unit rosters,
+  especially hidden base, production, and economy state plus globally
+  consequential events that must update shared world state;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
   and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -858,6 +864,19 @@ runtime passed in 30.25 seconds while directly transferring wartime tribute and
 buying peace. Ordinary multiplayer passed in 67.70 seconds, and running
 reconnect passed in 63.81 seconds while restoring every pending ultimatum term.
 Pending trade serialization extension version 4 carries the ultimatum flag.
+
+After authoritative per-client unit visibility was added, all 142 registered
+Release tests passed in bounded groups against the installed original-SMAC
+assets. The 111 isolated native/script tests passed in 233.84 seconds; the core
+runtime group passed 15 of 15 cases in 375.55 seconds; Unity Pods, native life,
+native capture, facilities, sea colonies, and the general AI runtime passed 6
+of 6 cases in 211.12 seconds; the 20-turn AI economy soak passed without a
+rejected event in 355.97 seconds; seven focused AI scenarios passed in 344.74
+seconds; and multiplayer plus running reconnect passed in 56.12 and 52.16
+seconds. The same work fixed a dormant AI diplomacy tile-manager dereference,
+made stale same-destination movement events idempotent, and hardened transport,
+facility, reinforcement, and hurry-production fixtures against invalid map
+assumptions.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

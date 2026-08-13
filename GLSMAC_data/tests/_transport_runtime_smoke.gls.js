@@ -23,16 +23,27 @@
 		}
 	};
 
-	const wait_for_arrival = (unit, tile, on_ready, attempts) => {
+	const wait_for_arrival = (phase, unit, tile, on_ready, attempts) => {
 		if (unit.get_tile() == tile && !tile.is_locked()) {
 			on_ready();
 			return;
 		}
 		if (attempts >= 100) {
+			const current = unit.get_tile();
+			#print(
+				'TRANSPORT_WAIT_DIAGNOSTIC: phase=' + phase +
+				' current=' + #to_string(current.x) + ',' + #to_string(current.y) +
+				' target=' + #to_string(tile.x) + ',' + #to_string(tile.y) +
+				' current_locked=' + #to_string(current.is_locked()) +
+				' target_locked=' + #to_string(tile.is_locked()) +
+				' movement=' + #to_string(unit.movement) +
+				' transport_id=' + #to_string(unit.transport_id) +
+				' cargo=' + #to_string(#sizeof(unit.get_cargo()))
+			);
 			fail('timed out waiting for unit movement and tile unlock');
 			return;
 		}
-		#async(50, () => { wait_for_arrival(unit, tile, on_ready, attempts + 1); });
+		#async(50, () => { wait_for_arrival(phase, unit, tile, on_ready, attempts + 1); });
 	};
 
 	const start_if_ready = () => {
@@ -99,6 +110,7 @@
 						for (candidate of destination_water.get_surrounding_tiles()) {
 							if (
 								candidate.is_land &&
+								!candidate.features.xenofungus &&
 								candidate.get_base() == null && #sizeof(candidate.get_units()) == 0
 							) {
 								unloading_land = candidate;
@@ -312,7 +324,7 @@
 
 				start_runtime = () => {
 					game.event('move_unit', {unit: carrier, tile: tiles.destination_water});
-					wait_for_arrival(carrier, tiles.destination_water, () => {
+					wait_for_arrival('carrier', carrier, tiles.destination_water, () => {
 						if (
 							carrier.get_tile() != tiles.destination_water ||
 							cargo_one.get_tile() != tiles.destination_water ||
@@ -324,7 +336,7 @@
 						}
 
 						game.event('move_unit', {unit: cargo_one, tile: tiles.unloading_land});
-						wait_for_arrival(cargo_one, tiles.unloading_land, () => {
+						wait_for_arrival('cargo', cargo_one, tiles.unloading_land, () => {
 							if (
 								cargo_one.transport_id != 0 || cargo_one.is_embarked ||
 								cargo_one.get_tile() != tiles.unloading_land ||

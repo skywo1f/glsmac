@@ -1,4 +1,5 @@
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 		const unit = e.data.unit;

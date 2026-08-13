@@ -2,6 +2,7 @@ const terraforming = #include('../../units/terraforming');
 const unit_abilities = #include('../unit_abilities');
 
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 		const unit = e.data.unit;

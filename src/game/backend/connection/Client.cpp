@@ -311,14 +311,12 @@ void Client::ProcessEvent( const network::Event& event ) {
 						}
 						case types::Packet::PT_GAME_EVENT: {
 							//Log( "Got game event packet" );
-							m_state->WithGSE(
-								this,
-								[ packet ]( GSE_CALLABLE ) {
-									auto buf = types::Buffer( packet.data.str );
-									auto* const game = g_engine->GetGame();
-									game->AddEvent( event::Event::Deserialize( game, event::Event::ES_SERVER, GSE_CALL, buf.ReadString() ) );
-								}
-							);
+							auto buf = types::Buffer( packet.data.str );
+							const auto serialized_event = buf.ReadString();
+							if ( buf.GetRemaining() != 0 ) {
+								THROW( "unexpected data after serialized game event packet" );
+							}
+							g_engine->GetGame()->AddSerializedEvent( serialized_event, true );
 							break;
 						}
 						case types::Packet::PT_GAME_EVENT_RESPONSE: {

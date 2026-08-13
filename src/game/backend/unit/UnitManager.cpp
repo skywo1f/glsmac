@@ -845,7 +845,10 @@ WRAPIMPL_END_PTR()
 
 UNWRAPIMPL_PTR( UnitManager )
 
-void UnitManager::Serialize( types::Buffer& buf ) const {
+void UnitManager::Serialize(
+	types::Buffer& buf,
+	const std::unordered_set< size_t >* included_unit_ids
+) const {
 
 	Log( "Serializing " + std::to_string( m_unit_moralesets.size() ) + " unit moralesets" );
 	buf.WriteInt( m_unit_moralesets.size() );
@@ -863,14 +866,23 @@ void UnitManager::Serialize( types::Buffer& buf ) const {
 
 	size_t serialized_units = 0;
 	for ( const auto& it : m_units ) {
-		if ( it.second->m_health > 0.0f ) {
+		if (
+			it.second->m_health > 0.0f &&
+			( !included_unit_ids || included_unit_ids->find( it.first ) != included_unit_ids->end() )
+		) {
 			serialized_units++;
 		}
 	}
-	Log( "Serializing " + std::to_string( serialized_units ) + " units" );
+	Log(
+		"Serializing " + std::to_string( serialized_units ) + " units" +
+		( included_unit_ids ? " for player view" : "" )
+	);
 	buf.WriteInt( serialized_units );
 	for ( const auto& it : m_units ) {
-		if ( it.second->m_health > 0.0f ) {
+		if (
+			it.second->m_health > 0.0f &&
+			( !included_unit_ids || included_unit_ids->find( it.first ) != included_unit_ids->end() )
+		) {
 			buf.WriteString( Unit::Serialize( it.second ).ToString() );
 		}
 	}

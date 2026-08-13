@@ -101,6 +101,7 @@
 				name: 'Psi Gate Destination',
 				production: 'ScoutPatrol',
 			});
+			player.set_energy_credits(1000);
 			source.add_facility('PsiGate');
 			destination.add_facility('PsiGate');
 			if (source.can_set_production('unit', 'AlienArtifact')) {

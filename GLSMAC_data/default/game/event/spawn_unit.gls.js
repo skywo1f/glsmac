@@ -1,4 +1,5 @@
 return {
+	unit_visibility: 'snapshot',
 
 	validate: (e) => {
 		if (e.caller != 0) {

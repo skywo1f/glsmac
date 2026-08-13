@@ -7,6 +7,7 @@ const snapshot_transport_id = (unit) => {
 };
 
 return {
+	unit_visibility: 'private',
 	snapshot_transport_id: snapshot_transport_id,
 
 	validate: (e) => {

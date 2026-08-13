@@ -168,6 +168,7 @@ const get_tradeable_contacts = (game, source, recipient) => {
 const update_diplomacy = (game, player) => {
 	const own_power = get_player_power(game, player);
 	const own_bases = get_player_base_count(game, player);
+	const tm = game.get_tm();
 	for (other of game.get_players()) {
 		if (
 			other.id != player.id &&
@@ -237,7 +238,7 @@ const update_diplomacy = (game, player) => {
 			const count_shareable = game.get('f_exploration_count_shareable_tiles');
 			const map_area = #max(
 				1,
-				#floor(#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0)
+				#floor(#to_float(tm.get_map_width() * tm.get_map_height()) / 2.0)
 			);
 			const offer_map_tiles = #is_defined(count_shareable)
 				? count_shareable(other, player)
@@ -465,7 +466,7 @@ const update_diplomacy = (game, player) => {
 				if (!#is_defined(count_shareable)) { return 0; }
 				const count = count_shareable(player, other);
 				const area = #max(1, #floor(
-					#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0
+					#to_float(tm.get_map_width() * tm.get_map_height()) / 2.0
 				));
 				return count == 0 ? 0 : 20 + #ceil(#to_float(count * 160) / #to_float(area));
 			})(),
@@ -474,7 +475,7 @@ const update_diplomacy = (game, player) => {
 				if (!#is_defined(count_shareable)) { return 0; }
 				const count = count_shareable(other, player);
 				const area = #max(1, #floor(
-					#to_float(game.tm.get_map_width() * game.tm.get_map_height()) / 2.0
+					#to_float(tm.get_map_width() * tm.get_map_height()) / 2.0
 				));
 				return count == 0 ? 0 : 20 + #ceil(#to_float(count * 160) / #to_float(area));
 			})(),
@@ -1699,7 +1700,10 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		unit,
 		(source, candidate) => { return can_enter(unit, candidate, source); }
 	);
-	if (pod_destination != null && pod_destination.step != null) {
+	if (
+		pod_destination != null && pod_destination.step != null &&
+		can_enter(unit, pod_destination.step)
+	) {
 		game.event_as(player.id, 'move_unit', {
 			unit: unit,
 			tile: pod_destination.step,
@@ -1819,7 +1823,7 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		const path_step = pathfinding.find_path_step(game.get_tm(), unit, enemy_base.get_tile(), (source, candidate) => {
 			return can_enter(unit, candidate, source);
 		});
-		if (path_step != null) {
+		if (path_step != null && can_enter(unit, path_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
 			return 100;
 		}

@@ -1864,7 +1864,8 @@ void Game::RefreshMapVisibility() {
 				has_radar_detection
 			);
 			const bool unit_is_visible = candidate->IsOwned() || (
-				is_visible && ( !candidate->IsConcealed() || concealment_is_detected )
+				!candidate->IsEmbarked() && is_visible &&
+				( !candidate->IsConcealed() || concealment_is_detected )
 			);
 			needs_render = candidate->SetVisibleToPlayer( unit_is_visible ) || needs_render;
 			if ( candidate->IsConcealed() && !candidate->IsOwned() ) {

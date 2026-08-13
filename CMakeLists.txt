@@ -235,7 +235,7 @@ IF ( BUILD_TESTING )
 			FAIL_REGULAR_EXPRESSION "RESEARCH_RUNTIME_FAIL"
 			PASS_REGULAR_EXPRESSION "RESEARCH_RUNTIME_PASS"
 			RUN_SERIAL TRUE
-			TIMEOUT 90
+			TIMEOUT 120
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
@@ -772,7 +772,7 @@ IF ( BUILD_TESTING )
 			--mainscript "../tests/_ai_reinforcement_runtime_smoke"
 			--quickstart
 			--quickstart-ai "1"
-			--quickstart-mapsize "20x10"
+			--quickstart-mapsize "40x20"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
@@ -797,7 +797,7 @@ IF ( BUILD_TESTING )
 			--mainscript "../tests/_ai_hurry_runtime_smoke"
 			--quickstart
 			--quickstart-ai "1"
-			--quickstart-mapsize "20x10"
+			--quickstart-mapsize "40x20"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound

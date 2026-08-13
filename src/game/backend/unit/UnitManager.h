@@ -53,7 +53,10 @@ public:
 
 	WRAPDEFS_PTR( UnitManager )
 
-	void Serialize( types::Buffer& buf ) const;
+	void Serialize(
+		types::Buffer& buf,
+		const std::unordered_set< size_t >* included_unit_ids = nullptr
+	) const;
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
 	void ValidateHomeBases() const;
 	void ValidateTransports() const;

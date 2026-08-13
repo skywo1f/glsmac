@@ -78,6 +78,7 @@ const promote_unit = (um, unit) => {
 };
 
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 		if (e.data.attacker.owner != e.caller) {

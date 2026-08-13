@@ -1,6 +1,7 @@
 const psi_gate_rules = #include('../psi_gate_rules');
 
 return {
+	unit_visibility: 'private',
 	validate: (e) => {
 		return psi_gate_rules.get_teleport_error(
 			e.game,

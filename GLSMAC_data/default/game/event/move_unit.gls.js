@@ -108,6 +108,7 @@ const get_movement_aftercost = (unit, src_tile, dst_tile, fungus_road) => {
 };
 
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 
@@ -129,6 +130,9 @@ return {
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
+		if (src_tile == dst_tile) {
+			return;
+		}
 		const dst_base = dst_tile.get_base();
 		if (
 			#typeof(e.data.unit.get_owner) == 'Callable' &&
@@ -152,10 +156,6 @@ return {
 			}
 		}
 
-		if (src_tile == dst_tile) {
-			return 'Source tile is same as destination tile';
-		}
-
 		if (src_tile.is_locked()) {
 			return 'Source tile is locked';
 		}
@@ -171,9 +171,6 @@ return {
 		}
 		if (e.data.unit.movement <= 0.0) {
 			return 'Unit is out of moves';
-		}
-		if (src_tile == dst_tile) {
-			return 'Destination tile is same as source tile';
 		}
 		if (!src_tile.is_adjactent_to(dst_tile)) {
 			return 'Destination tile is not adjactent to source tile';
@@ -229,6 +226,14 @@ return {
 
 		const src_tile = e.data.unit.get_tile();
 		const dst_tile = e.data.tile;
+		if (src_tile == dst_tile) {
+			return {
+				is_no_op: true,
+				is_movement_successful: false,
+				transport_id: get_transport_id(unit),
+				unity_pod: null,
+			};
+		}
 
 		const fungus_road = has_fungus_road(e.data.unit, e.game);
 		let movement_cost = get_movement_cost(
@@ -260,6 +265,7 @@ return {
 				||
 				(e.game.random.get_float(0.0, movement_cost) < movement); // unit doesn't have enough moves but was lucky
 		return {
+			is_no_op: false,
 			is_movement_successful: is_movement_successful,
 			transport_id: transport == null ? 0 : transport.id,
 			unity_pod:
@@ -300,6 +306,9 @@ return {
 			unity_pod: null,
 			monolith_visit: null,
 		};
+		if (#is_defined(e.resolved.is_no_op) && e.resolved.is_no_op) {
+			return result;
+		}
 		if (#is_defined(unit.set_convoy_resource) && unit.convoy_resource != 'none') {
 			unit.set_convoy_resource('none');
 		}

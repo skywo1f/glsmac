@@ -21,6 +21,7 @@ const find_damage = (resolved, unit_id) => {
 };
 
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 		return rules.get_drop_error(e.game, e.data.unit, e.caller, e.data.destination);

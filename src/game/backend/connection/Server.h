@@ -20,7 +20,7 @@ public:
 	Server( gc::Space* const gc_space, settings::LocalSettings* const settings );
 
 	std::function< void() > m_on_listen = nullptr;
-	std::function< const std::string() > m_on_download_request = nullptr; // return serialized snapshot of world
+	std::function< const std::string( const size_t slot_num ) > m_on_download_request = nullptr; // return serialized snapshot of world for player slot
 
 	void SendGameEventResponse( const size_t cid, const std::string& event_id, const bool result, const gse::Value* const resolved );
 
@@ -42,6 +42,9 @@ protected:
 	void SendGameEvents( const game_events_t& game_events ) override;
 
 private:
+	friend class Connection;
+	void FinalizeGameEventProjection( game_event_t& event );
+
 	void Broadcast( std::function< void( const network::cid_t cid ) > callback );
 	void Kick( const network::cid_t cid, const std::string& reason );
 	void KickFromSlot( slot::Slot& slot, const std::string& reason );
@@ -66,9 +69,23 @@ private:
 		size_t serialized_size = 0;
 	};
 	std::unordered_map< network::cid_t, deferred_game_events_t > m_deferred_game_events = {};
+	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_projected_unit_ids = {};
+	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_delivered_unit_ids = {};
+	std::unordered_map< network::cid_t, size_t > m_delivered_next_unit_ids = {};
+	size_t m_unit_visibility_event_id = 1;
 
 	void SendSerializedGameEvent( const network::cid_t cid, const game_event_t& event );
-	void QueueDeferredGameEvent( const network::cid_t cid, const game_event_t& event );
+	bool QueueDeferredGameEvent( const network::cid_t cid, const game_event_t& event );
+	bool DeliverSerializedGameEvent( const network::cid_t cid, const game_event_t& event, const bool deferred );
+	bool DeliverUnitVisibilityUpdate(
+		const network::cid_t cid,
+		const std::unordered_set< size_t >& hidden_unit_ids,
+		const std::map< size_t, std::string >& revealed_unit_snapshots,
+		const size_t next_unit_id,
+		const std::string& after_event_id,
+		const bool deferred
+	);
+	void DeliverProjectedGameEvent( const network::cid_t cid, const game_event_t& event, const bool deferred );
 	void FlushDeferredGameEvents( const network::cid_t cid );
 
 	void ClearReadyFlags();

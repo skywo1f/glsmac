@@ -2,6 +2,7 @@ const supply_rules = #include('../supply_rules');
 const snapshots = #include('../entity_snapshots');
 
 return {
+	unit_visibility: 'private',
 	validate: (e) => {
 		return supply_rules.get_contribution_error(e.game, e.data.unit, e.caller);
 	},

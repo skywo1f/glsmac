@@ -11,6 +11,7 @@ const snapshot_transport_tree = (unit, result, refs) => {
 };
 
 return {
+	unit_visibility: 'private',
 
 	validate: (e) => {
 		if (e.caller != 0) {

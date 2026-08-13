@@ -305,6 +305,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 
 	void Event( GSE_CALLABLE, const std::string& name, const gse::value::object_properties_t& args );
 	void AddEvent( event::Event* const event );
+	void AddSerializedEvent( const std::string& serialized_event, const bool from_server );
 	void AddEventResponse( const std::string& event_id, const bool result, gse::Value* const resolved );
 
 	void ClearEvents();
@@ -363,6 +364,7 @@ public:
 	unit::UnitManager* GetUM() const;
 	base::BaseManager* GetBM() const;
 	animation::AnimationManager* GetAM() const;
+	const std::unordered_set< size_t > GetVisibleUnitIdsForSlot( const size_t slot_num ) const;
 
 	gc::Space* const GetGCSpace() const;
 
@@ -429,7 +431,12 @@ private:
 	std::unordered_map< std::string, event::EventHandler* > m_event_handlers = {};
 	common::Mutex m_event_handlers_mutex;
 
-	std::vector< event::Event* > m_pending_events = {};
+	struct pending_event_t {
+		event::Event* event = nullptr;
+		std::string serialized_event = "";
+		bool from_server = false;
+	};
+	std::vector< pending_event_t > m_pending_events = {};
 	common::Mutex m_pending_events_mutex;
 
 	struct event_waiting_for_response_t {
@@ -459,6 +466,7 @@ private:
 	void SetTurnStatus( const backend::turn::turn_status_t status );
 
 	void ProcessEvents();
+	void ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
 
 private:
 	friend class map::Map;

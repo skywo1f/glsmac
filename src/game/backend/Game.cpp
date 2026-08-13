@@ -34,6 +34,7 @@
 #include "graphics/Graphics.h"
 #include "animation/Def.h"
 #include "unit/Def.h"
+#include "unit/StaticDef.h"
 #include "unit/UnitManager.h"
 #include "unit/Unit.h"
 #include "unit/MoraleSet.h"
@@ -481,6 +482,231 @@ const size_t Game::GetSlotNum() const {
 	return m_slot_num;
 }
 
+const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t slot_num ) const {
+	ASSERT( m_map && m_um && m_bm, "cannot calculate unit visibility before world initialization" );
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "visibility slot index overflow" );
+	const auto& viewer = m_state->m_slots->GetSlot( slot_num );
+	ASSERT( viewer.GetState() == slot::Slot::SS_PLAYER, "visibility slot has no player" );
+
+	using Tile = map::tile::Tile;
+	using Base = base::Base;
+	std::unordered_set< const Tile* > visible_tiles = {};
+	std::unordered_set< const Tile* > sensor_detected_tiles = {};
+	std::unordered_set< const Tile* > radar_detected_tiles = {};
+
+	const auto add_tiles_in_radius = [](
+		const Tile* const center,
+		const size_t radius,
+		std::unordered_set< const Tile* >& tiles
+	) {
+		std::unordered_set< const Tile* > seen = { center };
+		std::vector< const Tile* > frontier = { center };
+		tiles.insert( center );
+		for ( size_t distance = 0 ; distance < radius ; distance++ ) {
+			std::vector< const Tile* > next = {};
+			for ( const auto* const tile : frontier ) {
+				for ( const auto* const candidate : tile->neighbours ) {
+					if ( seen.insert( candidate ).second ) {
+						tiles.insert( candidate );
+						next.push_back( candidate );
+					}
+				}
+			}
+			frontier = std::move( next );
+		}
+	};
+	const auto add_base_visible_tiles = [ &visible_tiles ]( const Tile* const center ) {
+		const auto add = [ &visible_tiles ]( const Tile* const tile ) {
+			visible_tiles.insert( tile );
+			return tile;
+		};
+		const auto* const n = add( center->N );
+		const auto* const ne = add( center->NE );
+		const auto* const e = add( center->E );
+		const auto* const se = add( center->SE );
+		const auto* const s = add( center->S );
+		const auto* const sw = add( center->SW );
+		const auto* const w = add( center->W );
+		const auto* const nw = add( center->NW );
+		add( center );
+		add( n->NW );
+		add( n->NE );
+		add( ne->NE );
+		add( e->NE );
+		add( e->SE );
+		add( se->SE );
+		add( s->SE );
+		add( s->SW );
+		add( sw->SW );
+		add( w->SW );
+		add( w->NW );
+		add( nw->NW );
+	};
+	const auto get_tile_distance = [ this ]( const Tile* const first, const Tile* const second ) {
+		const auto& first_coords = first->coord;
+		const auto& second_coords = second->coord;
+		const int64_t y_distance = std::abs(
+			static_cast< int64_t >( first_coords.y ) - static_cast< int64_t >( second_coords.y )
+		);
+		const auto distance_with_offset = [ &first_coords, &second_coords, y_distance ]( const int64_t x_offset ) {
+			return static_cast< size_t >(
+				(
+					std::abs(
+						static_cast< int64_t >( first_coords.x ) + x_offset -
+						static_cast< int64_t >( second_coords.x )
+					) + y_distance
+				) / 2
+			);
+		};
+		const auto width = static_cast< int64_t >( m_map->GetWidth() );
+		return std::min(
+			distance_with_offset( 0 ),
+			std::min( distance_with_offset( -width ), distance_with_offset( width ) )
+		);
+	};
+	const auto get_claiming_base = [ this, &get_tile_distance ]( const Tile* const tile ) {
+		static constexpr size_t max_claim_distance = 8;
+		static constexpr size_t coastal_claim_distance = 2;
+		const auto choose = [](
+			const Base* const current,
+			const size_t current_distance,
+			const Base* const candidate,
+			const size_t candidate_distance
+		) {
+			return !current || candidate_distance < current_distance || (
+				candidate_distance == current_distance && candidate->m_id < current->m_id
+			);
+		};
+
+		const Base* connected = nullptr;
+		size_t connected_distance = max_claim_distance + 1;
+		std::unordered_set< const Tile* > visited = { tile };
+		std::vector< const Tile* > frontier = { tile };
+		for ( size_t distance = 0 ; distance <= max_claim_distance && !frontier.empty() ; distance++ ) {
+			for ( const auto* const current : frontier ) {
+				const auto* const candidate = current->base;
+				if ( candidate && choose( connected, connected_distance, candidate, distance ) ) {
+					connected = candidate;
+					connected_distance = distance;
+				}
+			}
+			if ( connected || distance == max_claim_distance ) {
+				break;
+			}
+			std::vector< const Tile* > next = {};
+			for ( const auto* const current : frontier ) {
+				for ( const auto* const candidate : current->neighbours ) {
+					if (
+						candidate->is_water_tile == tile->is_water_tile &&
+						visited.insert( candidate ).second
+					) {
+						next.push_back( candidate );
+					}
+				}
+			}
+			frontier = std::move( next );
+		}
+
+		const Base* coastal = nullptr;
+		size_t coastal_distance = coastal_claim_distance + 1;
+		if ( tile->is_water_tile ) {
+			for ( const auto& it : m_bm->GetBases() ) {
+				const auto* const candidate = it.second;
+				if ( candidate->GetTile()->is_water_tile ) {
+					continue;
+				}
+				const auto distance = get_tile_distance( candidate->GetTile(), tile );
+				if (
+					distance <= coastal_claim_distance &&
+					choose( coastal, coastal_distance, candidate, distance )
+				) {
+					coastal = candidate;
+					coastal_distance = distance;
+				}
+			}
+		}
+
+		if ( !connected ) {
+			return coastal;
+		}
+		if ( !coastal ) {
+			return connected;
+		}
+		return choose( connected, connected_distance, coastal, coastal_distance )
+			? coastal
+			: connected;
+	};
+
+	for ( const auto& it : m_bm->GetBases() ) {
+		const auto* const base = it.second;
+		if ( base->m_owner->GetIndex() == slot_num ) {
+			add_base_visible_tiles( base->GetTile() );
+		}
+	}
+	for ( const auto& it : m_um->GetUnits() ) {
+		const auto* const unit = it.second;
+		if (
+			unit->m_health <= 0.0f || unit->m_owner->GetIndex() != slot_num ||
+			unit->m_transport_id != 0
+		) {
+			continue;
+		}
+		ASSERT( unit->m_def->m_type == unit::DT_STATIC, "non-static unit in visibility calculation" );
+		const auto* const def = static_cast< const unit::StaticDef* >( unit->m_def );
+		add_tiles_in_radius( unit->GetTile(), def->HasAbility( "DeepRadar" ) ? 2 : 1, visible_tiles );
+		if ( def->HasAbility( "DeepRadar" ) ) {
+			add_tiles_in_radius( unit->GetTile(), 1, radar_detected_tiles );
+		}
+	}
+	for ( const auto& tile : *m_map->GetTilesPtr()->GetTilesPtr() ) {
+		if ( !( tile.terraforming & map::tile::TERRAFORMING_SENSOR ) ) {
+			continue;
+		}
+		const auto* const owner = get_claiming_base( &tile );
+		if ( owner && owner->m_owner->GetIndex() == slot_num ) {
+			add_tiles_in_radius( &tile, 2, visible_tiles );
+			add_tiles_in_radius( &tile, 2, sensor_detected_tiles );
+		}
+	}
+
+	std::unordered_set< size_t > result = {};
+	for ( const auto& it : m_um->GetUnits() ) {
+		const auto* const candidate = it.second;
+		if ( candidate->m_health <= 0.0f ) {
+			continue;
+		}
+		if ( candidate->m_owner->GetIndex() == slot_num ) {
+			result.insert( candidate->m_id );
+			continue;
+		}
+		if (
+			candidate->m_transport_id != 0 ||
+			visible_tiles.find( candidate->GetTile() ) == visible_tiles.end()
+		) {
+			continue;
+		}
+		ASSERT( candidate->m_def->m_type == unit::DT_STATIC, "non-static unit in visibility calculation" );
+		const auto* const def = static_cast< const unit::StaticDef* >( candidate->m_def );
+		const bool ability_concealed =
+			def->HasAbility( "CloakingDevice" ) || def->HasAbility( "DeepPressureHull" );
+		const auto movement_type = def->GetMovementType();
+		const bool fungus_concealed =
+			( movement_type == unit::MT_LAND || movement_type == unit::MT_WATER ) &&
+			( candidate->GetTile()->features & map::tile::FEATURE_XENOFUNGUS );
+		const bool detected =
+			!ability_concealed && !fungus_concealed ||
+			sensor_detected_tiles.find( candidate->GetTile() ) != sensor_detected_tiles.end() ||
+			(
+				!ability_concealed && fungus_concealed &&
+				radar_detected_tiles.find( candidate->GetTile() ) != radar_detected_tiles.end()
+			);
+		if ( detected ) {
+			result.insert( candidate->m_id );
+		}
+	}
+	return result;
+}
+
 void Game::ShowLoader( const std::string& text ) {
 	auto fr = FrontendRequest( FrontendRequest::FR_LOADER_SHOW );
 	NEW( fr.data.loader.text, std::string, text );
@@ -501,7 +727,15 @@ void Game::HideLoader() {
 
 void Game::AddEvent( event::Event* const event ) {
 	std::lock_guard guard( m_pending_events_mutex );
-	m_pending_events.push_back( event );
+	m_pending_events.push_back({ event, "", false });
+}
+
+void Game::AddSerializedEvent( const std::string& serialized_event, const bool from_server ) {
+	if ( serialized_event.empty() ) {
+		THROW( "cannot queue an empty serialized event" );
+	}
+	std::lock_guard guard( m_pending_events_mutex );
+	m_pending_events.push_back({ nullptr, serialized_event, from_server });
 }
 
 void Game::AddEventResponse( const std::string& event_id, const bool result, gse::Value* const resolved ) {
@@ -814,6 +1048,27 @@ WRAPIMPL_BEGIN( Game )
 				if ( rollback_it == def.end() || rollback_it->second->type != gse::VT_CALLABLE ) {
 					GSE_ERROR( gse::EC.INVALID_HANDLER, "Event handler does not provide rollback method" );
 				}
+				bool private_unit_event = false;
+				bool unit_snapshot_event = false;
+				const auto visibility_it = def.find( "unit_visibility" );
+				if ( visibility_it != def.end() ) {
+					if ( visibility_it->second->type != gse::VT_STRING ) {
+						GSE_ERROR( gse::EC.INVALID_HANDLER, "Event unit_visibility must be a string" );
+					}
+					const auto& visibility = ( (gse::value::String*)visibility_it->second )->value;
+					if ( visibility == "private" ) {
+						private_unit_event = true;
+					}
+					else if ( visibility == "snapshot" ) {
+						unit_snapshot_event = true;
+					}
+					else if ( visibility != "public" ) {
+						GSE_ERROR(
+							gse::EC.INVALID_HANDLER,
+							"Event unit_visibility must be public, private, or snapshot"
+						);
+					}
+				}
 				{
 					std::lock_guard guard( m_event_handlers_mutex );
 					m_event_handlers.insert(
@@ -822,7 +1077,9 @@ WRAPIMPL_BEGIN( Game )
 							(gse::value::Callable*)validate_it->second,
 							resolve,
 							(gse::value::Callable*)apply_it->second,
-							(gse::value::Callable*)rollback_it->second
+							(gse::value::Callable*)rollback_it->second,
+							private_unit_event,
+							unit_snapshot_event
 						) }
 					);
 				}
@@ -1031,8 +1288,10 @@ void Game::GetReachableObjects( std::unordered_set< Object* >& reachable_objects
 	GC_DEBUG_BEGIN( "events" );
 	{
 		std::lock_guard guard( m_pending_events_mutex );
-		for ( const auto& event : m_pending_events ) {
-			GC_REACHABLE( event );
+		for ( const auto& pending : m_pending_events ) {
+			if ( pending.event ) {
+				GC_REACHABLE( pending.event );
+			}
 		}
 	}
 	GC_DEBUG_END();
@@ -1761,7 +2020,7 @@ void Game::SetTurnStatus( const backend::turn::turn_status_t status ) {
 }
 
 void Game::ProcessEvents() {
-	std::vector< event::Event* > events;
+	std::vector< pending_event_t > events;
 	{
 		std::lock_guard guard( m_pending_events_mutex );
 		events = m_pending_events;
@@ -1770,11 +2029,56 @@ void Game::ProcessEvents() {
 	if ( !events.empty() ) {
 		m_state->WithGSE( this, [ this, events ]( GSE_CALLABLE ) {
 			const std::string* errptr = nullptr;
-			for ( const auto& event : events ) {
+			for ( size_t event_index = 0 ; event_index < events.size() ; event_index++ ) {
+				const auto& pending = events.at( event_index );
+				auto* const event = pending.event
+					? pending.event
+					: event::Event::Deserialize(
+						this,
+						pending.from_server ? event::Event::ES_SERVER : event::Event::ES_CLIENT,
+						GSE_CALL,
+						types::Buffer( pending.serialized_event )
+					);
 				errptr = nullptr;
 #if defined(DEBUG) || defined(FASTDEBUG)
 				MTModule::Log( "Event begin: " + event->ToString() );
 #endif
+				if ( event->GetEventName() == "__unit_visibility" ) {
+					const auto& data = event->GetOriginalData();
+					const auto payload_it = data.find( "payload" );
+					if (
+						m_state->IsMaster() || event->GetSource() != event::Event::ES_SERVER ||
+						data.size() != 1 || payload_it == data.end() ||
+						!payload_it->second || payload_it->second->type != gse::VT_STRING
+					) {
+						THROW( "invalid internal unit visibility event" );
+					}
+					const auto payload = ( (gse::value::String*)payload_it->second )->value;
+					auto dependency_buf = types::Buffer( payload );
+					const auto after_event_id = dependency_buf.ReadString();
+					if ( !after_event_id.empty() ) {
+						bool is_waiting_for_response = false;
+						{
+							std::lock_guard guard( m_events_waiting_for_responses_mutex );
+							is_waiting_for_response =
+								m_events_waiting_for_responses.find( after_event_id ) !=
+								m_events_waiting_for_responses.end();
+						}
+						if ( is_waiting_for_response ) {
+							std::lock_guard guard( m_pending_events_mutex );
+							m_pending_events.insert(
+								m_pending_events.begin(),
+								events.begin() + event_index,
+								events.end()
+							);
+							break;
+						}
+					}
+					WithRW( [ this, &ctx, &gc_space, &si, &ep, &payload ]() {
+						ApplyUnitVisibilityUpdate( GSE_CALL, payload );
+					} );
+					continue;
+				}
 				auto* obj = VALUE( gse::value::Object, , GSE_CALL_NOGC, event->GetData() );
 				const auto fargs = gse::value::function_arguments_t{ obj };
 				event::EventHandler* handler = nullptr;
@@ -1825,9 +2129,16 @@ void Game::ProcessEvents() {
 							}
 							// broadcast to clients
 							ASSERT( m_state->m_connection->IsServer(), "master but not server" );
-							m_state->m_connection->SendGameEvent( event );
+							m_state->m_connection->SendGameEvent(
+								event,
+								handler->IsPrivateUnitEvent(),
+								handler->IsUnitSnapshotEvent()
+							);
 						}
 						WithRW( f_process );
+						if ( m_state->m_connection ) {
+							m_state->m_connection->FinalizeGameEvent( event );
+						}
 					}
 					else { // multiplayer non-host
 						ASSERT( event->GetSource() != event::Event::ES_CLIENT, "got event from client to client" );
@@ -1870,7 +2181,11 @@ void Game::ProcessEvents() {
 									}
 								}
 							);
-							m_state->m_connection->SendGameEvent( event );
+							m_state->m_connection->SendGameEvent(
+								event,
+								handler->IsPrivateUnitEvent(),
+								handler->IsUnitSnapshotEvent()
+							);
 						}
 					}
 				}
@@ -1889,6 +2204,97 @@ void Game::ProcessEvents() {
 #endif
 			}
 		});
+	}
+}
+
+void Game::ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload ) {
+	ASSERT( !m_state->IsMaster(), "unit visibility update applied on master" );
+	auto buf = types::Buffer( payload );
+	buf.ReadString(); // optional local event response dependency, handled by ProcessEvents
+	const auto hidden_count = buf.ReadCollectionSize( "hidden unit" );
+	std::unordered_set< size_t > hidden_ids = {};
+	for ( size_t i = 0 ; i < hidden_count ; i++ ) {
+		const auto unit_id = buf.ReadInt< size_t >( "hidden unit id" );
+		if ( unit_id == 0 || !hidden_ids.insert( unit_id ).second ) {
+			THROW( "invalid or duplicate hidden unit id" );
+		}
+	}
+	const auto revealed_count = buf.ReadCollectionSize( "revealed unit" );
+	std::map< size_t, std::string > revealed_units = {};
+	for ( size_t i = 0 ; i < revealed_count ; i++ ) {
+		const auto serialized_unit = buf.ReadString();
+		auto unit_buf = types::Buffer( serialized_unit );
+		auto id_buf = unit_buf;
+		const auto unit_id = id_buf.ReadInt< size_t >( "revealed unit id" );
+		if (
+			unit_id == 0 || hidden_ids.find( unit_id ) != hidden_ids.end() ||
+			!revealed_units.insert( { unit_id, serialized_unit } ).second
+		) {
+			THROW( "invalid, duplicate, or simultaneously hidden revealed unit id" );
+		}
+	}
+	const auto next_unit_id = buf.ReadInt< size_t >( "next unit id" );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after unit visibility update" );
+	}
+
+	std::unordered_set< size_t > removed_ids = hidden_ids;
+	for ( const auto& it : revealed_units ) {
+		if ( m_um->GetUnit( it.first ) ) {
+			removed_ids.insert( it.first );
+		}
+	}
+	while ( !removed_ids.empty() ) {
+		bool removed_any = false;
+		for ( auto it = removed_ids.begin() ; it != removed_ids.end() ; ) {
+			auto* const existing = m_um->GetUnit( *it );
+			if ( !existing ) {
+				it = removed_ids.erase( it );
+				removed_any = true;
+				continue;
+			}
+			const auto cargo = m_um->GetCargo( existing );
+			bool has_retained_cargo = false;
+			for ( const auto* const carried : cargo ) {
+				if ( removed_ids.find( carried->m_id ) == removed_ids.end() ) {
+					has_retained_cargo = true;
+					break;
+				}
+			}
+			if ( has_retained_cargo ) {
+				THROW( "unit visibility update would hide a transport but retain its cargo" );
+			}
+			if ( !cargo.empty() ) {
+				++it;
+				continue;
+			}
+			const auto unit_id = *it;
+			it = removed_ids.erase( it );
+			m_um->DespawnUnit( GSE_CALL, unit_id );
+			removed_any = true;
+		}
+		if ( !removed_any ) {
+			THROW( "could not order unit visibility removals" );
+		}
+	}
+
+	for ( const auto& it : revealed_units ) {
+		auto unit_buf = types::Buffer( it.second );
+		auto revealed = std::unique_ptr< unit::Unit >(
+			unit::Unit::Deserialize( GSE_CALL, unit_buf, m_um )
+		);
+		m_um->SpawnUnit( GSE_CALL, revealed.release() );
+	}
+	m_um->ValidateTransports();
+	if ( next_unit_id != 0 ) {
+		size_t max_unit_id = 0;
+		for ( const auto& it : m_um->GetUnits() ) {
+			max_unit_id = std::max( max_unit_id, it.first );
+		}
+		if ( next_unit_id <= max_unit_id ) {
+			THROW( "invalid authoritative next unit id" );
+		}
+		unit::Unit::SetNextId( next_unit_id );
 	}
 }
 
@@ -2101,7 +2507,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 					m_tm->ReleaseTileLocks( slot_num );
 				};*/
 
-				connection->m_on_download_request = [ this ]() -> const std::string {
+				connection->m_on_download_request = [ this ]( const size_t slot_num ) -> const std::string {
 					if ( !m_map ) {
 						// map not generated yet
 						return "";
@@ -2122,7 +2528,8 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 					// units
 					{
 						types::Buffer b;
-						m_um->Serialize( b );
+						const auto visible_unit_ids = GetVisibleUnitIdsForSlot( slot_num );
+						m_um->Serialize( b, &visible_unit_ids );
 						buf.WriteString( b.ToString() );
 					}
 

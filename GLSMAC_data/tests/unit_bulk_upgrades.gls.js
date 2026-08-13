@@ -189,7 +189,7 @@ let event = {
 };
 test.assert(!#is_defined(upgrade_design.validate(event)));
 event.resolved = upgrade_design.resolve(event);
-test.assert(event.resolved.unit_ids == [1, 2]);
+test.assert(event.resolved.unit_count == 2);
 event.applied = upgrade_design.apply(event);
 test.assert(find_unit(1).def == laser.id && find_unit(2).def == laser.id);
 test.assert(find_unit(3).def == scout.id);
@@ -241,7 +241,7 @@ event = {
 };
 test.assert(!#is_defined(upgrade_design.validate(event)));
 event.resolved = upgrade_design.resolve(event);
-test.assert(event.resolved.unit_ids == [10, 20]);
+test.assert(event.resolved.unit_count == 2);
 event.applied = upgrade_design.apply(event);
 test.assert(find_unit(10).def == improved_transport.id);
 test.assert(find_unit(20).def == improved_transport.id);

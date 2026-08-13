@@ -1,6 +1,7 @@
 #include "Event.h"
 
 #include "game/backend/Game.h"
+#include "game/backend/unit/Unit.h"
 #include "gse/value/Array.h"
 #include "gse/value/Object.h"
 
@@ -38,6 +39,39 @@ const bool HasInvalidatedReference( const gse::Value* const value, std::unordere
 			break;
 	}
 	return false;
+}
+
+void CollectReferencedUnits(
+	const gse::Value* const value,
+	std::unordered_set< const gse::Value* >& visited,
+	std::unordered_set< const unit::Unit* >& units
+) {
+	if ( !value || !visited.insert( value ).second ) {
+		return;
+	}
+	switch ( value->type ) {
+		case gse::VT_ARRAY: {
+			for ( const auto* const element : ( (const gse::value::Array*)value )->value ) {
+				CollectReferencedUnits( element, visited, units );
+			}
+			break;
+		}
+		case gse::VT_OBJECT: {
+			const auto* const object = (const gse::value::Object*)value;
+			if ( object->wrapobj ) {
+				const auto* const referenced_unit = dynamic_cast< const unit::Unit* >( object->wrapobj );
+				if ( referenced_unit ) {
+					units.insert( referenced_unit );
+				}
+			}
+			for ( const auto& property : object->value ) {
+				CollectReferencedUnits( property.second, visited, units );
+			}
+			break;
+		}
+		default:
+			break;
+	}
 }
 
 }
@@ -154,6 +188,10 @@ const gse::value::object_properties_t& Event::GetData() const {
 	return m_data;
 }
 
+const gse::value::object_properties_t& Event::GetOriginalData() const {
+	return m_original_data;
+}
+
 const bool Event::HasInvalidatedReferences() const {
 	std::unordered_set< const gse::Value* > visited = {};
 	for ( const auto& property : m_original_data ) {
@@ -162,6 +200,35 @@ const bool Event::HasInvalidatedReferences() const {
 		}
 	}
 	return false;
+}
+
+const std::unordered_set< const unit::Unit* > Event::GetReferencedUnits() {
+	std::unordered_set< const gse::Value* > visited = {};
+	std::unordered_set< const unit::Unit* > units = {};
+	for ( const auto& property : m_original_data ) {
+		CollectReferencedUnits( property.second, visited, units );
+	}
+	{
+		std::lock_guard guard( m_resolved_mutex );
+		CollectReferencedUnits( m_resolved, visited, units );
+	}
+	return units;
+}
+
+const std::string Event::SerializeUnitVisibilityUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__unit_visibility" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
 }
 
 void Event::SetResolved( gse::Value* const resolved ) {

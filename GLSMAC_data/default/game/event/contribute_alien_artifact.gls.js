@@ -7,6 +7,7 @@ const restore_unit = (game, snapshot) => {
 };
 
 return {
+	unit_visibility: 'private',
 	validate: (e) => {
 		return artifact_rules.get_contribution_error(e.game, e.data.unit, e.caller);
 	},

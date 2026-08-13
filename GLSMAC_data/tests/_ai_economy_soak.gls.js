@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const turn_rules = #include('../default/game/turn_rules');
 
 	const MINIMUM_TURN = 20;
 	const FINAL_TURN = 30;
@@ -26,7 +27,11 @@
 		if (game.is_game_over() || exit_scheduled) {
 			return false;
 		}
-		if (!game.is_game_over() && !game.is_turn_complete(game.get_player().id)) {
+		const player_id = game.get_player().id;
+		if (
+			!game.is_game_over() && !game.is_turn_complete(player_id) &&
+			!turn_rules.has_pending_owned_animation(game, player_id)
+		) {
 			game.event('complete_turn', {});
 		}
 		return true;

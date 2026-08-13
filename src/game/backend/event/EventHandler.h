@@ -15,13 +15,17 @@ public:
 		gse::value::Callable* const validate,
 		gse::value::Callable* const resolve,
 		gse::value::Callable* const apply,
-		gse::value::Callable* const rollback
+		gse::value::Callable* const rollback,
+		const bool private_unit_event,
+		const bool unit_snapshot_event
 	);
 
 	void GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) override;
 
 	const std::string* const Validate( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
 	const bool HasResolve() const;
+	const bool IsPrivateUnitEvent() const;
+	const bool IsUnitSnapshotEvent() const;
 	gse::Value* const Resolve( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
 	gse::Value* const Apply( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
 	void Rollback( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const;
@@ -32,6 +36,8 @@ private:
 	gse::value::Callable* m_resolve;
 	gse::value::Callable* m_apply;
 	gse::value::Callable* m_rollback;
+	const bool m_private_unit_event;
+	const bool m_unit_snapshot_event;
 
 };
 

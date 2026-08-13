@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <map>
+#include <unordered_map>
 #include <unordered_set>
 #include "common/Mutex.h"
 
@@ -85,7 +87,12 @@ public:
 	Server* AsServer() const; // for server-specific calls
 	void IfServer( std::function< void( Server* server ) > cb ); // call cb if server
 
-	void SendGameEvent( backend::event::Event* event );
+	void SendGameEvent(
+		backend::event::Event* event,
+		const bool private_unit_event,
+		const bool unit_snapshot_event
+	);
+	void FinalizeGameEvent( backend::event::Event* event );
 
 	const bool IsConnected() const;
 	const bool IsServer() const;
@@ -115,9 +122,23 @@ protected:
 	State* m_state = nullptr;
 
 	struct game_event_t {
-		size_t caller;
-		std::string name;
-		std::string serialized_data;
+		struct unit_projection_t {
+			std::unordered_set< size_t > visible_after = {};
+			std::map< size_t, std::string > revealed = {};
+			std::unordered_set< size_t > created_hidden = {};
+		};
+		size_t caller = 0;
+		std::string id = "";
+		std::string name = "";
+		std::string serialized_data = "";
+		std::unordered_set< size_t > referenced_unit_ids = {};
+		std::map< size_t, std::string > referenced_unit_snapshots = {};
+		std::unordered_set< size_t > unit_ids_before = {};
+		std::unordered_set< size_t > created_unit_ids = {};
+		size_t next_unit_id_after = 0;
+		bool private_unit_event = false;
+		bool unit_snapshot_event = false;
+		std::unordered_map< network::cid_t, unit_projection_t > unit_projections = {};
 	};
 	typedef std::vector< game_event_t > game_events_t;
 	game_state_t m_game_state = GS_NONE;
@@ -145,6 +166,7 @@ private:
 	// buffer events for optimization
 	const size_t PENDING_GAME_EVENTS_LIMIT = 256;
 
+	game_events_t m_prepared_server_game_events = {};
 	game_events_t m_pending_game_events = {};
 
 	gse::value::Callable* m_f_on_open = nullptr;

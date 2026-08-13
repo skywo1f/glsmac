@@ -33,12 +33,10 @@ return {
 		const source = rules.find_definition(e.game, e.data.source_def_id);
 		const target = rules.find_definition(e.game, e.data.target_def_id);
 		const plan = rules.get_bulk_plan(e.game, player, source, target);
-		let unit_ids = [];
-		for (unit of plan.units) { unit_ids :+unit.id; }
 		return {
 			source_def_id: source.id,
 			target_def_id: target.id,
-			unit_ids: unit_ids,
+			unit_count: plan.count,
 			cost_per_unit: plan.cost_per_unit,
 			total_cost: plan.total_cost,
 		};
@@ -48,10 +46,10 @@ return {
 		const player = e.game.get_player(e.caller);
 		const source = rules.find_definition(e.game, e.resolved.source_def_id);
 		const target = rules.find_definition(e.game, e.resolved.target_def_id);
+		const visible_units = rules.get_bulk_units(e.game, player, source);
 		let original_units = [];
 		let cargo = [];
-		for (id of e.resolved.unit_ids) {
-			const unit = e.game.um.get_unit(id);
+		for (unit of visible_units) {
 			original_units :+snapshots.snapshot_unit(unit);
 			if (#typeof(unit.get_cargo) == 'Callable') {
 				for (passenger of unit.get_cargo()) {
@@ -65,7 +63,7 @@ return {
 			upgraded_units :+upgraded_snapshot(snapshot, target);
 		}
 		snapshots.spawn_unit_snapshots(e.game, combine(upgraded_units, cargo));
-		const count = #sizeof(original_units);
+		const count = e.resolved.unit_count;
 		const old_energy = rules.get_energy_credits(player);
 		player.set_energy_credits(old_energy - e.resolved.total_cost);
 		e.game.trigger('economy_updated', {player: player});

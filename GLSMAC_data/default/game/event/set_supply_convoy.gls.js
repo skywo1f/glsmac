@@ -1,6 +1,7 @@
 const supply_rules = #include('../supply_rules');
 
 return {
+	unit_visibility: 'private',
 	validate: (e) => {
 		return supply_rules.get_order_error(
 			e.game,
