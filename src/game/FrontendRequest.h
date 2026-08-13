@@ -63,6 +63,7 @@ public:
 		FR_ERROR,
 		FR_UPDATE_TILES,
 		FR_MAP_EXPLORATION,
+		FR_TERRITORY_VISIBILITY,
 		FR_TURN_STATUS,
 		FR_TURN_ADVANCE,
 		FR_FACTION_DEFINE,
@@ -145,7 +146,11 @@ public:
 		} update_tiles;
 		struct {
 			const map_exploration_t* tiles;
+			bool is_initial;
 		} map_exploration;
+		struct {
+			uint64_t visible_slots;
+		} territory_visibility;
 		struct {
 			size_t tile_x;
 			size_t tile_y;

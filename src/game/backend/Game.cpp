@@ -442,6 +442,7 @@ void Game::Iterate() {
 		m_tm->ProcessTileLockRequests();
 	}
 	PushExplorationUpdate();
+	PushTerritoryVisibilityUpdate();
 }
 
 const bool Game::IsStarted() const {
@@ -1931,9 +1932,50 @@ void Game::PushExplorationUpdate() {
 
 	auto fr = FrontendRequest( FrontendRequest::FR_MAP_EXPLORATION );
 	fr.data.map_exploration.tiles = tiles;
+	fr.data.map_exploration.is_initial = !m_frontend_exploration_initialized;
 	AddFrontendRequest( fr );
 	m_frontend_explored_tiles = explored;
 	m_frontend_exploration_initialized = true;
+}
+
+void Game::PushTerritoryVisibilityUpdate() {
+	if ( m_game_state != GS_RUNNING || !m_state || !m_state->m_slots ) {
+		return;
+	}
+	const auto* const player = GetPlayer();
+	if ( !player ) {
+		return;
+	}
+
+	uint64_t visible_slots = 0;
+	const auto& slots = m_state->m_slots->GetSlots();
+	for ( const auto& slot : slots ) {
+		const auto slot_index = slot.GetIndex();
+		if ( slot_index >= 64 || slot.GetState() != slot::Slot::SS_PLAYER || !slot.GetPlayer() ) {
+			continue;
+		}
+		if (
+			slot_index == m_slot_num ||
+			(
+				player->HasContacted( slot_index ) &&
+				slot.GetPlayer()->HasContacted( m_slot_num )
+			)
+		) {
+			visible_slots |= uint64_t( 1 ) << slot_index;
+		}
+	}
+	if (
+		m_frontend_territory_visibility_initialized &&
+		visible_slots == m_frontend_territory_visible_slots
+	) {
+		return;
+	}
+
+	auto fr = FrontendRequest( FrontendRequest::FR_TERRITORY_VISIBILITY );
+	fr.data.territory_visibility.visible_slots = visible_slots;
+	AddFrontendRequest( fr );
+	m_frontend_territory_visible_slots = visible_slots;
+	m_frontend_territory_visibility_initialized = true;
 }
 
 void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
@@ -2392,6 +2434,8 @@ void Game::ResetGame() {
 	m_slot = nullptr;
 	m_frontend_exploration_initialized = false;
 	m_frontend_explored_tiles.clear();
+	m_frontend_territory_visibility_initialized = false;
+	m_frontend_territory_visible_slots = 0;
 
 	{
 		std::lock_guard guard( m_events_waiting_for_responses_mutex );

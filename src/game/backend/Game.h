@@ -405,6 +405,9 @@ private:
 	bool m_frontend_exploration_initialized = false;
 	std::set< std::pair< size_t, size_t > > m_frontend_explored_tiles = {};
 	void PushExplorationUpdate();
+	bool m_frontend_territory_visibility_initialized = false;
+	uint64_t m_frontend_territory_visible_slots = 0;
+	void PushTerritoryVisibilityUpdate();
 
 	void InitGame( MT_Response& response, MT_CANCELABLE );
 	void ResetGame();

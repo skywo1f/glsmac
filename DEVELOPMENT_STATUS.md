@@ -172,9 +172,12 @@ scenarios, for:
 - deterministic physical territory claims use the original eight-tile maximum,
   nearest reachable base on the same landmass or sea without crossing the other
   terrain type, oldest-base tie resolution, and two-tile coastal water claims;
-  supported combat units outside friendly territory now apply the original
-  POLICE -3, -4, and -5 pacifism-drone rules, including the air superiority
-  exception and base-screen diagnostics;
+  frontend Sensor ownership uses the same connected-region calculation, while
+  explored tiles render last-known faction borders, live sight refreshes their
+  ownership, and foreign faction colors remain hidden until bilateral contact;
+  supported combat units outside friendly territory apply the original POLICE
+  -3, -4, and -5 pacifism-drone rules, including the air superiority exception
+  and base-screen diagnostics;
 - generated maps place separated, deterministic regions for all 12
   original-release natural landmarks after terrain normalization: Garland
   Crater, Mount Planet, Monsoon Jungle, Uranium Flats, New Sargasso, The Ruins,
@@ -342,8 +345,6 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining territory presentation: rendered faction border overlays and
-  treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
   Nexus;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
@@ -787,6 +788,15 @@ annual duration decay and attempt-count restoration across the live client and
 resumed game. The reconnect fixture initially expected its formerly inert
 duration to remain frozen; separating that assertion from the persistent attempt
 count exposed and corrected the obsolete expectation.
+
+After faction territory presentation was completed, the Windows x64 Release
+build succeeded in 88.2 seconds. Focused territory, exploration, diplomacy,
+visibility, and installed-asset runtime checks passed. The visibility fixture
+now accepts additional legitimately detected concealed native life instead of
+requiring exactly two detected units. All 111 isolated native/script tests
+passed in 242.44 seconds. Ordinary multiplayer passed in 58.41 seconds, and
+running reconnect passed in 51.61 seconds with initial exploration snapshots
+prevented from refreshing out-of-sight ownership knowledge.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -1064,9 +1064,32 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				);
 				explored_tiles.insert( GetTileIndex( coords ) );
 			}
+			for ( const auto tile_key : m_explored_tiles ) {
+				if ( explored_tiles.find( tile_key ) == explored_tiles.end() ) {
+					m_pending_territory_observations.erase( tile_key );
+					ForgetTerritoryTile( tile_key );
+				}
+			}
+			for ( const auto tile_key : explored_tiles ) {
+				if (
+					!request->data.map_exploration.is_initial &&
+					m_explored_tiles.find( tile_key ) == m_explored_tiles.end()
+				) {
+					m_pending_territory_observations.insert( tile_key );
+				}
+			}
 			m_exploration_changed = explored_tiles != m_explored_tiles;
 			m_explored_tiles = std::move( explored_tiles );
 			m_map_visibility_dirty = true;
+			break;
+		}
+		case FrontendRequest::FR_TERRITORY_VISIBILITY: {
+			const auto visible_slots = request->data.territory_visibility.visible_slots;
+			if ( m_territory_visible_slots != visible_slots ) {
+				m_territory_visible_slots = visible_slots;
+				m_territory_borders_dirty = true;
+				m_map_visibility_dirty = true;
+			}
 			break;
 		}
 		case FrontendRequest::FR_TURN_STATUS: {
@@ -1412,6 +1435,10 @@ const size_t Game::GetTileIndex( const types::Vec2< size_t >& coords ) const {
 	return coords.y * m_map_data.width + coords.x;
 }
 
+const size_t Game::GetCompactTileIndex( const types::Vec2< size_t >& coords ) const {
+	return coords.y * ( m_map_data.width / 2 ) + coords.x / 2;
+}
+
 void Game::InitializeFog() {
 	ASSERT( !m_actors.fog, "fog actor already set" );
 	ASSERT( !m_textures.fog, "fog texture already set" );
@@ -1445,6 +1472,7 @@ void Game::InitializeFog() {
 	m_actors.fog->AddInstance( {} );
 	m_world_scene->AddActor( m_actors.fog );
 	m_fog_states.assign( tile_count, FS_UNEXPLORED );
+	m_territory_knowledge.assign( tile_count, {} );
 }
 
 void Game::UpdateFogTileGeometry( const tile::Tile* tile ) {
@@ -1464,6 +1492,7 @@ void Game::UpdateFogTileGeometry( const tile::Tile* tile ) {
 	mesh->SetVertex( vertex + 2, fog_coords.top );
 	mesh->SetVertex( vertex + 3, fog_coords.right );
 	mesh->SetVertex( vertex + 4, fog_coords.bottom );
+	m_territory_borders_dirty = true;
 }
 
 void Game::AddVisibleTilesInRadius(
@@ -1552,30 +1581,204 @@ const size_t Game::GetTileDistance( const tile::Tile* first, const tile::Tile* s
 const base::Base* Game::GetClaimingBase( const tile::Tile* tile ) const {
 	static constexpr size_t max_claim_distance = 8;
 	static constexpr size_t coastal_claim_distance = 2;
-	const base::Base* result = nullptr;
-	size_t result_distance = max_claim_distance + 1;
-	for ( const auto& it : m_bm->GetBases() ) {
-		const auto* const candidate = it.second;
-		const auto* const candidate_tile = candidate->GetTile();
-		const auto distance = GetTileDistance( candidate_tile, tile );
-		if ( distance > max_claim_distance ) {
-			continue;
+	const auto f_choose = [](
+		const base::Base* current,
+		const size_t current_distance,
+		const base::Base* candidate,
+		const size_t candidate_distance
+	) {
+		return !current || candidate_distance < current_distance || (
+			candidate_distance == current_distance && candidate->GetId() < current->GetId()
+		);
+	};
+
+	const base::Base* connected = nullptr;
+	size_t connected_distance = max_claim_distance + 1;
+	std::unordered_set< const tile::Tile* > visited = { tile };
+	std::vector< const tile::Tile* > frontier = { tile };
+	for ( size_t distance = 0 ; distance <= max_claim_distance && !frontier.empty() ; distance++ ) {
+		for ( const auto* const current : frontier ) {
+			const auto* const candidate = current->GetBase();
+			if ( candidate && f_choose( connected, connected_distance, candidate, distance ) ) {
+				connected = candidate;
+				connected_distance = distance;
+			}
 		}
-		const bool can_claim =
-			candidate_tile->IsWater() == tile->IsWater() ||
-			( !candidate_tile->IsWater() && tile->IsWater() && distance <= coastal_claim_distance );
-		if ( !can_claim ) {
-			continue;
+		if ( connected || distance == max_claim_distance ) {
+			break;
 		}
-		if (
-			!result || distance < result_distance ||
-			( distance == result_distance && candidate->GetId() < result->GetId() )
-		) {
-			result = candidate;
-			result_distance = distance;
+		std::vector< const tile::Tile* > next = {};
+		for ( const auto* const current : frontier ) {
+			const tile::Tile* const neighbours[] = {
+				current->W,
+				current->NW,
+				current->N,
+				current->NE,
+				current->E,
+				current->SE,
+				current->S,
+				current->SW,
+			};
+			for ( const auto* const candidate : neighbours ) {
+				if ( candidate->IsWater() == tile->IsWater() && visited.insert( candidate ).second ) {
+					next.push_back( candidate );
+				}
+			}
+		}
+		frontier = std::move( next );
+	}
+
+	const base::Base* coastal = nullptr;
+	size_t coastal_distance = coastal_claim_distance + 1;
+	if ( tile->IsWater() ) {
+		for ( const auto& it : m_bm->GetBases() ) {
+			const auto* const candidate = it.second;
+			if ( candidate->GetTile()->IsWater() ) {
+				continue;
+			}
+			const auto distance = GetTileDistance( candidate->GetTile(), tile );
+			if (
+				distance <= coastal_claim_distance &&
+				f_choose( coastal, coastal_distance, candidate, distance )
+			) {
+				coastal = candidate;
+				coastal_distance = distance;
+			}
 		}
 	}
-	return result;
+
+	if ( !connected ) {
+		return coastal;
+	}
+	if ( !coastal ) {
+		return connected;
+	}
+	return f_choose( connected, connected_distance, coastal, coastal_distance )
+		? coastal
+		: connected;
+}
+
+void Game::ObserveTerritoryTile( const tile::Tile* tile ) {
+	auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( tile->GetCoords() ) );
+	const auto* const base = GetClaimingBase( tile );
+	const bool claimed = base != nullptr;
+	const size_t owner_slot = claimed ? base->GetOwner()->GetIndex() : 0;
+	if (
+		!knowledge.known || knowledge.claimed != claimed ||
+		( claimed && knowledge.owner_slot != owner_slot )
+	) {
+		knowledge.known = true;
+		knowledge.claimed = claimed;
+		knowledge.owner_slot = owner_slot;
+		m_territory_borders_dirty = true;
+	}
+}
+
+void Game::ForgetTerritoryTile( const size_t tile_key ) {
+	const types::Vec2< size_t > coords = {
+		tile_key % m_map_data.width,
+		tile_key / m_map_data.width,
+	};
+	auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( coords ) );
+	if ( knowledge.known ) {
+		knowledge = {};
+		m_territory_borders_dirty = true;
+	}
+}
+
+void Game::RebuildTerritoryBorders() {
+	if ( !m_territory_borders_dirty ) {
+		return;
+	}
+	m_territory_borders_dirty = false;
+
+	if ( m_actors.territory ) {
+		m_world_scene->RemoveActor( m_actors.territory );
+		DELETE( m_actors.territory );
+		m_actors.territory = nullptr;
+	}
+
+	struct border_edge_t {
+		const tile::Tile* tile;
+		const types::Vec3* start;
+		const types::Vec3* end;
+		size_t owner_slot;
+	};
+	std::vector< border_edge_t > edges = {};
+	for ( const auto& it : m_tm->GetTiles() ) {
+		const auto* const tile = &it.second;
+		const auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( tile->GetCoords() ) );
+		if (
+			!knowledge.known || !knowledge.claimed || knowledge.owner_slot >= 64 ||
+			!( m_territory_visible_slots & ( uint64_t( 1 ) << knowledge.owner_slot ) )
+		) {
+			continue;
+		}
+		const auto& coords = tile->GetRenderData().selection_coords;
+		const struct {
+			const tile::Tile* neighbour;
+			const types::Vec3* start;
+			const types::Vec3* end;
+		} candidates[] = {
+			{ tile->NW, &coords.left, &coords.top },
+			{ tile->NE, &coords.top, &coords.right },
+			{ tile->SE, &coords.right, &coords.bottom },
+			{ tile->SW, &coords.bottom, &coords.left },
+		};
+		for ( const auto& candidate : candidates ) {
+			const auto& neighbour = m_territory_knowledge.at(
+				GetCompactTileIndex( candidate.neighbour->GetCoords() )
+			);
+			const bool neighbour_is_visible_claim =
+				neighbour.claimed && neighbour.owner_slot < 64 &&
+				( m_territory_visible_slots & ( uint64_t( 1 ) << neighbour.owner_slot ) );
+			if (
+				neighbour.known &&
+				( !neighbour_is_visible_claim || neighbour.owner_slot != knowledge.owner_slot )
+			) {
+				edges.push_back( { tile, candidate.start, candidate.end, knowledge.owner_slot } );
+			}
+		}
+	}
+
+	if ( edges.empty() ) {
+		return;
+	}
+
+	NEWV( mesh, types::mesh::Render, edges.size() * 4, edges.size() * 2 );
+	static constexpr float border_width = 0.13f;
+	for ( const auto& edge : edges ) {
+		const auto& center = edge.tile->GetRenderData().selection_coords.center;
+		const auto inner_start = *edge.start + ( center - *edge.start ) * border_width;
+		const auto inner_end = *edge.end + ( center - *edge.end ) * border_width;
+		auto tint = GetSlot( edge.owner_slot )->GetFaction()->m_colors.border.value;
+		tint.alpha = 0.92f;
+		const auto v1 = mesh->AddVertex( inner_start, {}, tint );
+		const auto v2 = mesh->AddVertex( *edge.start, {}, tint );
+		const auto v3 = mesh->AddVertex( *edge.end, {}, tint );
+		const auto v4 = mesh->AddVertex( inner_end, {}, tint );
+		mesh->AddSurface( { v1, v2, v3 } );
+		mesh->AddSurface( { v1, v3, v4 } );
+	}
+	mesh->Finalize();
+
+	if ( !m_textures.territory ) {
+		m_textures.territory = types::texture::Texture::FromColor( { 1.0f, 1.0f, 1.0f, 1.0f } );
+	}
+	NEWV( border_actor, scene::actor::Mesh, "MapTerritoryBorders", mesh );
+	border_actor->SetTexture( m_textures.territory );
+	border_actor->SetRenderFlags(
+		scene::actor::Actor::RF_IGNORE_LIGHTING |
+		scene::actor::Actor::RF_IGNORE_DEPTH
+	);
+	NEW( m_actors.territory, scene::actor::Instanced, border_actor );
+	m_actors.territory->SetZIndex( 0.45f );
+	m_actors.territory->AddInstance( {} );
+	m_world_scene->AddActor( m_actors.territory );
+	Log(
+		"Territory borders: " + std::to_string( edges.size() ) +
+		" visible ownership edges"
+	);
 }
 
 const bool Game::CanTargetUnit( const unit::Unit* attacker, const unit::Unit* defender ) const {
@@ -1640,6 +1843,12 @@ void Game::RefreshMapVisibility() {
 		const auto& coords = tile->GetCoords();
 		const auto key = GetTileIndex( coords );
 		const bool is_visible = visible_tiles.find( key ) != visible_tiles.end();
+		if (
+			is_visible ||
+			m_pending_territory_observations.find( key ) != m_pending_territory_observations.end()
+		) {
+			ObserveTerritoryTile( tile );
+		}
 		bool needs_render = false;
 		if ( tile->IsCurrentlyVisible() != is_visible ) {
 			tile->SetCurrentlyVisible( is_visible );
@@ -1693,6 +1902,8 @@ void Game::RefreshMapVisibility() {
 	}
 
 	m_currently_visible_tiles = std::move( visible_tiles );
+	m_pending_territory_observations.clear();
+	RebuildTerritoryBorders();
 	m_map_visibility_dirty = false;
 	Log(
 		"Map visibility: " + std::to_string( m_currently_visible_tiles.size() ) +
@@ -2279,6 +2490,12 @@ void Game::Deinitialize() {
 		m_pending_minimap_fog = nullptr;
 	}
 
+	if ( m_actors.territory ) {
+		m_world_scene->RemoveActor( m_actors.territory );
+		DELETE( m_actors.territory );
+		m_actors.territory = nullptr;
+	}
+
 	if ( m_actors.fog ) {
 		m_world_scene->RemoveActor( m_actors.fog );
 		DELETE( m_actors.fog );
@@ -2299,9 +2516,17 @@ void Game::Deinitialize() {
 		DELETE( m_textures.fog );
 		m_textures.fog = nullptr;
 	}
+	if ( m_textures.territory ) {
+		DELETE( m_textures.territory );
+		m_textures.territory = nullptr;
+	}
 	m_explored_tiles.clear();
 	m_currently_visible_tiles.clear();
 	m_fog_states.clear();
+	m_territory_knowledge.clear();
+	m_pending_territory_observations.clear();
+	m_territory_visible_slots = 0;
+	m_territory_borders_dirty = true;
 	m_map_visibility_dirty = true;
 	m_exploration_changed = true;
 

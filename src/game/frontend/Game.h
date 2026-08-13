@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 #include "common/Module.h"
 
@@ -370,12 +371,14 @@ private:
 		std::unordered_map< ::resource::resource_t, types::texture::Texture* > source;
 		types::texture::Texture* terrain = nullptr;
 		types::texture::Texture* fog = nullptr;
+		types::texture::Texture* territory = nullptr;
 	} m_textures;
 
 	struct {
 		actor::TileSelection* tile_selection = nullptr;
 		scene::actor::Instanced* terrain = nullptr;
 		scene::actor::Instanced* fog = nullptr;
+		scene::actor::Instanced* territory = nullptr;
 	} m_actors;
 
 	enum fog_state_t : uint8_t {
@@ -386,12 +389,25 @@ private:
 	std::unordered_set< size_t > m_explored_tiles = {};
 	std::unordered_set< size_t > m_currently_visible_tiles = {};
 	std::vector< fog_state_t > m_fog_states = {};
+	struct territory_knowledge_t {
+		bool known = false;
+		bool claimed = false;
+		size_t owner_slot = 0;
+	};
+	std::vector< territory_knowledge_t > m_territory_knowledge = {};
+	std::unordered_set< size_t > m_pending_territory_observations = {};
+	uint64_t m_territory_visible_slots = 0;
+	bool m_territory_borders_dirty = true;
 	bool m_map_visibility_dirty = true;
 	bool m_exploration_changed = true;
 	const size_t GetTileIndex( const types::Vec2< size_t >& coords ) const;
+	const size_t GetCompactTileIndex( const types::Vec2< size_t >& coords ) const;
 	void InitializeFog();
 	void UpdateFogTileGeometry( const tile::Tile* tile );
 	void RefreshMapVisibility();
+	void ObserveTerritoryTile( const tile::Tile* tile );
+	void ForgetTerritoryTile( const size_t tile_key );
+	void RebuildTerritoryBorders();
 	void AddVisibleTilesInRadius(
 		tile::Tile* center,
 		const size_t radius,
