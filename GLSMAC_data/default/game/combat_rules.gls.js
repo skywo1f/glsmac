@@ -416,7 +416,7 @@ const get_attack_score = (attacker, defender, game) => {
 	return total > 0.0 ? powers.attack / total : 0.0;
 };
 
-const get_best_defender = (attacker, tile, game) => {
+const get_best_defender = (attacker, tile, game, detected_only) => {
 	let best = null;
 	let best_attack_score = 2.0;
 	for (defender of tile.get_units()) {
@@ -426,6 +426,11 @@ const get_best_defender = (attacker, tile, game) => {
 			(
 				#is_defined(game) &&
 				!visibility_rules.can_target(game, attacker.owner, attacker, defender)
+			) ||
+			(
+				#is_defined(detected_only) && detected_only &&
+				#is_defined(game) &&
+				!visibility_rules.is_detected(game, attacker.owner, defender)
 			)
 		) {
 			continue;

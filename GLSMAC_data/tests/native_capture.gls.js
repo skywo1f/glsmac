@@ -105,7 +105,7 @@ const game = {
 let result = capture.resolve(game, attacker, target);
 test.assert(result.attempted && result.captured);
 test.assert(result.reason == 'first_native');
-test.assert(result.unit_ids == [10, 11]);
+test.assert(!#is_defined(result.unit_ids));
 test.assert(random_calls == 0);
 
 inherent_planet = 0;
@@ -185,7 +185,8 @@ test.assert(!result.attempted);
 
 let stored = {};
 const key = (id) => { return 'u' + #to_string(id); };
-const transfer_tile = {
+let transfer_tile = null;
+transfer_tile = {
 	x: 8,
 	y: 6,
 	get_units: (include_embarked) => {
@@ -280,9 +281,8 @@ const transfer_game = {
 	},
 };
 
-const applied = capture.apply(transfer_game, human, transfer_tile, {
-	unit_ids: [isle.id, cargo.id],
-});
+const applied = capture.apply(transfer_game, human, transfer_tile, planet);
+test.assert(applied.unit_ids == [isle.id, cargo.id]);
 test.assert(stored.u100.owner == human.id && stored.u101.owner == human.id);
 test.assert(stored.u100.movement == 0.0 && stored.u101.movement == 0.0);
 test.assert(stored.u100.moved_this_turn && stored.u101.moved_this_turn);

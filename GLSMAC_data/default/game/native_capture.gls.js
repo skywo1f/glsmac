@@ -63,14 +63,16 @@ const is_ecologically_agitated = (game, player, tile) => {
 	) && damage > 0;
 };
 
-const get_stack_ids = (tile, owner_id) => {
-	let ids = [];
-	for (unit of tile.get_units(true)) {
-		if (unit.owner == owner_id && unit.health > 0.0) {
-			ids :+unit.id;
+const get_stack_units = (tile, owner_id) => {
+	let units = [];
+	const candidates = tile.get_units(true);
+	for (let i = 0; i < #sizeof(candidates); i++) {
+		const candidate = candidates[i];
+		if (candidate.owner == owner_id && candidate.health > 0.0) {
+			units :+candidate;
 		}
 	}
-	return ids;
+	return units;
 };
 
 const no_attempt = () => {
@@ -79,7 +81,6 @@ const no_attempt = () => {
 		captured: false,
 		mark_attempted: false,
 		reason: '',
-		unit_ids: [],
 	};
 };
 
@@ -110,8 +111,7 @@ const resolve = (game, attacker, target) => {
 	if (!guaranteed && attacker.movement < CAPTURE_MOVE_COST) {
 		return no_attempt();
 	}
-	const unit_ids = get_stack_ids(target.get_tile(), target_owner.id);
-	if (#sizeof(unit_ids) == 0) {
+	if (#sizeof(get_stack_units(target.get_tile(), target_owner.id)) == 0) {
 		return no_attempt();
 	}
 	if (is_ecologically_agitated(game, player, target.get_tile())) {
@@ -120,7 +120,6 @@ const resolve = (game, attacker, target) => {
 			captured: false,
 			mark_attempted: false,
 			reason: 'agitated',
-			unit_ids: unit_ids,
 		};
 	}
 	if (target.native_capture_attempted) {
@@ -129,7 +128,6 @@ const resolve = (game, attacker, target) => {
 			captured: false,
 			mark_attempted: true,
 			reason: 'previously_attempted',
-			unit_ids: unit_ids,
 		};
 	}
 	let captured = guaranteed;
@@ -146,7 +144,6 @@ const resolve = (game, attacker, target) => {
 		captured: captured,
 		mark_attempted: !captured,
 		reason: captured ? (guaranteed ? 'first_native' : 'roll') : 'roll_failed',
-		unit_ids: unit_ids,
 	};
 };
 
@@ -167,13 +164,14 @@ const get_capture_home_base_id = (game, player, tile) => {
 		? nearest.id : 0;
 };
 
-const apply = (game, player, tile, resolved) => {
+const apply = (game, player, tile, target_owner) => {
 	let captured = [];
-	for (id of resolved.unit_ids) {
-		if (!game.um.has_unit(id)) {
-			throw Error('Native capture unit no longer exists: ' + #to_string(id));
-		}
-		captured :+snapshots.snapshot_unit(game.um.get_unit(id));
+	let unit_ids = [];
+	const stack = get_stack_units(tile, target_owner.id);
+	for (let i = 0; i < #sizeof(stack); i++) {
+		const captured_unit = stack[i];
+		captured :+snapshots.snapshot_unit(captured_unit);
+		unit_ids :+captured_unit.id;
 	}
 	snapshots.despawn_unit_snapshots(game, captured);
 	snapshots.spawn_unit_snapshots_as(game, captured, player, true);
@@ -183,7 +181,7 @@ const apply = (game, player, tile, resolved) => {
 			game.um.get_unit(snapshot.id).set_home_base_id(home_base_id);
 		}
 	}
-	return {units: captured};
+	return {units: captured, unit_ids: unit_ids};
 };
 
 const rollback = (game, applied) => {

@@ -407,7 +407,12 @@ scenarios, for:
   preventing observers from applying operational or treasury changes against
   redacted rival state. Probe-interrogation resolutions track both the Probe
   Team and its repatriation base, preventing hidden return-base IDs from being
-  disclosed or looked up in an observer's filtered world.
+  disclosed or looked up in an observer's filtered world. Combat resolutions
+  track the actual selected defender, attacks choose substitute defenders only
+  among units already detectable to that player, and native-capture outcomes no
+  longer serialize every unit ID in a potentially concealed stack. Each projected
+  client captures its locally known stack members while authoritative unit
+  projections reconcile the complete host result.
 
 The base-game content validator currently reports:
 
@@ -1011,6 +1016,14 @@ serialized projection-sensitive phases removed that stale-reference path
 without extending the timeout. The prior map-projection checkpoint completed
 Ubuntu Debug and Windows Clang Release CI plus scan-build and package workflows
 successfully.
+
+The follow-up stacked-combat audit passed the combat-rules, native-capture, and
+unit-event rollback suites plus the installed-asset native-capture runtime
+scenario. It removed concealed stack IDs from resolved native-capture payloads,
+made the applied capture report derive from the locally projected stack, and
+tracked the defender actually selected by the combat rules. The ordinary
+multiplayer smoke then passed in 66.77 seconds with its combat, capture,
+malformed-packet, and running-game reconnect phases intact.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

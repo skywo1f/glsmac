@@ -188,7 +188,7 @@ test.assert(
 		get_base: () => { return null; },
 		get_units: () => { return units; },
 	};
-	const make_stack_unit = (id, defense) => {
+	const make_stack_unit = (id, defense, abilities) => {
 		return {
 			id: id,
 			owner: owner.id + 1,
@@ -197,12 +197,18 @@ test.assert(
 			is_land: true,
 			get_tile: () => { return stack_tile; },
 			get_def: () => {
-				return {id: 'StackDefender', is_native: false, offense: 1, defense: defense};
+				return {
+					id: 'StackDefender',
+					is_native: false,
+					offense: 1,
+					defense: defense,
+					abilities: abilities,
+				};
 			},
 		};
 	};
-	const weak = make_stack_unit(10, 1);
-	const strong = make_stack_unit(20, 4);
+	const weak = make_stack_unit(10, 1, []);
+	const strong = make_stack_unit(20, 4, ['CloakingDevice']);
 	units = [weak, strong];
 	const stack_attacker = {
 		id: 1,
@@ -211,7 +217,9 @@ test.assert(
 		health: 1.0,
 		movement: 1.0,
 		is_land: true,
-		get_tile: () => { return open_combat_tile; },
+		get_tile: () => {
+			return {is_adjactent_to: (tile) => { return tile == stack_tile; }};
+		},
 		get_def: () => {
 			return {id: 'StackAttacker', is_native: false, offense: 2, defense: 1};
 		},
@@ -224,7 +232,8 @@ test.assert(
 		},
 		data: {attacker: stack_attacker, defender: weak},
 	});
-	test.assert(resolved.defender_id == strong.id);
+	test.assert(resolved.defender_id == weak.id);
+	test.assert(resolved.defender == weak);
 }
 
 {
@@ -1562,7 +1571,6 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			captured: false,
 			mark_attempted: true,
 			reason: 'roll_failed',
-			unit_ids: [active_defender.id],
 		},
 	};
 	combat_relation = 'treaty';

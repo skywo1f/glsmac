@@ -239,7 +239,12 @@ return {
 			? e.data.defender.get_tile()
 			: null;
 		const selected_defender = target_tile != null && #is_defined(target_tile.get_units)
-			? combat_rules.get_best_defender(attacker, target_tile, e.game)
+			? combat_rules.get_best_defender(
+				attacker,
+				target_tile,
+				e.game,
+				true
+			)
 			: null;
 		const defender = selected_defender == null ? e.data.defender : selected_defender;
 		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
@@ -249,6 +254,7 @@ return {
 
 		if (capture.captured) {
 			return {
+				defender: defender,
 				defender_id: defender.id,
 				sequence: [],
 				attacker_dead: false,
@@ -278,6 +284,7 @@ return {
 				damage_sequence [] = [true, damage];
 			}
 			return {
+				defender: defender,
 				defender_id: defender.id,
 				sequence: damage_sequence,
 				attacker_dead: false,
@@ -324,6 +331,7 @@ return {
 			}
 		}
 		return {
+			defender: defender,
 			defender_id: defender.id,
 			sequence: damage_sequence,
 			attacker_dead: attacker_health <= 0.0,
@@ -366,10 +374,14 @@ return {
 				),
 			};
 		}
-		const defender = #is_defined(e.resolved.defender_id) &&
-			#is_defined(e.game.um) && e.game.um.has_unit(e.resolved.defender_id)
-			? e.game.um.get_unit(e.resolved.defender_id)
-			: e.data.defender;
+		const defender = #is_defined(e.resolved.defender)
+			? e.resolved.defender
+			: (
+				#is_defined(e.resolved.defender_id) &&
+				#is_defined(e.game.um) && e.game.um.has_unit(e.resolved.defender_id)
+					? e.game.um.get_unit(e.resolved.defender_id)
+					: e.data.defender
+			);
 		let attacker_tile = attacker.get_tile();
 		let defender_tile = defender.get_tile();
 		const attacker_def = attacker.get_def();
@@ -451,7 +463,7 @@ return {
 				e.game,
 				attacker_owner,
 				defender_tile,
-				capture
+				defender_owner
 			);
 			const advance = () => {
 				if (e.game.is_master() && e.game.um.has_unit(attacker.id)) {
@@ -469,7 +481,7 @@ return {
 			}]);
 			e.game.trigger('native_life_captured', {
 				player: attacker_owner,
-				unit_ids: capture.unit_ids,
+				unit_ids: applied.native_capture.unit_ids,
 			});
 			e.game.message(
 				attacker_owner.name + ' captured ' + captured_name +
