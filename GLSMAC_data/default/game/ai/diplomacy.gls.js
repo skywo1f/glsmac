@@ -171,6 +171,82 @@ const is_ultimatum = (terms) => {
 	return #typeof(terms.is_ultimatum) == 'Bool' && terms.is_ultimatum;
 };
 
+const is_military_request = (terms) => {
+	return #typeof(terms.request_vendetta_player) == 'Int' &&
+		terms.request_vendetta_player >= 0;
+};
+
+const get_military_request_acceptance_score = (state) => {
+	if (
+		state.relation != 'pact' ||
+		state.target_relation == 'vendetta'
+	) {
+		return 0.0 - 100000.0;
+	}
+	const own_power = #max(0.0, state.own_power);
+	const ally_power = #max(0.0, state.other_power);
+	const target_power = #max(1.0, state.target_power);
+	const coalition_power = own_power + ally_power;
+	const coalition_edge = (coalition_power - target_power) /
+		#max(1.0, coalition_power + target_power) * 100.0;
+	const threat_pressure = (target_power - own_power) /
+		#max(1.0, target_power + own_power) * 50.0;
+	let relation_penalty = 0.0;
+	if (state.target_relation == 'treaty') {
+		relation_penalty = 45.0;
+	} else if (state.target_relation == 'pact') {
+		relation_penalty = 100.0;
+	}
+	const integrity_penalty = #to_float(get_other_integrity_blemishes(state)) * 8.0;
+	return coalition_edge + threat_pressure - relation_penalty - integrity_penalty - 5.0;
+};
+
+const get_military_request_proposal = (state) => {
+	if (state.relation != 'pact') {
+		return null;
+	}
+	let best = null;
+	for (target of state.targets) {
+		if (target.proposer_relation != 'vendetta' || target.recipient_relation == 'vendetta') {
+			continue;
+		}
+		const acceptance_score = get_military_request_acceptance_score({
+			relation: state.relation,
+			own_power: state.other_power,
+			other_power: state.own_power,
+			target_power: target.power,
+			target_relation: target.recipient_relation,
+			other_integrity_blemishes: get_other_integrity_blemishes(state),
+		});
+		if (acceptance_score < 0.0) {
+			continue;
+		}
+		const reinforcement_value = #max(0.0, target.power - state.own_power) * 4.0;
+		const score = acceptance_score + reinforcement_value;
+		if (best == null || score > best.score || (score == best.score && target.id < best.target_id)) {
+			best = {
+				target_id: target.id,
+				score: score,
+				terms: {
+					offer_energy: 0,
+					offer_technology: '',
+					request_energy: 0,
+					request_technology: '',
+					offer_contact: 0 - 1,
+					request_contact: 0 - 1,
+					offer_map: false,
+					request_map: false,
+					offer_base: 0 - 1,
+					request_base: 0 - 1,
+					request_vendetta_player: target.id,
+					is_ultimatum: false,
+				},
+			};
+		}
+	}
+	return best;
+};
+
 const get_ultimatum_compliance_score = (state) => {
 	if (
 		!is_ultimatum(state.terms) ||
@@ -663,6 +739,9 @@ return {
 	get_trade_acceptance_score: get_trade_acceptance_score,
 	get_trade_proposal: get_trade_proposal,
 	is_ultimatum: is_ultimatum,
+	is_military_request: is_military_request,
+	get_military_request_acceptance_score: get_military_request_acceptance_score,
+	get_military_request_proposal: get_military_request_proposal,
 	get_ultimatum_compliance_score: get_ultimatum_compliance_score,
 	get_ultimatum_proposal: get_ultimatum_proposal,
 	get_loan_acceptance_score: get_loan_acceptance_score,

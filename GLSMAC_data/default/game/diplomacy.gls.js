@@ -319,6 +319,15 @@ const get_request_base = (terms) => {
 	return #typeof(terms.request_base) == 'Int' ? terms.request_base : 0 - 1;
 };
 
+const get_request_vendetta_player = (terms) => {
+	return #typeof(terms.request_vendetta_player) == 'Int'
+		? terms.request_vendetta_player : 0 - 1;
+};
+
+const is_military_request = (terms) => {
+	return get_request_vendetta_player(terms) >= 0;
+};
+
 const is_ultimatum = (terms) => {
 	return #typeof(terms.is_ultimatum) == 'Bool' && terms.is_ultimatum;
 };
@@ -366,6 +375,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(#is_defined(terms.request_map) && #typeof(terms.request_map) != 'Bool') ||
 		(#is_defined(terms.offer_base) && #typeof(terms.offer_base) != 'Int') ||
 		(#is_defined(terms.request_base) && #typeof(terms.request_base) != 'Int') ||
+		(#is_defined(terms.request_vendetta_player) &&
+			#typeof(terms.request_vendetta_player) != 'Int') ||
 		(#is_defined(terms.is_ultimatum) && #typeof(terms.is_ultimatum) != 'Bool')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
@@ -385,6 +396,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	const request_map = get_request_map(terms);
 	const offer_base = get_offer_base(terms);
 	const request_base = get_request_base(terms);
+	const request_vendetta_player = get_request_vendetta_player(terms);
+	const military_request = request_vendetta_player >= 0;
 	const ultimatum = is_ultimatum(terms);
 	if (
 		offer_contact < -1 || offer_contact >= 64 ||
@@ -398,8 +411,22 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	) {
 		return 'Diplomatic trade base ID is out of range';
 	}
+	if (request_vendetta_player < -1 || request_vendetta_player >= 64) {
+		return 'Diplomatic military request player ID is out of range';
+	}
 	if (offer_contact >= 0 && offer_contact == request_contact) {
 		return 'Diplomatic trade cannot exchange a commlink for itself';
+	}
+	if (
+		military_request &&
+		(
+			terms.offer_energy != 0 || terms.offer_technology != '' ||
+			terms.request_energy != 0 || terms.request_technology != '' ||
+			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
+			offer_base >= 0 || request_base >= 0 || ultimatum
+		)
+	) {
+		return 'A military request cannot contain trade terms';
 	}
 	if (
 		ultimatum &&
@@ -416,7 +443,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		terms.offer_energy == 0 && terms.offer_technology == '' &&
 		terms.request_energy == 0 && terms.request_technology == '' &&
 		offer_contact < 0 && request_contact < 0 &&
-		!offer_map && !request_map && offer_base < 0 && request_base < 0
+		!offer_map && !request_map && offer_base < 0 && request_base < 0 &&
+		!military_request
 	) {
 		return 'Diplomatic trade cannot be empty';
 	}
@@ -427,14 +455,49 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		return 'Diplomatic trade cannot exchange a technology for itself';
 	}
 	const relation = proposer.get_diplomatic_relation(recipient);
-	if (!ultimatum && relation == 'vendetta') {
+	if (!ultimatum && !military_request && relation == 'vendetta') {
 		return 'Regular trade is unavailable during a vendetta';
+	}
+	if (military_request && relation != 'pact') {
+		return 'Joint vendetta requests require a diplomatic pact';
 	}
 	if (ultimatum && relation != 'neutral' && relation != 'vendetta') {
 		return 'Ultimatums require neutral relations or an active vendetta';
 	}
-	if (!ultimatum && (proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0)) {
+	if (
+		!ultimatum && !military_request &&
+		(proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0)
+	) {
 		return 'Regular trade is suspended by economic sanctions';
+	}
+	if (military_request) {
+		const target = find_player(game, request_vendetta_player);
+		if (target == null || target.id == proposer.id || target.id == recipient.id) {
+			return 'The joint vendetta target is invalid';
+		}
+		if (!proposer.has_contact(target) || !target.has_contact(proposer)) {
+			return 'The proposer has no diplomatic contact with the vendetta target';
+		}
+		if (!recipient.has_contact(target) || !target.has_contact(recipient)) {
+			return 'The recipient has no diplomatic contact with the vendetta target';
+		}
+		if (proposer.get_diplomatic_relation(target) != 'vendetta') {
+			return 'The proposer must already be at vendetta with the target';
+		}
+		if (recipient.get_diplomatic_relation(target) == 'vendetta') {
+			return 'The recipient is already at vendetta with the target';
+		}
+		if (is_submission_pair(game, recipient, target)) {
+			return 'A faction cannot join a vendetta against its submission partner';
+		}
+		const get_forced_relation = game.get('f_council_get_forced_relation');
+		if (
+			#typeof(get_forced_relation) == 'Callable' &&
+			get_forced_relation(recipient, target) == 'pact'
+		) {
+			return 'Factions loyal to the Supreme Leader cannot join this vendetta';
+		}
+		return;
 	}
 	const proposer_energy = proposer.get_energy_credits();
 	const recipient_energy = recipient.get_energy_credits();
@@ -706,6 +769,11 @@ return (game) => {
 		});
 		game.set('f_diplomacy_get_offer_base', get_offer_base);
 		game.set('f_diplomacy_get_request_base', get_request_base);
+		game.set('f_diplomacy_get_request_vendetta_player', get_request_vendetta_player);
+		game.set('f_diplomacy_is_military_request', is_military_request);
+		game.set('f_diplomacy_find_player', (player_id) => {
+			return find_player(game, player_id);
+		});
 		game.set('f_diplomacy_is_ultimatum', is_ultimatum);
 		game.set('f_diplomacy_find_base', (base_id) => {
 			return diplomatic_base_transfer.find_base(game, base_id);

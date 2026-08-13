@@ -237,6 +237,12 @@ scenarios, for:
   integrity to evaluate threats and originate bounded demands; counteroffers
   and bundled concessions are rejected, sanctions do not prevent coercion, and
   authoritative events provide exact rollback plus save/reconnect persistence;
+- persistent joint Vendetta requests between Pact partners; human and AI
+  factions can ask an ally to enter an existing war, acceptance establishes a
+  bilateral Vendetta with the third faction while preserving the Pact, and AI
+  decisions account for coalition strength, target threat, existing relations,
+  and proposer integrity; proposal persistence, save compatibility, UI
+  controls, rejection, acceptance, and exact three-faction rollback are covered;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
@@ -369,8 +375,9 @@ not mean that the game is feature-complete or balanced.
 The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper original diplomacy branches beyond the implemented relations, bundled
-  trade and counteroffers, loans, surrender, player-authored base exchange, and
-  coercive demands, including coordinated military requests;
+  trade and counteroffers, loans, surrender, player-authored base exchange,
+  coercive demands, and joint Vendetta requests, including richer negotiated
+  packages and faction-specific dialogue behavior;
 - remaining multiplayer information-boundary hardening beyond unit rosters,
   especially hidden base, production, and economy state plus globally
   consequential events that must update shared world state;
@@ -384,8 +391,8 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 143 cases: 112 isolated native/script GSE tests
-and 31 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 144 cases: 112 isolated native/script GSE tests
+and 32 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
 After persistent exploration and world-map exchange were added, the Windows
@@ -513,7 +520,7 @@ and both climate Council motions were added, all 86 isolated tests passed in
 160.98 seconds. Focused ecology, sea-level, Council, Planet Buster, and
 installed-asset runtime coverage passed together in 54.92 seconds.
 
-All 31 runtime scenarios have green runs against an installed Planetary Pack,
+All 32 runtime scenarios have green runs against an installed Planetary Pack,
 including diplomacy, probes, research, Planet Busters, economic victory,
 Planetary Council, Datalinks, air units, transports, Supply Crawlers, the Unit
 Workshop, sea colonies, and the standard AI runtime. The rendered Unity Pod scenario verifies
@@ -888,6 +895,15 @@ filtering, and exclusion of Headquarters, last bases, and Secret Projects. The
 installed-asset diplomacy, general AI, and opponent-strategy scenarios passed
 in 24.04, 119.09, and 30.77 seconds against the final rebuilt executable and
 local original-SMAC data.
+
+After joint Vendetta requests were added, the Windows x64 Release build
+succeeded and all 112 isolated native/script tests passed in 230.36 seconds.
+The dedicated installed-asset three-faction runtime persisted and accepted a
+request in 31.96 seconds; existing diplomacy, general AI, and opponent-strategy
+scenarios passed alongside it in 23.96, 120.32, and 30.86 seconds. Native
+coverage verifies clone and save round trips, versions 1 through 4 defaulting
+the new field safely, malformed and bundled-term rejection, and serialization
+extension version 5 carrying the requested target.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

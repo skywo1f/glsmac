@@ -53,6 +53,52 @@ pact.other_integrity_blemishes = 0;
 pact.relation = 'neutral';
 test.assert(!diplomacy.should_accept(pact));
 
+const military_terms = {
+	offer_energy: 0,
+	offer_technology: '',
+	request_energy: 0,
+	request_technology: '',
+	request_vendetta_player: 3,
+};
+test.assert(diplomacy.is_military_request(military_terms));
+const military_state = {
+	relation: 'pact',
+	own_power: 12.0,
+	other_power: 8.0,
+	target_power: 18.0,
+	target_relation: 'neutral',
+	other_integrity_blemishes: 0,
+};
+test.assert(diplomacy.get_military_request_acceptance_score(military_state) >= 0.0);
+military_state.target_relation = 'treaty';
+test.assert(diplomacy.get_military_request_acceptance_score(military_state) < 0.0);
+military_state.target_relation = 'neutral';
+military_state.other_integrity_blemishes = 3;
+test.assert(diplomacy.get_military_request_acceptance_score(military_state) < 0.0);
+military_state.other_integrity_blemishes = 0;
+military_state.target_relation = 'vendetta';
+test.assert(diplomacy.get_military_request_acceptance_score(military_state) < 0.0);
+
+let military_proposal = diplomacy.get_military_request_proposal({
+	relation: 'pact',
+	own_power: 8.0,
+	other_power: 12.0,
+	other_integrity_blemishes: 0,
+	targets: [
+		{id: 3, power: 18.0, proposer_relation: 'vendetta', recipient_relation: 'neutral'},
+		{id: 4, power: 4.0, proposer_relation: 'vendetta', recipient_relation: 'neutral'},
+	],
+});
+test.assert(military_proposal != null);
+test.assert(military_proposal.target_id == 3);
+test.assert(military_proposal.terms.request_vendetta_player == 3);
+test.assert(diplomacy.get_military_request_proposal({
+	relation: 'treaty',
+	own_power: 8.0,
+	other_power: 12.0,
+	targets: [],
+}) == null);
+
 const fair_swap = {
 	relation: 'treaty',
 	own_power: 10.0,

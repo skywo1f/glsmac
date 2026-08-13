@@ -31,7 +31,11 @@ return {
 		const previous = e.data.target.get_diplomatic_trade(e.data.player);
 		e.data.target.set_diplomatic_trade(e.data.player, e.data.terms);
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
-		e.game.trigger(ultimatum ? 'diplomatic_ultimatum_proposed' : 'diplomatic_trade_proposed', {
+		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
+		const event_name = military_request
+			? 'diplomatic_military_request_proposed'
+			: (ultimatum ? 'diplomatic_ultimatum_proposed' : 'diplomatic_trade_proposed');
+		e.game.trigger(event_name, {
 			player: e.data.player,
 			target: e.data.target,
 			terms: e.data.terms,
@@ -46,7 +50,11 @@ return {
 			e.data.target.set_diplomatic_trade(e.data.player, e.applied);
 		}
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
-		e.game.trigger(ultimatum ? 'diplomatic_ultimatum_updated' : 'diplomatic_trade_updated', {
+		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
+		const event_name = military_request
+			? 'diplomatic_military_request_updated'
+			: (ultimatum ? 'diplomatic_ultimatum_updated' : 'diplomatic_trade_updated');
+		e.game.trigger(event_name, {
 			player: e.data.player,
 			target: e.data.target,
 		});

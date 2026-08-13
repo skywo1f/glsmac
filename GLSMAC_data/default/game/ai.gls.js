@@ -218,6 +218,8 @@ const update_diplomacy = (game, player) => {
 		}
 		const trade = player.get_diplomatic_trade(other);
 		if (trade != null) {
+			const military_target = diplomacy.is_military_request(trade)
+				? game.get_player(trade.request_vendetta_player) : null;
 			const offer_definition = trade.offer_technology == ''
 				? null
 				: game.get('f_technology_get_definition')(trade.offer_technology);
@@ -249,7 +251,16 @@ const update_diplomacy = (game, player) => {
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
-				accept: diplomacy.is_ultimatum(trade)
+				accept: military_target != null
+					? diplomacy.get_military_request_acceptance_score({
+						relation: player.get_diplomatic_relation(other),
+						own_power: own_power,
+						other_power: get_player_power(game, other),
+						target_power: get_player_power(game, military_target),
+						target_relation: player.get_diplomatic_relation(military_target),
+						other_integrity_blemishes: other.get_integrity_blemishes(),
+					}) >= 0.0
+					: diplomacy.is_ultimatum(trade)
 					? diplomacy.get_ultimatum_compliance_score({
 						relation: player.get_diplomatic_relation(other),
 						own_power: own_power,
@@ -434,6 +445,65 @@ const update_diplomacy = (game, player) => {
 			player: player,
 			target: best_target,
 			relation: best.relation,
+		});
+		return;
+	}
+
+	let best_military_request = null;
+	let best_military_ally = null;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id || !player.has_contact(other) ||
+			player.get_diplomatic_relation(other) != 'pact' ||
+			other.get_diplomatic_offer(player) != '' ||
+			player.get_diplomatic_offer(other) != '' ||
+			other.get_diplomatic_trade(player) != null ||
+			player.get_diplomatic_trade(other) != null
+		) {
+			continue;
+		}
+		let military_targets = [];
+		for (target of game.get_players()) {
+			if (
+				target.id == player.id || target.id == other.id ||
+				!player.has_contact(target) || !target.has_contact(player) ||
+				!other.has_contact(target) || !target.has_contact(other)
+			) {
+				continue;
+			}
+			military_targets :+{
+				id: target.id,
+				power: get_player_power(game, target),
+				proposer_relation: player.get_diplomatic_relation(target),
+				recipient_relation: other.get_diplomatic_relation(target),
+			};
+		}
+		const request = diplomacy.get_military_request_proposal({
+			relation: 'pact',
+			own_power: own_power,
+			other_power: get_player_power(game, other),
+			other_integrity_blemishes: player.get_integrity_blemishes(),
+			targets: military_targets,
+		});
+		if (
+			request == null ||
+			#is_defined(game.get('f_diplomacy_validate_trade')(player, other, request.terms))
+		) {
+			continue;
+		}
+		if (
+			best_military_request == null || request.score > best_military_request.score ||
+			(request.score == best_military_request.score && other.id < best_military_ally.id)
+		) {
+			best_military_request = request;
+			best_military_ally = other;
+		}
+	}
+	if (best_military_request != null) {
+		game.event_as(player.id, 'propose_diplomatic_trade', {
+			player: player,
+			target: best_military_ally,
+			terms: best_military_request.terms,
 		});
 		return;
 	}

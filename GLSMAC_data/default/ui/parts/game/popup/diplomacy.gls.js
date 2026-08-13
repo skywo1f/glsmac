@@ -71,6 +71,10 @@ const ultimatum_text = (game, terms) => {
 	);
 };
 
+const military_request_text = (game, terms) => {
+	return 'Join vendetta against ' + contact_name(game, terms.request_vendetta_player);
+};
+
 const loan_terms_text = (terms, proposer, recipient) => {
 	const lender = terms.proposer_is_lender ? proposer : recipient;
 	const borrower = terms.proposer_is_lender ? recipient : proposer;
@@ -141,6 +145,9 @@ return {
 		this.accept_trade = null;
 		this.counter_trade = null;
 		this.reject_trade = null;
+		this.military_target_label = null;
+		this.military_target = null;
+		this.request_military_support = null;
 		this.countering_trade = false;
 		this.pending_popup = false;
 		this.loan_text = null;
@@ -171,6 +178,9 @@ return {
 			'diplomatic_ultimatum_proposed',
 			'diplomatic_ultimatum_updated',
 			'diplomatic_ultimatum_resolved',
+			'diplomatic_military_request_proposed',
+			'diplomatic_military_request_updated',
+			'diplomatic_military_request_resolved',
 			'diplomatic_loan_proposed',
 			'diplomatic_loan_updated',
 			'diplomatic_loan_resolved',
@@ -191,6 +201,7 @@ return {
 					(observed_event_name == 'diplomatic_proposal' ||
 						observed_event_name == 'diplomatic_trade_proposed' ||
 						observed_event_name == 'diplomatic_ultimatum_proposed' ||
+						observed_event_name == 'diplomatic_military_request_proposed' ||
 						observed_event_name == 'diplomatic_loan_proposed' ||
 						observed_event_name == 'diplomatic_surrender_offered') &&
 					e.target.id == p.game.get_player().id;
@@ -217,7 +228,7 @@ return {
 			});
 		}
 
-		return p.create('DIPLOMACY', 600, 760, (body, cb) => {
+		return p.create('DIPLOMACY', 600, 800, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});
 			this.opponent_select = body.select({
 				class: 'popup-list-select', align: 'top right', right: 10, top: 8,
@@ -412,57 +423,71 @@ return {
 				this.respond_trade(false);
 				return true;
 			});
+			this.military_target_label = body.text({
+				class: 'game-popup-text', text: 'Joint vendetta:', left: 10, top: 478,
+			});
+			this.military_target = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 474,
+				width: 360, items: [], value: '',
+			});
+			this.request_military_support = body.button({
+				class: 'game-popup-button', text: 'Request Joint Vendetta', top: 506,
+			});
+			this.request_military_support.on('click', (e) => {
+				this.propose_military_request();
+				return true;
+			});
 
 			this.loan_text = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 494,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 550,
 			});
 			this.loan_principal_label = body.text({
-				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 522,
+				class: 'game-popup-text', text: 'Loan principal:', left: 10, top: 578,
 			});
 			this.loan_principal = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 518,
+				class: 'popup-input', align: 'top right', right: 10, top: 574,
 				width: 160, value: '100',
 			});
 			this.loan_payment_label = body.text({
-				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 550,
+				class: 'game-popup-text', text: 'Payment per year:', left: 10, top: 606,
 			});
 			this.loan_payment = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 546,
+				class: 'popup-input', align: 'top right', right: 10, top: 602,
 				width: 160, value: '7',
 			});
 			this.loan_turns_label = body.text({
-				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 578,
+				class: 'game-popup-text', text: 'Repayment years:', left: 10, top: 634,
 			});
 			this.loan_turns = body.input({
-				class: 'popup-input', align: 'top right', right: 10, top: 574,
+				class: 'popup-input', align: 'top right', right: 10, top: 630,
 				width: 160, value: '20',
 			});
 			this.loan_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 606,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 662,
 			});
 			this.offer_loan_button = body.button({
-				class: 'game-popup-button', text: 'Offer Loan', top: 634,
+				class: 'game-popup-button', text: 'Offer Loan', top: 690,
 			});
 			this.offer_loan_button.on('click', (e) => {
 				this.propose_loan(true);
 				return true;
 			});
 			this.request_loan_button = body.button({
-				class: 'game-popup-button', text: 'Request Loan', top: 658,
+				class: 'game-popup-button', text: 'Request Loan', top: 714,
 			});
 			this.request_loan_button.on('click', (e) => {
 				this.propose_loan(false);
 				return true;
 			});
 			this.accept_loan = body.button({
-				class: 'game-popup-button', text: 'Accept Loan', top: 634,
+				class: 'game-popup-button', text: 'Accept Loan', top: 690,
 			});
 			this.accept_loan.on('click', (e) => {
 				this.respond_loan(true);
 				return true;
 			});
 			this.reject_loan = body.button({
-				class: 'game-popup-button', text: 'Reject Loan', top: 658,
+				class: 'game-popup-button', text: 'Reject Loan', top: 714,
 			});
 			this.reject_loan.on('click', (e) => {
 				this.respond_loan(false);
@@ -470,7 +495,7 @@ return {
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Close', top: 724, is_cancel: true,
+				class: 'game-popup-button', text: 'Close', top: 762, is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
 				return true;
@@ -486,6 +511,7 @@ return {
 		this.request_contact.value = '-1';
 		this.offer_base.value = '-1';
 		this.request_base.value = '-1';
+		this.military_target.value = '';
 		this.offer_map.value = '0';
 		this.request_map.value = '0';
 		this.countering_trade = false;
@@ -561,6 +587,7 @@ return {
 			request_map: this.request_map.value == '1',
 			offer_base: #to_int(this.offer_base.value),
 			request_base: #to_int(this.request_base.value),
+			request_vendetta_player: 0 - 1,
 			is_ultimatum: is_ultimatum,
 		};
 		if (
@@ -584,6 +611,34 @@ return {
 			this.countering_trade
 		);
 		this.p.game.event(action.name, action.data);
+	},
+
+	propose_military_request: () => {
+		if (
+			this.player == null || this.target == null ||
+			this.military_target.value == ''
+		) {
+			return;
+		}
+		const target_id = #to_int(this.military_target.value);
+		this.p.game.event('propose_diplomatic_trade', {
+			player: this.player,
+			target: this.target,
+			terms: {
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+				offer_map: false,
+				request_map: false,
+				offer_base: 0 - 1,
+				request_base: 0 - 1,
+				request_vendetta_player: target_id,
+				is_ultimatum: false,
+			},
+		});
 	},
 
 	begin_counter_trade: () => {
@@ -724,6 +779,34 @@ return {
 		return items;
 	},
 
+	get_military_target_items: (player, ally) => {
+		let items = [];
+		const validate_trade = this.p.game.get('f_diplomacy_validate_trade');
+		for (candidate of this.p.game.get_players()) {
+			if (candidate.id == player.id || candidate.id == ally.id) {
+				continue;
+			}
+			const terms = {
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+				offer_map: false,
+				request_map: false,
+				offer_base: 0 - 1,
+				request_base: 0 - 1,
+				request_vendetta_player: candidate.id,
+				is_ultimatum: false,
+			};
+			if (!#is_defined(validate_trade(player, ally, terms))) {
+				items :+[#to_string(candidate.id), #to_string(candidate.name)];
+			}
+		}
+		return items;
+	},
+
 	refresh: () => {
 		const relation_buttons = [
 			this.offer_treaty, this.offer_pact, this.declare_vendetta,
@@ -763,6 +846,9 @@ return {
 		this.accept_trade.hide();
 		this.counter_trade.hide();
 		this.reject_trade.hide();
+		this.military_target_label.hide();
+		this.military_target.hide();
+		this.request_military_support.hide();
 		this.accept_loan.hide();
 		this.reject_loan.hide();
 
@@ -782,8 +868,13 @@ return {
 		const incoming_trade = this.player.get_diplomatic_trade(this.target);
 		const outgoing_trade = this.target.get_diplomatic_trade(this.player);
 		const is_ultimatum = this.p.game.get('f_diplomacy_is_ultimatum');
+		const is_military_request = this.p.game.get('f_diplomacy_is_military_request');
 		const incoming_ultimatum = incoming_trade != null && is_ultimatum(incoming_trade);
 		const outgoing_ultimatum = outgoing_trade != null && is_ultimatum(outgoing_trade);
+		const incoming_military_request = incoming_trade != null &&
+			is_military_request(incoming_trade);
+		const outgoing_military_request = outgoing_trade != null &&
+			is_military_request(outgoing_trade);
 		const incoming_loan = this.player.get_diplomatic_loan_offer(this.target);
 		const outgoing_loan = this.target.get_diplomatic_loan_offer(this.player);
 		const player_debt = this.player.get_diplomatic_loan(this.target);
@@ -836,13 +927,18 @@ return {
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
 		this.trade_text.text = incoming_trade != null
-			? (incoming_ultimatum
+			? (incoming_military_request
+				? 'Incoming military request: ' + military_request_text(this.p.game, incoming_trade)
+				: (incoming_ultimatum
 				? 'Incoming ultimatum: ' + ultimatum_text(this.p.game, incoming_trade)
-				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade))
+				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)))
 			: (outgoing_trade != null
-				? (outgoing_ultimatum
+				? (outgoing_military_request
+					? 'Military request awaiting response: ' +
+						military_request_text(this.p.game, outgoing_trade)
+					: (outgoing_ultimatum
 					? 'Ultimatum awaiting response: ' + ultimatum_text(this.p.game, outgoing_trade)
-					: 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade))
+					: 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade)))
 				: '');
 		this.loan_text.text = player_debt != null
 			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
@@ -887,14 +983,16 @@ return {
 		}
 
 		if (incoming_trade != null) {
-			this.accept_trade.text = incoming_ultimatum ? 'Comply' : 'Accept Trade';
-			this.reject_trade.text = incoming_ultimatum ? 'Refuse' : 'Reject Trade';
-			if (incoming_ultimatum) {
+			this.accept_trade.text = incoming_military_request
+				? 'Join Vendetta' : (incoming_ultimatum ? 'Comply' : 'Accept Trade');
+			this.reject_trade.text = incoming_military_request
+				? 'Decline' : (incoming_ultimatum ? 'Refuse' : 'Reject Trade');
+			if (incoming_ultimatum || incoming_military_request) {
 				this.countering_trade = false;
 			}
 			if (!this.countering_trade) {
 				this.accept_trade.show();
-				if (!incoming_ultimatum) {
+				if (!incoming_ultimatum && !incoming_military_request) {
 					this.counter_trade.show();
 				}
 				this.reject_trade.show();
@@ -909,7 +1007,8 @@ return {
 		const regular_trade_available = relation != 'vendetta' &&
 			player_sanctions == 0 && target_sanctions == 0;
 		const ultimatum_available = relation == 'neutral' || relation == 'vendetta';
-		if (!regular_trade_available && !ultimatum_available) {
+		const military_request_available = relation == 'pact';
+		if (!regular_trade_available && !ultimatum_available && !military_request_available) {
 			return;
 		}
 
@@ -946,7 +1045,7 @@ return {
 			if (!ultimatum_available || this.countering_trade) {
 				this.issue_ultimatum_button.hide();
 			}
-		} else {
+		} else if (ultimatum_available) {
 			this.request_technology_label.show();
 			this.request_technology.show();
 			this.request_energy_label.show();
@@ -957,6 +1056,16 @@ return {
 			? 'Request technology:' : 'Demand technology:';
 		this.request_energy_label.text = regular_trade_available
 			? 'Request energy:' : 'Demand energy:';
+		if (military_request_available && !this.countering_trade) {
+			const military_items = this.get_military_target_items(this.player, this.target);
+			if (#sizeof(military_items) > 0) {
+				this.military_target.items = military_items;
+				this.military_target.value = military_items[0][0];
+				this.military_target_label.show();
+				this.military_target.show();
+				this.request_military_support.show();
+			}
+		}
 		if (this.countering_trade) {
 			return;
 		}
