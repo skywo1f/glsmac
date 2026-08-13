@@ -223,9 +223,12 @@ scenarios, for:
   atomically replace an incoming offer with an editable reverse counteroffer,
   with exact event rollback; Headquarters and last-base transfers are rejected,
   supported units are rehomed, production queues are revalidated, project
-  acquisition effects are applied, and AI factions value and respond to base
-  terms alongside the other relation-, strength-, opponent-, and value-aware
-  trade terms;
+  acquisition effects are applied, and AI factions value, respond to, and
+  originate base purchases, sales, and swaps alongside the other relation-,
+  strength-, opponent-, and value-aware trade terms; autonomous base deals use
+  asymmetric owner and recipient values based on intrinsic development,
+  geography, former ownership, exploration, treasury reserves, and explicit
+  Headquarters, last-base, and Secret Project safeguards;
 - persistent coercive energy and technology demands at neutral relations or
   during a Vendetta; human factions can issue, comply with, or refuse an
   ultimatum, neutral refusal begins a bilateral Vendetta, and wartime
@@ -367,8 +370,7 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper original diplomacy branches beyond the implemented relations, bundled
   trade and counteroffers, loans, surrender, player-authored base exchange, and
-  coercive demands, including autonomous AI base purchases/swaps and coordinated
-  military requests;
+  coercive demands, including coordinated military requests;
 - remaining multiplayer information-boundary hardening beyond unit rosters,
   especially hidden base, production, and economy state plus globally
   consequential events that must update shared world state;
@@ -382,7 +384,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 142 cases: 111 isolated native/script GSE tests
+The Release CTest matrix contains 143 cases: 112 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -877,6 +879,15 @@ seconds. The same work fixed a dormant AI diplomacy tile-manager dereference,
 made stale same-destination movement events idempotent, and hardened transport,
 facility, reinforcement, and hurry-production fixtures against invalid map
 assumptions.
+
+After autonomous AI base deals were added, all 112 isolated native/script tests
+passed in 230.08 seconds. Focused coverage verifies strategic purchases, sales,
+and swaps, treasury reserve protection, rejection of mutually unfavorable
+transfers, former-owner preference, geographic consolidation, unexplored-base
+filtering, and exclusion of Headquarters, last bases, and Secret Projects. The
+installed-asset diplomacy, general AI, and opponent-strategy scenarios passed
+in 24.04, 119.09, and 30.77 seconds against the final rebuilt executable and
+local original-SMAC data.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

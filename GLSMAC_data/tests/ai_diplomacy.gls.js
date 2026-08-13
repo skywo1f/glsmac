@@ -155,6 +155,78 @@ test.assert(trade_proposal != null);
 test.assert(trade_proposal.terms.offer_energy == 100);
 test.assert(trade_proposal.terms.request_technology == 'IndustrialBase');
 
+trade_proposal = diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 600,
+	other_energy: 100,
+	own_technologies: [],
+	other_technologies: [],
+	own_base_trades: [],
+	other_base_trades: [{id: 21, owner_value: 200, recipient_value: 350}],
+});
+test.assert(trade_proposal != null);
+test.assert(trade_proposal.terms.offer_energy == 275);
+test.assert(trade_proposal.terms.request_base == 21);
+test.assert(trade_proposal.terms.offer_base < 0);
+
+trade_proposal = diplomacy.get_trade_proposal({
+	relation: 'pact',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 100,
+	other_energy: 600,
+	own_technologies: [],
+	other_technologies: [],
+	own_base_trades: [{id: 11, owner_value: 200, recipient_value: 350}],
+	other_base_trades: [],
+});
+test.assert(trade_proposal != null);
+test.assert(trade_proposal.terms.offer_base == 11);
+test.assert(trade_proposal.terms.request_energy == 275);
+test.assert(trade_proposal.terms.request_base < 0);
+
+trade_proposal = diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 100,
+	other_energy: 100,
+	own_technologies: [],
+	other_technologies: [],
+	own_base_trades: [{id: 11, owner_value: 225, recipient_value: 375}],
+	other_base_trades: [{id: 21, owner_value: 250, recipient_value: 400}],
+});
+test.assert(trade_proposal != null);
+test.assert(trade_proposal.terms.offer_base == 11);
+test.assert(trade_proposal.terms.request_base == 21);
+test.assert(trade_proposal.terms.offer_energy == 0);
+test.assert(trade_proposal.terms.request_energy == 0);
+
+test.assert(diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 300,
+	other_energy: 100,
+	own_technologies: [],
+	other_technologies: [],
+	own_base_trades: [],
+	other_base_trades: [{id: 21, owner_value: 200, recipient_value: 350}],
+}) == null);
+test.assert(diplomacy.get_trade_proposal({
+	relation: 'treaty',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_energy: 600,
+	other_energy: 600,
+	own_technologies: [],
+	other_technologies: [],
+	own_base_trades: [{id: 11, owner_value: 325, recipient_value: 300}],
+	other_base_trades: [{id: 21, owner_value: 325, recipient_value: 300}],
+}) == null);
+
 test.assert(diplomacy.get_trade_proposal({
 	relation: 'vendetta',
 	own_power: 10.0,

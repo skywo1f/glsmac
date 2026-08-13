@@ -2,6 +2,7 @@ const MOVEMENT_ACTION_DELAY = 200;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
 const airdrops = #include('ai/airdrops');
+const base_trades = #include('ai/base_trades');
 const colonization = #include('ai/colonization');
 const combat = #include('ai/combat');
 const diplomacy = #include('ai/diplomacy');
@@ -230,7 +231,6 @@ const update_diplomacy = (game, player) => {
 				#typeof(trade.request_contact) != 'Int' || trade.request_contact < 0
 			) ? null : game.get_player(trade.request_contact);
 			const find_trade_base = game.get('f_diplomacy_find_base');
-			const get_base_value = game.get('f_diplomacy_get_base_trade_value');
 			const offer_base = #typeof(trade.offer_base) == 'Int' && trade.offer_base >= 0
 				? find_trade_base(trade.offer_base) : null;
 			const request_base = #typeof(trade.request_base) == 'Int' && trade.request_base >= 0
@@ -276,8 +276,10 @@ const update_diplomacy = (game, player) => {
 						? 0 : 20 + #ceil(#to_float(offer_map_tiles * 160) / #to_float(map_area)),
 					request_map_value: request_map_tiles == 0
 						? 0 : 20 + #ceil(#to_float(request_map_tiles * 160) / #to_float(map_area)),
-					offer_base_value: offer_base == null ? 0 : get_base_value(offer_base),
-					request_base_value: request_base == null ? 0 : get_base_value(request_base),
+					offer_base_value: offer_base == null
+						? 0 : base_trades.get_strategic_value(game, offer_base, player),
+					request_base_value: request_base == null
+						? 0 : base_trades.get_strategic_value(game, request_base, player),
 				}) >= 0.0,
 			});
 			return;
@@ -461,6 +463,8 @@ const update_diplomacy = (game, player) => {
 			other_technologies: get_tradeable_technologies(game, other, player),
 			own_contacts: get_tradeable_contacts(game, player, other),
 			other_contacts: get_tradeable_contacts(game, other, player),
+			own_base_trades: base_trades.get_candidates(game, player, other),
+			other_base_trades: base_trades.get_candidates(game, other, player),
 			own_map_value: (() => {
 				const count_shareable = game.get('f_exploration_count_shareable_tiles');
 				if (!#is_defined(count_shareable)) { return 0; }

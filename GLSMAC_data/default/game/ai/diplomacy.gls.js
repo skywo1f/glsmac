@@ -281,8 +281,20 @@ const score_trade_proposal = (
 	offer_cost,
 	request_cost,
 	offer_contact_value,
-	request_contact_value
+	request_contact_value,
+	offer_base_recipient_value,
+	request_base_recipient_value,
+	offer_base_proposer_value,
+	request_base_proposer_value
 ) => {
+	const recipient_offer_base_value = #is_defined(offer_base_recipient_value)
+		? offer_base_recipient_value : get_base_value(state, 'offer_base_value');
+	const recipient_request_base_value = #is_defined(request_base_recipient_value)
+		? request_base_recipient_value : get_base_value(state, 'request_base_value');
+	const proposer_offer_base_value = #is_defined(offer_base_proposer_value)
+		? offer_base_proposer_value : get_base_value(state, 'offer_base_value');
+	const proposer_request_base_value = #is_defined(request_base_proposer_value)
+		? request_base_proposer_value : get_base_value(state, 'request_base_value');
 	const recipient_score = get_trade_acceptance_score({
 		relation: state.relation,
 		own_power: state.other_power,
@@ -294,8 +306,8 @@ const score_trade_proposal = (
 		request_contact_value: request_contact_value,
 		offer_map_value: get_map_value(state, 'own_map_value'),
 		request_map_value: get_map_value(state, 'other_map_value'),
-		offer_base_value: get_base_value(state, 'offer_base_value'),
-		request_base_value: get_base_value(state, 'request_base_value'),
+		offer_base_value: recipient_offer_base_value,
+		request_base_value: recipient_request_base_value,
 	});
 	if (recipient_score < 0.0) {
 		return null;
@@ -311,8 +323,8 @@ const score_trade_proposal = (
 		request_contact_value: offer_contact_value,
 		offer_map_value: get_map_value(state, 'other_map_value'),
 		request_map_value: get_map_value(state, 'own_map_value'),
-		offer_base_value: get_base_value(state, 'request_base_value'),
-		request_base_value: get_base_value(state, 'offer_base_value'),
+		offer_base_value: proposer_request_base_value,
+		request_base_value: proposer_offer_base_value,
 	});
 	if (proposer_score < 0.0) {
 		return null;
@@ -330,7 +342,11 @@ const get_trade_proposal = (state) => {
 		offer_cost,
 		request_cost,
 		offer_contact_value,
-		request_contact_value
+		request_contact_value,
+		offer_base_recipient_value,
+		request_base_recipient_value,
+		offer_base_proposer_value,
+		request_base_proposer_value
 	) => {
 		const score = score_trade_proposal(
 			state,
@@ -338,7 +354,11 @@ const get_trade_proposal = (state) => {
 			offer_cost,
 			request_cost,
 			offer_contact_value,
-			request_contact_value
+			request_contact_value,
+			offer_base_recipient_value,
+			request_base_recipient_value,
+			offer_base_proposer_value,
+			request_base_proposer_value
 		);
 		if (score != null && (best == null || score > best.score)) {
 			best = {terms: terms, score: score};
@@ -467,6 +487,79 @@ const get_trade_proposal = (state) => {
 				offer_map: false,
 				request_map: true,
 			}, own_technology.cost, 0, 0, 0);
+		}
+	}
+
+	const own_base_trades = #is_defined(state.own_base_trades)
+		? state.own_base_trades : [];
+	const other_base_trades = #is_defined(state.other_base_trades)
+		? state.other_base_trades : [];
+	const make_base_terms = (offer_energy, request_energy, offer_base, request_base) => {
+		return {
+			offer_energy: offer_energy,
+			offer_technology: '',
+			request_energy: request_energy,
+			request_technology: '',
+			offer_contact: 0 - 1,
+			request_contact: 0 - 1,
+			offer_map: false,
+			request_map: false,
+			offer_base: offer_base,
+			request_base: request_base,
+		};
+	};
+	const get_base_price = (seller_value, buyer_value) => {
+		if (buyer_value - seller_value < 50) {
+			return 0;
+		}
+		return #ceil(#to_float(seller_value + buyer_value) / 50.0) * 25;
+	};
+
+	for (other_base of other_base_trades) {
+		const price = get_base_price(other_base.owner_value, other_base.recipient_value);
+		if (price > 0 && price <= state.own_energy && state.own_energy - price >= 50) {
+			consider(
+				make_base_terms(price, 0, 0 - 1, other_base.id),
+				0,
+				0,
+				0,
+				0,
+				0,
+				other_base.owner_value,
+				0,
+				other_base.recipient_value
+			);
+		}
+	}
+	for (own_base of own_base_trades) {
+		const price = get_base_price(own_base.owner_value, own_base.recipient_value);
+		if (price > 0 && price <= state.other_energy && state.other_energy - price >= 50) {
+			consider(
+				make_base_terms(0, price, own_base.id, 0 - 1),
+				0,
+				0,
+				0,
+				0,
+				own_base.recipient_value,
+				0,
+				own_base.owner_value,
+				0
+			);
+		}
+	}
+	for (own_base of own_base_trades) {
+		for (other_base of other_base_trades) {
+			consider(
+				make_base_terms(0, 0, own_base.id, other_base.id),
+				0,
+				0,
+				0,
+				0,
+				own_base.recipient_value,
+				other_base.owner_value,
+				own_base.owner_value,
+				other_base.recipient_value
+			);
 		}
 	}
 
