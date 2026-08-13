@@ -71,6 +71,8 @@ private:
 	std::unordered_map< network::cid_t, deferred_game_events_t > m_deferred_game_events = {};
 	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_projected_unit_ids = {};
 	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_delivered_unit_ids = {};
+	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_projected_units = {};
+	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_delivered_units = {};
 	std::unordered_map< network::cid_t, size_t > m_delivered_next_unit_ids = {};
 	size_t m_unit_visibility_event_id = 1;
 	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_projected_bases = {};
@@ -108,6 +110,7 @@ private:
 		const std::string& after_event_id,
 		const bool deferred
 	);
+	const std::map< size_t, std::string > GetProjectedUnitsForSlot( const size_t slot_num ) const;
 	const std::map< size_t, std::string > GetProjectedPlayersForSlot(
 		const size_t slot_num,
 		std::unordered_set< size_t >* const full_player_ids = nullptr

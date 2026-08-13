@@ -93,6 +93,8 @@ void Server::ProcessEvent( const network::Event& event ) {
 			m_deferred_game_events.erase( event.cid );
 			m_projected_unit_ids.erase( event.cid );
 			m_delivered_unit_ids.erase( event.cid );
+			m_projected_units.erase( event.cid );
+			m_delivered_units.erase( event.cid );
 			m_delivered_next_unit_ids.erase( event.cid );
 			m_projected_bases.erase( event.cid );
 			m_delivered_bases.erase( event.cid );
@@ -352,6 +354,9 @@ void Server::ProcessEvent( const network::Event& event ) {
 							);
 							m_projected_unit_ids[ event.cid ] = visible_unit_ids;
 							m_delivered_unit_ids[ event.cid ] = visible_unit_ids;
+							const auto projected_units = GetProjectedUnitsForSlot( cid_slot_it->second );
+							m_projected_units[ event.cid ] = projected_units;
+							m_delivered_units[ event.cid ] = projected_units;
 							m_delivered_next_unit_ids[ event.cid ] = unit::Unit::GetNextId();
 							const auto projected_bases = g_engine->GetGame()->GetProjectedBasesForSlot(
 								cid_slot_it->second
@@ -534,8 +539,13 @@ void Server::FinalizeGameEventProjection( game_event_t& event ) {
 			continue;
 		}
 		auto& projected_before = it.second;
+		const auto projected_units_it = m_projected_units.find( cid );
+		ASSERT( projected_units_it != m_projected_units.end(), "projected client has no unit snapshots" );
 		const auto visible_after = game->GetVisibleUnitIdsForSlot( slot_it->second );
+		auto projected_units_after = GetProjectedUnitsForSlot( slot_it->second );
 		auto& projection = event.unit_projections[ cid ];
+		projection.projected_before = projected_units_it->second;
+		projection.projected_after = projected_units_after;
 		projection.visible_after = visible_after;
 		for ( const auto unit_id : visible_after ) {
 			if ( projected_before.find( unit_id ) == projected_before.end() ) {
@@ -553,6 +563,7 @@ void Server::FinalizeGameEventProjection( game_event_t& event ) {
 			}
 		}
 		projected_before = visible_after;
+		projected_units_it->second = std::move( projected_units_after );
 	}
 	event.next_base_id_after = base::Base::GetNextId();
 	for ( const auto& it : game->GetBM()->GetBases() ) {
@@ -724,6 +735,20 @@ bool Server::DeliverPlayerVisibilityUpdate(
 	return DeliverSerializedGameEvent( cid, update, deferred );
 }
 
+const std::map< size_t, std::string > Server::GetProjectedUnitsForSlot(
+	const size_t slot_num
+) const {
+	auto* const game = g_engine->GetGame();
+	ASSERT( game && game->GetUM(), "unit projection requested without a unit manager" );
+	std::map< size_t, std::string > result = {};
+	for ( const auto unit_id : game->GetVisibleUnitIdsForSlot( slot_num ) ) {
+		const auto* const unit = game->GetUM()->GetUnit( unit_id );
+		ASSERT( unit && unit->m_health > 0.0f, "projected unit is missing" );
+		result.insert({ unit_id, unit::Unit::Serialize( unit ).ToString() });
+	}
+	return result;
+}
+
 const std::map< size_t, std::string > Server::GetProjectedPlayersForSlot(
 	const size_t slot_num,
 	std::unordered_set< size_t >* const full_player_ids
@@ -762,6 +787,7 @@ void Server::DeliverProjectedGameEvent(
 		return;
 	}
 	const auto delivered_it = m_delivered_unit_ids.find( cid );
+	const auto delivered_units_it = m_delivered_units.find( cid );
 	const auto next_id_it = m_delivered_next_unit_ids.find( cid );
 	const auto base_projection_it = event.base_projections.find( cid );
 	const auto delivered_bases_it = m_delivered_bases.find( cid );
@@ -770,6 +796,7 @@ void Server::DeliverProjectedGameEvent(
 	const auto delivered_players_it = m_delivered_players.find( cid );
 	ASSERT(
 		delivered_it != m_delivered_unit_ids.end() &&
+		delivered_units_it != m_delivered_units.end() &&
 		next_id_it != m_delivered_next_unit_ids.end() &&
 		base_projection_it != event.base_projections.end() &&
 		delivered_bases_it != m_delivered_bases.end() &&
@@ -779,19 +806,24 @@ void Server::DeliverProjectedGameEvent(
 		"projected client has no delivered world state"
 	);
 	auto known_unit_ids = delivered_it->second;
+	auto known_units = delivered_units_it->second;
 	const auto& projection = projection_it->second;
 	auto known_bases = delivered_bases_it->second;
 	const auto& base_projection = base_projection_it->second;
 	const auto& player_projection = player_projection_it->second;
 
-	bool has_known_reference = false;
+	bool has_hidden_private_unit_reference = false;
 	bool can_deserialize_references = true;
 	for ( const auto unit_id : event.referenced_unit_ids ) {
-		if ( known_unit_ids.find( unit_id ) != known_unit_ids.end() ) {
-			has_known_reference = true;
-		}
-		else if ( event.referenced_unit_snapshots.find( unit_id ) == event.referenced_unit_snapshots.end() ) {
+		const bool known_before = known_unit_ids.find( unit_id ) != known_unit_ids.end();
+		if (
+			!known_before &&
+			event.referenced_unit_snapshots.find( unit_id ) == event.referenced_unit_snapshots.end()
+		) {
 			can_deserialize_references = false;
+		}
+		if ( !known_before ) {
+			has_hidden_private_unit_reference = true;
 		}
 	}
 	const auto& sender_slot = m_state->m_slots->GetSlot( event.caller );
@@ -834,10 +866,7 @@ void Server::DeliverProjectedGameEvent(
 		!can_deserialize_base_references ||
 		has_private_base_reference ||
 		has_private_player_reference ||
-		(
-			!event.referenced_unit_ids.empty() && !has_known_reference &&
-			event.private_unit_event
-		);
+		( event.private_unit_event && has_hidden_private_unit_reference );
 	const bool deliver_original = !is_sender && !suppress_hidden_event;
 
 	std::map< size_t, std::string > pre_projected_bases = {};
@@ -874,6 +903,7 @@ void Server::DeliverProjectedGameEvent(
 		for ( const auto& it : event.referenced_unit_snapshots ) {
 			if ( known_unit_ids.insert( it.first ).second ) {
 				pre_revealed.insert( it );
+				known_units.insert_or_assign( it.first, it.second );
 			}
 		}
 	}
@@ -894,12 +924,20 @@ void Server::DeliverProjectedGameEvent(
 		}
 	}
 	auto post_revealed = projection.revealed;
-	if ( deliver_original ) {
+	if ( deliver_original || is_sender ) {
 		for ( const auto& it : pre_revealed ) {
 			post_revealed.erase( it.first );
 		}
 		for ( const auto unit_id : event.created_unit_ids ) {
 			post_revealed.erase( unit_id );
+		}
+	}
+	else {
+		for ( const auto& it : projection.projected_after ) {
+			const auto known_it = known_units.find( it.first );
+			if ( known_it == known_units.end() || known_it->second != it.second ) {
+				post_revealed.insert_or_assign( it.first, it.second );
+			}
 		}
 	}
 	const auto delivered_next_id = event.next_unit_id_after != next_id_it->second
@@ -916,6 +954,7 @@ void Server::DeliverProjectedGameEvent(
 		return;
 	}
 	delivered_it->second = projection.visible_after;
+	delivered_units_it->second = projection.projected_after;
 	if ( event.next_unit_id_after != 0 ) {
 		next_id_it->second = event.next_unit_id_after;
 	}
@@ -1076,6 +1115,8 @@ void Server::ResetHandlers() {
 	m_deferred_game_events.clear();
 	m_projected_unit_ids.clear();
 	m_delivered_unit_ids.clear();
+	m_projected_units.clear();
+	m_delivered_units.clear();
 	m_delivered_next_unit_ids.clear();
 	m_unit_visibility_event_id = 1;
 	m_projected_bases.clear();

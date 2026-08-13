@@ -37,6 +37,7 @@
 	let client_base_snapshot_probe_complete = false;
 	let client_base_infiltration_probe_complete = false;
 	let client_player_privacy_probe_complete = false;
+	let mixed_unit_privacy_acknowledged = false;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -795,6 +796,49 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_mixed_unit_privacy', {
+			unit_visibility: 'private',
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can run the mixed unit privacy probe';
+				}
+				if (e.data.hidden_unit.id != 1) {
+					return 'Mixed unit privacy probe must reference the hidden host unit';
+				}
+				if (e.data.visible_unit.owner != get_client_player_id()) {
+					return 'Mixed unit privacy probe must reference the visible client unit';
+				}
+			},
+			apply: (e) => {
+				if (!e.game.is_master()) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: mixed private unit event was delivered');
+					glsmac.exit();
+				}
+				const previous = e.data.visible_unit.movement;
+				e.data.visible_unit.movement = 2.25;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				e.data.visible_unit.movement = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_mixed_unit_privacy_seen', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can acknowledge the mixed unit privacy probe';
+				}
+			},
+			apply: (e) => {
+				const previous = mixed_unit_privacy_acknowledged;
+				mixed_unit_privacy_acknowledged = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				mixed_unit_privacy_acknowledged = e.applied.previous;
+			},
+		});
+
 		game.register_event('multiplayer_smoke_relocate_hidden_unit', {
 			unit_visibility: 'private',
 			validate: (e) => {
@@ -1007,6 +1051,72 @@
 				}
 				if (wait_ticks >= 100) {
 					#print('MULTIPLAYER_SMOKE_FAIL_HOST: client visibility readiness timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const continue_host_turn_one = () => {
+			game.event('multiplayer_smoke_set_unit_movement', {
+				unit: game.get_um().get_unit(client_movement_unit_id),
+				movement: 3.0,
+			});
+			if (!spawn_colony_probe()) {
+				#print('MULTIPLAYER_SMOKE_FAIL_HOST: colony probe could not be spawned');
+				glsmac.exit();
+				return;
+			}
+			if (!spawn_terraform_probe()) {
+				#print('MULTIPLAYER_SMOKE_FAIL_HOST: Former probe could not be spawned');
+				glsmac.exit();
+				return;
+			}
+			wait_for_client_live_visibility_probe();
+		};
+
+		const start_host_mixed_unit_privacy_probe = () => {
+			game.event('multiplayer_smoke_mixed_unit_privacy', {
+				hidden_unit: game.get_um().get_unit(1),
+				visible_unit: game.get_um().get_unit(client_movement_unit_id),
+			});
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (mixed_unit_privacy_acknowledged) {
+					#print('MULTIPLAYER_SMOKE_MIXED_UNIT_PRIVACY_PASS_HOST');
+					continue_host_turn_one();
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: mixed unit privacy probe timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const start_client_mixed_unit_privacy_probe = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (
+					game.get_um().has_unit(client_movement_unit_id) &&
+					game.get_um().get_unit(client_movement_unit_id).movement == 2.25
+				) {
+					if (game.get_um().has_unit(1)) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: mixed private event revealed the host unit');
+						glsmac.exit();
+						return false;
+					}
+					#print('MULTIPLAYER_SMOKE_MIXED_UNIT_PRIVACY_PASS_CLIENT');
+					game.event('multiplayer_smoke_mixed_unit_privacy_seen', {});
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: mixed unit privacy state timed out');
 					glsmac.exit();
 					return false;
 				}
@@ -1447,24 +1557,11 @@
 						glsmac.exit();
 						return;
 					}
-					game.event('multiplayer_smoke_set_unit_movement', {
-						unit: game.get_um().get_unit(client_movement_unit_id),
-						movement: 3.0,
-					});
-					if (!spawn_colony_probe()) {
-						#print('MULTIPLAYER_SMOKE_FAIL_HOST: colony probe could not be spawned');
-						glsmac.exit();
-						return;
-					}
-					if (!spawn_terraform_probe()) {
-						#print('MULTIPLAYER_SMOKE_FAIL_HOST: Former probe could not be spawned');
-						glsmac.exit();
-						return;
-					}
-					wait_for_client_live_visibility_probe();
+					start_host_mixed_unit_privacy_probe();
 				}
 				else {
 					wait_for_player_privacy_update();
+					start_client_mixed_unit_privacy_probe();
 					start_client_live_visibility_probe();
 					run_client_terraform_probe();
 					game.event('multiplayer_smoke_accept_once', {});

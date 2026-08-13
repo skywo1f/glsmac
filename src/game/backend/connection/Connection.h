@@ -124,6 +124,8 @@ protected:
 
 	struct game_event_t {
 		struct unit_projection_t {
+			std::map< size_t, std::string > projected_before = {};
+			std::map< size_t, std::string > projected_after = {};
 			std::unordered_set< size_t > visible_after = {};
 			std::map< size_t, std::string > revealed = {};
 			std::unordered_set< size_t > created_hidden = {};

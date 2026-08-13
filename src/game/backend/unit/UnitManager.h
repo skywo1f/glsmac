@@ -73,6 +73,7 @@ public:
 	gse::Value* const AttackUnitResolve( GSE_CALLABLE, Unit* attacker, Unit* defender );
 	void AttackUnitApply( GSE_CALLABLE, Unit* attacker, Unit* defender, gse::Value* const resolutions );
 	void RefreshUnit( GSE_CALLABLE, const Unit* unit );
+	void ReplaceUnit( GSE_CALLABLE, const Unit* unit );
 
 private:
 	Game* m_game = nullptr;
@@ -87,6 +88,7 @@ private:
 		UUO_SPAWN = 1 << 0,
 		UUO_REFRESH = 1 << 1,
 		UUO_DESPAWN = 1 << 2,
+		UUO_REPLACE = 1 << 3,
 	};
 	struct unit_update_t {
 		unit_update_op_t ops = UUO_NONE;

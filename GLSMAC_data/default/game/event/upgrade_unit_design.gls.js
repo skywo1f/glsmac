@@ -19,6 +19,8 @@ const combine = (first, second) => {
 };
 
 return {
+	player_visibility: 'private',
+
 	validate: (e) => {
 		return rules.get_bulk_error(
 			e.game,

@@ -377,6 +377,12 @@ scenarios, for:
   redacted. Planetary Governors retain their original non-Progenitor
   intelligence benefit, explicitly private player events are recipient-gated,
   and public changes reconcile through authoritative filtered snapshots.
+- mixed-visibility private events require every referenced unit to have been
+  visible before the event is delivered. Withheld events reconcile changed
+  visible units through authoritative in-place snapshots, preventing hidden
+  unit references and pre-event locations from leaking without invalidating
+  existing script references. Base founding and Probe operations are explicitly
+  unit-private, while bulk unit-design upgrades are player-private.
 
 The base-game content validator currently reports:
 
@@ -397,10 +403,10 @@ The following original-SMAC systems remain absent or materially incomplete:
   trade and counteroffers, loans, surrender, player-authored base exchange,
   coercive demands, and joint Vendetta requests, including richer negotiated
   packages and faction-specific dialogue behavior;
-- remaining multiplayer information-boundary hardening around less common
-  event payloads, adversarial multi-client soak coverage, and polished
-  last-known public records; foreign bases currently disappear outside present
-  sight instead of retaining a historical public shell;
+- remaining multiplayer information-boundary audits for content handlers not
+  yet exercised by adversarial multi-client coverage, extended soak testing,
+  and polished last-known public records; foreign bases currently disappear
+  outside present sight instead of retaining a historical public shell;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
   and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -945,6 +951,18 @@ in its payload, are suppressed and replaced by a filtered live update. Running
 reconnect passed in 51.91 seconds while restoring the same research, economy,
 social, map, intelligence, design, and bilateral-diplomacy boundary from a
 fresh snapshot.
+
+After mixed-visibility private unit events were hardened, the final Windows
+x64 Release build succeeded and all 112 isolated native/script tests passed in
+233.02 seconds. Eleven focused base-founding, Probe, unit-design, Workshop, and
+running-reconnect tests passed in 117.60 seconds. Ordinary multiplayer passed
+in 55.95 seconds while proving that a private event referencing one hidden
+host unit and one visible client unit leaks neither the event nor the hidden
+unit, but still reconciles the changed visible unit before continuing through
+live visibility, combat, capture, founding, and terraforming. The AddressSanitizer
+Release build succeeded and a bounded 557-second run emitted no sanitizer
+report, but instrumentation was too slow to finish the gameplay phase, so that
+run is not counted as a pass.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

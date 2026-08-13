@@ -2407,11 +2407,6 @@ void Game::ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload )
 	}
 
 	std::unordered_set< size_t > removed_ids = hidden_ids;
-	for ( const auto& it : revealed_units ) {
-		if ( m_um->GetUnit( it.first ) ) {
-			removed_ids.insert( it.first );
-		}
-	}
 	while ( !removed_ids.empty() ) {
 		bool removed_any = false;
 		for ( auto it = removed_ids.begin() ; it != removed_ids.end() ; ) {
@@ -2448,10 +2443,16 @@ void Game::ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload )
 
 	for ( const auto& it : revealed_units ) {
 		auto unit_buf = types::Buffer( it.second );
-		auto revealed = std::unique_ptr< unit::Unit >(
-			unit::Unit::Deserialize( GSE_CALL, unit_buf, m_um )
-		);
-		m_um->SpawnUnit( GSE_CALL, revealed.release() );
+		auto* const existing = m_um->GetUnit( it.first );
+		if ( existing ) {
+			existing->ApplySerializedSnapshot( GSE_CALL, unit_buf );
+		}
+		else {
+			auto revealed = std::unique_ptr< unit::Unit >(
+				unit::Unit::Deserialize( GSE_CALL, unit_buf, m_um )
+			);
+			m_um->SpawnUnit( GSE_CALL, revealed.release() );
+		}
 	}
 	m_um->ValidateTransports();
 	if ( next_unit_id != 0 ) {

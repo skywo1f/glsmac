@@ -321,7 +321,12 @@ void UnitManager::PushUpdates() {
 			const auto unit_id = it.first;
 			const auto& uu = it.second;
 			const auto& unit = uu.unit;
-			if ( uu.ops & UUO_SPAWN ) {
+			if ( uu.ops & UUO_REPLACE ) {
+				auto fr = FrontendRequest( FrontendRequest::FR_UNIT_DESPAWN );
+				fr.data.unit_despawn.unit_id = unit_id;
+				m_game->AddFrontendRequest( fr );
+			}
+			if ( uu.ops & ( UUO_SPAWN | UUO_REPLACE ) ) {
 				auto fr = FrontendRequest( FrontendRequest::FR_UNIT_SPAWN );
 				fr.data.unit_spawn.unit_id = unit->m_id;
 				NEW( fr.data.unit_spawn.unitdef_id, std::string, unit->m_def->m_id );
@@ -344,6 +349,9 @@ void UnitManager::PushUpdates() {
 				fr.data.unit_spawn.health = unit->m_health;
 				fr.data.unit_spawn.embarked = unit->m_transport_id != 0;
 				m_game->AddFrontendRequest( fr );
+			}
+			if ( uu.ops & UUO_REPLACE ) {
+				continue;
 			}
 			if ( uu.ops & UUO_REFRESH ) {
 				auto fr = FrontendRequest( FrontendRequest::FR_UNIT_UPDATE );
@@ -1050,6 +1058,17 @@ void UnitManager::QueueUnitUpdate( const Unit* unit, const unit_update_op_t op )
 		).first;
 	}
 	auto& update = it->second;
+	if ( op == UUO_REPLACE ) {
+		update.ops = UUO_REPLACE;
+		update.unit = unit;
+		return;
+	}
+	if ( update.ops & UUO_REPLACE ) {
+		if ( op == UUO_DESPAWN ) {
+			update.ops = UUO_DESPAWN;
+		}
+		return;
+	}
 	if ( op == UUO_DESPAWN ) {
 		if ( update.ops & UUO_SPAWN ) {
 			// if unit is despawned immediately after spawning - frontend doesn't need to know
@@ -1235,6 +1254,10 @@ void UnitManager::AttackUnitApply( GSE_CALLABLE, Unit* attacker, Unit* defender,
 
 void UnitManager::RefreshUnit( GSE_CALLABLE, const Unit* unit ) {
 	QueueUnitUpdate( unit, UUO_REFRESH );
+}
+
+void UnitManager::ReplaceUnit( GSE_CALLABLE, const Unit* unit ) {
+	QueueUnitUpdate( unit, UUO_REPLACE );
 }
 
 map::Map* UnitManager::GetMap() const {

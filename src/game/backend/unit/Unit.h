@@ -97,6 +97,7 @@ public:
 
 	static const types::Buffer Serialize( const Unit* unit );
 	static Unit* Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um );
+	void ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf );
 
 	WRAPDEFS_DYNAMIC( Unit );
 

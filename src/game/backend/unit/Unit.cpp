@@ -1,6 +1,7 @@
 #include "Unit.h"
 
 #include <cmath>
+#include <memory>
 
 #include "gse/context/Context.h"
 #include "gse/value/Object.h"
@@ -426,6 +427,128 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		airdropped_this_turn,
 		monolith_upgraded
 	);
+}
+
+void Unit::ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf ) {
+	auto id_buf = buf;
+	const auto snapshot_id = id_buf.ReadInt< size_t >( "unit snapshot id" );
+	if ( snapshot_id != m_id ) {
+		THROW(
+			"unit snapshot id mismatch: " + std::to_string( snapshot_id ) +
+			" != " + std::to_string( m_id )
+		);
+	}
+
+	auto* const previous_tile = m_tile;
+	const auto previous_tile_it = previous_tile->units.find( m_id );
+	ASSERT(
+		previous_tile_it != previous_tile->units.end() && previous_tile_it->second == this,
+		"unit snapshot target is not registered on its tile"
+	);
+	previous_tile->units.erase( previous_tile_it );
+
+	std::unique_ptr< Unit > snapshot;
+	try {
+		snapshot.reset( Deserialize( GSE_CALL, buf, m_um ) );
+	}
+	catch ( ... ) {
+		previous_tile->units.insert_or_assign( m_id, this );
+		throw;
+	}
+
+	auto* const snapshot_tile = snapshot->m_tile;
+	const auto snapshot_tile_it = snapshot_tile->units.find( m_id );
+	ASSERT(
+		snapshot_tile_it != snapshot_tile->units.end() && snapshot_tile_it->second == snapshot.get(),
+		"deserialized unit snapshot is not registered on its tile"
+	);
+	const bool replace_frontend =
+		m_def != snapshot->m_def || m_owner != snapshot->m_owner || m_tile != snapshot_tile;
+	snapshot_tile_it->second = this;
+	snapshot->m_tile = nullptr;
+
+	m_tile = snapshot_tile;
+	m_def = snapshot->m_def;
+	m_owner = snapshot->m_owner;
+	m_movement = snapshot->m_movement;
+	m_morale = snapshot->m_morale;
+	m_health = snapshot->m_health;
+	m_moved_this_turn = snapshot->m_moved_this_turn;
+	m_terraforming = snapshot->m_terraforming;
+	m_terraforming_turns_remaining = snapshot->m_terraforming_turns_remaining;
+	m_home_base_id = snapshot->m_home_base_id;
+	m_fuel = snapshot->m_fuel;
+	m_transport_id = snapshot->m_transport_id;
+	m_native_capture_attempted = snapshot->m_native_capture_attempted;
+	m_convoy_resource = snapshot->m_convoy_resource;
+	m_airdropped_this_turn = snapshot->m_airdropped_this_turn;
+	m_monolith_upgraded = snapshot->m_monolith_upgraded;
+
+	{
+		std::lock_guard guard( m_wrapobjs_mutex );
+		for ( auto* const wrapobj : m_wrapobjs ) {
+			const auto set_int = [ wrapobj ]( const std::string& key, const int64_t value ) {
+				const auto it = wrapobj->value.find( key );
+				ASSERT(
+					it != wrapobj->value.end() && it->second->type == gse::VT_INT,
+					"invalid unit int wrapper property"
+				);
+				( (gse::value::Int*)it->second )->value = value;
+			};
+			const auto set_bool = [ wrapobj ]( const std::string& key, const bool value ) {
+				const auto it = wrapobj->value.find( key );
+				ASSERT(
+					it != wrapobj->value.end() && it->second->type == gse::VT_BOOL,
+					"invalid unit bool wrapper property"
+				);
+				( (gse::value::Bool*)it->second )->value = value;
+			};
+			const auto set_string = [ wrapobj ]( const std::string& key, const std::string& value ) {
+				const auto it = wrapobj->value.find( key );
+				ASSERT(
+					it != wrapobj->value.end() && it->second->type == gse::VT_STRING,
+					"invalid unit string wrapper property"
+				);
+				( (gse::value::String*)it->second )->value = value;
+			};
+
+			set_string( "def", m_def->m_id );
+			set_int( "owner", m_owner->GetIndex() );
+			const auto tile_it = wrapobj->value.find( "tile" );
+			ASSERT(
+				tile_it != wrapobj->value.end() && tile_it->second->type == gse::VT_OBJECT,
+				"invalid unit tile wrapper property"
+			);
+			auto* const tile_value = (gse::value::Object*)tile_it->second;
+			const auto tile_x_it = tile_value->value.find( "x" );
+			const auto tile_y_it = tile_value->value.find( "y" );
+			ASSERT(
+				tile_x_it != tile_value->value.end() && tile_x_it->second->type == gse::VT_INT &&
+				tile_y_it != tile_value->value.end() && tile_y_it->second->type == gse::VT_INT,
+				"invalid unit tile coordinate wrapper properties"
+			);
+			( (gse::value::Int*)tile_x_it->second )->value = m_tile->coord.x;
+			( (gse::value::Int*)tile_y_it->second )->value = m_tile->coord.y;
+			set_string( "terraforming", map::tile::Tile::GetTerraformingString( m_terraforming ) );
+			set_int( "terraforming_turns_remaining", m_terraforming_turns_remaining );
+			set_int( "home_base_id", m_home_base_id );
+			set_int( "fuel", m_fuel );
+			set_int( "transport_id", m_transport_id );
+			set_string( "convoy_resource", GetConvoyResourceString( m_convoy_resource ) );
+			set_bool( "is_embarked", m_transport_id != 0 );
+			set_bool( "is_immovable", m_def->GetMovementType() == MT_IMMOVABLE );
+			set_bool( "is_land", m_def->GetMovementType() == MT_LAND );
+			set_bool( "is_water", m_def->GetMovementType() == MT_WATER );
+			set_bool( "is_air", m_def->GetMovementType() == MT_AIR );
+		}
+	}
+
+	if ( replace_frontend ) {
+		m_um->ReplaceUnit( GSE_CALL, this );
+	}
+	else {
+		m_um->RefreshUnit( GSE_CALL, this );
+	}
 }
 
 WRAPIMPL_SERIALIZE( Unit )

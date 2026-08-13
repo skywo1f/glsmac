@@ -31,6 +31,8 @@ const get_initial_production = (game, owner, tile) => {
 };
 
 return {
+	unit_visibility: 'private',
+
 	get_initial_production: get_initial_production,
 
 	validate: (e) => {
