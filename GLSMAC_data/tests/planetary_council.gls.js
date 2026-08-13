@@ -637,6 +637,13 @@ test.assert(defiance.applied.terminal);
 
 define_council(game);
 callbacks.start({});
+const trigger_count_before_projection = #sizeof(triggers);
+master = false;
+callbacks.player_update({player: peacekeepers});
+test.assert(#sizeof(triggers) == trigger_count_before_projection + 1);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'council_updated');
+test.assert(triggers[#sizeof(triggers) - 1].data.player == peacekeepers);
+master = true;
 test.assert(!values.f_council_is_governor(clinical));
 test.assert(!values.f_council_has_global_trade_pact());
 test.assert(values.f_council_has_salvaged_unity_core());

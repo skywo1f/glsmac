@@ -178,6 +178,11 @@ return (game) => {
 			process_session();
 			process_supreme();
 		});
+		game.on('player_update', (event) => {
+			if (!game.is_master()) {
+				game.trigger('council_updated', {player: event.player});
+			}
+		});
 		game.on('submission_updated', (event) => { process_supreme(); });
 		game.on('turn', (e) => {
 			process_session();

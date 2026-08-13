@@ -37,6 +37,8 @@
 	let client_base_snapshot_probe_complete = false;
 	let client_base_infiltration_probe_complete = false;
 	let client_player_privacy_probe_complete = false;
+	let client_player_update_callback_seen = false;
+	let client_council_projection_refresh = false;
 	let client_live_visibility_probe_complete = false;
 	let mixed_unit_privacy_acknowledged = false;
 	let private_map_projection_phase = 0;
@@ -159,6 +161,19 @@
 		const get_client_player_id = () => {
 			return game.is_master() ? 1 : game.get_player().id;
 		};
+
+		game.on('player_update', (event) => {
+			if (game.is_master() || game.get_player(0).get_major_atrocities() != 17) {
+				return;
+			}
+			client_player_update_callback_seen = true;
+		});
+		game.on('council_updated', (event) => {
+			if (game.is_master() || game.get_player(0).get_major_atrocities() != 17) {
+				return;
+			}
+			client_council_projection_refresh = true;
+		});
 
 		const find_founding_site_coords = () => {
 			const tm = game.get_tm();
@@ -1390,7 +1405,11 @@
 			#async(100, () => {
 				wait_ticks++;
 				const host = game.get_player(0);
-				if (host.get_major_atrocities() == 17) {
+				if (
+					host.get_major_atrocities() == 17 &&
+					client_player_update_callback_seen &&
+					client_council_projection_refresh
+				) {
 					if (!host.is_redacted || host.get_energy_credits() != 0) {
 						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: live rival player private state leaked');
 						glsmac.exit();
@@ -1401,7 +1420,11 @@
 					return false;
 				}
 				if (wait_ticks >= 100) {
-					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: live player projection timed out');
+					#print(
+						'MULTIPLAYER_SMOKE_FAIL_CLIENT: live player projection timed out ' +
+						'(callback=' + #to_string(client_player_update_callback_seen) +
+						', council=' + #to_string(client_council_projection_refresh) + ')'
+					);
 					glsmac.exit();
 					return false;
 				}

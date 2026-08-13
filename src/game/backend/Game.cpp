@@ -2581,9 +2581,14 @@ void Game::ApplyPlayerVisibilityUpdate( GSE_CALLABLE, const std::string& payload
 		THROW( "unexpected data after player visibility update" );
 	}
 
-	for ( const auto& [ slot_num, serialized_player ] : projected_players ) {
-		auto& player_slot = m_state->m_slots->GetSlot( slot_num );
-		player_slot.GetPlayer()->Deserialize( types::Buffer( serialized_player ) );
+	for ( const auto& projected_player : projected_players ) {
+		auto& player_slot = m_state->m_slots->GetSlot( projected_player.first );
+		player_slot.GetPlayer()->Deserialize( types::Buffer( projected_player.second ) );
+	}
+	// Observers must see one internally consistent projected roster in every
+	// callback, even when several players changed in the same event.
+	for ( const auto& projected_player : projected_players ) {
+		auto& player_slot = m_state->m_slots->GetSlot( projected_player.first );
 		Trigger(
 			GSE_CALL, "player_update", ARGS_F( &player_slot ) {
 				{

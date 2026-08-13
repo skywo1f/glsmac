@@ -1025,5 +1025,14 @@ tracked the defender actually selected by the combat rules. The ordinary
 multiplayer smoke then passed in 66.77 seconds with its combat, capture,
 malformed-packet, and running-game reconnect phases intact.
 
+Projected player updates now apply every player snapshot in a packet before
+firing callbacks, so observers cannot see a partially updated roster. Clients
+also relay projected player changes through the Council refresh path; public
+Council sessions and ballots whose source event is withheld to protect private
+player state therefore update the remote Council popup immediately. The focused
+Planetary Council test and Windows x64 Release rebuild passed, the core
+host/client scenario passed in 55.4 seconds, and the registered multiplayer
+test passed in 65.28 seconds with malformed-packet and reconnect coverage.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
