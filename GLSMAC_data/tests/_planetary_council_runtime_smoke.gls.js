@@ -9,6 +9,7 @@
 	let vote_requested = false;
 	let observed_session = null;
 	let observed_accession = false;
+	let contact_requests_sent = false;
 
 	const fail = (message) => {
 		if (!finished) {
@@ -127,6 +128,25 @@
 						fail('initial Council population events timed out');
 						return false;
 					}
+					return true;
+				}
+				let contacts_ready = true;
+				for (other of get_voters()) {
+					if (
+						other.id != player.id &&
+						(!player.has_contact(other) || !other.has_contact(player))
+					) {
+						contacts_ready = false;
+						if (!contact_requests_sent) {
+							game.event('establish_diplomatic_contact', {
+								player: player,
+								target: other,
+							});
+						}
+					}
+				}
+				if (!contacts_ready) {
+					contact_requests_sent = true;
 					return true;
 				}
 				const error = game.get('f_council_validate_call')(player, 'supreme');

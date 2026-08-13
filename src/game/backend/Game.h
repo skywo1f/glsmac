@@ -26,6 +26,10 @@
 
 class GLSMAC;
 
+namespace gse {
+class GSE;
+}
+
 namespace types {
 namespace texture {
 class Texture;
@@ -398,6 +402,9 @@ private:
 	unit::UnitManager* m_um = nullptr;
 	base::BaseManager* m_bm = nullptr;
 	animation::AnimationManager* m_am = nullptr;
+	gse::GSE* m_session_gse = nullptr;
+	void RootSessionManagers();
+	void UnrootSessionManagers();
 	struct visibility_tiles_t {
 		std::unordered_set< const map::tile::Tile* > visible = {};
 		std::unordered_set< const map::tile::Tile* > sensor_detected = {};

@@ -1,5 +1,8 @@
 return {
 	validate: (e) => {
+		if (!#is_defined(e.data.base)) {
+			return 'Base is required to hurry production';
+		}
 		const base = e.data.base;
 		const owner = base.get_owner();
 		if (e.caller != owner.id) {

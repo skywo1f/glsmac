@@ -3,6 +3,26 @@ return {
 	init: (p) => {
 		this.p = p;
 		this.base = null;
+		this.get_hurry_state = () => {
+			if (this.base == null) {
+				return {cost: 0, can_hurry: false};
+			}
+			const production = this.base.get_production();
+			if (!#is_defined(production)) {
+				return {cost: 0, can_hurry: false};
+			}
+			const owner = this.base.get_owner();
+			const player = this.p.game.get_player();
+			const cost = this.p.game.get('f_economy_get_hurry_cost')(this.base);
+			return {
+				cost: cost,
+				can_hurry:
+					cost > 0 &&
+					owner.id == player.id &&
+					!this.p.game.is_turn_complete(player.id) &&
+					owner.energy_credits >= cost,
+			};
+		};
 
 		this.frame = p.body.panel({
 			class: 'base-screen-frame',
@@ -40,18 +60,22 @@ return {
 			return false;
 		});
 		this.btn_hurry.on('click', (e) => {
-			if (this.base != null && this.p.game.get('f_economy_get_hurry_cost')(this.base) > 0) {
+			const state = this.get_hurry_state();
+			if (state.can_hurry) {
+				this.btn_hurry.text = 'HURRYING...';
 				this.p.game.event('hurry_base_production', {base: this.base});
 			}
-			return false;
+			return true;
 		});
 
 	},
 
 	set: (data) => {
 		this.base = data.base;
-		const cost = this.p.game.get('f_economy_get_hurry_cost')(this.base);
-		this.btn_hurry.text = cost > 0 ? 'HURRY (' + #to_string(cost) + ')' : 'HURRY';
+		const state = this.get_hurry_state();
+		this.btn_hurry.text = state.cost > 0
+			? 'HURRY (' + #to_string(state.cost) + ')'
+			: 'HURRY';
 	},
 
 };

@@ -39,9 +39,7 @@ return {
 			this.vote_first_button.on('click', (e) => {
 				const session = p.game.get('f_council_get_session')();
 				if (this.player != null && session != null) {
-					p.game.event('cast_council_vote', {
-						player: this.player, vote_id: session.candidate_a_id,
-					});
+					this.cast_vote(session.candidate_a_id);
 				}
 				return true;
 			});
@@ -52,9 +50,7 @@ return {
 			this.vote_second_button.on('click', (e) => {
 				const session = p.game.get('f_council_get_session')();
 				if (this.player != null && session != null) {
-					p.game.event('cast_council_vote', {
-						player: this.player, vote_id: session.candidate_b_id,
-					});
+					this.cast_vote(session.candidate_b_id);
 				}
 				return true;
 			});
@@ -64,7 +60,7 @@ return {
 			});
 			this.abstain_button.on('click', (e) => {
 				if (this.player != null) {
-					p.game.event('cast_council_vote', {player: this.player, vote_id: -1});
+					this.cast_vote(-1);
 				}
 				return true;
 			});
@@ -97,11 +93,7 @@ return {
 				class: 'game-popup-button', text: 'Convene Governor Election', top: 122,
 			});
 			this.governor_button.on('click', (e) => {
-				if (this.player != null) {
-					p.game.event('call_planetary_council', {
-						player: this.player, proposal: 'governor',
-					});
-				}
+				this.call_council('governor');
 				return true;
 			});
 
@@ -109,11 +101,7 @@ return {
 				class: 'game-popup-button', text: 'Propose Supreme Leader', top: 148,
 			});
 			this.supreme_button.on('click', (e) => {
-				if (this.player != null) {
-					p.game.event('call_planetary_council', {
-						player: this.player, proposal: 'supreme',
-					});
-				}
+				this.call_council('supreme');
 				return true;
 			});
 
@@ -123,10 +111,9 @@ return {
 			this.trade_button.on('click', (e) => {
 				if (this.player != null) {
 					const has_trade_pact = p.game.get('f_council_has_global_trade_pact')();
-					p.game.event('call_planetary_council', {
-						player: this.player,
-						proposal: has_trade_pact ? 'repeal_trade_pact' : 'trade_pact',
-					});
+					this.call_council(
+						has_trade_pact ? 'repeal_trade_pact' : 'trade_pact'
+					);
 				}
 				return true;
 			});
@@ -135,11 +122,7 @@ return {
 				class: 'game-popup-button', text: 'Propose Salvage of Unity Fusion Core', top: 200,
 			});
 			this.unity_button.on('click', (e) => {
-				if (this.player != null) {
-					p.game.event('call_planetary_council', {
-						player: this.player, proposal: 'salvage_unity_core',
-					});
-				}
+				this.call_council('salvage_unity_core');
 				return true;
 			});
 
@@ -149,10 +132,9 @@ return {
 			this.charter_button.on('click', (e) => {
 				if (this.player != null) {
 					const repealed = p.game.get('f_council_is_un_charter_repealed')();
-					p.game.event('call_planetary_council', {
-						player: this.player,
-						proposal: repealed ? 'reinstate_un_charter' : 'repeal_un_charter',
-					});
+					this.call_council(
+						repealed ? 'reinstate_un_charter' : 'repeal_un_charter'
+					);
 				}
 				return true;
 			});
@@ -161,11 +143,7 @@ return {
 				class: 'game-popup-button', text: 'Propose Launch of Solar Shade', top: 252,
 			});
 			this.solar_button.on('click', (e) => {
-				if (this.player != null) {
-					p.game.event('call_planetary_council', {
-						player: this.player, proposal: 'launch_solar_shade',
-					});
-				}
+				this.call_council('launch_solar_shade');
 				return true;
 			});
 
@@ -173,11 +151,7 @@ return {
 				class: 'game-popup-button', text: 'Propose Melting of Polar Caps', top: 278,
 			});
 			this.polar_button.on('click', (e) => {
-				if (this.player != null) {
-					p.game.event('call_planetary_council', {
-						player: this.player, proposal: 'melt_polar_caps',
-					});
-				}
+				this.call_council('melt_polar_caps');
 				return true;
 			});
 
@@ -203,6 +177,50 @@ return {
 			}
 		});
 		return result;
+	},
+
+	cast_vote: (vote_id) => {
+		if (this.player == null) { return; }
+		const error = this.p.game.get('f_council_validate_vote')(
+			this.player,
+			vote_id
+		);
+		if (#is_defined(error)) {
+			this.detail_text.text = error;
+			return;
+		}
+		this.vote_first_button.hide();
+		this.vote_second_button.hide();
+		this.abstain_button.hide();
+		this.detail_text.text = 'Submitting Council vote...';
+		this.p.game.event('cast_council_vote', {
+			player: this.player,
+			vote_id: vote_id,
+		});
+	},
+
+	call_council: (proposal) => {
+		if (this.player == null) { return; }
+		const error = this.p.game.get('f_council_validate_call')(
+			this.player,
+			proposal
+		);
+		if (#is_defined(error)) {
+			this.detail_text.text = error;
+			return;
+		}
+		this.governor_button.hide();
+		this.supreme_button.hide();
+		this.trade_button.hide();
+		this.unity_button.hide();
+		this.charter_button.hide();
+		this.solar_button.hide();
+		this.polar_button.hide();
+		this.detail_text.text = 'Convening the Planetary Council...';
+		this.p.game.event('call_planetary_council', {
+			player: this.player,
+			proposal: proposal,
+		});
 	},
 
 	refresh: () => {

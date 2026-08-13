@@ -10,6 +10,8 @@ return {
 	init: (p) => {
 
 		this.p = p;
+		this.catalog_key = '';
+		this.catalog = [];
 
 		this.parts = {};
 
@@ -75,18 +77,62 @@ return {
 
 	},
 
+	get_catalog: (base) => {
+		const owner = base.get_owner();
+		const research = owner.get_research_state();
+		let known = {};
+		let key = #to_string(owner.id) + '|';
+		for (id of research.technologies) {
+			known[id] = true;
+			key += id + ',';
+		}
+		key += '|';
+		for (id of owner.get_obsolete_unit_designs()) {
+			key += id + ',';
+		}
+		const unit_defs = this.p.game.get_um().get_unit_defs();
+		const facility_defs = this.p.game.get_bm().get_facility_defs();
+		key += '|' + #to_string(#sizeof(unit_defs)) + ':' +
+			#to_string(#sizeof(facility_defs));
+		if (key == this.catalog_key) {
+			return this.catalog;
+		}
+
+		let result = [];
+		for (def of unit_defs) {
+			if (
+				(#is_defined(def.required_technology) &&
+					def.required_technology != '' &&
+					!#is_defined(known[def.required_technology])) ||
+				(#is_defined(def.owner_player_id) && def.owner_player_id >= 0 &&
+					def.owner_player_id != owner.id) ||
+				owner.is_unit_design_obsolete(def.id)
+			) {
+				continue;
+			}
+			result :+def;
+		}
+		for (def of facility_defs) {
+			if (
+				#is_defined(def.required_technology) &&
+				def.required_technology != '' &&
+				!#is_defined(known[def.required_technology])
+			) {
+				continue;
+			}
+			result :+def;
+		}
+		this.catalog_key = key;
+		this.catalog = result;
+		return result;
+	},
+
 	set: (data) => {
 		const base = data.base;
 		const production = base.get_production();
 		const queue = base.get_production_queue();
 		const pending = this.p.game.get('f_base_get_pending_production')(base);
-		let definitions = [];
-		for (def of this.p.game.get_um().get_unit_defs()) {
-			definitions :+def;
-		}
-		for (def of this.p.game.get_bm().get_facility_defs()) {
-			definitions :+def;
-		}
+		const definitions = this.get_catalog(base);
 		let set_candidates = [];
 		let queue_candidates = [];
 		for (def of definitions) {

@@ -26,6 +26,8 @@
 #include "gse/value/Undefined.h"
 #include "gse/value/Array.h"
 #include "gse/value/Null.h"
+#include "gse/GSE.h"
+#include "gse/context/Context.h"
 #include "map/tile/TileManager.h"
 #include "map/tile/Tiles.h"
 #include "map/MapState.h"
@@ -1427,6 +1429,40 @@ void Game::GetReachableObjects( std::unordered_set< Object* >& reachable_objects
 	}
 
 	GC_DEBUG_END();
+}
+
+void Game::RootSessionManagers() {
+	ASSERT( m_state && m_state->m_ctx, "game state context not set" );
+	ASSERT( !m_session_gse, "session managers already rooted" );
+	ASSERT( m_tm && m_rm && m_um && m_bm && m_am, "session manager not set" );
+	m_session_gse = m_state->m_ctx->GetGSE();
+	m_session_gse->AddRootObject( m_tm );
+	m_session_gse->AddRootObject( m_rm );
+	m_session_gse->AddRootObject( m_um );
+	m_session_gse->AddRootObject( m_bm );
+	m_session_gse->AddRootObject( m_am );
+}
+
+void Game::UnrootSessionManagers() {
+	if ( !m_session_gse ) {
+		return;
+	}
+	if ( m_tm ) {
+		m_session_gse->RemoveRootObject( m_tm );
+	}
+	if ( m_rm ) {
+		m_session_gse->RemoveRootObject( m_rm );
+	}
+	if ( m_um ) {
+		m_session_gse->RemoveRootObject( m_um );
+	}
+	if ( m_bm ) {
+		m_session_gse->RemoveRootObject( m_bm );
+	}
+	if ( m_am ) {
+		m_session_gse->RemoveRootObject( m_am );
+	}
+	m_session_gse = nullptr;
 }
 
 const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE ) {
@@ -2899,6 +2935,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 		m_bm = new base::BaseManager( this );
 		ASSERT( !m_am, "am not null" );
 		m_am = new animation::AnimationManager( this );
+		RootSessionManagers();
 		m_state->TriggerObject( this, "configure", ARGS_F( this ) {
 			{
 				"game",
@@ -3275,6 +3312,7 @@ void Game::ResetGame() {
 	}
 	m_next_event_id = 0;
 
+	UnrootSessionManagers();
 	m_tm = nullptr;
 	m_rm = nullptr;
 	m_um = nullptr;

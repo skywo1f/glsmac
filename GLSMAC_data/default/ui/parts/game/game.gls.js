@@ -54,6 +54,13 @@ return (m) => {
 		game.on('start_ui', (e) => {
 
 			m.root.clear();
+			m.root.sound({
+				id: 'game-ambience',
+				sound: 'wind e4.wav',
+				autoplay: true,
+				repeat: true,
+				volume: 0.12,
+			});
 
 			p = {
 				game: game,

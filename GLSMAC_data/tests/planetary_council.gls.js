@@ -34,6 +34,7 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 	};
 	let technologies = [];
 	let relations = {};
+	let contacts = {};
 	let offers = {};
 	let infiltrated = {};
 	let integrity = 0;
@@ -59,6 +60,12 @@ const make_player = (id, name, faction_id, role, progenitor) => {
 		},
 		set_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
+		},
+		has_contact: (other) => {
+			return contacts['p' + #to_string(other.id)] == true;
+		},
+		set_contact: (other, value) => {
+			contacts['p' + #to_string(other.id)] = value;
 		},
 		set_diplomatic_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
@@ -111,6 +118,11 @@ const empath = make_player(2, 'Gaians', 'GAIANS', 'ai', false);
 const clinical = make_player(3, 'University', 'UNIVERSITY', 'ai', false);
 const progenitor = make_player(4, 'Caretakers', 'CARETAKERS', 'ai', true);
 const players = [peacekeepers, empath, clinical, progenitor];
+for (player of players) {
+	for (other of players) {
+		if (player.id != other.id) { player.set_contact(other, true); }
+	}
+}
 const peace_base = make_base(1, peacekeepers, 4, 100);
 const empath_base = make_base(2, empath, 6, 100);
 const clinical_base = make_base(3, clinical, 5, 900);
@@ -214,6 +226,9 @@ test.assert(rules.get_required_votes('governor', 27) == 14);
 test.assert(rules.get_required_votes('supreme', 27) == 21);
 test.assert(#is_defined(rules.validate_call(game, clinical, 'supreme')));
 test.assert(!#is_defined(rules.validate_call(game, peacekeepers, 'governor')));
+clinical.set_contact(peacekeepers, false);
+test.assert(#is_defined(rules.validate_call(game, peacekeepers, 'governor')));
+clinical.set_contact(peacekeepers, true);
 
 let expelled_state = empath.get_council_state();
 expelled_state.is_expelled = true;

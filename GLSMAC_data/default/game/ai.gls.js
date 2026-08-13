@@ -926,6 +926,33 @@ const queue_production = (game, player, bases, units) => {
 	let supply_count = 0;
 	const unit_defs = game.get_um().get_unit_defs();
 	const facility_defs = game.get_bm().get_facility_defs();
+	let known_technologies = {};
+	for (id of player.get_research_state().technologies) {
+		known_technologies[id] = true;
+	}
+	let available_unit_defs = [];
+	for (def of unit_defs) {
+		if (
+			(#is_defined(def.required_technology) && def.required_technology != '' &&
+				!#is_defined(known_technologies[def.required_technology])) ||
+			(#is_defined(def.owner_player_id) && def.owner_player_id >= 0 &&
+				def.owner_player_id != player.id) ||
+			player.is_unit_design_obsolete(def.id)
+		) {
+			continue;
+		}
+		available_unit_defs :+def;
+	}
+	let available_facility_defs = [];
+	for (def of facility_defs) {
+		if (
+			#is_defined(def.required_technology) && def.required_technology != '' &&
+			!#is_defined(known_technologies[def.required_technology])
+		) {
+			continue;
+		}
+		available_facility_defs :+def;
+	}
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
 	const all_units = game.get_um().get_units();
@@ -1145,14 +1172,6 @@ const queue_production = (game, player, bases, units) => {
 			}
 		}
 		const context = {
-			is_unit_available: (def) => {
-				return (
-					(!#is_defined(def.required_technology) || def.required_technology == '' ||
-						player.has_technology(def.required_technology)) &&
-					(!#is_defined(def.owner_player_id) || def.owner_player_id < 0 ||
-						def.owner_player_id == player.id)
-				);
-			},
 			needs_garrison: garrison_count < required_garrison,
 			needs_former: base_tile.is_water
 				? sea_former_count < metrics.sea_base_count
@@ -1222,8 +1241,8 @@ const queue_production = (game, player, bases, units) => {
 		};
 		const selected = production.choose(
 			base,
-			unit_defs,
-			facility_defs,
+			available_unit_defs,
+			available_facility_defs,
 			context
 		);
 		if (headquarters_queue_base == base) {

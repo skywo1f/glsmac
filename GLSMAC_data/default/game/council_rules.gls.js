@@ -431,6 +431,18 @@ const is_voter = (game, player) => {
 	return false;
 };
 
+const has_all_commlinks = (game, player) => {
+	for (voter of get_voters(game)) {
+		if (
+			voter.id != player.id &&
+			(!player.has_contact(voter) || !voter.has_contact(player))
+		) {
+			return false;
+		}
+	}
+	return true;
+};
+
 const validate_call = (game, player, proposal) => {
 	if (game.is_game_over()) {
 		return 'Game already has a winner';
@@ -459,6 +471,9 @@ const validate_call = (game, player, proposal) => {
 	}
 	if (#sizeof(get_rankings(game)) < 2) {
 		return 'At least two eligible factions are required for a Council session';
+	}
+	if (!has_all_commlinks(game, player)) {
+		return 'Commlink frequencies for every eligible faction are required';
 	}
 	const policy_state = get_policy_state(game);
 	if (policy_state == null) {
@@ -726,6 +741,7 @@ return {
 	has_active_session: has_active_session,
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,
+	has_all_commlinks: has_all_commlinks,
 	validate_call: validate_call,
 	get_available_policy_proposals: get_available_policy_proposals,
 	validate_vote: validate_vote,

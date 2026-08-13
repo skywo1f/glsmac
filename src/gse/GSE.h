@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <functional>
+#include <mutex>
 
 #include "gc/Object.h"
 
@@ -101,6 +102,7 @@ private:
 	std::map< std::string, Value* > m_globals = {};
 
 	std::unordered_set< gc::Object* > m_root_objects = {};
+	std::mutex m_root_objects_mutex;
 
 	std::vector< Bindings* > m_bindings = {};
 	builtins::Builtins m_builtins = {};

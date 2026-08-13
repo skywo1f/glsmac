@@ -265,11 +265,13 @@ Value* const GSE::GetGlobal( const std::string& identifier ) {
 }
 
 void GSE::AddRootObject( gc::Object* const object ) {
+	std::lock_guard guard( m_root_objects_mutex );
 	ASSERT( m_root_objects.find( object ) == m_root_objects.end(), "root object already exists" );
 	m_root_objects.insert( object );
 }
 
 void GSE::RemoveRootObject( gc::Object* const object ) {
+	std::lock_guard guard( m_root_objects_mutex );
 	ASSERT( m_root_objects.find( object ) != m_root_objects.end(), "root object not found" );
 	m_root_objects.erase( object );
 }
@@ -332,8 +334,11 @@ void GSE::GetReachableObjects( std::unordered_set< Object* >& reachable_objects 
 	GC_DEBUG_END();
 
 	GC_DEBUG_BEGIN( "root_objects" );
-	for ( const auto& object : m_root_objects ) {
-		GC_REACHABLE( object );
+	{
+		std::lock_guard guard( m_root_objects_mutex );
+		for ( const auto& object : m_root_objects ) {
+			GC_REACHABLE( object );
+		}
 	}
 	GC_DEBUG_END();
 

@@ -133,26 +133,21 @@ const get_role_abilities = (known, role) => {
 };
 
 const get_render = (chassis, role) => {
-	let x = role == 'assault' || role == 'former' ? 206 : 2;
-	let y = 156;
-	if (chassis.triad == 'land' && chassis.speed > 1) {
-		x = 104;
-	} else if (chassis.triad == 'sea') {
-		x = 2;
-		y = 310;
-	} else if (chassis.triad == 'air') {
-		x = 2;
-		y = 541;
+	let y = 82;
+	if (role == 'former' || role == 'supply' || role == 'transport') {
+		y = 158;
+	} else if (role == 'colony') {
+		y = 235;
 	}
 	return {
 		type: 'sprite',
-		file: 'units.pcx',
-		x: x,
+		file: 'newicons.pcx',
+		x: 518,
 		y: y,
-		w: 100,
-		h: 75,
-		cx: x + 51,
-		cy: y + 51,
+		w: 80,
+		h: 69,
+		cx: 558,
+		cy: y + 35,
 	};
 };
 

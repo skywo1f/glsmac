@@ -180,6 +180,9 @@ return (game) => {
 		game.set('f_council_validate_call', (player, proposal) => {
 			return rules.validate_call(game, player, proposal);
 		});
+		game.set('f_council_validate_vote', (player, vote_id) => {
+			return rules.validate_vote(game, player, vote_id);
+		});
 		game.set('f_council_is_governor', (player) => {
 			const governor = rules.get_governor(game);
 			return governor != null && governor.id == player.id;
