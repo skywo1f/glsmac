@@ -104,25 +104,42 @@ return {
 				background: 'interface.pcx:crop(332,99,379,146)',
 			},
 		});
-		const nerve_stapling_btn = this.frame.panel({
+		this.nerve_stapling_panel = this.frame.panel({
 			class: 'default-panel',
 			width: 54,
 			height: 54,
 			align: 'bottom right',
 			bottom: 2,
 			right: 4,
-		}).button({
+		});
+		this.nerve_stapling_btn = this.nerve_stapling_panel.button({
 			class: 'base-screen-bottombar-nsbtn',
+		});
+		this.nerve_stapling_btn.on('click', (e) => {
+			if (this.base != null) {
+				this.p.modules.popup.set('nerve_stapling', {base: this.base});
+				this.p.modules.popup.show('nerve_stapling');
+			}
+			return true;
 		});
 
 	},
 
 	set: (data) => {
 
-		this.basename.text = data.name;
+		const base = data.base;
+		this.base = base;
+		this.basename.text = base.name;
+		const player = this.p.game.get_player();
+		const error = this.p.game.get('f_nerve_stapling_get_error')(base, player.id);
+		if (!#is_defined(error)) {
+			this.nerve_stapling_panel.show();
+		} else {
+			this.nerve_stapling_panel.hide();
+		}
 
 		// prepare classes with population images
-		const renders = this.p.game.get_bm().get_pop_renders(data.owner);
+		const renders = this.p.game.get_bm().get_pop_renders(base.get_owner());
 		for (id in renders) {
 			const variants = renders[id];
 			for (i in variants) {
@@ -136,7 +153,7 @@ return {
 		this.pops.clear();
 		let left = 3;
 		let shift = 40;
-		for (pop of data.pops) {
+		for (pop of base.get_pops()) {
 			let variant = pop.variant;
 			const pop_type = pop.get_type();
 			if (!#is_defined(renders[pop_type][variant])) {

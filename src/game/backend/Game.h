@@ -1,9 +1,11 @@
 #pragma once
 
+#include <cstdint>
 #include <unordered_map>
 #include <unordered_set>
 #include <string>
 #include <map>
+#include <set>
 #include <vector>
 
 #include "common/MTModule.h"
@@ -23,6 +25,10 @@
 #include "game/backend/map/tile/TileState.h"
 
 class GLSMAC;
+
+namespace gse {
+class GSE;
+}
 
 namespace types {
 namespace texture {
@@ -63,6 +69,7 @@ class UnitManager;
 }
 
 namespace base {
+class Base;
 class BaseManager;
 }
 
@@ -106,6 +113,7 @@ enum op_t {
 	OP_GET_MAP_DATA,
 	OP_RESET,
 	OP_SAVE_MAP,
+	OP_SAVE_GAME,
 	OP_GET_FRONTEND_REQUESTS,
 	OP_SEND_BACKEND_REQUESTS,
 	OP_ADD_EVENT,
@@ -271,6 +279,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 
 	// saves current map into file
 	common::mt_id_t MT_SaveMap( const std::string& path );
+	common::mt_id_t MT_SaveGame( const std::string& path );
 
 	// get all pending frontend requests (will be cleared after)
 	common::mt_id_t MT_GetFrontendRequests();
@@ -293,6 +302,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 	Random* GetRandom() const;
 	map::Map* GetMap() const;
 	State* GetState() const;
+	State* TryGetState() const;
 	const Player* GetPlayer() const;
 	const size_t GetSlotNum() const;
 
@@ -302,6 +312,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 
 	void Event( GSE_CALLABLE, const std::string& name, const gse::value::object_properties_t& args );
 	void AddEvent( event::Event* const event );
+	void AddSerializedEvent( const std::string& serialized_event, const bool from_server );
 	void AddEventResponse( const std::string& event_id, const bool result, gse::Value* const resolved );
 
 	void ClearEvents();
@@ -331,6 +342,27 @@ public:
 	void UncompleteTurn( const size_t slot_num );
 	void AdvanceTurn( const size_t turn_id );
 
+	enum victory_type_t : uint8_t {
+		VT_NONE = 0,
+		VT_CONQUEST,
+		VT_TRANSCENDENCE,
+		VT_ECONOMIC,
+		VT_DIPLOMATIC,
+	};
+	struct victory_state_t {
+		victory_type_t type = VT_NONE;
+		size_t winner_slot = 0;
+		size_t turn_id = 0;
+	};
+	const bool IsGameOver() const;
+	const victory_state_t& GetVictoryState() const;
+	Player* GetConquestWinner() const;
+	void DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t winner_slot );
+	static const std::string GetVictoryTypeString( const victory_type_t type );
+	static const bool ParseVictoryType( const std::string& value, victory_type_t& result );
+	static constexpr const char* SAVE_GAME_MAGIC = "GLSMAC_SAVE_GAME";
+	static constexpr uint32_t SAVE_GAME_VERSION = 1;
+
 	void GlobalFinalizeTurn( GSE_CALLABLE );
 	void FirstTurn( GSE_CALLABLE );
 
@@ -341,6 +373,19 @@ public:
 	unit::UnitManager* GetUM() const;
 	base::BaseManager* GetBM() const;
 	animation::AnimationManager* GetAM() const;
+	const std::unordered_set< size_t > GetVisibleUnitIdsForSlot( const size_t slot_num ) const;
+	enum base_visibility_t : uint8_t {
+		BV_HIDDEN = 0,
+		BV_PUBLIC,
+		BV_FULL,
+	};
+	using projected_bases_t = std::map< size_t, std::string >;
+	const base_visibility_t GetBaseVisibilityForSlot(
+		const base::Base* base,
+		const size_t slot_num
+	) const;
+	const projected_bases_t GetProjectedBasesForSlot( const size_t slot_num ) const;
+	const std::unordered_set< size_t > GetFullBaseIdsForSlot( const size_t slot_num ) const;
 
 	gc::Space* const GetGCSpace() const;
 
@@ -357,6 +402,15 @@ private:
 	unit::UnitManager* m_um = nullptr;
 	base::BaseManager* m_bm = nullptr;
 	animation::AnimationManager* m_am = nullptr;
+	gse::GSE* m_session_gse = nullptr;
+	void RootSessionManagers();
+	void UnrootSessionManagers();
+	struct visibility_tiles_t {
+		std::unordered_set< const map::tile::Tile* > visible = {};
+		std::unordered_set< const map::tile::Tile* > sensor_detected = {};
+		std::unordered_set< const map::tile::Tile* > radar_detected = {};
+	};
+	const visibility_tiles_t GetVisibilityTilesForSlot( const size_t slot_num ) const;
 
 	enum game_state_t {
 		GS_NONE,
@@ -380,9 +434,17 @@ private:
 	std::unordered_set< size_t > m_verified_turn_checksum_slots = {};
 
 	std::vector< FrontendRequest >* m_pending_frontend_requests = nullptr;
+	bool m_frontend_exploration_initialized = false;
+	std::set< std::pair< size_t, size_t > > m_frontend_explored_tiles = {};
+	void PushExplorationUpdate();
+	bool m_frontend_territory_visibility_initialized = false;
+	uint64_t m_frontend_territory_visible_slots = 0;
+	void PushTerritoryVisibilityUpdate();
 
 	void InitGame( MT_Response& response, MT_CANCELABLE );
 	void ResetGame();
+	const std::string SerializeWorldSnapshot( const size_t* viewer_slot ) const;
+	const bool DeserializeWorldSnapshot( GSE_CALLABLE, const std::string& serialized_snapshot );
 
 	// seed needs to be consistent during session (to prevent save-scumming and for easier reproduction of bugs)
 	Random* m_random = nullptr;
@@ -392,19 +454,28 @@ private:
 	map::Map* m_old_map = nullptr; // to restore state, for example if loading of another map failed
 
 	turn::Turn m_current_turn = {};
+	victory_state_t m_victory_state = {};
+	bool m_is_loaded_game = false;
 
 	bool m_is_turn_complete = false;
+	void RestoreTurn( const size_t turn_id );
 	void CheckTurnComplete();
 
 	std::unordered_map< std::string, event::EventHandler* > m_event_handlers = {};
 	common::Mutex m_event_handlers_mutex;
 
-	std::vector< event::Event* > m_pending_events = {};
+	struct pending_event_t {
+		event::Event* event = nullptr;
+		std::string serialized_event = "";
+		bool from_server = false;
+	};
+	std::vector< pending_event_t > m_pending_events = {};
 	common::Mutex m_pending_events_mutex;
 
 	struct event_waiting_for_response_t {
 		event::Event* event;
 		gse::Value* rollback_data;
+		bool was_applied = false;
 	};
 	std::unordered_map< std::string, event_waiting_for_response_t > m_events_waiting_for_responses = {};
 	common::Mutex m_events_waiting_for_responses_mutex;
@@ -428,8 +499,13 @@ private:
 	void SetTurnStatus( const backend::turn::turn_status_t status );
 
 	void ProcessEvents();
+	void ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
+	void ApplyBaseVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
+	void ApplyPlayerVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
+	void ApplyMapProjectionUpdate( GSE_CALLABLE, const std::string& payload );
 
 private:
+	friend class map::Map;
 	friend class map::tile::TileManager;
 	friend class resource::ResourceManager;
 	friend class unit::UnitManager;

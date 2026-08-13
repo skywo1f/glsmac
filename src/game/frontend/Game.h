@@ -2,6 +2,7 @@
 
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 #include "common/Module.h"
 
@@ -310,7 +311,7 @@ private:
 			};
 		} edge_scrolling;
 		types::Vec2< float > last_mouse_position;
-		unsigned char mouse_buttons_pressed;
+		size_t mouse_buttons_pressed;
 		float key_zooming = 0;
 	} m_map_control = {};
 
@@ -369,12 +370,56 @@ private:
 	struct {
 		std::unordered_map< ::resource::resource_t, types::texture::Texture* > source;
 		types::texture::Texture* terrain = nullptr;
+		types::texture::Texture* fog = nullptr;
+		types::texture::Texture* territory = nullptr;
 	} m_textures;
 
 	struct {
 		actor::TileSelection* tile_selection = nullptr;
 		scene::actor::Instanced* terrain = nullptr;
+		scene::actor::Instanced* fog = nullptr;
+		scene::actor::Instanced* territory = nullptr;
 	} m_actors;
+
+	enum fog_state_t : uint8_t {
+		FS_VISIBLE,
+		FS_EXPLORED,
+		FS_UNEXPLORED,
+	};
+	std::unordered_set< size_t > m_explored_tiles = {};
+	std::unordered_set< size_t > m_currently_visible_tiles = {};
+	std::vector< fog_state_t > m_fog_states = {};
+	struct territory_knowledge_t {
+		bool known = false;
+		bool claimed = false;
+		size_t owner_slot = 0;
+	};
+	std::vector< territory_knowledge_t > m_territory_knowledge = {};
+	std::unordered_set< size_t > m_pending_territory_observations = {};
+	uint64_t m_territory_visible_slots = 0;
+	bool m_territory_borders_dirty = true;
+	bool m_map_visibility_dirty = true;
+	bool m_exploration_changed = true;
+	const size_t GetTileIndex( const types::Vec2< size_t >& coords ) const;
+	const size_t GetCompactTileIndex( const types::Vec2< size_t >& coords ) const;
+	void InitializeFog();
+	void UpdateFogTileGeometry( const tile::Tile* tile );
+	void RefreshMapVisibility();
+	void ObserveTerritoryTile( const tile::Tile* tile );
+	void ForgetTerritoryTile( const size_t tile_key );
+	void RebuildTerritoryBorders();
+	void AddVisibleTilesInRadius(
+		tile::Tile* center,
+		const size_t radius,
+		std::unordered_set< size_t >& visible_tiles
+	) const;
+	void AddBaseVisibleTiles(
+		tile::Tile* center,
+		std::unordered_set< size_t >& visible_tiles
+	) const;
+	const size_t GetTileDistance( const tile::Tile* first, const tile::Tile* second ) const;
+	const base::Base* GetClaimingBase( const tile::Tile* tile ) const;
+	const bool CanTargetUnit( const unit::Unit* attacker, const unit::Unit* defender ) const;
 
 	// some additional management of world actors such as calling Iterate()
 	// note that all world actors must be instanced
@@ -396,6 +441,7 @@ private:
 	// tile request stuff
 	rr::id_t m_tile_at_request_id = 0;
 	backend::tile_query_purpose_t m_tile_at_query_purpose = backend::TQP_NONE;
+	size_t m_attack_target_unit_id = 0;
 
 	void CancelTileAtRequest();
 	void GetTileAtScreenCoords( const backend::tile_query_purpose_t tile_query_purpose, const size_t screen_x, const size_t screen_inverse_y ); // async, y needs to be upside down
@@ -404,7 +450,14 @@ private:
 
 	// minimap stuff
 	rr::id_t m_minimap_texture_request_id = 0;
-	void GetMinimapTexture( scene::Camera* camera, const ::types::Vec2< size_t > texture_dimensions );
+	rr::id_t m_minimap_fog_texture_request_id = 0;
+	types::texture::Texture* m_pending_minimap_terrain = nullptr;
+	types::texture::Texture* m_pending_minimap_fog = nullptr;
+	void GetMinimapTexture(
+		scene::Camera* terrain_camera,
+		scene::Camera* fog_camera,
+		const ::types::Vec2< size_t > texture_dimensions
+	);
 	types::texture::Texture* GetMinimapTextureResult();
 	void UpdateMinimap();
 

@@ -1,5 +1,10 @@
 #include "Tests.h"
 
+#include <array>
+#include <limits>
+#include <memory>
+#include <utility>
+
 #include "GSE.h"
 #include "Parser.h"
 #include "Runner.h"
@@ -30,6 +35,26 @@
 #include "gse/value/String.h"
 #include "gse/value/Null.h"
 #include "gse/value/Range.h"
+#include "game/backend/faction/Faction.h"
+#include "game/backend/Player.h"
+#include "game/backend/Game.h"
+#include "game/backend/animation/Def.h"
+#include "game/backend/base/FacilityDef.h"
+#include "game/backend/base/PopDef.h"
+#include "game/backend/map/MapState.h"
+#include "game/backend/map/tile/Tile.h"
+#include "game/backend/map/tile/TileState.h"
+#include "game/backend/map/tile/Tiles.h"
+#include "game/backend/settings/Settings.h"
+#include "game/backend/slot/Slot.h"
+#include "game/backend/resource/Resource.h"
+#include "game/backend/unit/Def.h"
+#include "types/Buffer.h"
+#include "types/Color.h"
+#include "types/mesh/Mesh.h"
+#include "types/Packet.h"
+#include "types/texture/Texture.h"
+#include "util/FS.h"
 
 namespace gse {
 namespace tests {
@@ -43,11 +68,2322 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_OK();
 			}
 		);
+		task->AddTest(
+			"filesystem normalization tolerates missing write targets",
+			GT() {
+				const auto path = g_engine->GetConfig()->GetPrefix() + "debug/path-normalization-regression/missing.txt";
+				const auto normalized = util::FS::NormalizePath( path );
+				GT_ASSERT( !normalized.empty(), "missing path normalized to an empty string" );
+				GT_ASSERT( normalized.find( "missing.txt" ) != std::string::npos, "missing path lost its filename while normalizing" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"buffer ownership and validation",
+			GT() {
+				types::Buffer source;
+				source.WriteInt( 11 );
+				types::Buffer copy( source );
+				copy.WriteInt( 22 );
+				types::Buffer assigned;
+				assigned.WriteString( "discarded" );
+				assigned = copy;
+
+				GT_ASSERT( source.ReadInt() == 11, "source buffer changed after copy" );
+				GT_ASSERT( source.GetRemaining() == 0, "source buffer gained copied data" );
+				GT_ASSERT( copy.ReadInt() == 11 && copy.ReadInt() == 22, "copied buffer append failed" );
+				GT_ASSERT( assigned.ReadInt() == 11 && assigned.ReadInt() == 22, "buffer copy assignment failed" );
+
+				types::Buffer valid_count;
+				valid_count.WriteInt( 2 );
+				valid_count.WriteBool( false );
+				valid_count.WriteBool( true );
+				GT_ASSERT( valid_count.ReadCollectionSize( "test" ) == 2, "valid collection count rejected" );
+
+				bool rejected_negative_count = false;
+				try {
+					types::Buffer negative_count;
+					negative_count.WriteInt( -1 );
+					negative_count.ReadCollectionSize( "test" );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_count = true;
+				}
+				GT_ASSERT( rejected_negative_count, "negative collection count accepted" );
+
+				bool rejected_impossible_count = false;
+				try {
+					types::Buffer impossible_count;
+					impossible_count.WriteInt( 1 );
+					impossible_count.ReadCollectionSize( "test" );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_impossible_count = true;
+				}
+				GT_ASSERT( rejected_impossible_count, "impossible collection count accepted" );
+
+				types::Buffer string_buffer;
+				string_buffer.WriteString( "x" );
+				auto malformed_data = string_buffer.ToString();
+				for ( size_t i = 1 ; i < 5 ; i++ ) {
+					malformed_data[ i ] = static_cast< char >( 0xff );
+				}
+				bool rejected_overflowing_size = false;
+				try {
+					types::Buffer malformed_buffer( malformed_data );
+					malformed_buffer.ReadString();
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_overflowing_size = true;
+				}
+				GT_ASSERT( rejected_overflowing_size, "overflowing buffer field size accepted" );
+
+				bool rejected_data_size_mismatch = false;
+				try {
+					const uint8_t value = 7;
+					types::Buffer data_buffer;
+					data_buffer.WriteData( &value, sizeof( value ) );
+					data_buffer.ReadData( sizeof( value ) + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_data_size_mismatch = true;
+				}
+				GT_ASSERT( rejected_data_size_mismatch, "buffer data size mismatch accepted" );
+
+				bool rejected_oversized_write = false;
+				try {
+					const uint8_t value = 0;
+					types::Buffer oversized_write;
+					oversized_write.WriteData( &value, UINT32_MAX );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_oversized_write = true;
+				}
+				GT_ASSERT( rejected_oversized_write, "oversized buffer field write accepted" );
+
+				bool rejected_noncanonical_bool = false;
+				try {
+					types::Buffer invalid_bool;
+					invalid_bool.WriteBool( false );
+					const size_t value_offset = sizeof( uint8_t ) + sizeof( uint32_t );
+					invalid_bool.data[ value_offset ] = 2;
+					invalid_bool.data[ invalid_bool.lenw - 1 ] = 2;
+					invalid_bool.ReadBool();
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_noncanonical_bool = true;
+				}
+				GT_ASSERT( rejected_noncanonical_bool, "noncanonical serialized boolean accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"settings serialization validation",
+			GT() {
+				using game::backend::settings::MapSettings;
+
+				types::Buffer invalid_map;
+				invalid_map.WriteInt( MapSettings::MT_CUSTOM );
+				invalid_map.WriteString( "" );
+				invalid_map.WriteInt( 112 );
+				invalid_map.WriteInt( 56 );
+				invalid_map.WriteFloat( 0.4f );
+				invalid_map.WriteFloat( 0.75f );
+				invalid_map.WriteFloat( 1.5f );
+				invalid_map.WriteFloat( 0.5f );
+
+				MapSettings settings;
+				bool rejected_invalid_fraction = false;
+				try {
+					settings.Deserialize( invalid_map );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_fraction = true;
+				}
+				GT_ASSERT( rejected_invalid_fraction, "invalid map fraction accepted" );
+				GT_ASSERT( settings.type == MapSettings::MT_RANDOM, "invalid map settings partially applied" );
+
+				types::Buffer invalid_local;
+				invalid_local.WriteInt( 99 );
+				invalid_local.WriteInt( game::backend::settings::LocalSettings::NT_NONE );
+				invalid_local.WriteInt( game::backend::settings::LocalSettings::NR_NONE );
+				invalid_local.WriteString( "player" );
+				invalid_local.WriteString( "127.0.0.1" );
+				bool rejected_invalid_mode = false;
+				try {
+					game::backend::settings::LocalSettings local;
+					local.Deserialize( invalid_local );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_mode = true;
+				}
+				GT_ASSERT( rejected_invalid_mode, "invalid local game mode accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"network integer validation",
+			GT() {
+				bool rejected_negative_slot = false;
+				try {
+					types::Buffer serialized_packet;
+					serialized_packet.WriteInt( types::Packet::PT_PLAYERS );
+					serialized_packet.WriteInt( -1 );
+					serialized_packet.WriteString( "" );
+					types::Packet packet( types::Packet::PT_NONE );
+					packet.Deserialize( serialized_packet );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_slot = true;
+				}
+				GT_ASSERT( rejected_negative_slot, "negative packet slot accepted" );
+
+				bool rejected_slot_flags = false;
+				try {
+					types::Buffer serialized_slot;
+					serialized_slot.WriteInt( game::backend::slot::Slot::SS_PLAYER );
+					serialized_slot.WriteString( "" );
+					serialized_slot.WriteInt( 0x80 );
+					serialized_slot.WriteString( "" );
+					game::backend::slot::Slot slot( 0, nullptr );
+					slot.Deserialize( serialized_slot );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_slot_flags = true;
+				}
+				GT_ASSERT( rejected_slot_flags, "unknown slot player flags accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"player research serialization validation",
+			GT() {
+				using game::backend::Game;
+				using game::backend::Player;
+
+				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
+				source.SetResearchState( { "CentauriEcology" }, "", 0 );
+				source.SetEnergyCredits( 73 );
+				source.SetEcologicalDamageEvents( 4 );
+				source.SetCleanMineralFacilities( 3 );
+				source.SetMajorAtrocities( 2 );
+				source.SetSanctionTurns( 10 );
+				source.SetIntegrityBlemishes( 4 );
+				source.SetMindControlTotal( 12 );
+				source.SetPrototypedComponents({ "Laser" });
+				source.SetDiplomaticExcuseTurn( 5, 44 );
+				const Player::diplomatic_grievance_t grievance = { true, true, true };
+				source.SetDiplomaticGrievance( 6, grievance );
+				source.SetObsoleteUnitDesigns( {
+					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+				} );
+				source.SetRetiredUnitDesigns( {
+					"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+				} );
+				source.SetOrbitalFacilityCount( "SkyHydroponicsLab", 3 );
+				source.SetOrbitalDefenseDeployments( 2 );
+				const Player::council_state_t council_state = {
+					false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+					true, true, true, true, 2, Player::SUPREME_RESPONSE_DEFY, true,
+				};
+				source.SetCouncilState( council_state );
+				Player council_policy_validator( "Council", Player::PR_SINGLE, nullptr, "Citizen" );
+				council_policy_validator.SetCouncilState( {
+					false, 42, "launch_solar_shade", 1, 1, 0,
+					Player::COUNCIL_VOTE_PENDING, false, false, false, false,
+				} );
+				council_policy_validator.SetCouncilState( {
+					false, 42, "melt_polar_caps", 1, 1, 0,
+					Player::COUNCIL_VOTE_PENDING, false, false, false, false,
+				} );
+				bool rejected_inactive_supreme_response = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, -1, Player::SUPREME_RESPONSE_DEFY, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inactive_supreme_response = true;
+				}
+				GT_ASSERT(
+					rejected_inactive_supreme_response,
+					"inactive Supreme Leader state accepted a faction response"
+				);
+				bool rejected_conflicting_supreme_session = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "governor", 1, 1, 0, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, 2, Player::SUPREME_RESPONSE_PENDING, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_conflicting_supreme_session = true;
+				}
+				GT_ASSERT(
+					rejected_conflicting_supreme_session,
+					"Supreme Leader accession accepted a concurrent Council session"
+				);
+				bool rejected_invalid_supreme_leader = false;
+				try {
+					council_policy_validator.SetCouncilState( {
+						false, 42, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+						false, false, false, false, 64, Player::SUPREME_RESPONSE_PENDING, false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_supreme_leader = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_supreme_leader,
+					"out-of-range Supreme Leader ID was accepted"
+				);
+				source.SetSocialEngineering( {{ "Democratic", "Green", "Knowledge", "Cybernetic" }} );
+				source.SetDiplomaticRelation( 2, Player::DR_TREATY );
+				source.SetDiplomaticOffer( 3, Player::DR_PACT );
+				source.SetContacted( 6, true );
+				source.SetExploredTile( 4, 2, true );
+				source.SetInfiltrated( 4, true );
+				const Player::diplomatic_trade_t trade = {
+					25,
+					"CentauriEcology",
+					0,
+					"IndustrialBase",
+					6,
+					-1,
+					true,
+					false,
+					11,
+					21,
+				};
+				source.SetDiplomaticTrade( 5, trade );
+				const Player::diplomatic_trade_t commlink_trade = {
+					0, "", 0, "", 6, -1,
+				};
+				source.SetDiplomaticTrade( 4, commlink_trade );
+				Player::diplomatic_trade_t ultimatum = {};
+				ultimatum.request_energy = 50;
+				ultimatum.is_ultimatum = true;
+				source.SetDiplomaticTrade( 8, ultimatum );
+				Player::diplomatic_trade_t military_request = {};
+				military_request.request_vendetta_player = 3;
+				source.SetDiplomaticTrade( 9, military_request );
+				const Player::diplomatic_loan_offer_t loan_offer = { false, 100, 6, 20 };
+				const Player::diplomatic_loan_t loan = { 120, 6 };
+				source.SetDiplomaticLoanOffer( 6, loan_offer );
+				source.SetDiplomaticLoan( 7, loan );
+				source.SetSubmissiveToId( 4 );
+				source.SetSurrenderOfferToId( 6 );
+				Player cloned( &source );
+				GT_ASSERT(
+					cloned.GetCleanMineralFacilities() == 3,
+					"player clean mineral facility count was not cloned"
+				);
+				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
+				GT_ASSERT( cloned.GetSanctionTurns() == 10, "player sanction duration was not cloned" );
+				GT_ASSERT(
+					cloned.GetIntegrityBlemishes() == 4,
+					"player diplomatic integrity was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetMindControlTotal() == 12,
+					"player mind control total was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"player diplomatic excuse was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticGrievance( 6 ) == grievance,
+					"player diplomatic grievance was not cloned"
+				);
+				GT_ASSERT(
+					cloned.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"obsolete unit design state was not cloned"
+				);
+				GT_ASSERT(
+					cloned.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"retired unit design state was not cloned"
+				);
+				bool rejected_retired_reactivation = false;
+				try {
+					cloned.SetObsoleteUnitDesigns( {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_retired_reactivation = true;
+				}
+				GT_ASSERT(
+					rejected_retired_reactivation &&
+						cloned.IsUnitDesignObsolete(
+							"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+						),
+					"retired unit design was reactivated or partially mutated"
+				);
+				Player active_design( "Designer", Player::PR_SINGLE, nullptr, "Citizen" );
+				bool rejected_active_retirement = false;
+				try {
+					active_design.SetRetiredUnitDesigns( {
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_active_retirement = true;
+				}
+				GT_ASSERT(
+					rejected_active_retirement && active_design.GetRetiredUnitDesigns().empty(),
+					"active unit design was retired or partially mutated"
+				);
+				GT_ASSERT(
+					cloned.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
+					"player orbital facilities were not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetOrbitalDefenseDeployments() == 2,
+					"player orbital defense deployments were not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetCouncilState() == council_state,
+					"Planetary Council state was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 5 ) && *cloned.GetDiplomaticTrade( 5 ) == trade,
+					"pending diplomatic trade was not cloned"
+				);
+				GT_ASSERT( cloned.HasContacted( 6 ), "player contact was not cloned" );
+				GT_ASSERT( !cloned.HasContacted( 5 ), "missing player contact was cloned" );
+				GT_ASSERT( cloned.HasExploredTile( 4, 2 ), "explored tile was not cloned" );
+				GT_ASSERT( !cloned.HasExploredTile( 6, 2 ), "unexplored tile was cloned" );
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 4 ) &&
+						*cloned.GetDiplomaticTrade( 4 ) == commlink_trade,
+					"commlink-only diplomatic trade was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 8 ) &&
+						*cloned.GetDiplomaticTrade( 8 ) == ultimatum,
+					"pending diplomatic ultimatum was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 9 ) &&
+						*cloned.GetDiplomaticTrade( 9 ) == military_request,
+					"pending military request was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticLoanOffer( 6 ) &&
+						*cloned.GetDiplomaticLoanOffer( 6 ) == loan_offer,
+					"pending diplomatic loan offer was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticLoan( 7 ) && *cloned.GetDiplomaticLoan( 7 ) == loan,
+					"diplomatic loan was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetSubmissiveToId() == 4 && cloned.GetSurrenderOfferToId() == 6,
+					"diplomatic submission state was not cloned"
+				);
+				Player roundtrip( source.Serialize() );
+				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchProgress() == 0, "completed research progress was not serialized" );
+				GT_ASSERT( roundtrip.GetEnergyCredits() == 73, "player energy credits were not serialized" );
+				GT_ASSERT(
+					roundtrip.GetEcologicalDamageEvents() == 4,
+					"player ecological damage event count was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetCleanMineralFacilities() == 3,
+					"player clean mineral facility count was not serialized"
+				);
+				GT_ASSERT( roundtrip.GetMajorAtrocities() == 2, "player major atrocity count was not serialized" );
+				GT_ASSERT( roundtrip.GetSanctionTurns() == 10, "player sanction duration was not serialized" );
+				GT_ASSERT(
+					roundtrip.GetIntegrityBlemishes() == 4,
+					"player diplomatic integrity was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetMindControlTotal() == 12,
+					"player mind control total was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"player diplomatic excuse was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticGrievance( 6 ) == grievance,
+					"player diplomatic grievance was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"obsolete unit design state was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"retired unit design state was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3,
+					"player orbital facilities were not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetOrbitalDefenseDeployments() == 2,
+					"player orbital defense deployments were not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetCouncilState() == council_state,
+					"Planetary Council state was not serialized"
+				);
+				Player viewer( "Observer", Player::PR_SINGLE, nullptr, "Citizen" );
+				Player redacted( source.Serialize( &viewer ) );
+				GT_ASSERT( redacted.IsRedacted(), "foreign player projection was not marked redacted" );
+				GT_ASSERT(
+					redacted.GetTechnologies().empty() && redacted.GetResearchTarget().empty() &&
+					redacted.GetResearchProgress() == 0 && redacted.GetEnergyCredits() == 0,
+					"foreign player projection exposed research or energy"
+				);
+				const Player::social_engineering_t default_social_engineering =
+					{{ "Frontier", "Simple", "Survival", "None" }};
+				GT_ASSERT(
+					redacted.GetSocialEngineering() == default_social_engineering &&
+					redacted.GetEcologicalDamageEvents() == 0 &&
+					redacted.GetCleanMineralFacilities() == 0 &&
+					redacted.GetMindControlTotal() == 0,
+					"foreign player projection exposed private economic state"
+				);
+				GT_ASSERT(
+					redacted.GetDiplomaticRelations().empty() &&
+					redacted.GetDiplomaticOffers().empty() &&
+					redacted.GetDiplomaticTrades().empty() &&
+					redacted.GetDiplomaticLoanOffers().empty() &&
+					redacted.GetDiplomaticLoans().empty() &&
+					redacted.GetDiplomaticExcuses().empty() &&
+					redacted.GetDiplomaticGrievances().empty(),
+					"foreign player projection exposed third-party diplomacy"
+				);
+				GT_ASSERT(
+					redacted.GetInfiltratedPlayers().empty() &&
+					redacted.GetPrototypedComponents().empty() &&
+					redacted.GetObsoleteUnitDesigns().empty() &&
+					redacted.GetRetiredUnitDesigns().empty() &&
+					redacted.GetExploredTiles().empty(),
+					"foreign player projection exposed intelligence or map state"
+				);
+				GT_ASSERT(
+					redacted.GetMajorAtrocities() == 2 && redacted.GetSanctionTurns() == 10 &&
+					redacted.GetIntegrityBlemishes() == 4 &&
+					redacted.GetOrbitalFacilityCount( "SkyHydroponicsLab" ) == 3 &&
+					redacted.GetOrbitalDefenseDeployments() == 2 &&
+					redacted.GetCouncilState() == council_state &&
+					redacted.GetSubmissiveToId() == 4 &&
+					redacted.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER,
+					"foreign player projection lost public state or exposed a private surrender offer"
+				);
+				Player redacted_roundtrip( redacted.Serialize() );
+				GT_ASSERT(
+					redacted_roundtrip.IsRedacted() && redacted_roundtrip.GetEnergyCredits() == 0,
+					"redacted player became authoritative when reserialized"
+				);
+				Player private_council_source( "Voter", Player::PR_SINGLE, nullptr, "Citizen" );
+				private_council_source.SetCouncilState({
+					false, 43, "trade_pact", 1, Player::COUNCIL_VOTE_YES,
+					Player::COUNCIL_VOTE_NO, Player::COUNCIL_VOTE_YES,
+					false, false, false, false,
+				});
+				Player private_vote( private_council_source.Serialize( &viewer ) );
+				GT_ASSERT(
+					private_vote.GetCouncilState().vote_id == Player::COUNCIL_VOTE_PENDING,
+					"foreign player projection exposed an active Planetary Council ballot"
+				);
+				private_council_source.SetCouncilState({
+					false, 43, "", -1, -1, -1, Player::COUNCIL_VOTE_PENDING,
+					false, false, false, false, 2, Player::SUPREME_RESPONSE_DEFY, false,
+				});
+				Player private_supreme_response( private_council_source.Serialize( &viewer ) );
+				GT_ASSERT(
+					private_supreme_response.GetCouncilState().supreme_response ==
+						Player::SUPREME_RESPONSE_PENDING,
+					"foreign player projection exposed an unresolved Supreme Leader response"
+				);
+				viewer.SetInfiltrated( 0, true );
+				Player infiltrated( source.Serialize( &viewer ) );
+				GT_ASSERT(
+					!infiltrated.IsRedacted() && infiltrated.GetEnergyCredits() == 73 &&
+					infiltrated.HasTechnology( "CentauriEcology" ) &&
+					infiltrated.GetExploredTiles() == source.GetExploredTiles(),
+					"infiltrated player projection did not include private state"
+				);
+				Player self_view( source.Serialize( &source ) );
+				GT_ASSERT(
+					!self_view.IsRedacted() && self_view.GetEnergyCredits() == 73,
+					"self player projection was redacted"
+				);
+				source.ClearDiplomaticTrade( 4 );
+				source.ClearDiplomaticTrade( 8 );
+				source.ClearDiplomaticTrade( 9 );
+				types::Buffer bool_field;
+				bool_field.WriteBool( true );
+				const auto bool_field_size = bool_field.ToString().size();
+				types::Buffer obsolete_designs_field;
+				obsolete_designs_field.WriteInt( source.GetObsoleteUnitDesigns().size() );
+				for ( const auto& id : source.GetObsoleteUnitDesigns() ) {
+					obsolete_designs_field.WriteString( id );
+				}
+				const auto obsolete_designs_field_size = obsolete_designs_field.ToString().size();
+				types::Buffer retired_designs_field;
+				retired_designs_field.WriteInt( source.GetRetiredUnitDesigns().size() );
+				for ( const auto& id : source.GetRetiredUnitDesigns() ) {
+					retired_designs_field.WriteString( id );
+				}
+				const auto retired_designs_field_size = retired_designs_field.ToString().size();
+				types::Buffer player_extension;
+				player_extension.WriteInt( 5 );
+				player_extension.WriteBool( false );
+				player_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					player_extension.WriteInt( player_id );
+				}
+				player_extension.WriteInt( 1 );
+				player_extension.WriteInt( 5 );
+				player_extension.WriteInt( trade.offer_contact );
+				player_extension.WriteInt( trade.request_contact );
+				player_extension.WriteBool( trade.offer_map );
+				player_extension.WriteBool( trade.request_map );
+				player_extension.WriteInt( trade.offer_base );
+				player_extension.WriteInt( trade.request_base );
+				player_extension.WriteBool( trade.is_ultimatum );
+				player_extension.WriteInt( trade.request_vendetta_player );
+				player_extension.WriteBool( false );
+				player_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					player_extension.WriteInt( x );
+					player_extension.WriteInt( y );
+				}
+				player_extension.WriteInt( source.GetCleanMineralFacilities() );
+				player_extension.WriteBool( source.GetCouncilState().is_expelled );
+				player_extension.WriteInt( source.GetCouncilState().supreme_leader_id );
+				player_extension.WriteInt( source.GetCouncilState().supreme_response );
+				player_extension.WriteBool( source.GetCouncilState().supreme_resolved );
+				player_extension.WriteInt( source.GetSubmissiveToId() );
+				player_extension.WriteInt( source.GetSurrenderOfferToId() );
+				player_extension.WriteInt( source.GetMindControlTotal() );
+				player_extension.WriteInt( source.GetDiplomaticExcuses().size() );
+				for ( const auto& [ player_id, expiry_turn ] : source.GetDiplomaticExcuses() ) {
+					player_extension.WriteInt( player_id );
+					player_extension.WriteInt( expiry_turn );
+				}
+				player_extension.WriteInt( source.GetDiplomaticGrievances().size() );
+				for ( const auto& [ player_id, state ] : source.GetDiplomaticGrievances() ) {
+					player_extension.WriteInt( player_id );
+					player_extension.WriteBool( state.wants_revenge );
+					player_extension.WriteBool( state.atrocity_victim );
+					player_extension.WriteBool( state.major_atrocity_victim );
+				}
+				const auto player_extension_size = player_extension.ToString().size();
+				types::Buffer clean_mineral_facilities_field;
+				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
+				const auto clean_mineral_facilities_field_size =
+					clean_mineral_facilities_field.ToString().size();
+				types::Buffer council_expulsion_field;
+				council_expulsion_field.WriteBool( source.GetCouncilState().is_expelled );
+				const auto council_expulsion_field_size = council_expulsion_field.ToString().size();
+				types::Buffer supreme_state_fields;
+				supreme_state_fields.WriteInt( source.GetCouncilState().supreme_leader_id );
+				supreme_state_fields.WriteInt( source.GetCouncilState().supreme_response );
+				supreme_state_fields.WriteBool( source.GetCouncilState().supreme_resolved );
+				const auto supreme_state_fields_size = supreme_state_fields.ToString().size();
+				types::Buffer submission_state_fields;
+				submission_state_fields.WriteInt( source.GetSubmissiveToId() );
+				submission_state_fields.WriteInt( source.GetSurrenderOfferToId() );
+				const auto submission_state_fields_size = submission_state_fields.ToString().size();
+				types::Buffer mind_control_total_field;
+				mind_control_total_field.WriteInt( source.GetMindControlTotal() );
+				const auto mind_control_total_field_size =
+					mind_control_total_field.ToString().size();
+				types::Buffer diplomatic_excuses_field;
+				diplomatic_excuses_field.WriteInt( source.GetDiplomaticExcuses().size() );
+				for ( const auto& [ player_id, expiry_turn ] : source.GetDiplomaticExcuses() ) {
+					diplomatic_excuses_field.WriteInt( player_id );
+					diplomatic_excuses_field.WriteInt( expiry_turn );
+				}
+				const auto diplomatic_excuses_field_size =
+					diplomatic_excuses_field.ToString().size();
+				types::Buffer diplomatic_grievances_field;
+				diplomatic_grievances_field.WriteInt( source.GetDiplomaticGrievances().size() );
+				for ( const auto& [ player_id, state ] : source.GetDiplomaticGrievances() ) {
+					diplomatic_grievances_field.WriteInt( player_id );
+					diplomatic_grievances_field.WriteBool( state.wants_revenge );
+					diplomatic_grievances_field.WriteBool( state.atrocity_victim );
+					diplomatic_grievances_field.WriteBool( state.major_atrocity_victim );
+				}
+				const auto diplomatic_grievances_field_size =
+					diplomatic_grievances_field.ToString().size();
+				auto pre_diplomatic_grievances_data = source.Serialize().ToString();
+				pre_diplomatic_grievances_data.resize(
+					pre_diplomatic_grievances_data.size() - diplomatic_grievances_field_size
+				);
+				Player pre_diplomatic_grievances( pre_diplomatic_grievances_data );
+				GT_ASSERT(
+					pre_diplomatic_grievances.GetDiplomaticExcuseTurn( 5 ) == 44 &&
+						pre_diplomatic_grievances.GetDiplomaticGrievances().empty(),
+					"older player data did not default diplomatic grievances"
+				);
+				auto pre_diplomatic_excuses_data = source.Serialize().ToString();
+				pre_diplomatic_excuses_data.resize(
+					pre_diplomatic_excuses_data.size() - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
+				);
+				Player pre_diplomatic_excuses( pre_diplomatic_excuses_data );
+				GT_ASSERT(
+					pre_diplomatic_excuses.GetMindControlTotal() == 12 &&
+						pre_diplomatic_excuses.GetDiplomaticExcuses().empty() &&
+						pre_diplomatic_excuses.GetDiplomaticGrievances().empty(),
+					"older player data did not default diplomatic excuses"
+				);
+				bool rejected_serialized_diplomatic_excuse = false;
+				try {
+					types::Buffer invalid_excuse;
+					invalid_excuse.WriteInt( 1 );
+					invalid_excuse.WriteInt( 5 );
+					invalid_excuse.WriteInt( Player::MAX_DIPLOMATIC_EXCUSE_TURN + 1 );
+					auto invalid_data = pre_diplomatic_excuses_data + invalid_excuse.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_serialized_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_serialized_diplomatic_excuse,
+					"out-of-range serialized diplomatic excuse was accepted"
+				);
+				bool rejected_duplicate_diplomatic_excuse = false;
+				try {
+					types::Buffer duplicate_excuse;
+					duplicate_excuse.WriteInt( 2 );
+					duplicate_excuse.WriteInt( 5 );
+					duplicate_excuse.WriteInt( 44 );
+					duplicate_excuse.WriteInt( 5 );
+					duplicate_excuse.WriteInt( 45 );
+					auto invalid_data = pre_diplomatic_excuses_data + duplicate_excuse.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_duplicate_diplomatic_excuse,
+					"duplicate serialized diplomatic excuse was accepted"
+				);
+				bool rejected_inconsistent_diplomatic_grievance = false;
+				try {
+					types::Buffer invalid_grievance;
+					invalid_grievance.WriteInt( 1 );
+					invalid_grievance.WriteInt( 6 );
+					invalid_grievance.WriteBool( false );
+					invalid_grievance.WriteBool( true );
+					invalid_grievance.WriteBool( false );
+					auto invalid_data =
+						pre_diplomatic_grievances_data + invalid_grievance.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inconsistent_diplomatic_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_inconsistent_diplomatic_grievance,
+					"inconsistent serialized diplomatic grievance was accepted"
+				);
+				bool rejected_duplicate_diplomatic_grievance = false;
+				try {
+					types::Buffer duplicate_grievance;
+					duplicate_grievance.WriteInt( 2 );
+					for ( size_t i = 0 ; i < 2 ; ++i ) {
+						duplicate_grievance.WriteInt( 6 );
+						duplicate_grievance.WriteBool( true );
+						duplicate_grievance.WriteBool( false );
+						duplicate_grievance.WriteBool( false );
+					}
+					auto invalid_data =
+						pre_diplomatic_grievances_data + duplicate_grievance.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_diplomatic_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_duplicate_diplomatic_grievance,
+					"duplicate serialized diplomatic grievance was accepted"
+				);
+				auto pre_submission_data = source.Serialize().ToString();
+				pre_submission_data.resize(
+					pre_submission_data.size() - submission_state_fields_size -
+						mind_control_total_field_size - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
+				);
+				Player pre_submission( pre_submission_data );
+				GT_ASSERT(
+					pre_submission.GetSubmissiveToId() == Player::NO_DIPLOMATIC_PLAYER &&
+						pre_submission.GetSurrenderOfferToId() == Player::NO_DIPLOMATIC_PLAYER &&
+						pre_submission.GetMindControlTotal() == 0,
+					"older player data did not default diplomatic submission state"
+				);
+				auto pre_supreme_data = source.Serialize().ToString();
+				pre_supreme_data.resize(
+					pre_supreme_data.size() - submission_state_fields_size -
+						supreme_state_fields_size - mind_control_total_field_size -
+						diplomatic_excuses_field_size - diplomatic_grievances_field_size
+				);
+				Player pre_supreme( pre_supreme_data );
+				GT_ASSERT(
+					pre_supreme.GetCouncilState().is_expelled &&
+					pre_supreme.GetCouncilState().supreme_leader_id == -1 &&
+					pre_supreme.GetCouncilState().supreme_response ==
+						Player::SUPREME_RESPONSE_NONE &&
+					!pre_supreme.GetCouncilState().supreme_resolved,
+					"older player data did not default Supreme Leader state"
+				);
+				auto pre_expulsion_data = source.Serialize().ToString();
+				pre_expulsion_data.resize(
+					pre_expulsion_data.size() - council_expulsion_field_size -
+						supreme_state_fields_size - submission_state_fields_size -
+						mind_control_total_field_size - diplomatic_excuses_field_size -
+						diplomatic_grievances_field_size
+				);
+				Player pre_expulsion( pre_expulsion_data );
+				GT_ASSERT(
+					!pre_expulsion.GetCouncilState().is_expelled &&
+					pre_expulsion.GetCleanMineralFacilities() == 3,
+					"older player data did not default Council expulsion state"
+				);
+				auto pre_clean_mineral_data = source.Serialize().ToString();
+				pre_clean_mineral_data.resize(
+					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
+						council_expulsion_field_size - supreme_state_fields_size -
+						submission_state_fields_size - mind_control_total_field_size -
+						diplomatic_excuses_field_size - diplomatic_grievances_field_size
+				);
+				Player pre_clean_mineral( pre_clean_mineral_data );
+				GT_ASSERT(
+					pre_clean_mineral.GetCleanMineralFacilities() == 0,
+					"older player data did not default its clean mineral facility count"
+				);
+				types::Buffer version_one_extension;
+				version_one_extension.WriteInt( 1 );
+				version_one_extension.WriteBool( false );
+				version_one_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_one_extension.WriteInt( player_id );
+				}
+				version_one_extension.WriteInt( 1 );
+				version_one_extension.WriteInt( 5 );
+				version_one_extension.WriteInt( trade.offer_contact );
+				version_one_extension.WriteInt( trade.request_contact );
+				auto version_one_data = source.Serialize().ToString();
+				version_one_data.resize( version_one_data.size() - player_extension_size );
+				version_one_data += version_one_extension.ToString();
+				Player version_one( version_one_data );
+				GT_ASSERT(
+					version_one.HasExploredTile( 100, 100 ),
+					"version-one player data did not preserve legacy map visibility"
+				);
+				GT_ASSERT(
+					version_one.GetCleanMineralFacilities() == 0,
+					"version-one player data did not default its clean mineral facility count"
+				);
+				GT_ASSERT(
+					version_one.GetDiplomaticTrade( 5 ) &&
+					!version_one.GetDiplomaticTrade( 5 )->offer_map &&
+					version_one.GetDiplomaticTrade( 5 )->offer_base == -1 &&
+					version_one.GetDiplomaticTrade( 5 )->request_base == -1 &&
+					version_one.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
+					!version_one.GetDiplomaticTrade( 5 )->is_ultimatum,
+					"version-one diplomatic trade unexpectedly gained a map term"
+				);
+				types::Buffer version_two_extension;
+				version_two_extension.WriteInt( 2 );
+				version_two_extension.WriteBool( false );
+				version_two_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_two_extension.WriteInt( player_id );
+				}
+				version_two_extension.WriteInt( 1 );
+				version_two_extension.WriteInt( 5 );
+				version_two_extension.WriteInt( trade.offer_contact );
+				version_two_extension.WriteInt( trade.request_contact );
+				version_two_extension.WriteBool( trade.offer_map );
+				version_two_extension.WriteBool( trade.request_map );
+				version_two_extension.WriteBool( false );
+				version_two_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					version_two_extension.WriteInt( x );
+					version_two_extension.WriteInt( y );
+				}
+				auto version_two_data = source.Serialize().ToString();
+				version_two_data.resize( version_two_data.size() - player_extension_size );
+				version_two_data += version_two_extension.ToString();
+				Player version_two( version_two_data );
+				GT_ASSERT(
+					version_two.GetDiplomaticTrade( 5 ) &&
+					version_two.GetDiplomaticTrade( 5 )->offer_map == trade.offer_map &&
+					version_two.GetDiplomaticTrade( 5 )->request_map == trade.request_map &&
+					version_two.GetDiplomaticTrade( 5 )->offer_base == -1 &&
+					version_two.GetDiplomaticTrade( 5 )->request_base == -1 &&
+					version_two.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
+					!version_two.GetDiplomaticTrade( 5 )->is_ultimatum,
+					"version-two diplomatic trade did not preserve map terms or default base terms"
+				);
+				types::Buffer version_three_extension;
+				version_three_extension.WriteInt( 3 );
+				version_three_extension.WriteBool( false );
+				version_three_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_three_extension.WriteInt( player_id );
+				}
+				version_three_extension.WriteInt( 1 );
+				version_three_extension.WriteInt( 5 );
+				version_three_extension.WriteInt( trade.offer_contact );
+				version_three_extension.WriteInt( trade.request_contact );
+				version_three_extension.WriteBool( trade.offer_map );
+				version_three_extension.WriteBool( trade.request_map );
+				version_three_extension.WriteInt( trade.offer_base );
+				version_three_extension.WriteInt( trade.request_base );
+				version_three_extension.WriteBool( false );
+				version_three_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					version_three_extension.WriteInt( x );
+					version_three_extension.WriteInt( y );
+				}
+				auto version_three_data = source.Serialize().ToString();
+				version_three_data.resize( version_three_data.size() - player_extension_size );
+				version_three_data += version_three_extension.ToString();
+				Player version_three( version_three_data );
+				GT_ASSERT(
+					version_three.GetDiplomaticTrade( 5 ) &&
+					version_three.GetDiplomaticTrade( 5 )->offer_base == trade.offer_base &&
+					version_three.GetDiplomaticTrade( 5 )->request_base == trade.request_base &&
+					version_three.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
+					!version_three.GetDiplomaticTrade( 5 )->is_ultimatum,
+					"version-three diplomatic trade did not preserve bases or default ultimatum state"
+				);
+				types::Buffer version_four_extension;
+				version_four_extension.WriteInt( 4 );
+				version_four_extension.WriteBool( false );
+				version_four_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_four_extension.WriteInt( player_id );
+				}
+				version_four_extension.WriteInt( 1 );
+				version_four_extension.WriteInt( 5 );
+				version_four_extension.WriteInt( trade.offer_contact );
+				version_four_extension.WriteInt( trade.request_contact );
+				version_four_extension.WriteBool( trade.offer_map );
+				version_four_extension.WriteBool( trade.request_map );
+				version_four_extension.WriteInt( trade.offer_base );
+				version_four_extension.WriteInt( trade.request_base );
+				version_four_extension.WriteBool( trade.is_ultimatum );
+				version_four_extension.WriteBool( false );
+				version_four_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					version_four_extension.WriteInt( x );
+					version_four_extension.WriteInt( y );
+				}
+				auto version_four_data = source.Serialize().ToString();
+				version_four_data.resize( version_four_data.size() - player_extension_size );
+				version_four_data += version_four_extension.ToString();
+				Player version_four( version_four_data );
+				GT_ASSERT(
+					version_four.GetDiplomaticTrade( 5 ) &&
+					version_four.GetDiplomaticTrade( 5 )->is_ultimatum == trade.is_ultimatum &&
+					version_four.GetDiplomaticTrade( 5 )->request_vendetta_player == -1,
+					"version-four diplomatic trade did not default military request state"
+				);
+				auto pre_retirement_data = source.Serialize().ToString();
+				pre_retirement_data.resize(
+					pre_retirement_data.size() - player_extension_size - retired_designs_field_size
+				);
+				Player pre_retirement( pre_retirement_data );
+				GT_ASSERT(
+					pre_retirement.IsUnitDesignObsolete(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					) &&
+					!pre_retirement.IsUnitDesignRetired(
+						"WorkshopP1_Infantry_Laser_NoArmor_FissionPlant"
+					),
+					"pre-retirement player data did not preserve obsolete design state"
+				);
+				auto trade_only_council_data = source.Serialize().ToString();
+				trade_only_council_data.resize(
+					trade_only_council_data.size() - player_extension_size - retired_designs_field_size -
+						obsolete_designs_field_size -
+						bool_field_size * 2
+				);
+				Player trade_only_council( trade_only_council_data );
+				GT_ASSERT(
+					trade_only_council.GetCouncilState().global_trade_pact &&
+					!trade_only_council.GetCouncilState().unity_core_salvaged &&
+					!trade_only_council.GetCouncilState().un_charter_repealed,
+					"older Planetary Council state did not preserve the Trade Pact defaults"
+				);
+				auto legacy_council_data = source.Serialize().ToString();
+				legacy_council_data.resize(
+					legacy_council_data.size() - player_extension_size - retired_designs_field_size -
+						obsolete_designs_field_size -
+						bool_field_size * 3
+				);
+				Player legacy_council( legacy_council_data );
+				GT_ASSERT(
+					!legacy_council.GetCouncilState().global_trade_pact &&
+					!legacy_council.GetCouncilState().unity_core_salvaged &&
+					!legacy_council.GetCouncilState().un_charter_repealed &&
+					!legacy_council.GetCouncilState().is_expelled,
+					"legacy Planetary Council policies did not default to their initial state"
+				);
+				GT_ASSERT(
+					roundtrip.GetSocialEngineering() == source.GetSocialEngineering(),
+					"player social engineering choices were not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticRelation( 2 ) == Player::DR_TREATY,
+					"player diplomatic relation was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticRelation( 3 ) == Player::DR_NEUTRAL,
+					"missing player diplomatic relation was not neutral"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticOffer( 3 ) == Player::DR_PACT,
+					"pending diplomatic offer was not serialized"
+				);
+				GT_ASSERT( roundtrip.HasInfiltrated( 4 ), "player infiltration was not serialized" );
+				GT_ASSERT( !roundtrip.HasInfiltrated( 5 ), "missing player infiltration was present" );
+				GT_ASSERT( roundtrip.HasContacted( 6 ), "player contact was not serialized" );
+				GT_ASSERT( !roundtrip.HasContacted( 5 ), "missing player contact was serialized" );
+				GT_ASSERT( roundtrip.HasExploredTile( 4, 2 ), "explored tile was not serialized" );
+				GT_ASSERT( !roundtrip.HasExploredTile( 6, 2 ), "unexplored tile was serialized" );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 5 ) && *roundtrip.GetDiplomaticTrade( 5 ) == trade,
+					"pending diplomatic trade was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 4 ) &&
+						*roundtrip.GetDiplomaticTrade( 4 ) == commlink_trade,
+					"commlink-only diplomatic trade was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 8 ) &&
+						*roundtrip.GetDiplomaticTrade( 8 ) == ultimatum,
+					"pending diplomatic ultimatum was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 9 ) &&
+						*roundtrip.GetDiplomaticTrade( 9 ) == military_request,
+					"pending military request was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoanOffer( 6 ) &&
+						*roundtrip.GetDiplomaticLoanOffer( 6 ) == loan_offer,
+					"pending diplomatic loan offer was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoan( 7 ) && *roundtrip.GetDiplomaticLoan( 7 ) == loan,
+					"diplomatic loan was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetSubmissiveToId() == 4 &&
+						roundtrip.GetSurrenderOfferToId() == 6,
+					"diplomatic submission state was not serialized"
+				);
+				bool rejected_invalid_submission_player = false;
+				try {
+					roundtrip.SetSubmissiveToId( 64 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_submission_player = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_submission_player && roundtrip.GetSubmissiveToId() == 4,
+					"out-of-range submission player ID was accepted or partially mutated"
+				);
+				bool rejected_invalid_mind_control_total = false;
+				try {
+					roundtrip.SetMindControlTotal( Player::MAX_MIND_CONTROL_TOTAL + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_mind_control_total = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_mind_control_total && roundtrip.GetMindControlTotal() == 12,
+					"out-of-range mind control total was accepted or partially mutated"
+				);
+				bool rejected_invalid_diplomatic_excuse = false;
+				try {
+					roundtrip.SetDiplomaticExcuseTurn(
+						5,
+						Player::MAX_DIPLOMATIC_EXCUSE_TURN + 1
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_diplomatic_excuse = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_diplomatic_excuse &&
+						roundtrip.GetDiplomaticExcuseTurn( 5 ) == 44,
+					"out-of-range diplomatic excuse was accepted or partially mutated"
+				);
+				roundtrip.SetDiplomaticExcuseTurn( 5, Player::NO_DIPLOMATIC_EXCUSE );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticExcuses().empty(),
+					"cleared diplomatic excuse was retained"
+				);
+				bool rejected_inconsistent_grievance = false;
+				try {
+					roundtrip.SetDiplomaticGrievance( 6, { false, true, false } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inconsistent_grievance = true;
+				}
+				GT_ASSERT(
+					rejected_inconsistent_grievance &&
+						roundtrip.GetDiplomaticGrievance( 6 ) == grievance,
+					"inconsistent diplomatic grievance was accepted or partially mutated"
+				);
+				roundtrip.SetDiplomaticGrievance( 6, {} );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticGrievances().empty(),
+					"cleared diplomatic grievance was retained"
+				);
+				roundtrip.ClearDiplomaticTrade( 5 );
+				roundtrip.ClearDiplomaticTrade( 4 );
+				roundtrip.ClearDiplomaticTrade( 8 );
+				roundtrip.ClearDiplomaticTrade( 9 );
+				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
+				roundtrip.ClearDiplomaticLoanOffer( 6 );
+				roundtrip.ClearDiplomaticLoan( 7 );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticLoanOffers().empty() && roundtrip.GetDiplomaticLoans().empty(),
+					"cleared diplomatic loan state was retained"
+				);
+				roundtrip.SetInfiltrated( 4, false );
+				GT_ASSERT(
+					roundtrip.GetInfiltratedPlayers().empty(),
+					"cleared player infiltration was retained"
+				);
+				roundtrip.SetDiplomaticRelation( 2, Player::DR_NEUTRAL );
+				GT_ASSERT(
+					roundtrip.GetDiplomaticRelations().empty(),
+					"neutral diplomatic relation was retained"
+				);
+
+				Player ai_source( "Computer", Player::PR_AI, nullptr, "Citizen" );
+				Player ai_roundtrip( ai_source.Serialize() );
+				GT_ASSERT( ai_roundtrip.IsAI(), "AI player role was not serialized" );
+				Player native_source( "Planet", Player::PR_NATIVE, nullptr, "Citizen" );
+				Player native_roundtrip( native_source.Serialize() );
+				GT_ASSERT( native_roundtrip.IsNative(), "native player role was not serialized" );
+				GT_ASSERT( !native_roundtrip.IsAI(), "native player was exposed as normal AI" );
+
+				const auto make_player = [](
+					const std::vector< std::string >& technologies,
+					const std::string& target,
+					const int64_t progress
+				) {
+					types::Buffer player;
+					player.WriteString( "Researcher" );
+					player.WriteInt( Player::PR_SINGLE );
+					player.WriteBool( false );
+					player.WriteString( "Citizen" );
+					player.WriteBool( false );
+					player.WriteInt( technologies.size() );
+					for ( const auto& id : technologies ) {
+						player.WriteString( id );
+					}
+					player.WriteString( target );
+					player.WriteInt( progress );
+					return player;
+				};
+
+				bool rejected_duplicate = false;
+				try {
+					Player invalid( make_player(
+						{ "CentauriEcology", "CentauriEcology" },
+						"",
+						0
+					) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate = true;
+				}
+				GT_ASSERT( rejected_duplicate, "duplicate player technology accepted" );
+
+				bool rejected_known_target = false;
+				try {
+					Player invalid( make_player(
+						{ "CentauriEcology" },
+						"CentauriEcology",
+						1
+					) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_known_target = true;
+				}
+				GT_ASSERT( rejected_known_target, "known technology accepted as research target" );
+
+				bool rejected_negative_progress = false;
+				try {
+					Player invalid( make_player( {}, "CentauriEcology", -1 ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_progress = true;
+				}
+				GT_ASSERT( rejected_negative_progress, "negative player research progress accepted" );
+
+				bool rejected_negative_energy = false;
+				try {
+					auto player = make_player( {}, "", 0 );
+					player.WriteInt( -1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_energy = true;
+				}
+				GT_ASSERT( rejected_negative_energy, "negative player energy credits accepted" );
+
+				bool rejected_social_count = false;
+				try {
+					auto player = make_player( {}, "", 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 3 );
+					player.WriteString( "Frontier" );
+					player.WriteString( "Simple" );
+					player.WriteString( "Survival" );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_social_count = true;
+				}
+				GT_ASSERT( rejected_social_count, "invalid player social engineering choice count accepted" );
+
+				bool rejected_negative_ecological_damage_events = false;
+				try {
+					auto player = make_player( {}, "", 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( Player::SOCIAL_ENGINEERING_CATEGORY_COUNT );
+					player.WriteString( "Frontier" );
+					player.WriteString( "Simple" );
+					player.WriteString( "Survival" );
+					player.WriteString( "None" );
+					player.WriteInt( -1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_ecological_damage_events = true;
+				}
+				GT_ASSERT(
+					rejected_negative_ecological_damage_events,
+					"negative player ecological damage event count accepted"
+				);
+
+				const auto make_diplomatic_player = [ &make_player ]() {
+					auto player = make_player( {}, "", 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( Player::SOCIAL_ENGINEERING_CATEGORY_COUNT );
+					player.WriteString( "Frontier" );
+					player.WriteString( "Simple" );
+					player.WriteString( "Survival" );
+					player.WriteString( "None" );
+					player.WriteInt( 0 );
+					return player;
+				};
+				Player legacy( make_diplomatic_player() );
+				GT_ASSERT(
+					legacy.HasContacted( 63 ),
+					"legacy player data did not preserve unrestricted diplomacy"
+				);
+				GT_ASSERT(
+					legacy.GetMajorAtrocities() == 0,
+					"legacy player major atrocity count did not default to zero"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticTrades().empty(),
+					"legacy player diplomatic trades did not default to empty"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticLoanOffers().empty() && legacy.GetDiplomaticLoans().empty(),
+					"legacy player diplomatic loans did not default to empty"
+				);
+				GT_ASSERT( legacy.GetSanctionTurns() == 0, "legacy player sanctions did not default to zero" );
+				GT_ASSERT(
+					legacy.GetIntegrityBlemishes() == 0,
+					"legacy player diplomatic integrity did not default to noble"
+				);
+				GT_ASSERT(
+					legacy.GetMindControlTotal() == 0,
+					"legacy player mind control total did not default to zero"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticExcuses().empty(),
+					"legacy player diplomatic excuses did not default to empty"
+				);
+				GT_ASSERT(
+					legacy.GetDiplomaticGrievances().empty(),
+					"legacy player diplomatic grievances did not default to empty"
+				);
+				GT_ASSERT(
+					legacy.GetOrbitalFacilities().empty(),
+					"legacy player orbital facilities did not default to empty"
+				);
+				GT_ASSERT(
+					legacy.GetOrbitalDefenseDeployments() == 0,
+					"legacy player orbital defense deployments did not default to zero"
+				);
+				GT_ASSERT(
+					legacy.GetCouncilState() == Player::council_state_t{},
+					"legacy Planetary Council state did not default to inactive"
+				);
+				bool rejected_duplicate_relation = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 2 );
+					player.WriteInt( 1 );
+					player.WriteInt( Player::DR_TREATY );
+					player.WriteInt( 1 );
+					player.WriteInt( Player::DR_PACT );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_relation = true;
+				}
+				GT_ASSERT( rejected_duplicate_relation, "duplicate diplomatic relation accepted" );
+
+				bool rejected_invalid_relation = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 1 );
+					player.WriteInt( 1 );
+					player.WriteInt( 99 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_relation = true;
+				}
+				GT_ASSERT( rejected_invalid_relation, "invalid diplomatic relation accepted" );
+
+				bool rejected_duplicate_infiltration = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 2 );
+					player.WriteInt( 1 );
+					player.WriteInt( 1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_infiltration = true;
+				}
+				GT_ASSERT( rejected_duplicate_infiltration, "duplicate player infiltration accepted" );
+
+				bool rejected_invalid_infiltration = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 1 );
+					player.WriteInt( Player::MAX_INFILTRATED_PLAYERS );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_infiltration = true;
+				}
+				GT_ASSERT( rejected_invalid_infiltration, "invalid player infiltration accepted" );
+
+				bool rejected_invalid_major_atrocities = false;
+				try {
+					auto player = make_diplomatic_player();
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( 0 );
+					player.WriteInt( Player::MAX_MAJOR_ATROCITIES + 1 );
+					Player invalid( player );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_major_atrocities = true;
+				}
+				GT_ASSERT( rejected_invalid_major_atrocities, "invalid player major atrocity count accepted" );
+
+				bool rejected_empty_trade = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticTrade( 1, {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_empty_trade = true;
+				}
+				GT_ASSERT( rejected_empty_trade, "empty diplomatic trade accepted" );
+
+				bool rejected_bidirectional_energy_trade = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticTrade( 1, { 10, "", 10, "" } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_bidirectional_energy_trade = true;
+				}
+				GT_ASSERT(
+					rejected_bidirectional_energy_trade,
+					"bidirectional diplomatic energy trade accepted"
+				);
+
+				bool rejected_invalid_trade_base = false;
+				try {
+					Player invalid( "Trader", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_trade = {};
+					invalid_trade.offer_base = Player::MAX_DIPLOMATIC_TRADE_BASE_ID + 1;
+					invalid.SetDiplomaticTrade( 1, invalid_trade );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_trade_base = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_trade_base,
+					"out-of-range diplomatic trade base ID accepted"
+				);
+
+				bool rejected_invalid_military_request = false;
+				try {
+					Player invalid( "Commander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_request = {};
+					invalid_request.request_vendetta_player = 64;
+					invalid.SetDiplomaticTrade( 1, invalid_request );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_military_request = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_military_request,
+					"out-of-range military request player ID accepted"
+				);
+
+				bool rejected_bundled_military_request = false;
+				try {
+					Player invalid( "Commander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_request = {};
+					invalid_request.request_vendetta_player = 3;
+					invalid_request.offer_energy = 10;
+					invalid.SetDiplomaticTrade( 1, invalid_request );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_bundled_military_request = true;
+				}
+				GT_ASSERT(
+					rejected_bundled_military_request,
+					"military request bundled with trade terms was accepted"
+				);
+
+				bool rejected_invalid_ultimatum = false;
+				try {
+					Player invalid( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_ultimatum = {};
+					invalid_ultimatum.offer_energy = 10;
+					invalid_ultimatum.request_energy = 25;
+					invalid_ultimatum.is_ultimatum = true;
+					invalid.SetDiplomaticTrade( 1, invalid_ultimatum );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_ultimatum = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_ultimatum,
+					"bundled diplomatic ultimatum accepted"
+				);
+				Player valid_demander( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+				Player::diplomatic_trade_t energy_ultimatum = {};
+				energy_ultimatum.request_energy = 25;
+				energy_ultimatum.is_ultimatum = true;
+				valid_demander.SetDiplomaticTrade( 1, energy_ultimatum );
+				Player::diplomatic_trade_t technology_ultimatum = {};
+				technology_ultimatum.request_technology = "CentauriEcology";
+				technology_ultimatum.is_ultimatum = true;
+				valid_demander.SetDiplomaticTrade( 2, technology_ultimatum );
+				GT_ASSERT(
+					valid_demander.GetDiplomaticTrade( 1 )->is_ultimatum &&
+					valid_demander.GetDiplomaticTrade( 2 )->is_ultimatum,
+					"valid diplomatic ultimatum was not retained"
+				);
+
+				bool rejected_underfunded_loan_offer = false;
+				try {
+					Player invalid( "Borrower", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticLoanOffer( 1, { false, 100, 4, 20 } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_underfunded_loan_offer = true;
+				}
+				GT_ASSERT( rejected_underfunded_loan_offer, "underfunded diplomatic loan offer accepted" );
+
+				bool rejected_empty_loan = false;
+				try {
+					Player invalid( "Borrower", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetDiplomaticLoan( 1, {} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_empty_loan = true;
+				}
+				GT_ASSERT( rejected_empty_loan, "empty diplomatic loan accepted" );
+
+				bool rejected_invalid_sanctions = false;
+				try {
+					Player invalid( "Sanctioned", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetSanctionTurns( Player::MAX_SANCTION_TURNS + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_sanctions = true;
+				}
+				GT_ASSERT( rejected_invalid_sanctions, "invalid sanction duration accepted" );
+
+				bool rejected_invalid_integrity = false;
+				try {
+					Player invalid( "Untrustworthy", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetIntegrityBlemishes( Player::MAX_INTEGRITY_BLEMISHES + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_integrity = true;
+				}
+				GT_ASSERT( rejected_invalid_integrity, "invalid diplomatic integrity accepted" );
+
+				bool rejected_invalid_orbital_count = false;
+				try {
+					Player invalid( "Orbital", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetOrbitalFacilityCount(
+						"SkyHydroponicsLab",
+						Player::MAX_ORBITAL_FACILITY_COUNT + 1
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_orbital_count = true;
+				}
+				GT_ASSERT( rejected_invalid_orbital_count, "invalid orbital facility count accepted" );
+
+				bool rejected_invalid_orbital_deployments = false;
+				try {
+					Player invalid( "Orbital", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetOrbitalDefenseDeployments( Player::MAX_ORBITAL_FACILITY_COUNT + 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_orbital_deployments = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_orbital_deployments,
+					"invalid orbital defense deployment count accepted"
+				);
+
+				bool rejected_invalid_council_vote = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( { false, 12, "governor", 1, 1, 2, 3 } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_council_vote = true;
+				}
+				GT_ASSERT( rejected_invalid_council_vote, "invalid Planetary Council vote accepted" );
+
+				Player valid_policy( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+				valid_policy.SetCouncilState( {
+					false,
+					12,
+					"repeal_un_charter",
+					1,
+					Player::COUNCIL_VOTE_YES,
+					Player::COUNCIL_VOTE_NO,
+					Player::COUNCIL_VOTE_ABSTAIN,
+					false,
+					false,
+					false,
+				} );
+				GT_ASSERT(
+					valid_policy.GetCouncilState().proposal == "repeal_un_charter",
+					"supported Planetary Council policy was rejected"
+				);
+
+				bool rejected_invalid_council_policy = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( {
+						false,
+						12,
+						"trade_pact",
+						1,
+						2,
+						0,
+						Player::COUNCIL_VOTE_YES,
+						false,
+					} );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_council_policy = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_council_policy,
+					"invalid Planetary Council policy choices accepted"
+				);
+
+				bool rejected_inactive_council_session_data = false;
+				try {
+					Player invalid( "Delegate", Player::PR_SINGLE, nullptr, "Citizen" );
+					invalid.SetCouncilState( { false, 12, "", 1, -1, -1, Player::COUNCIL_VOTE_PENDING } );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_inactive_council_session_data = true;
+				}
+				GT_ASSERT(
+					rejected_inactive_council_session_data,
+					"inactive Planetary Council session data accepted"
+				);
+				Game::victory_type_t victory_type = Game::VT_NONE;
+				GT_ASSERT(
+					Game::ParseVictoryType( "diplomatic", victory_type ) &&
+						victory_type == Game::VT_DIPLOMATIC &&
+						Game::GetVictoryTypeString( victory_type ) == "diplomatic",
+					"diplomatic victory type did not round-trip"
+				);
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"snapshot definition validation",
+			GT() {
+				bool rejected_unknown_pop_flags = false;
+				try {
+					types::Buffer pop_def;
+					pop_def.WriteString( "WORKER" );
+					pop_def.WriteString( "Worker" );
+					for ( size_t i = 0 ; i < 2 ; i++ ) {
+						pop_def.WriteInt( 1 );
+						pop_def.WriteString( "bases.pcx" );
+						pop_def.WriteInt( 0 );
+						pop_def.WriteInt( 0 );
+						pop_def.WriteInt( 32 );
+						pop_def.WriteInt( 32 );
+					}
+					pop_def.WriteInt( 0x80 );
+					std::unique_ptr< game::backend::base::PopDef > parsed(
+						game::backend::base::PopDef::Deserialize( pop_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_unknown_pop_flags = true;
+				}
+				GT_ASSERT( rejected_unknown_pop_flags, "unknown base population flags accepted" );
+
+				bool rejected_negative_facility_cost = false;
+				try {
+					types::Buffer facility_def;
+					facility_def.WriteString( "TEST_FACILITY" );
+					facility_def.WriteString( "Test Facility" );
+					facility_def.WriteInt( -1 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					facility_def.WriteInt( 0 );
+					std::unique_ptr< game::backend::base::FacilityDef > parsed(
+						game::backend::base::FacilityDef::Deserialize( facility_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_facility_cost = true;
+				}
+				GT_ASSERT( rejected_negative_facility_cost, "negative facility mineral cost accepted" );
+
+				game::backend::base::FacilityDef facility_source(
+					"NETWORK_NODE",
+					"Network Node",
+					80,
+					0,
+					0,
+					0,
+					1,
+					"InformationNetworks",
+					0,
+					0.5f,
+					1.0f,
+					0.0f,
+					0,
+					0,
+					0.5f,
+					0.25f,
+					14,
+					"HabComplex",
+					-2,
+					2,
+					true,
+					1,
+					2,
+					3,
+					1.5f,
+					2.0f,
+					2,
+					1
+				);
+				auto facility_serialized = game::backend::base::FacilityDef::Serialize( &facility_source );
+				std::unique_ptr< game::backend::base::FacilityDef > facility_roundtrip(
+					game::backend::base::FacilityDef::Deserialize( facility_serialized )
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_required_technology == "InformationNetworks",
+					"facility technology prerequisite was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_research_multiplier == 0.5f,
+					"facility research multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_mineral_multiplier == 0.5f,
+					"facility mineral multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_psych_multiplier == 0.25f,
+					"facility psych multiplier was not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_population_limit == 14 &&
+					facility_roundtrip->m_required_facility == "HabComplex",
+					"facility population requirements were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_drone_modifier == -2 &&
+					facility_roundtrip->m_talent_bonus == 2 &&
+					facility_roundtrip->m_suppress_psych,
+					"facility social effects were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_unit_morale_land_bonus == 1 &&
+					facility_roundtrip->m_unit_morale_water_bonus == 2 &&
+					facility_roundtrip->m_unit_morale_air_bonus == 3 &&
+					facility_roundtrip->m_water_defense_multiplier == 1.5f &&
+					facility_roundtrip->m_air_defense_multiplier == 2.0f,
+					"facility triad effects were not serialized"
+				);
+				GT_ASSERT(
+					facility_roundtrip->m_growth_rating_bonus == 2 &&
+					facility_roundtrip->m_native_lifecycle_bonus == 1 &&
+					!facility_roundtrip->m_psi_gate,
+					"facility growth, native lifecycle, or Psi Gate effect was not serialized"
+				);
+
+				types::Buffer legacy_facility;
+				legacy_facility.WriteString( "LEGACY" );
+				legacy_facility.WriteString( "Legacy Facility" );
+				legacy_facility.WriteInt( 40 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 0 );
+				legacy_facility.WriteInt( 1 );
+				std::unique_ptr< game::backend::base::FacilityDef > legacy_facility_parsed(
+					game::backend::base::FacilityDef::Deserialize( legacy_facility )
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_required_technology.empty(),
+					"legacy facility definition gained a technology prerequisite"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_research_multiplier == 0.0f,
+					"legacy facility definition gained a research multiplier"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_mineral_multiplier == 0.0f &&
+					legacy_facility_parsed->m_psych_multiplier == 0.0f,
+					"legacy facility definition gained a resource multiplier"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_population_limit == 0 &&
+					legacy_facility_parsed->m_required_facility.empty(),
+					"legacy facility definition gained a population requirement"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_drone_modifier == 0 &&
+					legacy_facility_parsed->m_talent_bonus == 0 &&
+					!legacy_facility_parsed->m_suppress_psych,
+					"legacy facility definition gained a social effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_unit_morale_land_bonus == 0 &&
+					legacy_facility_parsed->m_unit_morale_water_bonus == 0 &&
+					legacy_facility_parsed->m_unit_morale_air_bonus == 0 &&
+					legacy_facility_parsed->m_water_defense_multiplier == 1.0f &&
+					legacy_facility_parsed->m_air_defense_multiplier == 1.0f,
+					"legacy facility definition gained a triad effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_growth_rating_bonus == 0 &&
+					legacy_facility_parsed->m_native_lifecycle_bonus == 0,
+					"legacy facility definition gained a growth or lifecycle effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_global_police_rating_bonus == 0 &&
+					legacy_facility_parsed->m_global_extra_police_units == 0,
+					"legacy facility definition gained a police effect"
+				);
+				GT_ASSERT(
+					legacy_facility_parsed->m_efficiency_rating_bonus == 0 &&
+					legacy_facility_parsed->m_defender_morale_minimum == 0 &&
+					!legacy_facility_parsed->m_psi_gate,
+					"legacy facility definition gained a local rating or Psi Gate effect"
+				);
+
+				const auto make_unit_def = [](
+					const int64_t mineral_cost,
+					const int64_t offense,
+					const int64_t defense,
+					const bool can_found_base,
+					const bool can_terraform
+				) {
+					types::Buffer unit_def;
+					unit_def.WriteString( "TEST" );
+					unit_def.WriteString( "NATIVE" );
+					unit_def.WriteString( "Test Unit" );
+					unit_def.WriteInt( mineral_cost );
+					unit_def.WriteString( "" );
+					unit_def.WriteBool( false );
+					unit_def.WriteInt( offense );
+					unit_def.WriteInt( defense );
+					unit_def.WriteBool( can_found_base );
+					unit_def.WriteBool( can_terraform );
+					unit_def.WriteInt( game::backend::unit::DT_STATIC );
+					return unit_def;
+				};
+
+				bool rejected_negative_unit_cost = false;
+				try {
+					auto unit_def = make_unit_def( -1, 1, 1, false, false );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_unit_cost = true;
+				}
+				GT_ASSERT( rejected_negative_unit_cost, "negative unit mineral cost accepted" );
+
+				bool rejected_invalid_unit_strength = false;
+				try {
+					auto unit_def = make_unit_def( 10, 1, 0, false, false );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_unit_strength = true;
+				}
+				GT_ASSERT( rejected_invalid_unit_strength, "invalid unit combat strength accepted" );
+
+				bool rejected_conflicting_unit_capabilities = false;
+				try {
+					auto unit_def = make_unit_def( 10, 1, 1, true, true );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_conflicting_unit_capabilities = true;
+				}
+				GT_ASSERT( rejected_conflicting_unit_capabilities, "conflicting unit capabilities accepted" );
+
+				bool rejected_air_colony_unit = false;
+				try {
+					auto unit_def = make_unit_def( 10, 0, 1, true, false );
+					unit_def.WriteInt( game::backend::unit::MT_AIR );
+					unit_def.WriteFloat( 1.0f );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_air_colony_unit = true;
+				}
+				GT_ASSERT( rejected_air_colony_unit, "air colony unit capability accepted" );
+
+				bool rejected_air_former_unit = false;
+				try {
+					auto unit_def = make_unit_def( 10, 0, 1, false, true );
+					unit_def.WriteInt( game::backend::unit::MT_AIR );
+					unit_def.WriteFloat( 1.0f );
+					std::unique_ptr< game::backend::unit::Def > parsed(
+						game::backend::unit::Def::Deserialize( unit_def )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_air_former_unit = true;
+				}
+				GT_ASSERT( rejected_air_former_unit, "air former unit capability accepted" );
+
+				bool rejected_invalid_resource_coordinates = false;
+				try {
+					types::Buffer resource;
+					resource.WriteString( "NUTRIENTS" );
+					resource.WriteString( "Nutrients" );
+					resource.WriteString( "newicons.pcx" );
+					resource.WriteInt( 1 );
+					resource.WriteInt( -1 );
+					resource.WriteInt( 0 );
+					resource.WriteInt( 20 );
+					resource.WriteInt( 20 );
+					std::unique_ptr< game::backend::resource::Resource > parsed(
+						game::backend::resource::Resource::Deserialize( resource )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_resource_coordinates = true;
+				}
+				GT_ASSERT( rejected_invalid_resource_coordinates, "invalid resource coordinates accepted" );
+
+				bool rejected_impossible_animation_timing = false;
+				try {
+					types::Buffer animation;
+					animation.WriteString( "MOVE" );
+					animation.WriteInt( game::backend::animation::AT_FRAMES_ROW );
+					animation.WriteFloat( 1.0f );
+					animation.WriteFloat( 1.0f );
+					animation.WriteInt( 1 );
+					animation.WriteString( "" );
+					animation.WriteString( "animations.pcx" );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 32 );
+					animation.WriteInt( 32 );
+					animation.WriteInt( 16 );
+					animation.WriteInt( 16 );
+					animation.WriteInt( 0 );
+					animation.WriteInt( 2 );
+					animation.WriteInt( 2 );
+					std::unique_ptr< game::backend::animation::Def > parsed(
+						game::backend::animation::Def::Deserialize( animation )
+					);
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_impossible_animation_timing = true;
+				}
+				GT_ASSERT( rejected_impossible_animation_timing, "impossible animation timing accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"tile serialization validation",
+			GT() {
+				using namespace game::backend::map::tile;
+
+				Tile source;
+				elevation_t source_center = 0;
+				elevation_t source_left = -1200;
+				elevation_t source_top = -300;
+				elevation_t source_right = 700;
+				elevation_t source_bottom = 1800;
+				source.elevation.center = &source_center;
+				source.elevation.left = &source_left;
+				source.elevation.top = &source_top;
+				source.elevation.right = &source_right;
+				source.elevation.bottom = &source_bottom;
+				source.elevation.corners = {
+					&source_left,
+					&source_top,
+					&source_right,
+					&source_bottom,
+				};
+				source.coord = { 6, 3 };
+				source.moisture = MOISTURE_RAINY;
+				source.rockiness = ROCKINESS_ROCKY;
+				source.bonus = BONUS_MINERALS;
+				source.features = FEATURE_RIVER | FEATURE_XENOFUNGUS;
+				source.terraforming = TERRAFORMING_ROAD | TERRAFORMING_FARM;
+				source.Update();
+
+				Tile restored;
+				elevation_t restored_center = ELEVATION_MIN;
+				elevation_t restored_left = ELEVATION_MIN;
+				elevation_t restored_top = ELEVATION_MIN;
+				elevation_t restored_right = ELEVATION_MIN;
+				elevation_t restored_bottom = ELEVATION_MIN;
+				restored.elevation.center = &restored_center;
+				restored.elevation.left = &restored_left;
+				restored.elevation.top = &restored_top;
+				restored.elevation.right = &restored_right;
+				restored.elevation.bottom = &restored_bottom;
+				restored.elevation.corners = {
+					&restored_left,
+					&restored_top,
+					&restored_right,
+					&restored_bottom,
+				};
+				restored.Deserialize( source.Serialize() );
+
+				GT_ASSERT( restored.coord.x == source.coord.x, "tile x coordinate changed" );
+				GT_ASSERT( restored.coord.y == source.coord.y, "tile y coordinate changed" );
+				GT_ASSERT( restored_center == source_center, "tile center elevation changed" );
+				GT_ASSERT( restored_left == source_left, "tile left elevation changed" );
+				GT_ASSERT( restored_top == source_top, "tile top elevation changed" );
+				GT_ASSERT( restored_right == source_right, "tile right elevation changed" );
+				GT_ASSERT( restored_bottom == source_bottom, "tile bottom elevation changed" );
+				GT_ASSERT( restored.moisture == source.moisture, "tile moisture changed" );
+				GT_ASSERT( restored.rockiness == source.rockiness, "tile rockiness changed" );
+				GT_ASSERT( restored.bonus == source.bonus, "tile bonus changed" );
+				GT_ASSERT( restored.features == source.features, "tile features changed" );
+				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
+				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
+
+				// Rendering may temporarily adjust the cached center without changing its corners.
+				source_center++;
+				restored.Deserialize( source.Serialize() );
+				source.Update();
+				GT_ASSERT(
+					restored_center == source_center,
+					"tile serialization preserved a stale derived center elevation"
+				);
+
+				const auto serialize_source = [&]( const int moisture, const feature_t features, const terraforming_t terraforming ) {
+					types::Buffer serialized;
+					serialized.WriteInt( source.coord.x );
+					serialized.WriteInt( source.coord.y );
+					serialized.WriteInt( source_center );
+					serialized.WriteInt( source_left );
+					serialized.WriteInt( source_top );
+					serialized.WriteInt( source_right );
+					serialized.WriteInt( source_bottom );
+					serialized.WriteInt( moisture );
+					serialized.WriteInt( source.rockiness );
+					serialized.WriteInt( source.bonus );
+					serialized.WriteInt( features );
+					serialized.WriteInt( terraforming );
+					return serialized;
+				};
+				const auto rejects_tile = [&]( types::Buffer serialized ) {
+					try {
+						restored.Deserialize( std::move( serialized ) );
+					}
+					catch ( const std::runtime_error& ) {
+						return true;
+					}
+					return false;
+				};
+				const auto restored_before_invalid_data = restored.Serialize().ToString();
+				GT_ASSERT(
+					rejects_tile( serialize_source( MOISTURE_RAINY + 1, source.features, source.terraforming ) ),
+					"invalid tile moisture accepted"
+				);
+				GT_ASSERT(
+					rejects_tile( serialize_source( source.moisture, static_cast< feature_t >( 1 << 15 ), source.terraforming ) ),
+					"unknown tile feature accepted"
+				);
+				GT_ASSERT(
+					rejects_tile( serialize_source( source.moisture, source.features, static_cast< terraforming_t >( 1 << 15 ) ) ),
+					"unknown tile terraforming accepted"
+				);
+				auto trailing_tile = source.Serialize();
+				trailing_tile.WriteBool( false );
+				GT_ASSERT( rejects_tile( std::move( trailing_tile ) ), "trailing tile data accepted" );
+				GT_ASSERT(
+					restored.Serialize().ToString() == restored_before_invalid_data,
+					"invalid tile data was partially applied"
+				);
+
+				Tiles grid( nullptr, 4, 4 );
+				grid.Clear();
+				Tiles grid_round_trip( nullptr );
+				grid_round_trip.Deserialize( grid.Serialize() );
+				GT_ASSERT( grid_round_trip.GetWidth() == 4, "tile grid width changed" );
+				GT_ASSERT( grid_round_trip.GetHeight() == 4, "tile grid height changed" );
+
+				const auto make_first_grid_tile = [](
+					const size_t x,
+					const elevation_t center,
+					const elevation_t bottom
+				) {
+					types::Buffer serialized;
+					serialized.WriteInt( x );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( center );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( 0 );
+					serialized.WriteInt( bottom );
+					serialized.WriteInt( MOISTURE_NONE );
+					serialized.WriteInt( ROCKINESS_NONE );
+					serialized.WriteInt( BONUS_NONE );
+					serialized.WriteInt( FEATURE_NONE );
+					serialized.WriteInt( TERRAFORMING_NONE );
+					return serialized.ToString();
+				};
+				const auto make_grid = [&]( const std::string& first_tile ) {
+					types::Buffer serialized;
+					serialized.WriteInt( grid.GetWidth() );
+					serialized.WriteInt( grid.GetHeight() );
+					bool is_first = true;
+					for ( size_t y = 0 ; y < grid.GetHeight() ; y++ ) {
+						for ( size_t x = y & 1 ; x < grid.GetWidth() ; x += 2 ) {
+							serialized.WriteString(
+								is_first
+									? first_tile
+									: grid.AtConst( x, y ).Serialize().ToString()
+							);
+							is_first = false;
+						}
+					}
+					serialized.WriteBool( false );
+					return serialized;
+				};
+				const auto rejects_grid = []( types::Buffer serialized ) {
+					try {
+						Tiles restored_grid( nullptr );
+						restored_grid.Deserialize( std::move( serialized ) );
+					}
+					catch ( const std::runtime_error& ) {
+						return true;
+					}
+					return false;
+				};
+				GT_ASSERT(
+					rejects_grid( make_grid( make_first_grid_tile( 2, 0, 0 ) ) ),
+					"mismatched tile grid coordinates accepted"
+				);
+				GT_ASSERT(
+					rejects_grid( make_grid( make_first_grid_tile( 0, 1, 4 ) ) ),
+					"conflicting shared tile elevations accepted"
+				);
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"render state serialization validation",
+			GT() {
+				using namespace types::mesh;
+				using game::backend::map::tile::ELEVATION_MAX;
+				using game::backend::map::tile::TileState;
+
+				const std::array< coord_t, 9 > valid_vertices = {
+					0.0f, 0.0f, 0.0f,
+					1.0f, 0.0f, 0.0f,
+					0.0f, 1.0f, 0.0f,
+				};
+				const std::array< index_t, 3 > valid_indices = { 0, 1, 2 };
+				const auto make_mesh = [](
+					const std::array< coord_t, 9 >& vertices,
+					const std::array< index_t, 3 >& indices
+				) {
+					types::Buffer serialized;
+					serialized.WriteInt( Mesh::MT_DATA );
+					serialized.WriteInt( Mesh::DT_BARE );
+					serialized.WriteInt( 3 );
+					serialized.WriteInt( 3 );
+					serialized.WriteData(
+						vertices.data(),
+						static_cast< uint32_t >( vertices.size() * sizeof( coord_t ) )
+					);
+					serialized.WriteInt( 3 );
+					serialized.WriteInt( 1 );
+					serialized.WriteInt( 1 );
+					serialized.WriteData(
+						indices.data(),
+						static_cast< uint32_t >( indices.size() * sizeof( index_t ) )
+					);
+					serialized.WriteBool( true );
+					return serialized;
+				};
+
+				Mesh restored_mesh( Mesh::MT_DATA, Mesh::DT_BARE, Mesh::VERTEX_COORD_SIZE, 3, 1 );
+				restored_mesh.Deserialize( make_mesh( valid_vertices, valid_indices ) );
+				types::Vec3 restored_vertex;
+				restored_mesh.GetVertexCoord( 1, &restored_vertex );
+				GT_ASSERT( restored_vertex.x == 1.0f, "valid mesh vertex changed" );
+				const auto restored_mesh_before_invalid_data = restored_mesh.Serialize().ToString();
+
+				auto nonfinite_vertices = valid_vertices;
+				nonfinite_vertices[ 0 ] = ( std::numeric_limits< coord_t >::quiet_NaN )();
+				bool rejected_nonfinite_mesh = false;
+				try {
+					restored_mesh.Deserialize( make_mesh( nonfinite_vertices, valid_indices ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_mesh = true;
+				}
+				GT_ASSERT( rejected_nonfinite_mesh, "non-finite mesh vertex accepted" );
+
+				auto overflowing_indices = valid_indices;
+				overflowing_indices[ 2 ] = 3;
+				bool rejected_overflowing_mesh_index = false;
+				try {
+					restored_mesh.Deserialize( make_mesh( valid_vertices, overflowing_indices ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_overflowing_mesh_index = true;
+				}
+				GT_ASSERT( rejected_overflowing_mesh_index, "out-of-bounds mesh index accepted" );
+				GT_ASSERT(
+					restored_mesh.Serialize().ToString() == restored_mesh_before_invalid_data,
+					"invalid mesh data was partially applied"
+				);
+
+				types::texture::Texture texture( 2, 1 );
+				const auto texture_before_invalid_data = texture.Serialize().ToString();
+				types::Buffer invalid_texture;
+				invalid_texture.WriteString( "" );
+				invalid_texture.WriteInt( texture.GetWidth() );
+				invalid_texture.WriteInt( texture.GetHeight() );
+				invalid_texture.WriteFloat( ( std::numeric_limits< float >::quiet_NaN )() );
+				invalid_texture.WriteInt( 4 );
+				invalid_texture.WriteInt( texture.GetBitmapSize() );
+				invalid_texture.WriteData(
+					texture.GetBitmap(),
+					static_cast< uint32_t >( texture.GetBitmapSize() )
+				);
+				invalid_texture.WriteBool( false );
+				bool rejected_nonfinite_texture = false;
+				try {
+					texture.Deserialize( std::move( invalid_texture ) );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_texture = true;
+				}
+				GT_ASSERT( rejected_nonfinite_texture, "non-finite texture aspect ratio accepted" );
+				GT_ASSERT(
+					texture.Serialize().ToString() == texture_before_invalid_data,
+					"invalid texture data was partially applied"
+				);
+
+				TileState::tile_elevations_t invalid_elevations = { 0, 0, 0, 0, ELEVATION_MAX + 1 };
+				TileState::tile_elevations_t restored_elevations = {};
+				bool rejected_invalid_elevations = false;
+				try {
+					restored_elevations.Deserialize( invalid_elevations.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_elevations = true;
+				}
+				GT_ASSERT( rejected_invalid_elevations, "invalid tile-state elevation accepted" );
+
+				TileState::tile_layer_t invalid_layer = {};
+				invalid_layer.texture_stretch.x = ( std::numeric_limits< float >::quiet_NaN )();
+				TileState::tile_layer_t restored_layer = {};
+				bool rejected_nonfinite_layer = false;
+				try {
+					restored_layer.Deserialize( invalid_layer.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_nonfinite_layer = true;
+				}
+				GT_ASSERT( rejected_nonfinite_layer, "non-finite tile layer accepted" );
+
+				TileState tile_state = {};
+				tile_state.layers[ 0 ].indices.center = 3;
+				bool rejected_mesh_reference = false;
+				try {
+					tile_state.ValidateMeshReferences( 3, 1, 3 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_mesh_reference = true;
+				}
+				GT_ASSERT( rejected_mesh_reference, "out-of-bounds tile mesh reference accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"faction serialization round trip",
+			GT() {
+				using game::backend::faction::Faction;
+
+				Faction source( "CARETAKERS", "Caretakers" );
+				source.m_flags = Faction::FF_NAVAL | Faction::FF_PROGENITOR | Faction::FF_NATIVE;
+				source.m_colors.text = types::Color::FromRGBA( 0x10203040 );
+				source.m_colors.text_shadow = types::Color::FromRGBA( 0x50607080 );
+				source.m_colors.border = types::Color::FromRGBA( 0x90a0b0c0 );
+				source.m_bases_render = { "caretake.pcx", 1, 2, 100, 75, 50, 37, 1, 0.75f, 1.25f };
+				source.m_base_names.land = { "Alpha Prime", "Tau Ceti" };
+				source.m_base_names.water = { "Deep Home" };
+				source.m_starting_technologies = { "CentauriEcology" };
+
+				Faction restored;
+				restored.Deserialize( source.Serialize() );
+
+				GT_ASSERT( restored.m_id == source.m_id, "faction id changed" );
+				GT_ASSERT( restored.m_name == source.m_name, "faction name changed" );
+				GT_ASSERT( restored.m_flags == source.m_flags, "faction flags changed" );
+				GT_ASSERT( restored.m_colors.text.GetRGBA() == source.m_colors.text.GetRGBA(), "faction text color changed" );
+				GT_ASSERT( restored.m_colors.text_shadow.GetRGBA() == source.m_colors.text_shadow.GetRGBA(), "faction shadow color changed" );
+				GT_ASSERT( restored.m_colors.border.GetRGBA() == source.m_colors.border.GetRGBA(), "faction border color changed" );
+				GT_ASSERT( restored.m_bases_render.file == source.m_bases_render.file, "faction base sprite changed" );
+				GT_ASSERT( restored.m_bases_render.cell_width == source.m_bases_render.cell_width, "faction base cell width changed" );
+				GT_ASSERT( restored.m_bases_render.scale_x == source.m_bases_render.scale_x, "faction base scale changed" );
+				GT_ASSERT( restored.m_base_names.land == source.m_base_names.land, "faction land base names changed" );
+				GT_ASSERT( restored.m_base_names.water == source.m_base_names.water, "faction water base names changed" );
+				GT_ASSERT(
+					restored.m_starting_technologies == source.m_starting_technologies,
+					"faction starting technologies changed"
+				);
+
+				source.m_starting_technologies.push_back( "CentauriEcology" );
+				bool rejected_duplicate_technology = false;
+				try {
+					Faction invalid;
+					invalid.Deserialize( source.Serialize() );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_duplicate_technology = true;
+				}
+				GT_ASSERT( rejected_duplicate_technology, "duplicate faction starting technology accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"map state rejects invalid dimensions",
+			GT() {
+				types::Buffer serialized;
+				serialized.WriteBool( false );
+				serialized.WriteVec2f( { 0.0f, 0.0f } );
+				serialized.WriteVec2u( { UINT32_MAX, UINT32_MAX } );
+				serialized.WriteVec2f( { 1.0f, 1.0f } );
+
+				bool rejected_dimensions = false;
+				try {
+					game::backend::map::MapState state;
+					state.Deserialize( serialized );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_dimensions = true;
+				}
+				GT_ASSERT( rejected_dimensions, "oversized map-state dimensions accepted" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"packed color conversion",
+			GT() {
+				const types::Color::color_t color = {
+					0.425f,
+					0.378f,
+					0.311f,
+					1.0f,
+				};
+				const auto rgba = types::Color::ToRGBA( color );
+
+				GT_ASSERT( rgba == types::Color( color ).GetRGBA(), "raw and wrapped color packing differ" );
+				GT_ASSERT( ( rgba & 0xff ) == 108, "packed red channel changed" );
+				GT_ASSERT( ( ( rgba >> 8 ) & 0xff ) == 96, "packed green channel changed" );
+				GT_ASSERT( ( ( rgba >> 16 ) & 0xff ) == 79, "packed blue channel changed" );
+				GT_ASSERT( ( ( rgba >> 24 ) & 0xff ) == 255, "packed alpha channel changed" );
+				GT_ASSERT( types::Color::RGBA( 0x12, 0x34, 0x56, 0x78 ) == 0x78563412, "RGBA byte order changed" );
+				GT_OK();
+			}
+		);
 		tests::AddGSETests( task );
 		tests::AddParserTests( task );
 		tests::AddRunnerTests( task );
 	}
-	tests::AddScriptsTests( task );
+	if ( !g_engine->GetConfig()->HasDebugFlag( config::Config::DF_GSE_TESTS_NATIVE_ONLY ) ) {
+		tests::AddScriptsTests( task );
+	}
 
 }
 

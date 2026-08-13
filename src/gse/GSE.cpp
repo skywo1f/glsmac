@@ -10,6 +10,7 @@
 #include "gc/Space.h"
 #include "Async.h"
 #include "ExecutionPointer.h"
+#include "engine/Engine.h"
 
 namespace gse {
 
@@ -32,6 +33,7 @@ GSE::GSE()
 GSE::~GSE() {
 	{
 		Finish();
+		m_gc_space->StopCollecting();
 		for ( auto& it : m_include_cache ) {
 			it.second.Cleanup( this );
 		}
@@ -48,11 +50,24 @@ GSE::~GSE() {
 }
 
 void GSE::Iterate() {
+	if ( m_is_shutting_down || ( g_engine && g_engine->IsShuttingDown() ) ) {
+		return;
+	}
 	ExecutionPointer ep;
 	if ( m_async ) {
 		m_async->Iterate( ep );
 	}
+	if ( m_is_shutting_down || ( g_engine && g_engine->IsShuttingDown() ) ) {
+		return;
+	}
 	m_gc_space->ProcessAccumulations();
+}
+
+void GSE::BeginShutdown() {
+	m_is_shutting_down = true;
+	if ( m_async ) {
+		m_async->StopTimers();
+	}
 }
 
 void GSE::Finish() {
@@ -206,7 +221,7 @@ Value* const GSE::RunScript( GSE_CALLABLE, const std::string& path ) {
 	};
 	try {
 		cache.context = CreateGlobalContext( full_path );
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 		// copy mocks
 		if ( ctx && ctx->HasVariable( "test" ) ) {
 			cache.context->CreateVariable( "test", ctx->GetVariable( "test", si, ep ), si, ep );
@@ -250,11 +265,13 @@ Value* const GSE::GetGlobal( const std::string& identifier ) {
 }
 
 void GSE::AddRootObject( gc::Object* const object ) {
+	std::lock_guard guard( m_root_objects_mutex );
 	ASSERT( m_root_objects.find( object ) == m_root_objects.end(), "root object already exists" );
 	m_root_objects.insert( object );
 }
 
 void GSE::RemoveRootObject( gc::Object* const object ) {
+	std::lock_guard guard( m_root_objects_mutex );
 	ASSERT( m_root_objects.find( object ) != m_root_objects.end(), "root object not found" );
 	m_root_objects.erase( object );
 }
@@ -317,8 +334,11 @@ void GSE::GetReachableObjects( std::unordered_set< Object* >& reachable_objects 
 	GC_DEBUG_END();
 
 	GC_DEBUG_BEGIN( "root_objects" );
-	for ( const auto& object : m_root_objects ) {
-		GC_REACHABLE( object );
+	{
+		std::lock_guard guard( m_root_objects_mutex );
+		for ( const auto& object : m_root_objects ) {
+			GC_REACHABLE( object );
+		}
 	}
 	GC_DEBUG_END();
 

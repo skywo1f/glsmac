@@ -35,9 +35,32 @@ return (m) => {
 			}
 		});
 
+		game.on('probe_interception_requested', (e) => {
+			if (p == null || game.get_player().id != e.player.id) {
+				return;
+			}
+			p.modules.popup.set('probe_interception', e);
+			p.modules.popup.show('probe_interception');
+		});
+
+		game.on('headquarters_evacuation_requested', (e) => {
+			if (p == null || game.get_player().id != e.player.id) {
+				return;
+			}
+			p.modules.popup.set('headquarters_evacuation', e);
+			p.modules.popup.show('headquarters_evacuation');
+		});
+
 		game.on('start_ui', (e) => {
 
 			m.root.clear();
+			m.root.sound({
+				id: 'game-ambience',
+				sound: 'wind e4.wav',
+				autoplay: true,
+				repeat: true,
+				volume: 0.12,
+			});
 
 			p = {
 				game: game,
@@ -82,6 +105,10 @@ return (m) => {
 					p.maybe_quit(false);
 					return true;
 				}
+				if (e.modifiers == {} && e.code == 'F6') {
+					p.modules.popup.show('orbital_attack');
+					return true;
+				}
 				return false;
 			});
 
@@ -89,6 +116,30 @@ return (m) => {
 				p.process_message(m);
 			}
 			messages_buffer = [];
+			const get_evacuation =
+				game.get('f_headquarters_get_player_evacuation');
+			if (#typeof(get_evacuation) == 'Callable') {
+				const evacuation = get_evacuation(game.get_player());
+				if (evacuation != null) {
+					p.modules.popup.set('headquarters_evacuation', evacuation);
+					p.modules.popup.show('headquarters_evacuation');
+				}
+			}
+			const get_supreme = game.get('f_council_get_supreme_state');
+			const get_supreme_response = game.get('f_council_get_supreme_response');
+			if (
+				#typeof(get_supreme) == 'Callable' &&
+				#typeof(get_supreme_response) == 'Callable'
+			) {
+				const supreme = get_supreme();
+				if (
+					supreme != null && !supreme.resolved &&
+					get_supreme_response(game.get_player()) == 1 &&
+					!p.modules.popup.is_shown()
+				) {
+					p.modules.popup.show('planetary_council');
+				}
+			}
 			// TODO
 
 		});

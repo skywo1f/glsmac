@@ -9,6 +9,7 @@
 #include "gse/context/Context.h"
 #include "gse/callable/Native.h"
 #include "gse/ExecutionPointer.h"
+#include "gse/value/String.h"
 
 namespace game {
 namespace backend {
@@ -158,6 +159,64 @@ WRAPIMPL_BEGIN( TileManager )
 			})
 		},
 		{
+			"get_sea_level",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				return VALUE( gse::value::Int,, GetMap( GSE_CALL )->GetSeaLevel() );
+			} )
+		},
+		{
+			"get_climate_state",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				const auto& state = GetMap( GSE_CALL )->GetClimateState();
+				return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+					{ "level", VALUE( gse::value::Int,, state.level ) },
+					{ "future_change", VALUE( gse::value::Int,, state.future_change ) },
+					{ "progress", VALUE( gse::value::Int,, state.progress ) },
+					{ "dust_cloud_duration", VALUE( gse::value::Int,, state.dust_cloud_duration ) },
+				} );
+			} )
+		},
+		{
+			"set_climate_state",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 3 );
+				N_GETVALUE( level, 0, Int );
+				N_GETVALUE( future_change, 1, Int );
+				N_GETVALUE( progress, 2, Int );
+				try {
+					auto state = GetMap( GSE_CALL )->GetClimateState();
+					state.level = level;
+					state.future_change = future_change;
+					state.progress = progress;
+					GetMap( GSE_CALL )->SetClimateState( state );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"set_dust_cloud_duration",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( duration, 0, Int );
+				try {
+					auto state = GetMap( GSE_CALL )->GetClimateState();
+					state.dust_cloud_duration = duration;
+					GetMap( GSE_CALL )->SetClimateState( state );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
 			"get_tile",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 2 );
@@ -192,6 +251,137 @@ WRAPIMPL_BEGIN( TileManager )
 				N_GETVALUE_UNWRAP( other, 1, Tile );
 				const auto* m = GetMap( GSE_CALL );
 				return VALUE( gse::value::Int,, GetDistance( tile, other, m->GetWidth() ) );
+			} )
+		},
+		{
+			"apply_crater",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				N_GETVALUE( radius, 1, Int );
+				if ( radius < 1 || radius > 4 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Crater radius must be between one and four tiles" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyCrater( center, static_cast< size_t >( radius ) )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"apply_earthquake",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				N_GETVALUE( elevation_steps, 1, Int );
+				if ( elevation_steps < 1 || elevation_steps > 3 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Earthquake must raise terrain by one to three levels" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyEarthquake( center, static_cast< size_t >( elevation_steps ) )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"apply_volcano",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyVolcano( center )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"apply_major_eruption",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE_UNWRAP( center, 0, Tile );
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplyMajorEruption( center )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"restore_terrain",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( snapshot, 0, String );
+				try {
+					GetMap( GSE_CALL )->RestoreTerrain( snapshot );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"apply_sea_level_change",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( amount, 0, Int );
+				if ( amount < tile::ELEVATION_MIN || amount > tile::ELEVATION_MAX ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "sea-level change is outside the supported elevation range" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						GetMap( GSE_CALL )->ApplySeaLevelChange( static_cast< tile::elevation_t >( amount ) )
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
+		{
+			"restore_sea_level",
+			NATIVE_CALL( this ) {
+				m_game->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( snapshot, 0, String );
+				try {
+					GetMap( GSE_CALL )->RestoreSeaLevel( snapshot );
+					return VALUE( gse::value::Undefined );
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
 			} )
 		},
 	};

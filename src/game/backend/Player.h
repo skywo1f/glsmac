@@ -1,6 +1,11 @@
 #pragma once
 
+#include <array>
+#include <cstdint>
+#include <map>
+#include <set>
 #include <string>
+#include <utility>
 
 #include "types/Serializable.h"
 #include "gse/Wrappable.h"
@@ -18,6 +23,12 @@ namespace slot {
 class Slot;
 }
 
+namespace map {
+namespace tile {
+class Tile;
+}
+}
+
 CLASS2( Player, types::Serializable, gse::Wrappable )
 
 	enum role_t {
@@ -25,6 +36,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		PR_SINGLE,
 		PR_HOST,
 		PR_PLAYER,
+		PR_AI,
+		PR_NATIVE,
 	};
 
 	Player( types::Buffer buf );
@@ -35,6 +48,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		const std::string& difficulty_level
 	);
 	Player( const Player* const other );
+	~Player() override;
 
 	const std::string& GetPlayerName() const;
 	const std::string GetFullName() const;
@@ -54,14 +68,279 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	slot::Slot* GetSlot() const;
 
 	const role_t GetRole() const;
+	const bool IsAI() const;
+	const bool IsNative() const;
+	const bool IsRedacted() const;
+	bool CanViewPrivateStateOf( const Player* target ) const;
 
 	const bool IsTurnCompleted() const;
 	void CompleteTurn();
 	void UncompleteTurn();
 
+	using technologies_t = std::set< std::string >;
+	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
+	static constexpr size_t MAX_TECHNOLOGIES = 1024;
+	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
+	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
+	static constexpr int64_t MAX_CLEAN_MINERAL_FACILITIES = 1000000;
+	static constexpr int64_t MAX_MAJOR_ATROCITIES = 1000000;
+	static constexpr int64_t MAX_SANCTION_TURNS = 1000000;
+	static constexpr int64_t MAX_INTEGRITY_BLEMISHES = 7;
+	static constexpr int64_t MAX_MIND_CONTROL_TOTAL = 1000000;
+	static constexpr size_t MAX_PROTOTYPED_COMPONENTS = 1024;
+	static constexpr size_t MAX_PROTOTYPED_COMPONENT_ID_LENGTH = 128;
+	static constexpr size_t MAX_OBSOLETE_UNIT_DESIGNS = 4096;
+	static constexpr size_t MAX_RETIRED_UNIT_DESIGNS = MAX_OBSOLETE_UNIT_DESIGNS;
+	static constexpr size_t MAX_UNIT_DESIGN_ID_LENGTH = 256;
+	static constexpr size_t MAX_ORBITAL_FACILITY_TYPES = 64;
+	static constexpr size_t MAX_ORBITAL_FACILITY_ID_LENGTH = 128;
+	static constexpr int64_t MAX_ORBITAL_FACILITY_COUNT = 1000000;
+
+	const technologies_t& GetTechnologies() const;
+	bool HasTechnology( const std::string& id ) const;
+	const std::string& GetResearchTarget() const;
+	int64_t GetResearchProgress() const;
+	void SetResearchState(
+		const technologies_t& technologies,
+		const std::string& target,
+		const int64_t progress
+	);
+	int64_t GetEnergyCredits() const;
+	void SetEnergyCredits( const int64_t energy_credits );
+	int64_t GetEcologicalDamageEvents() const;
+	void SetEcologicalDamageEvents( const int64_t ecological_damage_events );
+	int64_t GetCleanMineralFacilities() const;
+	void SetCleanMineralFacilities( const int64_t clean_mineral_facilities );
+	int64_t GetMajorAtrocities() const;
+	void SetMajorAtrocities( const int64_t major_atrocities );
+	int64_t GetSanctionTurns() const;
+	void SetSanctionTurns( const int64_t sanction_turns );
+	int64_t GetIntegrityBlemishes() const;
+	void SetIntegrityBlemishes( const int64_t integrity_blemishes );
+	int64_t GetMindControlTotal() const;
+	void SetMindControlTotal( const int64_t mind_control_total );
+	using prototyped_components_t = std::set< std::string >;
+	const prototyped_components_t& GetPrototypedComponents() const;
+	bool HasPrototypedComponent( const std::string& id ) const;
+	void SetPrototypedComponents( const prototyped_components_t& components );
+	using obsolete_unit_designs_t = std::set< std::string >;
+	const obsolete_unit_designs_t& GetObsoleteUnitDesigns() const;
+	bool IsUnitDesignObsolete( const std::string& id ) const;
+	void SetObsoleteUnitDesigns( const obsolete_unit_designs_t& designs );
+	using retired_unit_designs_t = std::set< std::string >;
+	const retired_unit_designs_t& GetRetiredUnitDesigns() const;
+	bool IsUnitDesignRetired( const std::string& id ) const;
+	void SetRetiredUnitDesigns( const retired_unit_designs_t& designs );
+	using orbital_facilities_t = std::map< std::string, int64_t >;
+	const orbital_facilities_t& GetOrbitalFacilities() const;
+	int64_t GetOrbitalFacilityCount( const std::string& id ) const;
+	void SetOrbitalFacilityCount( const std::string& id, const int64_t count );
+	int64_t GetOrbitalDefenseDeployments() const;
+	void SetOrbitalDefenseDeployments( const int64_t deployments );
+
+	static constexpr int64_t COUNCIL_VOTE_PENDING = -2;
+	static constexpr int64_t COUNCIL_VOTE_ABSTAIN = -1;
+	static constexpr int64_t COUNCIL_VOTE_NO = 0;
+	static constexpr int64_t COUNCIL_VOTE_YES = 1;
+	static constexpr int64_t SUPREME_RESPONSE_NONE = 0;
+	static constexpr int64_t SUPREME_RESPONSE_PENDING = 1;
+	static constexpr int64_t SUPREME_RESPONSE_ACCEDE = 2;
+	static constexpr int64_t SUPREME_RESPONSE_DEFY = 3;
+	static constexpr int64_t MAX_COUNCIL_TURN = 1000000;
+	static constexpr size_t MAX_COUNCIL_PLAYER_ID = 64;
+	struct council_state_t {
+		bool is_governor = false;
+		int64_t last_session_turn = 0;
+		std::string proposal = "";
+		int64_t caller_id = -1;
+		int64_t candidate_a_id = -1;
+		int64_t candidate_b_id = -1;
+		int64_t vote_id = COUNCIL_VOTE_PENDING;
+		bool global_trade_pact = false;
+		bool unity_core_salvaged = false;
+		bool un_charter_repealed = false;
+		bool is_expelled = false;
+		int64_t supreme_leader_id = -1;
+		int64_t supreme_response = SUPREME_RESPONSE_NONE;
+		bool supreme_resolved = false;
+
+		bool operator==( const council_state_t& other ) const {
+			return
+				is_governor == other.is_governor &&
+				last_session_turn == other.last_session_turn &&
+				proposal == other.proposal &&
+				caller_id == other.caller_id &&
+				candidate_a_id == other.candidate_a_id &&
+				candidate_b_id == other.candidate_b_id &&
+				vote_id == other.vote_id &&
+				global_trade_pact == other.global_trade_pact &&
+				unity_core_salvaged == other.unity_core_salvaged &&
+				un_charter_repealed == other.un_charter_repealed &&
+				is_expelled == other.is_expelled &&
+				supreme_leader_id == other.supreme_leader_id &&
+				supreme_response == other.supreme_response &&
+				supreme_resolved == other.supreme_resolved;
+		}
+	};
+	const council_state_t& GetCouncilState() const;
+	void SetCouncilState( const council_state_t& state );
+
+	using social_engineering_t = std::array< std::string, 4 >;
+	static constexpr size_t SOCIAL_ENGINEERING_CATEGORY_COUNT = 4;
+	static constexpr size_t MAX_SOCIAL_ENGINEERING_ID_LENGTH = 64;
+	const social_engineering_t& GetSocialEngineering() const;
+	void SetSocialEngineering( const social_engineering_t& social_engineering );
+
+	enum diplomatic_relation_t {
+		DR_NEUTRAL,
+		DR_TREATY,
+		DR_PACT,
+		DR_VENDETTA,
+	};
+	using diplomatic_relations_t = std::map< size_t, diplomatic_relation_t >;
+	static constexpr size_t MAX_DIPLOMATIC_RELATIONS = 64;
+	const diplomatic_relations_t& GetDiplomaticRelations() const;
+	diplomatic_relation_t GetDiplomaticRelation( const size_t player_id ) const;
+	void SetDiplomaticRelation( const size_t player_id, const diplomatic_relation_t relation );
+	const diplomatic_relations_t& GetDiplomaticOffers() const;
+	diplomatic_relation_t GetDiplomaticOffer( const size_t player_id ) const;
+	void SetDiplomaticOffer( const size_t player_id, const diplomatic_relation_t relation );
+	static const std::string GetDiplomaticRelationName( const diplomatic_relation_t relation );
+	static bool ParseDiplomaticRelation( const std::string& name, diplomatic_relation_t& relation );
+	using diplomatic_excuses_t = std::map< size_t, int64_t >;
+	static constexpr size_t MAX_DIPLOMATIC_EXCUSES = 64;
+	static constexpr int64_t NO_DIPLOMATIC_EXCUSE = -1;
+	static constexpr int64_t MAX_DIPLOMATIC_EXCUSE_TURN = 1000000;
+	const diplomatic_excuses_t& GetDiplomaticExcuses() const;
+	int64_t GetDiplomaticExcuseTurn( const size_t player_id ) const;
+	void SetDiplomaticExcuseTurn( const size_t player_id, const int64_t expiry_turn );
+	struct diplomatic_grievance_t {
+		bool wants_revenge = false;
+		bool atrocity_victim = false;
+		bool major_atrocity_victim = false;
+
+		bool operator==( const diplomatic_grievance_t& other ) const {
+			return
+				wants_revenge == other.wants_revenge &&
+				atrocity_victim == other.atrocity_victim &&
+				major_atrocity_victim == other.major_atrocity_victim;
+		}
+	};
+	using diplomatic_grievances_t = std::map< size_t, diplomatic_grievance_t >;
+	static constexpr size_t MAX_DIPLOMATIC_GRIEVANCES = 64;
+	const diplomatic_grievances_t& GetDiplomaticGrievances() const;
+	diplomatic_grievance_t GetDiplomaticGrievance( const size_t player_id ) const;
+	void SetDiplomaticGrievance(
+		const size_t player_id,
+		const diplomatic_grievance_t& grievance
+	);
+	static constexpr int64_t NO_DIPLOMATIC_PLAYER = -1;
+	static constexpr size_t MAX_DIPLOMATIC_PLAYER_ID = 64;
+	int64_t GetSubmissiveToId() const;
+	void SetSubmissiveToId( const int64_t player_id );
+	int64_t GetSurrenderOfferToId() const;
+	void SetSurrenderOfferToId( const int64_t player_id );
+
+	using contacted_players_t = std::set< size_t >;
+	static constexpr size_t MAX_CONTACTED_PLAYERS = 64;
+	const contacted_players_t& GetContactedPlayers() const;
+	bool HasContacted( const size_t player_id ) const;
+	void SetContacted( const size_t player_id, const bool contacted );
+
+	using explored_tile_t = std::pair< size_t, size_t >;
+	using explored_tiles_t = std::set< explored_tile_t >;
+	static constexpr size_t MAX_EXPLORED_TILES = 180 * 90;
+	static constexpr size_t MAX_EXPLORED_TILE_COORDINATE = MAX_EXPLORED_TILES;
+	const explored_tiles_t& GetExploredTiles() const;
+	bool HasExploredTile( const size_t x, const size_t y ) const;
+	void SetExploredTile( const size_t x, const size_t y, const bool explored );
+
+	struct diplomatic_trade_t {
+		int64_t offer_energy = 0;
+		std::string offer_technology = "";
+		int64_t request_energy = 0;
+		std::string request_technology = "";
+		int64_t offer_contact = -1;
+		int64_t request_contact = -1;
+		bool offer_map = false;
+		bool request_map = false;
+		int64_t offer_base = -1;
+		int64_t request_base = -1;
+		int64_t request_vendetta_player = -1;
+		bool is_ultimatum = false;
+
+		bool operator==( const diplomatic_trade_t& other ) const {
+			return
+				offer_energy == other.offer_energy &&
+				offer_technology == other.offer_technology &&
+				request_energy == other.request_energy &&
+				request_technology == other.request_technology &&
+				offer_contact == other.offer_contact &&
+				request_contact == other.request_contact &&
+				offer_map == other.offer_map &&
+				request_map == other.request_map &&
+				offer_base == other.offer_base &&
+				request_base == other.request_base &&
+				request_vendetta_player == other.request_vendetta_player &&
+				is_ultimatum == other.is_ultimatum;
+		}
+	};
+	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
+	static constexpr size_t MAX_DIPLOMATIC_TRADES = 64;
+	static constexpr size_t MAX_DIPLOMATIC_TRADE_TECHNOLOGY_ID_LENGTH = 128;
+	static constexpr int64_t MAX_DIPLOMATIC_TRADE_BASE_ID = 1000000000;
+	const diplomatic_trades_t& GetDiplomaticTrades() const;
+	const diplomatic_trade_t* GetDiplomaticTrade( const size_t player_id ) const;
+	void SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_t& trade );
+	void ClearDiplomaticTrade( const size_t player_id );
+
+	struct diplomatic_loan_offer_t {
+		bool proposer_is_lender = true;
+		int64_t principal = 0;
+		int64_t payment = 0;
+		int64_t turns = 0;
+
+		bool operator==( const diplomatic_loan_offer_t& other ) const {
+			return
+				proposer_is_lender == other.proposer_is_lender &&
+				principal == other.principal &&
+				payment == other.payment &&
+				turns == other.turns;
+		}
+	};
+	using diplomatic_loan_offers_t = std::map< size_t, diplomatic_loan_offer_t >;
+	static constexpr size_t MAX_DIPLOMATIC_LOAN_OFFERS = 64;
+	static constexpr int64_t MAX_DIPLOMATIC_LOAN_TURNS = 1000;
+	const diplomatic_loan_offers_t& GetDiplomaticLoanOffers() const;
+	const diplomatic_loan_offer_t* GetDiplomaticLoanOffer( const size_t player_id ) const;
+	void SetDiplomaticLoanOffer( const size_t player_id, const diplomatic_loan_offer_t& offer );
+	void ClearDiplomaticLoanOffer( const size_t player_id );
+
+	struct diplomatic_loan_t {
+		int64_t balance = 0;
+		int64_t payment = 0;
+
+		bool operator==( const diplomatic_loan_t& other ) const {
+			return balance == other.balance && payment == other.payment;
+		}
+	};
+	using diplomatic_loans_t = std::map< size_t, diplomatic_loan_t >;
+	static constexpr size_t MAX_DIPLOMATIC_LOANS = 64;
+	const diplomatic_loans_t& GetDiplomaticLoans() const;
+	const diplomatic_loan_t* GetDiplomaticLoan( const size_t player_id ) const;
+	void SetDiplomaticLoan( const size_t player_id, const diplomatic_loan_t& loan );
+	void ClearDiplomaticLoan( const size_t player_id );
+
+	using infiltrated_players_t = std::set< size_t >;
+	static constexpr size_t MAX_INFILTRATED_PLAYERS = 64;
+	const infiltrated_players_t& GetInfiltratedPlayers() const;
+	bool HasInfiltrated( const size_t player_id ) const;
+	void SetInfiltrated( const size_t player_id, const bool infiltrated );
+
 	WRAPDEFS_PTR( Player );
 
 	const types::Buffer Serialize() const override;
+	const types::Buffer Serialize( const Player* viewer ) const;
 	void Deserialize( types::Buffer buf ) override;
 
 	WRAPDEF_SERIALIZABLE;
@@ -77,9 +356,57 @@ private:
 	size_t m_slotnum = 0;
 
 	faction::Faction* m_faction = {};
+	bool m_owns_faction = false;
 	std::string m_difficulty_level = "";
 
 	bool m_is_turn_completed = false;
+	bool m_is_redacted = false;
+	technologies_t m_technologies = {};
+	std::string m_research_target = "";
+	int64_t m_research_progress = 0;
+	int64_t m_energy_credits = 0;
+	int64_t m_ecological_damage_events = 0;
+	int64_t m_clean_mineral_facilities = 0;
+	int64_t m_major_atrocities = 0;
+	int64_t m_sanction_turns = 0;
+	int64_t m_integrity_blemishes = 0;
+	int64_t m_mind_control_total = 0;
+	prototyped_components_t m_prototyped_components = {
+		"Infantry", "HandWeapons", "NoArmor", "ColonyModule"
+	};
+	obsolete_unit_designs_t m_obsolete_unit_designs = {};
+	retired_unit_designs_t m_retired_unit_designs = {};
+	orbital_facilities_t m_orbital_facilities = {};
+	int64_t m_orbital_defense_deployments = 0;
+	council_state_t m_council_state = {};
+	social_engineering_t m_social_engineering = {{ "Frontier", "Simple", "Survival", "None" }};
+	diplomatic_relations_t m_diplomatic_relations = {};
+	diplomatic_relations_t m_diplomatic_offers = {};
+	diplomatic_excuses_t m_diplomatic_excuses = {};
+	diplomatic_grievances_t m_diplomatic_grievances = {};
+	contacted_players_t m_contacted_players = {};
+	bool m_legacy_unrestricted_contact = false;
+	explored_tiles_t m_explored_tiles = {};
+	bool m_legacy_full_map_visibility = false;
+	infiltrated_players_t m_infiltrated_players = {};
+	diplomatic_trades_t m_diplomatic_trades = {};
+	diplomatic_loan_offers_t m_diplomatic_loan_offers = {};
+	diplomatic_loans_t m_diplomatic_loans = {};
+	int64_t m_submissive_to_id = NO_DIPLOMATIC_PLAYER;
+	int64_t m_surrender_offer_to_id = NO_DIPLOMATIC_PLAYER;
+
+	void ReleaseOwnedFaction();
+	static bool ValidateResearchState(
+		const technologies_t& technologies,
+		const std::string& target,
+		const int64_t progress,
+		std::string& error
+	);
+	static bool ValidateSocialEngineering(
+		const social_engineering_t& social_engineering,
+		std::string& error
+	);
+	static bool ValidateCouncilState( const council_state_t& state, std::string& error );
 };
 
 }

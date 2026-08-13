@@ -1,6 +1,8 @@
 #pragma once
 
 #include <vector>
+#include <map>
+#include <unordered_map>
 #include <unordered_set>
 #include "common/Mutex.h"
 
@@ -85,7 +87,13 @@ public:
 	Server* AsServer() const; // for server-specific calls
 	void IfServer( std::function< void( Server* server ) > cb ); // call cb if server
 
-	void SendGameEvent( backend::event::Event* event );
+	void SendGameEvent(
+		backend::event::Event* event,
+		const bool private_unit_event,
+		const bool unit_snapshot_event,
+		const bool private_player_event
+	);
+	void FinalizeGameEvent( backend::event::Event* event );
 
 	const bool IsConnected() const;
 	const bool IsServer() const;
@@ -99,7 +107,7 @@ public:
 	virtual void SendMessage( const std::string& message ) = 0;
 
 protected:
-	const int DOWNLOAD_CHUNK_SIZE = 16384;
+	static constexpr size_t DOWNLOAD_CHUNK_SIZE = 16384;
 
 	network::Network* const m_network;
 
@@ -115,9 +123,53 @@ protected:
 	State* m_state = nullptr;
 
 	struct game_event_t {
-		size_t caller;
-		std::string name;
-		std::string serialized_data;
+		struct unit_projection_t {
+			std::map< size_t, std::string > projected_before = {};
+			std::map< size_t, std::string > projected_after = {};
+			std::unordered_set< size_t > visible_after = {};
+			std::map< size_t, std::string > revealed = {};
+			std::unordered_set< size_t > created_hidden = {};
+		};
+		struct base_projection_t {
+			std::map< size_t, std::string > projected_before = {};
+			std::map< size_t, std::string > projected_after = {};
+			std::unordered_set< size_t > full_before = {};
+			std::unordered_set< size_t > full_after = {};
+		};
+		struct player_projection_t {
+			std::map< size_t, std::string > projected_before = {};
+			std::map< size_t, std::string > projected_after = {};
+			std::unordered_set< size_t > full_before = {};
+			std::unordered_set< size_t > full_after = {};
+		};
+		size_t caller = 0;
+		std::string id = "";
+		std::string name = "";
+		std::string serialized_data = "";
+		std::unordered_set< size_t > referenced_unit_ids = {};
+		std::map< size_t, std::string > referenced_unit_snapshots = {};
+		std::unordered_set< size_t > unit_ids_before = {};
+		std::unordered_set< size_t > created_unit_ids = {};
+		size_t next_unit_id_after = 0;
+		bool private_unit_event = false;
+		bool unit_snapshot_event = false;
+		bool private_player_event = false;
+		std::unordered_map< network::cid_t, unit_projection_t > unit_projections = {};
+		std::unordered_set< size_t > referenced_base_ids = {};
+		std::unordered_set< size_t > base_ids_before = {};
+		std::unordered_set< size_t > created_base_ids = {};
+		size_t next_base_id_after = 0;
+		std::unordered_map< network::cid_t, base_projection_t > base_projections = {};
+		std::unordered_set< size_t > referenced_player_ids = {};
+		std::unordered_map< network::cid_t, player_projection_t > player_projections = {};
+		bool map_projection_capture = false;
+		std::map< size_t, std::string > projected_map_tiles = {};
+		bool projected_map_state_changed = false;
+		int64_t projected_sea_level = 0;
+		int64_t projected_climate_level = 0;
+		int64_t projected_climate_future_change = 0;
+		int64_t projected_climate_progress = 0;
+		int64_t projected_dust_cloud_duration = 0;
 	};
 	typedef std::vector< game_event_t > game_events_t;
 	game_state_t m_game_state = GS_NONE;
@@ -132,6 +184,7 @@ protected:
 	void IgnoreCID( const network::cid_t cid );
 
 	virtual void SendGameEvents( const game_events_t& game_events ) = 0;
+	void FlushPendingGameEvents();
 
 private:
 	const network::connection_mode_t m_connection_mode = network::CM_NONE;
@@ -144,12 +197,14 @@ private:
 	// buffer events for optimization
 	const size_t PENDING_GAME_EVENTS_LIMIT = 256;
 
+	game_events_t m_prepared_server_game_events = {};
 	game_events_t m_pending_game_events = {};
 
 	gse::value::Callable* m_f_on_open = nullptr;
 
 	void ProcessPending( const bool nosend );
 	void ClearPending();
+	void FinalizeStoppedNetwork();
 
 	gc::Space* const m_gc_space;
 

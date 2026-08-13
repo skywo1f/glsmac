@@ -27,18 +27,6 @@ return (i) => {
 			lines :+[];
 		};
 
-		make_line('difficulty', 'Difficulty Level', [
-			// TODO
-			/*['0', 'Citizen'],
-			['1', 'Specialist'],
-			['2', 'Talent'],
-			['3', 'Librarian'],
-			['4', 'Thinker'],*/
-			['5', 'Transcend'],
-		], '5', (v) => {
-			return #to_int(v);
-		});
-
 		make_line('timer', 'Time Controls', [
 			['none', 'None'],
 			// TODO

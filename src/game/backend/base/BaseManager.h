@@ -32,12 +32,14 @@ class Slot;
 namespace base {
 
 class Base;
+class FacilityDef;
 class PopDef;
 
 CLASS( BaseManager, gse::GCWrappable )
 public:
 
 	typedef std::unordered_map< std::string, base::PopDef* > popdefs_t;
+	typedef std::unordered_map< std::string, base::FacilityDef* > facilitydefs_t;
 
 	BaseManager( Game* game );
 	~BaseManager();
@@ -45,14 +47,22 @@ public:
 	void Clear();
 
 	PopDef* GetPopDef( const std::string& id ) const;
+	FacilityDef* GetFacilityDef( const std::string& id ) const;
+	Base* GetProjectBase( const std::string& id ) const;
 	Base* GetBase( const size_t id ) const;
 	void DefinePop( base::PopDef* pop_def );
 	void UndefinePop( const std::string& id );
+	void DefineFacility( base::FacilityDef* facility_def );
+	void UndefineFacility( const std::string& id );
 	void SpawnBase( GSE_CALLABLE, base::Base* base );
 	void DespawnBase( GSE_CALLABLE, const size_t base_id );
+	std::string SnapshotBase( const base::Base* base ) const;
+	std::string ProjectBase( const base::Base* base, const bool include_private_state ) const;
+	base::Base* RestoreBase( GSE_CALLABLE, const std::string& snapshot );
 
 	const std::map< size_t, Base* >& GetBases() const;
 	const popdefs_t& GetBasePopDefs() const;
+	const facilitydefs_t& GetFacilityDefs() const;
 
 	void ProcessUnprocessed( GSE_CALLABLE );
 	void PushUpdates();
@@ -61,7 +71,10 @@ public:
 
 	void TriggerUpdates( GSE_CALLABLE );
 
-	void Serialize( types::Buffer& buf ) const;
+	void Serialize(
+		types::Buffer& buf,
+		const std::map< size_t, std::string >* projected_bases = nullptr
+	) const;
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
 
 	void RefreshBase( const base::Base* base );
@@ -74,6 +87,7 @@ private:
 	Game* m_game = nullptr;
 
 	popdefs_t m_base_popdefs = {};
+	facilitydefs_t m_facility_defs = {};
 	std::map< size_t, base::Base* > m_bases = {};
 	std::vector< types::Buffer > m_unprocessed_bases = {};
 
@@ -90,8 +104,10 @@ private:
 		const base::Base* base = nullptr;
 	};
 	std::unordered_map< size_t, base_update_t > m_base_updates = {};
+	static constexpr size_t MAX_BASE_SNAPSHOT_SIZE = 4 * 1024 * 1024;
 
 	void QueueBaseUpdate( const base::Base* base, const base_update_op_t op );
+	const PopDef* GetPublicProjectionPopDef( const base::Base* base ) const;
 
 private:
 	std::mutex m_updated_bases_mutex;

@@ -1,4 +1,40 @@
+const generated = #include('generated');
+
+const role_render = (role) => {
+	let x = 518;
+	let y = 82;
+	if (role == 'former' || role == 'supply' || role == 'probe') {
+		y = 158;
+	} else if (role == 'colony') {
+		y = 235;
+	} else if (role == 'artifact') {
+		y = 312;
+	}
+	return {
+		type: 'sprite',
+		file: 'newicons.pcx',
+		x: x,
+		y: y,
+		w: 80,
+		h: 69,
+		cx: x + 40,
+		cy: y + 35,
+	};
+};
+
 const moralesets = [
+	{
+		id: 'STANDARD',
+		data: [
+			{name: 'Very Green'},
+			{name: 'Green'},
+			{name: 'Disciplined'},
+			{name: 'Hardened'},
+			{name: 'Veteran'},
+			{name: 'Commando'},
+			{name: 'Elite'},
+		]
+	},
 	{
 		id: 'NATIVE',
 		data: [
@@ -13,15 +49,41 @@ const moralesets = [
 	},
 ];
 
-const native_lifeform = (id, name, movement_type, movement_per_turn, base_y) => {
+const native_lifeform = (
+	id,
+	name,
+	mineral_cost,
+	movement_type,
+	movement_per_turn,
+	base_y,
+	abilities,
+	cargo_capacity,
+	required_technology
+) => {
 	return {
 		id: id,
 		data: {
 			name: name,
+			mineral_cost: mineral_cost,
+			is_native: true,
+			offense: 1,
+			defense: 1,
+			chassis: movement_type == 'water'
+				? 'Foil'
+				: (movement_type == 'air' ? 'Gravship' : 'Infantry'),
+			weapon: 'PsiAttack',
+			armor: 'PsiDefense',
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: abilities,
+			required_technology: required_technology,
 			morale: 'NATIVE',
 			type: 'static',
 			movement_type: movement_type,
 			movement_per_turn: movement_per_turn,
+			operational_range: 0,
+			is_missile: false,
+			cargo_capacity: cargo_capacity,
 			render: {
 				type: 'sprite',
 				file: 'units.pcx',
@@ -34,14 +96,148 @@ const native_lifeform = (id, name, movement_type, movement_per_turn, base_y) => 
 	};
 };
 
+const conventional_unit = (
+	id,
+	name,
+	mineral_cost,
+	offense,
+	defense,
+	sprite_x,
+	sprite_y,
+	can_found_base,
+	can_terraform,
+	required_technology,
+	movement_per_turn,
+	chassis,
+	weapon,
+	armor
+) => {
+	return {
+		id: id,
+		data: {
+			name: name,
+			mineral_cost: mineral_cost,
+			is_native: false,
+			offense: offense,
+			defense: defense,
+			can_found_base: can_found_base,
+			can_terraform: can_terraform,
+			required_technology: required_technology,
+			chassis: chassis,
+			weapon: weapon,
+			armor: armor,
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: [],
+			morale: 'STANDARD',
+			type: 'static',
+			movement_type: 'land',
+			movement_per_turn: movement_per_turn,
+			operational_range: 0,
+			is_missile: false,
+			cargo_capacity: 0,
+			render: role_render(
+				can_found_base ? 'colony' : (
+					can_terraform ? 'former' : (
+						weapon == 'AlienArtifact' ? 'artifact' : (
+							weapon == 'ProbeTeam' ? 'probe' : 'combat'
+						)
+					)
+				)
+			),
+		},
+	};
+};
+
+const special_unit = (
+	id,
+	name,
+	mineral_cost,
+	offense,
+	defense,
+	sprite_x,
+	sprite_y,
+	movement_type,
+	movement_per_turn,
+	operational_range,
+	cargo_capacity,
+	chassis,
+	weapon,
+	armor,
+	required_technology
+) => {
+	return {
+		id: id,
+		data: {
+			name: name,
+			mineral_cost: mineral_cost,
+			is_native: false,
+			offense: offense,
+			defense: defense,
+			can_found_base: false,
+			can_terraform: false,
+			required_technology: required_technology,
+			chassis: chassis,
+			weapon: weapon,
+			armor: armor,
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: [],
+			morale: 'STANDARD',
+			type: 'static',
+			movement_type: movement_type,
+			movement_per_turn: movement_per_turn,
+			operational_range: operational_range,
+			is_missile: false,
+			cargo_capacity: cargo_capacity,
+			render: role_render(
+				weapon == 'TroopTransport' ? 'supply' : 'combat'
+			),
+		},
+	};
+};
+
 const units = [
-	native_lifeform('FungalTower', 'Fungal Tower', 'immovable', 0, 79),
-	native_lifeform('MindWorms', 'Mind Worms', 'land', 1, 233),
-	native_lifeform('SeaLurk', 'Sea Lurk', 'water', 4, 310),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 'land', 1, 387),
+	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
+	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
+	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
+	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),
+	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2, 'Speeder', 'HandWeapons', 'NoArmor'),
+	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 206, 156, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
+	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
+	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, 104, 156, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
+	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, 2, 156, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
+	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 104, 156, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 2, 541, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 2, 310, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
+	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0, ''),
+	native_lifeform('MindWorms', 'Mind Worms', 50, 'land', 1, 233, [], 0, 'CentauriEmpathy'),
+	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4, 'CentauriMeditation'),
+	native_lifeform('LocustsOfChiron', 'Locusts of Chiron', 100, 'air', 8, 387, [], 0, 'CentauriGenetics'),
+	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, [], 0, ''),
+	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0, ''),
 ];
 
+for (unit of generated.definitions) {
+	units :+unit;
+}
+
+for (unit of units) {
+	if (
+		unit.id == 'AlienArtifact' ||
+		unit.id == 'UnityRover' ||
+		unit.id == 'UnityScoutChopper' ||
+		unit.id == 'UnityFoil'
+	) {
+		unit.data.buildable = false;
+	}
+}
+
 const result = {
+	moralesets: moralesets,
+	definitions: units,
+	generated_count: #sizeof(generated.definitions),
+
 	define: (game) => {
 
 		for (moraleset of moralesets) {

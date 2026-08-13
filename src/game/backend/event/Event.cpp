@@ -1,11 +1,99 @@
 #include "Event.h"
 
 #include "game/backend/Game.h"
+#include "game/backend/Player.h"
+#include "game/backend/unit/Unit.h"
+#include "game/backend/base/Base.h"
+#include "gse/value/Array.h"
 #include "gse/value/Object.h"
 
 namespace game {
 namespace backend {
 namespace event {
+
+namespace {
+
+const bool HasInvalidatedReference( const gse::Value* const value, std::unordered_set< const gse::Value* >& visited ) {
+	if ( !value || !visited.insert( value ).second ) {
+		return false;
+	}
+	if ( value->IsInvalidated() ) {
+		return true;
+	}
+	switch ( value->type ) {
+		case gse::VT_ARRAY: {
+			for ( const auto* const element : ( (const gse::value::Array*)value )->value ) {
+				if ( HasInvalidatedReference( element, visited ) ) {
+					return true;
+				}
+			}
+			break;
+		}
+		case gse::VT_OBJECT: {
+			for ( const auto& property : ( (const gse::value::Object*)value )->value ) {
+				if ( HasInvalidatedReference( property.second, visited ) ) {
+					return true;
+				}
+			}
+			break;
+		}
+		default:
+			break;
+	}
+	return false;
+}
+
+void CollectReferencedObjects(
+	const gse::Value* const value,
+	std::unordered_set< const gse::Value* >& visited,
+	std::unordered_set< const unit::Unit* >* const units,
+	std::unordered_set< const base::Base* >* const bases,
+	std::unordered_set< const Player* >* const players
+) {
+	if ( !value || !visited.insert( value ).second ) {
+		return;
+	}
+	switch ( value->type ) {
+		case gse::VT_ARRAY: {
+			for ( const auto* const element : ( (const gse::value::Array*)value )->value ) {
+				CollectReferencedObjects( element, visited, units, bases, players );
+			}
+			break;
+		}
+		case gse::VT_OBJECT: {
+			const auto* const object = (const gse::value::Object*)value;
+			auto* const nested_players = object->wrapobj ? nullptr : players;
+			if ( object->wrapobj ) {
+				if ( units ) {
+					const auto* const referenced_unit = dynamic_cast< const unit::Unit* >( object->wrapobj );
+					if ( referenced_unit ) {
+						units->insert( referenced_unit );
+					}
+				}
+				if ( bases ) {
+					const auto* const referenced_base = dynamic_cast< const base::Base* >( object->wrapobj );
+					if ( referenced_base ) {
+						bases->insert( referenced_base );
+					}
+				}
+				if ( players ) {
+					const auto* const referenced_player = dynamic_cast< const Player* >( object->wrapobj );
+					if ( referenced_player ) {
+						players->insert( referenced_player );
+					}
+				}
+			}
+			for ( const auto& property : object->value ) {
+				CollectReferencedObjects( property.second, visited, units, bases, nested_players );
+			}
+			break;
+		}
+		default:
+			break;
+	}
+}
+
+}
 
 Event::Event( Game* game, const source_t source, const size_t caller, GSE_CALLABLE, const std::string& name, const gse::value::object_properties_t& data, const std::string& id )
 	: gc::Object( gc_space )
@@ -49,16 +137,25 @@ const types::Buffer Event::Serialize() {
 Event* const Event::Deserialize( Game* const game, const source_t source, GSE_CALLABLE, types::Buffer buffer ) {
 	const auto id = buffer.ReadString();
 	const auto name = buffer.ReadString();
-	const auto caller = buffer.ReadInt();
+	const auto caller = buffer.ReadInt< size_t >( "event caller" );
 	gse::value::object_properties_t data = {};
-	const auto sz = buffer.ReadInt();
-	for ( auto i = 0 ; i < sz ; i++ ) {
+	const auto sz = buffer.ReadCollectionSize( "event data property" );
+	for ( size_t i = 0 ; i < sz ; i++ ) {
 		const auto k = buffer.ReadString();
-		data.insert( { k, gse::Value::Deserialize( GSE_CALL, &buffer, game ) } );
+		if ( !data.insert( { k, gse::Value::Deserialize( GSE_CALL, &buffer, game ) } ).second ) {
+			THROW( "duplicate serialized event data property: " + k );
+		}
+	}
+	gse::Value* resolved = nullptr;
+	if ( buffer.ReadBool() ) {
+		resolved = gse::Value::Deserialize( GSE_CALL, &buffer, game );
+	}
+	if ( buffer.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized event" );
 	}
 	auto* event = new Event( game, source, caller, GSE_CALL, name, data, id );
-	if ( buffer.ReadBool() ) {
-		event->SetResolved( gse::Value::Deserialize( GSE_CALL, &buffer, game ) );
+	if ( resolved ) {
+		event->SetResolved( resolved );
 	}
 	return event;
 }
@@ -108,6 +205,123 @@ const std::string& Event::GetEventName() const {
 
 const gse::value::object_properties_t& Event::GetData() const {
 	return m_data;
+}
+
+const gse::value::object_properties_t& Event::GetOriginalData() const {
+	return m_original_data;
+}
+
+const bool Event::HasInvalidatedReferences() const {
+	std::unordered_set< const gse::Value* > visited = {};
+	for ( const auto& property : m_original_data ) {
+		if ( HasInvalidatedReference( property.second, visited ) ) {
+			return true;
+		}
+	}
+	return false;
+}
+
+const std::unordered_set< const unit::Unit* > Event::GetReferencedUnits() {
+	std::unordered_set< const gse::Value* > visited = {};
+	std::unordered_set< const unit::Unit* > units = {};
+	for ( const auto& property : m_original_data ) {
+		CollectReferencedObjects( property.second, visited, &units, nullptr, nullptr );
+	}
+	{
+		std::lock_guard guard( m_resolved_mutex );
+		CollectReferencedObjects( m_resolved, visited, &units, nullptr, nullptr );
+	}
+	return units;
+}
+
+const std::unordered_set< const base::Base* > Event::GetReferencedBases() {
+	std::unordered_set< const gse::Value* > visited = {};
+	std::unordered_set< const base::Base* > bases = {};
+	for ( const auto& property : m_original_data ) {
+		CollectReferencedObjects( property.second, visited, nullptr, &bases, nullptr );
+	}
+	{
+		std::lock_guard guard( m_resolved_mutex );
+		CollectReferencedObjects( m_resolved, visited, nullptr, &bases, nullptr );
+	}
+	return bases;
+}
+
+const std::unordered_set< const Player* > Event::GetReferencedPlayers() {
+	std::unordered_set< const gse::Value* > visited = {};
+	std::unordered_set< const Player* > players = {};
+	for ( const auto& property : m_original_data ) {
+		CollectReferencedObjects( property.second, visited, nullptr, nullptr, &players );
+	}
+	{
+		std::lock_guard guard( m_resolved_mutex );
+		CollectReferencedObjects( m_resolved, visited, nullptr, nullptr, &players );
+	}
+	return players;
+}
+
+const std::string Event::SerializeUnitVisibilityUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__unit_visibility" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
+}
+
+const std::string Event::SerializeBaseVisibilityUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__base_visibility" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
+}
+
+const std::string Event::SerializePlayerVisibilityUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__player_visibility" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
+}
+
+const std::string Event::SerializeMapProjectionUpdate(
+	const std::string& id,
+	const std::string& payload
+) {
+	types::Buffer buf;
+	buf.WriteString( id );
+	buf.WriteString( "__map_projection" );
+	buf.WriteInt( 0 );
+	buf.WriteInt( 1 );
+	buf.WriteString( "payload" );
+	buf.WriteInt( gse::VT_STRING );
+	buf.WriteString( payload );
+	buf.WriteBool( false );
+	return buf.ToString();
 }
 
 void Event::SetResolved( gse::Value* const resolved ) {

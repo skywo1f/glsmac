@@ -60,6 +60,10 @@ CLASS( State, gse::GCWrappable )
 
 	void AddPlayer( Player* player );
 	void RemovePlayer( Player* player );
+	Player* EnsureNativePlayer();
+	static constexpr size_t PLAYABLE_SLOT_COUNT = 7;
+	static constexpr size_t NATIVE_SLOT_INDEX = PLAYABLE_SLOT_COUNT;
+	static constexpr size_t TOTAL_SLOT_COUNT = PLAYABLE_SLOT_COUNT + 1;
 
 	// used only on host
 	void AddCIDSlot( const network::cid_t cid, const size_t slot );
@@ -82,6 +86,16 @@ CLASS( State, gse::GCWrappable )
 	const types::Buffer Serialize() const;
 	void Deserialize( types::Buffer buf );
 
+	struct pending_game_load_t {
+		size_t local_slot = 0;
+		std::string random_state = "";
+		std::string world_snapshot = "";
+	};
+	const bool HasPendingGameLoad() const;
+	const pending_game_load_t& GetPendingGameLoad() const;
+	void SetPendingGameLoad( const pending_game_load_t& load );
+	void ClearPendingGameLoad();
+
 	gc::Space* const m_gc_space = nullptr;
 	gse::context::Context* const m_ctx = nullptr;
 
@@ -98,6 +112,8 @@ private:
 
 	std::unordered_set< Player* > m_players = {}; // persistent
 	std::unordered_map< network::cid_t, size_t > m_cid_slots = {}; // volatile ( { cid, slot_num } )
+	bool m_has_pending_game_load = false;
+	pending_game_load_t m_pending_game_load = {};
 
 };
 

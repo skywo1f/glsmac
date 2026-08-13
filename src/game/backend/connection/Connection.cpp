@@ -4,6 +4,15 @@
 #include "engine/Engine.h"
 #include "network/Network.h"
 #include "game/backend/event/Event.h"
+#include "game/backend/Game.h"
+#include "game/backend/Player.h"
+#include "game/backend/slot/Slot.h"
+#include "game/backend/unit/Unit.h"
+#include "game/backend/unit/UnitManager.h"
+#include "game/backend/base/Base.h"
+#include "game/backend/base/BaseManager.h"
+#include "game/backend/map/Map.h"
+#include "Server.h"
 
 namespace game {
 namespace backend {
@@ -38,6 +47,7 @@ void Connection::ResetHandlers() {
 	m_on_global_settings_update = nullptr;
 	m_on_game_event_validate = nullptr;
 	m_on_game_event_apply = nullptr;
+	m_on_game_event_rollback = nullptr;
 	if ( m_mt_ids.events ) {
 		m_network->MT_Cancel( m_mt_ids.events );
 		m_mt_ids.events = 0;
@@ -54,6 +64,9 @@ Connection::Connection( gc::Space* const gc_space, const network::connection_mod
 Connection::~Connection() {
 	if ( m_mt_ids.disconnect ) {
 		for ( uint8_t tries = 25 ; tries > 0 ; tries-- ) {
+			if ( !m_network->IsRunning() ) {
+				break;
+			}
 			IterateAndMaybeDelete( false );
 			if ( m_mt_ids.disconnect ) {
 				std::this_thread::sleep_for( std::chrono::milliseconds( 40 ) );
@@ -63,15 +76,25 @@ Connection::~Connection() {
 			}
 		}
 		if ( m_mt_ids.disconnect ) {
-			Log( "WARNING: connection destroyed while still disconnecting!" );
+			if ( m_network->IsRunning() ) {
+				Log( "WARNING: connection destroyed while still disconnecting!" );
+			}
+			else {
+				FinalizeStoppedNetwork();
+			}
 		}
+	}
+	if ( m_mt_ids.connect ) {
+		m_network->MT_Cancel( m_mt_ids.connect );
+		m_mt_ids.connect = 0;
 	}
 	if ( m_mt_ids.events ) {
 		m_network->MT_Cancel( m_mt_ids.events );
+		m_mt_ids.events = 0;
 	}
-	/* if ( m_state ) {
+	if ( m_state ) {
 		m_state->DetachConnection();
-	}*/
+	}
 	ClearPending();
 }
 
@@ -80,6 +103,7 @@ void Connection::Connect() {
 	ASSERT( !m_mt_ids.connect, "connection already in progress" );
 
 	m_is_canceled = false;
+	m_disconnect_reason.clear();
 
 	m_game_state = GS_NONE;
 
@@ -225,8 +249,10 @@ const bool Connection::IterateAndMaybeDelete( const bool send_allowed ) {
 			}
 			m_is_connected = false;
 			m_is_canceled = false;
-			if ( !m_disconnect_reason.empty() && m_on_error ) {
-				m_on_error( m_disconnect_reason );
+			if ( !m_disconnect_reason.empty() ) {
+				if ( m_on_error ) {
+					m_on_error( m_disconnect_reason );
+				}
 				m_disconnect_reason.clear();
 			}
 			return true;
@@ -266,16 +292,96 @@ void Connection::IfServer( std::function< void( Server* ) > cb ) {
 	}
 }
 
-void Connection::SendGameEvent( backend::event::Event* event ) {
-	if ( m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
+void Connection::SendGameEvent(
+	backend::event::Event* event,
+	const bool private_unit_event,
+	const bool unit_snapshot_event,
+	const bool private_player_event
+) {
+	if ( !IsServer() && m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
 		SendGameEvents( m_pending_game_events );
 		m_pending_game_events.clear();
 	}
-	m_pending_game_events.push_back({
-		event->GetCaller(),
-		event->GetEventName(),
-		event->Serialize().ToString()
-	});
+	game_event_t queued = {};
+	queued.caller = event->GetCaller();
+	queued.id = event->GetId();
+	queued.name = event->GetEventName();
+	queued.serialized_data = event->Serialize().ToString();
+	queued.private_unit_event = private_unit_event;
+	queued.unit_snapshot_event = unit_snapshot_event;
+	queued.private_player_event = private_player_event;
+	if ( IsServer() ) {
+		auto* const game = g_engine->GetGame();
+		if ( game && game->GetMap() ) {
+			queued.map_projection_capture = game->GetMap()->BeginEventProjectionCapture();
+		}
+		for ( const auto* const unit : event->GetReferencedUnits() ) {
+			queued.referenced_unit_ids.insert( unit->m_id );
+			if ( unit->m_health > 0.0f ) {
+				queued.referenced_unit_snapshots.insert({
+					unit->m_id,
+					unit::Unit::Serialize( unit ).ToString()
+				});
+			}
+		}
+		for ( const auto* const base : event->GetReferencedBases() ) {
+			queued.referenced_base_ids.insert( base->m_id );
+		}
+		for ( const auto* const player : event->GetReferencedPlayers() ) {
+			const auto* const player_slot = player->GetSlot();
+			ASSERT( player_slot, "event references an unslotted player" );
+			queued.referenced_player_ids.insert( player_slot->GetIndex() );
+		}
+		if ( game && game->GetUM() ) {
+			for ( const auto& it : game->GetUM()->GetUnits() ) {
+				if ( it.second->m_health > 0.0f ) {
+					queued.unit_ids_before.insert( it.first );
+				}
+			}
+		}
+		if ( game && game->GetBM() ) {
+			for ( const auto& it : game->GetBM()->GetBases() ) {
+				queued.base_ids_before.insert( it.first );
+			}
+		}
+	}
+	if ( IsServer() ) {
+		m_prepared_server_game_events.push_back( std::move( queued ) );
+	}
+	else {
+		m_pending_game_events.push_back( std::move( queued ) );
+	}
+}
+
+void Connection::FinalizeGameEvent( backend::event::Event* event ) {
+	if ( !IsServer() ) {
+		return;
+	}
+	for ( auto it = m_prepared_server_game_events.rbegin() ; it != m_prepared_server_game_events.rend() ; it++ ) {
+		if ( it->id == event->GetId() ) {
+			if ( it->map_projection_capture ) {
+				auto* const game = g_engine->GetGame();
+				ASSERT( game && game->GetMap(), "captured map event finalized without a map" );
+				const auto projection = game->GetMap()->FinishEventProjectionCapture();
+				it->projected_map_tiles = projection.tiles;
+				it->projected_map_state_changed = projection.map_state_changed;
+				it->projected_sea_level = projection.sea_level;
+				it->projected_climate_level = projection.climate.level;
+				it->projected_climate_future_change = projection.climate.future_change;
+				it->projected_climate_progress = projection.climate.progress;
+				it->projected_dust_cloud_duration = projection.climate.dust_cloud_duration;
+			}
+			AsServer()->FinalizeGameEventProjection( *it );
+			if ( m_pending_game_events.size() >= PENDING_GAME_EVENTS_LIMIT ) {
+				SendGameEvents( m_pending_game_events );
+				m_pending_game_events.clear();
+			}
+			m_pending_game_events.push_back( std::move( *it ) );
+			m_prepared_server_game_events.erase( std::next( it ).base() );
+			return;
+		}
+	}
+	THROW( "queued game event not found for projection: " + event->GetId() );
 }
 
 const bool Connection::IsConnected() const {
@@ -391,6 +497,10 @@ void Connection::Disconnect( const std::string& reason ) {
 	if ( m_mt_ids.disconnect ) {
 		return; // already disconnecting
 	}
+	if ( !m_network->IsRunning() ) {
+		FinalizeStoppedNetwork();
+		return;
+	}
 	Log(
 		"Disconnecting" + ( !reason.empty()
 			? " (reason: " + reason + ")"
@@ -403,14 +513,44 @@ void Connection::Disconnect( const std::string& reason ) {
 void Connection::ProcessPending( const bool send_allowed ) {
 	if ( !m_pending_game_events.empty() ) {
 		if ( send_allowed ) {
-			SendGameEvents( m_pending_game_events );
+			FlushPendingGameEvents();
+			return;
 		}
 		m_pending_game_events.clear();
 	}
 }
 
-void Connection::ClearPending() {
+void Connection::FlushPendingGameEvents() {
+	if ( m_pending_game_events.empty() ) {
+		return;
+	}
+	SendGameEvents( m_pending_game_events );
 	m_pending_game_events.clear();
+}
+
+void Connection::ClearPending() {
+	m_prepared_server_game_events.clear();
+	m_pending_game_events.clear();
+}
+
+void Connection::FinalizeStoppedNetwork() {
+	if ( m_mt_ids.connect ) {
+		m_network->MT_Cancel( m_mt_ids.connect );
+		m_mt_ids.connect = 0;
+	}
+	if ( m_mt_ids.events ) {
+		m_network->MT_Cancel( m_mt_ids.events );
+		m_mt_ids.events = 0;
+	}
+	if ( m_mt_ids.disconnect ) {
+		m_network->MT_Cancel( m_mt_ids.disconnect );
+		m_mt_ids.disconnect = 0;
+	}
+	m_game_state = GS_NONE;
+	m_is_connected = false;
+	m_is_canceled = false;
+	m_disconnect_reason.clear();
+	ClearPending();
 }
 
 }

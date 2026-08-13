@@ -10,6 +10,8 @@ return {
 	init: (p) => {
 
 		this.p = p;
+		this.catalog_key = '';
+		this.catalog = [];
 
 		this.parts = {};
 
@@ -75,25 +77,125 @@ return {
 
 	},
 
+	get_catalog: (base) => {
+		const owner = base.get_owner();
+		const research = owner.get_research_state();
+		let known = {};
+		let key = #to_string(owner.id) + '|';
+		for (id of research.technologies) {
+			known[id] = true;
+			key += id + ',';
+		}
+		key += '|';
+		for (id of owner.get_obsolete_unit_designs()) {
+			key += id + ',';
+		}
+		const unit_defs = this.p.game.get_um().get_unit_defs();
+		const facility_defs = this.p.game.get_bm().get_facility_defs();
+		key += '|' + #to_string(#sizeof(unit_defs)) + ':' +
+			#to_string(#sizeof(facility_defs));
+		if (key == this.catalog_key) {
+			return this.catalog;
+		}
+
+		let result = [];
+		for (def of unit_defs) {
+			if (
+				(#is_defined(def.required_technology) &&
+					def.required_technology != '' &&
+					!#is_defined(known[def.required_technology])) ||
+				(#is_defined(def.owner_player_id) && def.owner_player_id >= 0 &&
+					def.owner_player_id != owner.id) ||
+				owner.is_unit_design_obsolete(def.id)
+			) {
+				continue;
+			}
+			result :+def;
+		}
+		for (def of facility_defs) {
+			if (
+				#is_defined(def.required_technology) &&
+				def.required_technology != '' &&
+				!#is_defined(known[def.required_technology])
+			) {
+				continue;
+			}
+			result :+def;
+		}
+		this.catalog_key = key;
+		this.catalog = result;
+		return result;
+	},
+
 	set: (data) => {
+		const base = data.base;
+		const production = base.get_production();
+		const queue = base.get_production_queue();
+		const pending = this.p.game.get('f_base_get_pending_production')(base);
+		const definitions = this.get_catalog(base);
+		let set_candidates = [];
+		let queue_candidates = [];
+		for (def of definitions) {
+			if (base.can_set_production(def.production_kind, def.id)) {
+				set_candidates :+def;
+			}
+			if (base.can_queue_production(def.production_kind, def.id)) {
+				queue_candidates :+def;
+			}
+		}
 
-		this.parts.production.set({
-			rows: 3,
-			columns: 10,
-			filled: 8,
-			pending: 4,
+		if (#is_defined(production)) {
+			const production_cost = this.p.game.get('f_base_get_production_cost')(
+				base,
+				production
+			);
+			const is_mineral_conversion =
+				#is_defined(production.mineral_to_energy_divisor) &&
+				production.mineral_to_energy_divisor > 0;
+			const stockpile_energy = is_mineral_conversion
+				? this.p.game.get('f_economy_get_base_stockpile_energy')(
+					this.p.game,
+					base
+				)
+				: 0;
+			this.parts.production.set({
+				name: production.name,
+				rows: #max(#ceil(#to_float(production_cost) / 10.0), 1),
+				columns: 10,
+				filled: is_mineral_conversion
+					? 0
+					: #min(base.get_accumulated_minerals(), production_cost),
+				pending: is_mineral_conversion ? 0 : pending,
+				conversion_label: is_mineral_conversion
+					? #to_string(stockpile_energy) + ' EC / TURN'
+					: #undefined,
+			});
+		} else {
+			this.parts.production.set({
+				name: 'NOTHING',
+				rows: 1,
+				columns: 10,
+				filled: 0,
+				pending: 0,
+			});
+		}
+
+		this.parts.queue.set({
+			base: base,
+			production: production,
+			queue: queue,
+			set_candidates: set_candidates,
+			queue_candidates: queue_candidates,
 		});
-
-		this.parts.queue.set([
-			'Mind Worms',
-			'Recreation Commons',
-		]);
 
 		this.parts.middle_area.set({
-			name: data.base.name,
-			owner: data.base.get_owner(),
-			pops: data.base.get_pops(),
+			base: base,
+			name: base.name,
+			owner: base.get_owner(),
+			pops: base.get_pops(),
 		});
+
+		this.parts.support.set(data.support);
 
 	},
 

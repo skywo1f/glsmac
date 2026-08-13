@@ -1,6 +1,8 @@
 return {
 
 	init: (p) => {
+		this.p = p;
+		this.base = null;
 
 		this.buttons = p.body.panel({
 			align: 'top',
@@ -92,11 +94,21 @@ return {
 			right: 230,
 		});
 
-		this.buttons.button({
+		this.build_button = this.buttons.button({
 			class: 'base-screen-top-button-1',
 			align: 'right',
 			right: 116,
 			text: 'BUILD',
+		});
+		this.build_button.on('click', (e) => {
+			if (
+				this.base != null &&
+				this.base.get_owner().id == this.p.game.get_player().id
+			) {
+				this.p.modules.popup.set('unit_workshop', {base: this.base});
+				this.p.modules.popup.show('unit_workshop');
+			}
+			return true;
 		});
 		this.buttons.button({
 			class: 'base-screen-top-button-1',
@@ -105,6 +117,10 @@ return {
 			text: 'CONQUER',
 		});
 
+	},
+
+	set: (data) => {
+		this.base = data.base;
 	},
 
 };

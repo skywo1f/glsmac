@@ -1,4 +1,8 @@
+#include <algorithm>
 #include <cmath>
+#include <cstdint>
+#include <limits>
+#include <unordered_set>
 
 #include "SimplePerlin.h"
 
@@ -27,6 +31,225 @@ namespace game {
 namespace backend {
 namespace map {
 namespace generator {
+
+namespace {
+
+enum class landmark_shape_t {
+	CRATER,
+	VOLCANO,
+	JUNGLE,
+	URANIUM,
+	SARGASSO,
+	RUINS,
+	DUNES,
+	FRESHWATER,
+	MESA,
+	CANYON,
+	GEOTHERMAL,
+	RIDGE,
+	BOREHOLE_CLUSTER,
+	MANIFOLD_NEXUS,
+};
+
+struct landmark_spec_t {
+	const char* name;
+	tile::landmark_t landmark;
+	landmark_shape_t shape;
+	bool is_water;
+	size_t radius;
+	size_t minimum_tiles;
+};
+
+static const size_t GetTileDistance( const tile::Tile* const first, const tile::Tile* const second, const size_t width ) {
+	const auto dx = std::abs(
+		static_cast< ptrdiff_t >( first->coord.x ) - static_cast< ptrdiff_t >( second->coord.x )
+	);
+	const auto dy = std::abs(
+		static_cast< ptrdiff_t >( first->coord.y ) - static_cast< ptrdiff_t >( second->coord.y )
+	);
+	return static_cast< size_t >( std::min(
+		( dx + dy ) / 2,
+		std::min(
+			( std::abs( dx - static_cast< ptrdiff_t >( width ) ) + dy ) / 2,
+			( dx + static_cast< ptrdiff_t >( width ) + dy ) / 2
+		)
+	) );
+}
+
+static const std::vector< tile::Tile* > GetLandmarkTiles(
+	tile::Tile* const center,
+	const size_t radius,
+	const bool is_water
+) {
+	std::vector< std::pair< tile::Tile*, size_t > > pending = { { center, 0 } };
+	std::unordered_set< tile::Tile* > seen = { center };
+	std::vector< tile::Tile* > result = {};
+	for ( size_t i = 0 ; i < pending.size() ; i++ ) {
+		auto* const current = pending[ i ].first;
+		const auto distance = pending[ i ].second;
+		if ( current->is_water_tile == is_water ) {
+			result.push_back( current );
+		}
+		if ( distance >= radius ) {
+			continue;
+		}
+		for ( auto* const neighbour : current->neighbours ) {
+			if ( neighbour->is_water_tile == is_water && seen.insert( neighbour ).second ) {
+				pending.push_back( { neighbour, distance + 1 } );
+			}
+		}
+	}
+	return result;
+}
+
+static const int64_t GetLandmarkScore(
+	const landmark_spec_t& spec,
+	const tile::Tile* const candidate,
+	const size_t map_height,
+	const size_t cluster_size
+) {
+	const auto elevation = static_cast< int64_t >( *candidate->elevation.center );
+	const auto latitude = std::abs(
+		static_cast< int64_t >( candidate->coord.y ) - static_cast< int64_t >( map_height / 2 )
+	);
+	const auto support = static_cast< int64_t >( cluster_size ) * 10000;
+	switch ( spec.shape ) {
+		case landmark_shape_t::VOLCANO:
+		case landmark_shape_t::MESA:
+			return support + elevation;
+		case landmark_shape_t::JUNGLE:
+			return support + static_cast< int64_t >( candidate->moisture ) * 2000 - latitude * 100;
+		case landmark_shape_t::DUNES:
+			return support + static_cast< int64_t >( tile::MOISTURE_RAINY - candidate->moisture ) * 2000 - latitude * 50;
+		case landmark_shape_t::CRATER:
+		case landmark_shape_t::CANYON:
+			return support - elevation;
+		case landmark_shape_t::RIDGE:
+			return support + elevation + static_cast< int64_t >( candidate->rockiness ) * 1000;
+		case landmark_shape_t::GEOTHERMAL:
+		case landmark_shape_t::FRESHWATER:
+			return support + elevation;
+		case landmark_shape_t::SARGASSO:
+			return support - elevation;
+		case landmark_shape_t::URANIUM:
+		case landmark_shape_t::RUINS:
+		case landmark_shape_t::BOREHOLE_CLUSTER:
+		case landmark_shape_t::MANIFOLD_NEXUS:
+			return support - latitude * 50;
+	}
+	return support;
+}
+
+static void ClearLandmarkConflicts( tile::Tile* const landmark_tile ) {
+	static constexpr tile::feature_t CONFLICTING_FEATURES =
+		tile::FEATURE_RIVER |
+		tile::FEATURE_MONOLITH |
+		tile::FEATURE_XENOFUNGUS |
+		tile::FEATURE_JUNGLE |
+		tile::FEATURE_URANIUM |
+		tile::FEATURE_GEOTHERMAL |
+		tile::FEATURE_UNITY_POD |
+		tile::FEATURE_VOLCANO |
+		tile::FEATURE_SUNNY_MESA |
+		tile::FEATURE_GARLAND_CRATER |
+		tile::FEATURE_DUNES;
+	landmark_tile->features &= static_cast< tile::feature_t >( ~CONFLICTING_FEATURES );
+}
+
+static void ApplyLandmark(
+	const landmark_spec_t& spec,
+	tile::Tile* const center,
+	const std::vector< tile::Tile* >& landmark_tiles
+) {
+	std::unordered_set< tile::Tile* > borehole_tiles = {};
+	if ( spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ) {
+		static constexpr size_t BOREHOLE_OFFSETS[] = { 1, 4, 7 };
+		for ( const auto offset : BOREHOLE_OFFSETS ) {
+			if ( offset < landmark_tiles.size() ) {
+				borehole_tiles.insert( landmark_tiles[ offset ] );
+			}
+		}
+		if ( borehole_tiles.empty() ) {
+			borehole_tiles.insert( center );
+		}
+	}
+	for ( auto* const landmark_tile : landmark_tiles ) {
+		ClearLandmarkConflicts( landmark_tile );
+		const bool is_borehole = borehole_tiles.find( landmark_tile ) != borehole_tiles.end();
+		if (
+			spec.shape != landmark_shape_t::BOREHOLE_CLUSTER ||
+			landmark_tile == center || is_borehole
+		) {
+			landmark_tile->landmarks |= spec.landmark;
+		}
+		if (
+			spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ||
+			spec.shape == landmark_shape_t::MANIFOLD_NEXUS
+		) {
+			landmark_tile->terraforming = tile::TERRAFORMING_NONE;
+		}
+		switch ( spec.shape ) {
+			case landmark_shape_t::CRATER:
+				landmark_tile->features |= tile::FEATURE_GARLAND_CRATER;
+				landmark_tile->rockiness = tile::ROCKINESS_ROLLING;
+				break;
+			case landmark_shape_t::VOLCANO:
+				landmark_tile->features |= tile::FEATURE_VOLCANO;
+				landmark_tile->rockiness = landmark_tile == center
+					? tile::ROCKINESS_ROCKY
+					: std::max( landmark_tile->rockiness, tile::ROCKINESS_ROLLING );
+				break;
+			case landmark_shape_t::JUNGLE:
+				landmark_tile->features |= tile::FEATURE_JUNGLE;
+				landmark_tile->moisture = tile::MOISTURE_RAINY;
+				break;
+			case landmark_shape_t::URANIUM:
+				landmark_tile->features |= tile::FEATURE_URANIUM;
+				landmark_tile->rockiness = tile::ROCKINESS_FLAT;
+				break;
+			case landmark_shape_t::SARGASSO:
+				landmark_tile->features |= tile::FEATURE_XENOFUNGUS;
+				break;
+			case landmark_shape_t::RUINS:
+				if ( landmark_tile != center ) {
+					landmark_tile->features |= tile::FEATURE_MONOLITH;
+				}
+				else {
+					landmark_tile->rockiness = tile::ROCKINESS_FLAT;
+				}
+				break;
+			case landmark_shape_t::DUNES:
+				landmark_tile->features |= tile::FEATURE_DUNES;
+				landmark_tile->moisture = tile::MOISTURE_ARID;
+				landmark_tile->rockiness = tile::ROCKINESS_FLAT;
+				break;
+			case landmark_shape_t::FRESHWATER:
+				break;
+			case landmark_shape_t::MESA:
+				landmark_tile->features |= tile::FEATURE_SUNNY_MESA;
+				landmark_tile->rockiness = std::max( landmark_tile->rockiness, tile::ROCKINESS_ROLLING );
+				break;
+			case landmark_shape_t::CANYON:
+				landmark_tile->rockiness = tile::ROCKINESS_ROLLING;
+				break;
+			case landmark_shape_t::GEOTHERMAL:
+				landmark_tile->features |= tile::FEATURE_GEOTHERMAL;
+				break;
+			case landmark_shape_t::RIDGE:
+				landmark_tile->rockiness = std::max( landmark_tile->rockiness, tile::ROCKINESS_ROLLING );
+				break;
+			case landmark_shape_t::BOREHOLE_CLUSTER:
+				if ( is_borehole ) {
+					landmark_tile->terraforming = tile::TERRAFORMING_BOREHOLE;
+				}
+				break;
+			case landmark_shape_t::MANIFOLD_NEXUS:
+				break;
+		}
+	}
+}
+
+}
 
 void SimplePerlin::GenerateElevations( tile::Tiles* tiles, const backend::settings::MapSettings* map_settings, MT_CANCELABLE ) {
 	tile::Tile* tile;
@@ -86,16 +309,10 @@ void SimplePerlin::GenerateElevations( tile::Tiles* tiles, const backend::settin
 
 			const float z_rocks = m_random->GetFloat( 0.0f, 1.0f );
 			const float z_moisture = m_random->GetFloat( 0.0f, 1.0f );
-			const float z_jungle = m_random->GetFloat( 0.0f, 1.0f );
 			const float z_xenofungus = m_random->GetFloat( 0.0f, 1.0f );
 
 			// moisture
 			tile->moisture = perlin_to_value.Clamp( ceil( PERLIN_S( x + 0.5f, y + 0.5f, z_moisture, 0.6f ) ) );
-			if ( tile->moisture == tile::MOISTURE_RAINY ) {
-				if ( PERLIN_S( x + 0.5f, y + 0.5f, z_jungle, 0.2f ) > 0.7 ) {
-					tile->features |= tile::FEATURE_JUNGLE;
-				}
-			}
 
 			// rockiness
 			tile->rockiness = perlin_to_value.Clamp( round( PERLIN_S( x + 0.5f, y + 0.5f, z_rocks, 1.0f ) ) );
@@ -163,6 +380,135 @@ void SimplePerlin::GenerateDetails( tile::Tiles* tiles, const backend::settings:
 			MT_RETIF();
 		}
 	}
+}
+
+void SimplePerlin::GenerateLandmarks( tile::Tiles* tiles, const backend::settings::MapSettings* map_settings, MT_CANCELABLE ) {
+	const auto map_tile_count = static_cast< size_t >( tiles->GetWidth() ) * tiles->GetHeight() / 2;
+	const auto landmark_limit = map_tile_count >= 196
+		? size_t( 14 )
+		: std::max< size_t >( 1, map_tile_count / 16 );
+	const auto minimum_center_distance = std::min( tiles->GetWidth(), tiles->GetHeight() ) >= 24 ? 6 : 2;
+	const size_t broad_radius = map_tile_count >= 400 ? 2 : 1;
+	const size_t broad_minimum_tiles = map_tile_count >= 400 ? 9 : 5;
+	std::vector< landmark_spec_t > specs = {
+		{ "Mount Planet", tile::LANDMARK_MOUNT_PLANET, landmark_shape_t::VOLCANO, false, 1, 5 },
+		{ "New Sargasso", tile::LANDMARK_NEW_SARGASSO, landmark_shape_t::SARGASSO, true, broad_radius, broad_minimum_tiles },
+		{ "Garland Crater", tile::LANDMARK_GARLAND_CRATER, landmark_shape_t::CRATER, false, broad_radius, broad_minimum_tiles },
+		{ "Geothermal Shallows", tile::LANDMARK_GEOTHERMAL_SHALLOWS, landmark_shape_t::GEOTHERMAL, true, 1, 5 },
+		{ "Monsoon Jungle", tile::LANDMARK_MONSOON_JUNGLE, landmark_shape_t::JUNGLE, false, broad_radius, broad_minimum_tiles },
+		{ "Freshwater Sea", tile::LANDMARK_FRESHWATER_SEA, landmark_shape_t::FRESHWATER, true, 1, 5 },
+		{ "Uranium Flats", tile::LANDMARK_URANIUM_FLATS, landmark_shape_t::URANIUM, false, 1, 5 },
+		{ "The Ruins", tile::LANDMARK_THE_RUINS, landmark_shape_t::RUINS, false, 1, 5 },
+		{ "Great Dunes", tile::LANDMARK_GREAT_DUNES, landmark_shape_t::DUNES, false, 1, 5 },
+		{ "Sunny Mesa", tile::LANDMARK_SUNNY_MESA, landmark_shape_t::MESA, false, 1, 5 },
+		{ "Nessus Canyon", tile::LANDMARK_NESSUS_CANYON, landmark_shape_t::CANYON, false, 1, 5 },
+		{ "Pholus Ridge", tile::LANDMARK_PHOLUS_RIDGE, landmark_shape_t::RIDGE, false, 1, 5 },
+		{ "Borehole Cluster", tile::LANDMARK_BOREHOLE_CLUSTER, landmark_shape_t::BOREHOLE_CLUSTER, false, 1, 9 },
+		{ "Manifold Nexus", tile::LANDMARK_MANIFOLD_NEXUS, landmark_shape_t::MANIFOLD_NEXUS, false, 1, 9 },
+	};
+	if ( landmark_limit == specs.size() ) {
+		const auto needs_full_cluster = []( const landmark_spec_t& spec ) {
+			return
+				spec.shape == landmark_shape_t::VOLCANO ||
+				spec.shape == landmark_shape_t::RUINS ||
+				spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ||
+				spec.shape == landmark_shape_t::MANIFOLD_NEXUS;
+		};
+		std::stable_partition( specs.begin(), specs.end(), needs_full_cluster );
+	}
+	const auto candidates = GetTilesInRandomOrder( tiles, MT_C );
+	MT_RETIF();
+	std::vector< tile::Tile* > centers = {};
+
+	for ( const auto& spec : specs ) {
+		if ( centers.size() >= landmark_limit ) {
+			break;
+		}
+		tile::Tile* best = nullptr;
+		std::vector< tile::Tile* > best_tiles = {};
+		int64_t best_score = std::numeric_limits< int64_t >::min();
+		bool is_compact_fallback = false;
+		for ( auto* const candidate : candidates ) {
+			if ( candidate->is_water_tile != spec.is_water || candidate->landmarks != tile::LANDMARK_NONE ) {
+				continue;
+			}
+			if (
+				tiles->GetHeight() > spec.radius * 2 + 2 &&
+				(
+					candidate->coord.y <= spec.radius ||
+					candidate->coord.y + spec.radius + 1 >= tiles->GetHeight()
+				)
+			) {
+				continue;
+			}
+			bool too_close = false;
+			for ( const auto* const center : centers ) {
+				if ( GetTileDistance( candidate, center, tiles->GetWidth() ) < minimum_center_distance ) {
+					too_close = true;
+					break;
+				}
+			}
+			if ( too_close ) {
+				continue;
+			}
+			const auto cluster = GetLandmarkTiles( candidate, spec.radius, spec.is_water );
+			if ( cluster.size() < spec.minimum_tiles ) {
+				continue;
+			}
+			if ( std::any_of( cluster.begin(), cluster.end(), []( const auto* const cluster_tile ) {
+				return cluster_tile->landmarks != tile::LANDMARK_NONE;
+			} ) ) {
+				continue;
+			}
+			const auto score = GetLandmarkScore( spec, candidate, tiles->GetHeight(), cluster.size() );
+			if ( !best || score > best_score ) {
+				best = candidate;
+				best_tiles = cluster;
+				best_score = score;
+			}
+			MT_RETIF();
+		}
+		if ( !best && map_tile_count < 400 ) {
+			for ( auto* const candidate : candidates ) {
+				if ( candidate->is_water_tile != spec.is_water || candidate->landmarks != tile::LANDMARK_NONE ) {
+					continue;
+				}
+				bool too_close = false;
+				for ( const auto* const center : centers ) {
+					if ( GetTileDistance( candidate, center, tiles->GetWidth() ) < minimum_center_distance ) {
+						too_close = true;
+						break;
+					}
+				}
+				if ( too_close ) {
+					continue;
+				}
+				const auto score = GetLandmarkScore( spec, candidate, tiles->GetHeight(), 1 );
+				if ( !best || score > best_score ) {
+					best = candidate;
+					best_tiles = { candidate };
+					best_score = score;
+					is_compact_fallback = true;
+				}
+				MT_RETIF();
+			}
+		}
+		if ( !best ) {
+			Log( "Skipping " + std::string( spec.name ) + ": no suitable separated terrain" );
+			continue;
+		}
+		ApplyLandmark( spec, best, best_tiles );
+		centers.push_back( best );
+		Log(
+			"Generated " + std::string( spec.name ) + " around [ " +
+			std::to_string( best->coord.x ) + " " + std::to_string( best->coord.y ) +
+			" ] using " + std::to_string( best_tiles.size() ) + " " +
+			( spec.is_water ? "water" : "land" ) + " tiles" +
+			( is_compact_fallback ? " (compact-map fallback)" : "" )
+		);
+		MT_RETIF();
+	}
+	Log( "Generated " + std::to_string( centers.size() ) + " natural landmarks" );
 }
 
 void SimplePerlin::GenerateRiver( tile::Tiles* tiles, tile::Tile* tile, uint8_t length, uint8_t direction, int8_t direction_diagonal, MT_CANCELABLE ) {

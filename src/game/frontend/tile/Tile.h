@@ -13,6 +13,10 @@ namespace types::mesh {
 class Render;
 }
 
+namespace game {
+struct tile_render_snapshot_t;
+}
+
 namespace game::backend::map::tile {
 class Tile;
 class TileState;
@@ -36,7 +40,11 @@ namespace tile {
 class Tile {
 public:
 
-	static std::vector< size_t > GetUnitsOrder( const std::unordered_map< size_t, unit::Unit* >& units );
+	static std::vector< size_t > GetUnitsOrder(
+		const std::unordered_map< size_t, unit::Unit* >& units,
+		const bool include_unowned = true,
+		const bool include_concealed = false
+	);
 
 	Tile( const types::Vec2< size_t >& coords );
 	~Tile();
@@ -47,12 +55,17 @@ public:
 
 	void AddUnit( unit::Unit* unit );
 	void RemoveUnit( unit::Unit* unit );
+	void InvalidateUnitOrder();
 	void SetActiveUnit( unit::Unit* unit );
 
 	void SetBase( base::Base* base );
 	void UnsetBase( base::Base* base );
 
 	void Render( size_t selected_unit_id = 0 );
+	void SetCurrentlyVisible( const bool is_visible );
+	const bool IsCurrentlyVisible() const;
+	const bool HasSensor() const;
+	const bool HasFungus() const;
 
 	const std::unordered_map< size_t, unit::Unit* >& GetUnits() const;
 	const std::vector< unit::Unit* >& GetOrderedUnits();
@@ -84,7 +97,7 @@ public:
 
 	const render_data_t& GetRenderData() const;
 
-	void Update( const backend::map::tile::Tile& tile, const backend::map::tile::TileState& ts );
+	void Update( const tile_render_snapshot_t& snapshot );
 
 private:
 
@@ -101,6 +114,9 @@ private:
 	bool m_is_objects_reorder_needed = true;
 
 	bool m_is_water = false;
+	bool m_has_sensor = false;
+	bool m_has_fungus = false;
+	bool m_is_currently_visible = false;
 
 	base::Base* m_base = nullptr;
 

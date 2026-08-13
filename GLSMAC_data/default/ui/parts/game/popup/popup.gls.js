@@ -3,6 +3,22 @@ return {
 	available_popups: [
 		'turn_confirmation',
 		'please_dont_go',
+		'social_engineering',
+		'planetary_council',
+		'economic_victory',
+		'orbital_attack',
+		'diplomacy',
+		'intelligence_report',
+		'probe_operations',
+		'probe_interception',
+		'headquarters_evacuation',
+		'alien_artifact',
+		'supply_transport',
+		'airdrop',
+		'psi_gate',
+		'unit_upgrade',
+		'unit_workshop',
+		'nerve_stapling',
 		'base_screen',
 	],
 
@@ -316,6 +332,9 @@ return {
 		}
 		this.menu.close_all();
 		if (this.popup != null) {
+			if (#typeof(this.popup_def.on_replace) == 'Callable') {
+				this.popup_def.on_replace();
+			}
 			this.clear();
 		}
 		this.popup = this.popups[popup];

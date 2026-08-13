@@ -32,6 +32,7 @@
 #include "Slot.h"
 #include "game/frontend/unit/BadgeDefs.h"
 #include "scene/actor/Instanced.h"
+#include "scene/actor/Mesh.h"
 #include "game/frontend/sprite/InstancedSprite.h"
 #include "loader/texture/TextureLoader.h"
 #include "game/frontend/actor/Actor.h"
@@ -42,6 +43,7 @@
 #include "types/texture/Texture.h"
 #include "types/mesh/Render.h"
 #include "types/mesh/Data.h"
+#include "types/Buffer.h"
 #include "game/backend/map/Consts.h"
 #include "input/Types.h"
 #include "GLSMAC.h"
@@ -62,7 +64,7 @@
 #include "input/Event.h"
 #include "game/backend/resource/Resource.h"
 
-#define INITIAL_CAMERA_ANGLE { -M_PI * 0.5, M_PI * 0.75, 0 }
+#define INITIAL_CAMERA_ANGLE { -(float)M_PI * 0.5f, (float)M_PI * 0.75f, 0.0f }
 
 namespace game {
 namespace frontend {
@@ -207,14 +209,29 @@ void Game::Stop() {
 }
 
 void Game::Iterate() {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 
 	auto* game = g_engine->GetGame();
 
 	const auto f_handle_nonsuccess_init = [ this ]( const backend::MT_Response& response ) -> void {
 		switch ( response.result ) {
-			case backend::R_ABORTED:
-			case backend::R_ERROR: {
+			case backend::R_ABORTED: {
 				CancelGame();
+				break;
+			}
+			case backend::R_ERROR: {
+				const std::string error_text = response.data.error.error_text
+					? *response.data.error.error_text
+					: "Unknown error";
+				HideLoader();
+				m_glsmac->ShowError(
+					"Game initialization failed: " + error_text,
+					[ this ]() {
+						CancelGame();
+					}
+				);
 				break;
 			}
 			default: {
@@ -304,7 +321,7 @@ void Game::Iterate() {
 					const auto on_game_exit = m_on_game_exit;
 					m_on_game_exit = nullptr;
 					on_game_exit();
-					break;
+					return; // callback may start frontend or engine teardown
 				}
 				default: {
 					THROW( "unknown response result " + std::to_string( response.result ) );
@@ -331,7 +348,10 @@ void Game::Iterate() {
 				m_map_data.filename = util::FS::GetBaseName( *response.data.save_map.path );
 			}
 			else {
-				THROW( "TODO: Map saving failed" );
+				const std::string error_text = response.data.error.error_text
+					? *response.data.error.error_text
+					: "Unknown error";
+				m_glsmac->ShowError( "Failed to save map: " + error_text, {} );
 			}
 			game->MT_DestroyResponse( response );
 		}
@@ -386,6 +406,9 @@ void Game::Iterate() {
 		}
 		else {
 			m_mt_ids.get_frontend_requests = game->MT_GetFrontendRequests();
+		}
+		if ( !m_on_game_exit ) {
+			RefreshMapVisibility();
 		}
 
 		// check if previous backend requests were sent successfully
@@ -671,7 +694,7 @@ void Game::UpdateMapInstances() {
 
 	const float mhw = backend::map::s_consts.tile.scale.x * m_map_data.width / 2;
 
-	uint8_t instances_before_after = floor(
+	const size_t instances_before_after = (size_t)std::floor(
 		m_viewport.aspect_ratio
 			/
 				(
@@ -683,7 +706,7 @@ void Game::UpdateMapInstances() {
 				2
 	) + 1;
 
-	for ( uint8_t i = instances_before_after ; i > 0 ; i-- ) {
+	for ( size_t i = instances_before_after ; i > 0 ; i-- ) {
 		instances.push_back(
 			{
 				-mhw * i,
@@ -865,6 +888,12 @@ void Game::DefineSlot(
 }
 
 void Game::ShowAnimation( AnimationDef* def, const size_t animation_id, const types::Vec3& render_coords ) {
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
+	if ( g_engine->GetConfig()->HasDebugFlag( config::Config::DF_HEADLESS ) ) {
+		SendAnimationFinished( animation_id );
+		return;
+	}
+#endif
 	ASSERT( m_animations.find( animation_id ) == m_animations.end(), "animation id already exists" );
 	m_animations.insert(
 		{
@@ -875,8 +904,10 @@ void Game::ShowAnimation( AnimationDef* def, const size_t animation_id, const ty
 }
 
 void Game::AbortAnimation( const size_t animation_id ) {
-	const auto& it = m_animations.find( animation_id );
-	ASSERT( it != m_animations.end(), "animation id not found" );
+	const auto it = m_animations.find( animation_id );
+	if ( it == m_animations.end() ) {
+		return;
+	}
 	delete it->second;
 	m_animations.erase( it );
 }
@@ -910,11 +941,16 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 	const auto f_exit = [ this ]( const std::string& quit_reason ) -> void {
 		ExitGame(
 			[ this, quit_reason ]() -> void {
-				if ( g_engine->GetConfig()->HasLaunchFlag( config::Config::LF_QUICKSTART ) ) {
-					g_engine->ShutDown();
+				const auto* config = g_engine->GetConfig();
+				if (
+					config->HasLaunchFlag( config::Config::LF_QUICKSTART ) ||
+					config->HasLaunchFlag( config::Config::LF_HOST ) ||
+					config->HasLaunchFlag( config::Config::LF_JOIN )
+				) {
+					GLSMAC::ShutDown();
 				}
 				else {
-					THROW( "TODO: ReturnToMainMenu" );
+					m_glsmac->Reset();
 				}
 			}
 		);
@@ -943,19 +979,116 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 					f_exit( errmsg );
 				}
 			);
+			break;
 		}
 		case FrontendRequest::FR_UPDATE_TILES: {
+			if ( request->data.update_tiles.serialized_terrain_mesh ) {
+				ASSERT(
+					request->data.update_tiles.serialized_terrain_data_mesh,
+					"terrain mesh update is missing its data mesh"
+				);
+				auto* const terrain_actor = m_actors.terrain->GetMeshActor();
+				terrain_actor->UpdateMesh(
+					types::Buffer( *request->data.update_tiles.serialized_terrain_mesh )
+				);
+				terrain_actor->UpdateDataMesh(
+					types::Buffer( *request->data.update_tiles.serialized_terrain_data_mesh )
+				);
+			}
+			else {
+				ASSERT(
+					!request->data.update_tiles.serialized_terrain_data_mesh,
+					"terrain data mesh update is missing its render mesh"
+				);
+			}
+			types::texture::Texture texture_patch(
+				request->data.update_tiles.terrain_texture_width,
+				request->data.update_tiles.terrain_texture_height
+			);
+			texture_patch.Deserialize( types::Buffer( *request->data.update_tiles.serialized_terrain_texture_patch ) );
+			ASSERT( !texture_patch.IsEmpty(), "tile terrain texture patch is empty" );
+			const auto texture_right = request->data.update_tiles.terrain_texture_x + texture_patch.GetWidth() - 1;
+			const auto texture_bottom = request->data.update_tiles.terrain_texture_y + texture_patch.GetHeight() - 1;
+			m_textures.terrain->AddFrom(
+				&texture_patch,
+				types::texture::AM_DEFAULT,
+				0,
+				0,
+				texture_patch.GetWidth() - 1,
+				texture_patch.GetHeight() - 1,
+				request->data.update_tiles.terrain_texture_x,
+				request->data.update_tiles.terrain_texture_y
+			);
+			m_textures.terrain->Update(
+				{
+					request->data.update_tiles.terrain_texture_x,
+					request->data.update_tiles.terrain_texture_y,
+					texture_right,
+					texture_bottom,
+				}
+			);
+			for ( const auto& actor : *request->data.update_tiles.sprite_actors ) {
+				GetTerrainInstancedSprite( actor.second );
+			}
+			for ( const auto& removal : *request->data.update_tiles.sprite_removals ) {
+				auto* actor = m_ism->GetInstancedSpriteByKey( removal.second )->actor;
+				ASSERT( actor, "tile sprite actor not found" );
+				actor->RemoveInstance( removal.first );
+			}
+			for ( const auto& addition : *request->data.update_tiles.sprite_additions ) {
+				auto* actor = m_ism->GetInstancedSpriteByKey( addition.second.first )->actor;
+				ASSERT( actor, "tile sprite actor not found" );
+				actor->SetInstance( addition.first, addition.second.second );
+			}
 			const auto& tiles_data = *request->data.update_tiles.tile_updates;
-			for ( const auto& tile_data : tiles_data ) {
-				const auto& t = tile_data.first;
-				ASSERT( t, "tile not found" );
-				const auto& ts = tile_data.second;
-				ASSERT( ts, "tile state not found" );
-				auto* tile = m_tm->GetTile( t->coord.x, t->coord.y );
+			for ( const auto& snapshot : tiles_data ) {
+				auto* tile = m_tm->GetTile( snapshot.coords.x, snapshot.coords.y );
 				ASSERT( tile, "matching tile not found" );
 
 				Log( "Updating tile: " + tile->GetCoords().ToString() );
-				tile->Update( *t, *ts );
+				tile->Update( snapshot );
+				UpdateFogTileGeometry( tile );
+			}
+			RefreshSelectedTile( m_um->GetSelectedUnit() );
+			UpdateMinimap();
+			break;
+		}
+		case FrontendRequest::FR_MAP_EXPLORATION: {
+			std::unordered_set< size_t > explored_tiles = {};
+			explored_tiles.reserve( request->data.map_exploration.tiles->size() );
+			for ( const auto& coords : *request->data.map_exploration.tiles ) {
+				ASSERT(
+					coords.x < m_map_data.width && coords.y < m_map_data.height &&
+					( coords.x & 1 ) == ( coords.y & 1 ),
+					"invalid explored tile received from backend"
+				);
+				explored_tiles.insert( GetTileIndex( coords ) );
+			}
+			for ( const auto tile_key : m_explored_tiles ) {
+				if ( explored_tiles.find( tile_key ) == explored_tiles.end() ) {
+					m_pending_territory_observations.erase( tile_key );
+					ForgetTerritoryTile( tile_key );
+				}
+			}
+			for ( const auto tile_key : explored_tiles ) {
+				if (
+					!request->data.map_exploration.is_initial &&
+					m_explored_tiles.find( tile_key ) == m_explored_tiles.end()
+				) {
+					m_pending_territory_observations.insert( tile_key );
+				}
+			}
+			m_exploration_changed = explored_tiles != m_explored_tiles;
+			m_explored_tiles = std::move( explored_tiles );
+			m_map_visibility_dirty = true;
+			break;
+		}
+		case FrontendRequest::FR_TERRITORY_VISIBILITY: {
+			const auto visible_slots = request->data.territory_visibility.visible_slots;
+			if ( m_territory_visible_slots != visible_slots ) {
+				m_territory_visible_slots = visible_slots;
+				m_territory_borders_dirty = true;
+				m_map_visibility_dirty = true;
 			}
 			break;
 		}
@@ -1087,7 +1220,8 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				d.movement,
 				d.morale,
 				*d.morale_string,
-				d.health
+				d.health,
+				d.embarked
 			);
 			break;
 		}
@@ -1100,27 +1234,20 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			auto* unit = m_um->GetUnitById( d.unit_id );
 			ASSERT( unit, "unit is null" );
 			unit->SetMovement( d.movement );
+			unit->SetMorale( d.morale, *d.morale_string );
 			unit->SetHealth( d.health );
+			unit->SetEmbarked( d.embarked );
 			const auto& c = unit->GetTile()->GetCoords();
 			if ( d.tile_coords.x != c.x || d.tile_coords.y != c.y ) {
-				/*MoveUnit(
-					unit,
-					GetTile(
-						{
-							d.tile_coords.x,
-							d.tile_coords.y
-						}
-					), {
-						d.render_coords.x,
-						d.render_coords.y,
-						d.render_coords.z,
-					}
-				);*/
-				THROW( "deprecated, shouldnt be here" );
+				if ( !d.embarked ) {
+					THROW( "non-embarked unit changed tiles without a move request" );
+				}
+				unit->SetTile(
+					m_tm->GetTile( { d.tile_coords.x, d.tile_coords.y } ),
+					false
+				);
 			}
-			else {
-				unit->Refresh();
-			}
+			unit->Refresh();
 			break;
 		}
 		case FrontendRequest::FR_UNIT_MOVE: {
@@ -1134,6 +1261,26 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				}
 			);
 			m_um->MoveUnit( unit, dst_tile, d.running_animation_id );
+			break;
+		}
+		case FrontendRequest::FR_UNIT_TELEPORT: {
+			const auto& d = request->data.unit_teleport;
+			auto* const unit = m_um->GetUnitById( d.unit_id );
+			ASSERT( unit, "unit is null" );
+			auto* const src_tile = unit->GetTile();
+			auto* const dst_tile = m_tm->GetTile(
+				{
+					d.dst_tile_coords.x,
+					d.dst_tile_coords.y
+				}
+			);
+			auto* const selected_unit = m_um->GetSelectedUnit();
+			if ( selected_unit == unit ) {
+				SetSelectedTile( dst_tile );
+			}
+			unit->SetTile( dst_tile );
+			RenderTile( src_tile, selected_unit );
+			m_um->RefreshUnit( unit );
 			break;
 		}
 		case FrontendRequest::FR_BASE_POP_DEFINE: {
@@ -1151,9 +1298,12 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.base_spawn;
 			const auto& tc = d.tile_coords;
 			const auto& rc = d.render_coords;
+			auto* const faction = m_fm->GetFactionById( *d.faction_id );
+			ASSERT( faction, "base faction not found: " + *d.faction_id );
 			m_bm->SpawnBase(
 				d.base_id,
 				d.slot_index,
+				faction,
 				{
 					tc.x,
 					tc.y
@@ -1175,11 +1325,8 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.base_update;
 			auto* base = m_bm->GetBaseById( d.base_id );
 			ASSERT( base, "base is null" );
-			base->SetName( *d.name );
-			// TODO: update slot index
-			if ( base->GetFaction()->m_id != *d.faction_id ) {
-				THROW( "TODO: UPDATE FACTION" );
-			}
+			auto* const faction = m_fm->GetFactionById( *d.faction_id );
+			ASSERT( faction, "base faction not found: " + *d.faction_id );
 			base::Base::pops_t pops = {};
 			pops.reserve( d.pops->size() );
 			for ( const auto& pop : *d.pops ) {
@@ -1192,6 +1339,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				);
 			}
 			base->SetPops( pops );
+			m_bm->UpdateBase( base, d.slot_index, faction, *d.name );
 			m_bm->RefreshBase( base );
 			break;
 		}
@@ -1231,6 +1379,24 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			THROW( "unexpected frontend request type: " + std::to_string( request->type ) );
 		}
 	}
+
+	if ( request ) {
+		switch ( request->type ) {
+			case FrontendRequest::FR_UPDATE_TILES:
+			case FrontendRequest::FR_UNIT_SPAWN:
+			case FrontendRequest::FR_UNIT_DESPAWN:
+			case FrontendRequest::FR_UNIT_UPDATE:
+			case FrontendRequest::FR_UNIT_MOVE:
+			case FrontendRequest::FR_UNIT_TELEPORT:
+			case FrontendRequest::FR_BASE_SPAWN:
+			case FrontendRequest::FR_BASE_DESPAWN:
+			case FrontendRequest::FR_BASE_UPDATE:
+				m_map_visibility_dirty = true;
+				break;
+			default:
+				break;
+		}
+	}
 }
 
 void Game::SendBackendRequest( const BackendRequest* request ) {
@@ -1263,6 +1429,502 @@ void Game::UpdateMapData( const types::Vec2< size_t >& map_size ) {
 	);
 
 	m_tm->InitTiles( map_size );
+}
+
+const size_t Game::GetTileIndex( const types::Vec2< size_t >& coords ) const {
+	return coords.y * m_map_data.width + coords.x;
+}
+
+const size_t Game::GetCompactTileIndex( const types::Vec2< size_t >& coords ) const {
+	return coords.y * ( m_map_data.width / 2 ) + coords.x / 2;
+}
+
+void Game::InitializeFog() {
+	ASSERT( !m_actors.fog, "fog actor already set" );
+	ASSERT( !m_textures.fog, "fog texture already set" );
+	const size_t tile_count = m_map_data.width * m_map_data.height / 2;
+	NEWV( mesh, types::mesh::Render, tile_count * 5, tile_count * 4 );
+
+	for ( size_t y = 0 ; y < m_map_data.height ; y++ ) {
+		for ( size_t x = y & 1 ; x < m_map_data.width ; x += 2 ) {
+			const auto& coords = m_tm->GetTile( x, y )->GetRenderData().selection_coords;
+			const types::Color::color_t unexplored_tint = { 1.0f, 1.0f, 1.0f, 0.96f };
+			const auto center = mesh->AddVertex( coords.center, { 0.5f, 0.5f }, unexplored_tint );
+			const auto left = mesh->AddVertex( coords.left, { 0.0f, 1.0f }, unexplored_tint );
+			const auto top = mesh->AddVertex( coords.top, { 0.0f, 0.0f }, unexplored_tint );
+			const auto right = mesh->AddVertex( coords.right, { 1.0f, 0.0f }, unexplored_tint );
+			const auto bottom = mesh->AddVertex( coords.bottom, { 1.0f, 1.0f }, unexplored_tint );
+			mesh->AddSurface( { center, left, top } );
+			mesh->AddSurface( { center, top, right } );
+			mesh->AddSurface( { center, right, bottom } );
+			mesh->AddSurface( { center, bottom, left } );
+		}
+	}
+	mesh->Finalize();
+
+	m_textures.fog = types::texture::Texture::FromColor( { 0.0f, 0.0f, 0.0f, 1.0f } );
+	NEWV( fog_actor, scene::actor::Mesh, "MapFog", mesh );
+	fog_actor->SetTexture( m_textures.fog );
+	fog_actor->SetRenderFlags(
+		scene::actor::Actor::RF_IGNORE_LIGHTING |
+		scene::actor::Actor::RF_IGNORE_DEPTH
+	);
+	NEW( m_actors.fog, scene::actor::Instanced, fog_actor );
+	m_actors.fog->AddInstance( {} );
+	m_world_scene->AddActor( m_actors.fog );
+	m_fog_states.assign( tile_count, FS_UNEXPLORED );
+	m_territory_knowledge.assign( tile_count, {} );
+}
+
+void Game::UpdateFogTileGeometry( const tile::Tile* tile ) {
+	if ( !m_actors.fog ) {
+		return;
+	}
+	auto* const mesh = const_cast< types::mesh::Render* >(
+		static_cast< const types::mesh::Render* >( m_actors.fog->GetMeshActor()->GetMesh() )
+	);
+	const auto& coords = tile->GetCoords();
+	const auto vertex = static_cast< types::mesh::index_t >(
+		( coords.y * ( m_map_data.width / 2 ) + coords.x / 2 ) * 5
+	);
+	const auto& fog_coords = tile->GetRenderData().selection_coords;
+	mesh->SetVertex( vertex, fog_coords.center );
+	mesh->SetVertex( vertex + 1, fog_coords.left );
+	mesh->SetVertex( vertex + 2, fog_coords.top );
+	mesh->SetVertex( vertex + 3, fog_coords.right );
+	mesh->SetVertex( vertex + 4, fog_coords.bottom );
+	m_territory_borders_dirty = true;
+}
+
+void Game::AddVisibleTilesInRadius(
+	tile::Tile* center,
+	const size_t radius,
+	std::unordered_set< size_t >& visible_tiles
+) const {
+	std::unordered_set< tile::Tile* > seen = { center };
+	std::vector< tile::Tile* > frontier = { center };
+	visible_tiles.insert( GetTileIndex( center->GetCoords() ) );
+	for ( size_t distance = 0 ; distance < radius ; distance++ ) {
+		std::vector< tile::Tile* > next = {};
+		for ( auto* const tile : frontier ) {
+			for (
+			auto direction = backend::map::tile::D_W ;
+			direction <= backend::map::tile::D_SW ;
+			direction = static_cast< backend::map::tile::direction_t >( direction + 1 )
+			) {
+				auto* const candidate = tile->GetNeighbour( direction );
+				if ( seen.insert( candidate ).second ) {
+					visible_tiles.insert( GetTileIndex( candidate->GetCoords() ) );
+					next.push_back( candidate );
+				}
+			}
+		}
+		frontier = std::move( next );
+	}
+}
+
+void Game::AddBaseVisibleTiles(
+	tile::Tile* center,
+	std::unordered_set< size_t >& visible_tiles
+) const {
+	const auto f_add = [ this, &visible_tiles ]( tile::Tile* tile ) {
+		visible_tiles.insert( GetTileIndex( tile->GetCoords() ) );
+		return tile;
+	};
+	const auto* const n = f_add( center->N );
+	const auto* const ne = f_add( center->NE );
+	const auto* const e = f_add( center->E );
+	const auto* const se = f_add( center->SE );
+	const auto* const s = f_add( center->S );
+	const auto* const sw = f_add( center->SW );
+	const auto* const w = f_add( center->W );
+	const auto* const nw = f_add( center->NW );
+	f_add( center );
+	f_add( n->NW );
+	f_add( n->NE );
+	f_add( ne->NE );
+	f_add( e->NE );
+	f_add( e->SE );
+	f_add( se->SE );
+	f_add( s->SE );
+	f_add( s->SW );
+	f_add( sw->SW );
+	f_add( w->SW );
+	f_add( w->NW );
+	f_add( nw->NW );
+}
+
+const size_t Game::GetTileDistance( const tile::Tile* first, const tile::Tile* second ) const {
+	const auto& first_coords = first->GetCoords();
+	const auto& second_coords = second->GetCoords();
+	const int64_t y_distance = std::abs(
+		static_cast< int64_t >( first_coords.y ) - static_cast< int64_t >( second_coords.y )
+	);
+	const auto f_distance = [ &first_coords, &second_coords, &y_distance ]( const int64_t x_offset ) {
+		return static_cast< size_t >(
+			(
+				std::abs(
+					static_cast< int64_t >( first_coords.x ) + x_offset -
+					static_cast< int64_t >( second_coords.x )
+				) + y_distance
+			) / 2
+		);
+	};
+	return std::min(
+		f_distance( 0 ),
+		std::min(
+			f_distance( -static_cast< int64_t >( m_map_data.width ) ),
+			f_distance( static_cast< int64_t >( m_map_data.width ) )
+		)
+	);
+}
+
+const base::Base* Game::GetClaimingBase( const tile::Tile* tile ) const {
+	static constexpr size_t max_claim_distance = 8;
+	static constexpr size_t coastal_claim_distance = 2;
+	const auto f_choose = [](
+		const base::Base* current,
+		const size_t current_distance,
+		const base::Base* candidate,
+		const size_t candidate_distance
+	) {
+		return !current || candidate_distance < current_distance || (
+			candidate_distance == current_distance && candidate->GetId() < current->GetId()
+		);
+	};
+
+	const base::Base* connected = nullptr;
+	size_t connected_distance = max_claim_distance + 1;
+	std::unordered_set< const tile::Tile* > visited = { tile };
+	std::vector< const tile::Tile* > frontier = { tile };
+	for ( size_t distance = 0 ; distance <= max_claim_distance && !frontier.empty() ; distance++ ) {
+		for ( const auto* const current : frontier ) {
+			const auto* const candidate = current->GetBase();
+			if ( candidate && f_choose( connected, connected_distance, candidate, distance ) ) {
+				connected = candidate;
+				connected_distance = distance;
+			}
+		}
+		if ( connected || distance == max_claim_distance ) {
+			break;
+		}
+		std::vector< const tile::Tile* > next = {};
+		for ( const auto* const current : frontier ) {
+			const tile::Tile* const neighbours[] = {
+				current->W,
+				current->NW,
+				current->N,
+				current->NE,
+				current->E,
+				current->SE,
+				current->S,
+				current->SW,
+			};
+			for ( const auto* const candidate : neighbours ) {
+				if ( candidate->IsWater() == tile->IsWater() && visited.insert( candidate ).second ) {
+					next.push_back( candidate );
+				}
+			}
+		}
+		frontier = std::move( next );
+	}
+
+	const base::Base* coastal = nullptr;
+	size_t coastal_distance = coastal_claim_distance + 1;
+	if ( tile->IsWater() ) {
+		for ( const auto& it : m_bm->GetBases() ) {
+			const auto* const candidate = it.second;
+			if ( candidate->GetTile()->IsWater() ) {
+				continue;
+			}
+			const auto distance = GetTileDistance( candidate->GetTile(), tile );
+			if (
+				distance <= coastal_claim_distance &&
+				f_choose( coastal, coastal_distance, candidate, distance )
+			) {
+				coastal = candidate;
+				coastal_distance = distance;
+			}
+		}
+	}
+
+	if ( !connected ) {
+		return coastal;
+	}
+	if ( !coastal ) {
+		return connected;
+	}
+	return f_choose( connected, connected_distance, coastal, coastal_distance )
+		? coastal
+		: connected;
+}
+
+void Game::ObserveTerritoryTile( const tile::Tile* tile ) {
+	auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( tile->GetCoords() ) );
+	const auto* const base = GetClaimingBase( tile );
+	const bool claimed = base != nullptr;
+	const size_t owner_slot = claimed ? base->GetOwner()->GetIndex() : 0;
+	if (
+		!knowledge.known || knowledge.claimed != claimed ||
+		( claimed && knowledge.owner_slot != owner_slot )
+	) {
+		knowledge.known = true;
+		knowledge.claimed = claimed;
+		knowledge.owner_slot = owner_slot;
+		m_territory_borders_dirty = true;
+	}
+}
+
+void Game::ForgetTerritoryTile( const size_t tile_key ) {
+	const types::Vec2< size_t > coords = {
+		tile_key % m_map_data.width,
+		tile_key / m_map_data.width,
+	};
+	auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( coords ) );
+	if ( knowledge.known ) {
+		knowledge = {};
+		m_territory_borders_dirty = true;
+	}
+}
+
+void Game::RebuildTerritoryBorders() {
+	if ( !m_territory_borders_dirty ) {
+		return;
+	}
+	m_territory_borders_dirty = false;
+
+	if ( m_actors.territory ) {
+		m_world_scene->RemoveActor( m_actors.territory );
+		DELETE( m_actors.territory );
+		m_actors.territory = nullptr;
+	}
+
+	struct border_edge_t {
+		const tile::Tile* tile;
+		const types::Vec3* start;
+		const types::Vec3* end;
+		size_t owner_slot;
+	};
+	std::vector< border_edge_t > edges = {};
+	for ( const auto& it : m_tm->GetTiles() ) {
+		const auto* const tile = &it.second;
+		const auto& knowledge = m_territory_knowledge.at( GetCompactTileIndex( tile->GetCoords() ) );
+		if (
+			!knowledge.known || !knowledge.claimed || knowledge.owner_slot >= 64 ||
+			!( m_territory_visible_slots & ( uint64_t( 1 ) << knowledge.owner_slot ) )
+		) {
+			continue;
+		}
+		const auto& coords = tile->GetRenderData().selection_coords;
+		const struct {
+			const tile::Tile* neighbour;
+			const types::Vec3* start;
+			const types::Vec3* end;
+		} candidates[] = {
+			{ tile->NW, &coords.left, &coords.top },
+			{ tile->NE, &coords.top, &coords.right },
+			{ tile->SE, &coords.right, &coords.bottom },
+			{ tile->SW, &coords.bottom, &coords.left },
+		};
+		for ( const auto& candidate : candidates ) {
+			const auto& neighbour = m_territory_knowledge.at(
+				GetCompactTileIndex( candidate.neighbour->GetCoords() )
+			);
+			const bool neighbour_is_visible_claim =
+				neighbour.claimed && neighbour.owner_slot < 64 &&
+				( m_territory_visible_slots & ( uint64_t( 1 ) << neighbour.owner_slot ) );
+			if (
+				neighbour.known &&
+				( !neighbour_is_visible_claim || neighbour.owner_slot != knowledge.owner_slot )
+			) {
+				edges.push_back( { tile, candidate.start, candidate.end, knowledge.owner_slot } );
+			}
+		}
+	}
+
+	if ( edges.empty() ) {
+		return;
+	}
+
+	NEWV( mesh, types::mesh::Render, edges.size() * 4, edges.size() * 2 );
+	static constexpr float border_width = 0.13f;
+	for ( const auto& edge : edges ) {
+		const auto& center = edge.tile->GetRenderData().selection_coords.center;
+		const auto inner_start = *edge.start + ( center - *edge.start ) * border_width;
+		const auto inner_end = *edge.end + ( center - *edge.end ) * border_width;
+		auto tint = GetSlot( edge.owner_slot )->GetFaction()->m_colors.border.value;
+		tint.alpha = 0.92f;
+		const auto v1 = mesh->AddVertex( inner_start, {}, tint );
+		const auto v2 = mesh->AddVertex( *edge.start, {}, tint );
+		const auto v3 = mesh->AddVertex( *edge.end, {}, tint );
+		const auto v4 = mesh->AddVertex( inner_end, {}, tint );
+		mesh->AddSurface( { v1, v2, v3 } );
+		mesh->AddSurface( { v1, v3, v4 } );
+	}
+	mesh->Finalize();
+
+	if ( !m_textures.territory ) {
+		m_textures.territory = types::texture::Texture::FromColor( { 1.0f, 1.0f, 1.0f, 1.0f } );
+	}
+	NEWV( border_actor, scene::actor::Mesh, "MapTerritoryBorders", mesh );
+	border_actor->SetTexture( m_textures.territory );
+	border_actor->SetRenderFlags(
+		scene::actor::Actor::RF_IGNORE_LIGHTING |
+		scene::actor::Actor::RF_IGNORE_DEPTH
+	);
+	NEW( m_actors.territory, scene::actor::Instanced, border_actor );
+	m_actors.territory->SetZIndex( 0.45f );
+	m_actors.territory->AddInstance( {} );
+	m_world_scene->AddActor( m_actors.territory );
+	Log(
+		"Territory borders: " + std::to_string( edges.size() ) +
+		" visible ownership edges"
+	);
+}
+
+const bool Game::CanTargetUnit( const unit::Unit* attacker, const unit::Unit* defender ) const {
+	if ( !attacker || !defender || defender->IsOwned() || defender->IsEmbarked() ) {
+		return false;
+	}
+	return defender->IsVisibleToPlayer() || (
+		!attacker->IsArtillery() &&
+		GetTileDistance( attacker->GetTile(), defender->GetTile() ) == 1
+	);
+}
+
+void Game::RefreshMapVisibility() {
+	if ( !m_map_visibility_dirty || !m_actors.fog ) {
+		return;
+	}
+
+	std::unordered_set< size_t > visible_tiles = {};
+	std::unordered_set< size_t > sensor_detected_tiles = {};
+	std::unordered_set< size_t > radar_detected_tiles = {};
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		const auto* const base = tile->GetBase();
+		if ( base && base->IsOwned() ) {
+			AddBaseVisibleTiles( tile, visible_tiles );
+		}
+		for ( const auto& unit : tile->GetUnits() ) {
+			if ( unit.second->IsOwned() && !unit.second->IsEmbarked() ) {
+				AddVisibleTilesInRadius(
+					tile,
+					unit.second->HasDeepRadar() ? 2 : 1,
+					visible_tiles
+				);
+				if ( unit.second->HasDeepRadar() ) {
+					AddVisibleTilesInRadius( tile, 1, radar_detected_tiles );
+				}
+			}
+		}
+	}
+	size_t owned_sensor_count = 0;
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		if ( tile->HasSensor() ) {
+			const auto* const owner = GetClaimingBase( tile );
+			if ( owner && owner->IsOwned() ) {
+				owned_sensor_count++;
+				AddVisibleTilesInRadius( tile, 2, visible_tiles );
+				AddVisibleTilesInRadius( tile, 2, sensor_detected_tiles );
+			}
+		}
+	}
+
+	auto* const fog_mesh = const_cast< types::mesh::Render* >(
+		static_cast< const types::mesh::Render* >( m_actors.fog->GetMeshActor()->GetMesh() )
+	);
+	auto* const selected_unit = m_um->GetSelectedUnit();
+	const size_t selected_unit_id = selected_unit ? selected_unit->GetId() : 0;
+	size_t concealed_visible_count = 0;
+	size_t concealed_hidden_count = 0;
+	bool fog_mesh_changed = false;
+	for ( auto& it : m_tm->GetTiles() ) {
+		auto* const tile = &it.second;
+		const auto& coords = tile->GetCoords();
+		const auto key = GetTileIndex( coords );
+		const bool is_visible = visible_tiles.find( key ) != visible_tiles.end();
+		if (
+			is_visible ||
+			m_pending_territory_observations.find( key ) != m_pending_territory_observations.end()
+		) {
+			ObserveTerritoryTile( tile );
+		}
+		bool needs_render = false;
+		if ( tile->IsCurrentlyVisible() != is_visible ) {
+			tile->SetCurrentlyVisible( is_visible );
+			needs_render = true;
+		}
+		const bool has_sensor_detection = sensor_detected_tiles.find( key ) != sensor_detected_tiles.end();
+		const bool has_radar_detection = radar_detected_tiles.find( key ) != radar_detected_tiles.end();
+		for ( const auto& unit : tile->GetUnits() ) {
+			auto* const candidate = unit.second;
+			const bool concealment_is_detected = has_sensor_detection || (
+				!candidate->IsAbilityConcealed() &&
+				candidate->IsFungusConcealed() &&
+				has_radar_detection
+			);
+			const bool unit_is_visible = candidate->IsOwned() || (
+				!candidate->IsEmbarked() && is_visible &&
+				( !candidate->IsConcealed() || concealment_is_detected )
+			);
+			needs_render = candidate->SetVisibleToPlayer( unit_is_visible ) || needs_render;
+			if ( candidate->IsConcealed() && !candidate->IsOwned() ) {
+				if ( unit_is_visible ) {
+					concealed_visible_count++;
+				}
+				else {
+					concealed_hidden_count++;
+				}
+			}
+		}
+		if ( needs_render ) {
+			tile->Render( selected_unit_id );
+		}
+
+		const fog_state_t fog_state = is_visible
+			? FS_VISIBLE
+			: ( m_explored_tiles.find( key ) != m_explored_tiles.end()
+				? FS_EXPLORED
+				: FS_UNEXPLORED
+			);
+		const size_t fog_index = coords.y * ( m_map_data.width / 2 ) + coords.x / 2;
+		if ( m_fog_states.at( fog_index ) != fog_state ) {
+			m_fog_states.at( fog_index ) = fog_state;
+			fog_mesh_changed = true;
+			const float alpha = fog_state == FS_VISIBLE
+				? 0.0f
+				: ( fog_state == FS_EXPLORED ? 0.48f : 0.96f );
+			for ( size_t i = 0 ; i < 5 ; i++ ) {
+				fog_mesh->SetVertexTint(
+					static_cast< types::mesh::index_t >( fog_index * 5 + i ),
+					{ 1.0f, 1.0f, 1.0f, alpha }
+				);
+			}
+		}
+	}
+	if ( fog_mesh_changed ) {
+		fog_mesh->Update();
+	}
+
+	m_currently_visible_tiles = std::move( visible_tiles );
+	m_pending_territory_observations.clear();
+	RebuildTerritoryBorders();
+	m_map_visibility_dirty = false;
+	Log(
+		"Map visibility: " + std::to_string( m_currently_visible_tiles.size() ) +
+		" visible, " + std::to_string( m_explored_tiles.size() ) +
+		" explored of " + std::to_string( m_tm->GetTiles().size() ) + " tiles, " +
+		std::to_string( owned_sensor_count ) + " owned sensors, " +
+		std::to_string( concealed_visible_count ) + " concealed detected, " +
+		std::to_string( concealed_hidden_count ) + " concealed hidden"
+	);
+	RefreshSelectedTile( selected_unit );
+	if ( m_exploration_changed ) {
+		m_exploration_changed = false;
+		UpdateMinimap();
+	}
 }
 
 void Game::Initialize(
@@ -1359,24 +2021,37 @@ void Game::Initialize(
 	UpdateMapData( map_size );
 
 	ASSERT( tiles, "tiles not set" );
-	ASSERT( tiles->size() == m_map_data.width * m_map_data.height, "tiles count mismatch" ); // TODO: /2
+	ASSERT( tiles->size() == m_map_data.width * m_map_data.height / 2, "tiles count mismatch" );
 	ASSERT( tile_states, "tile states not set" );
-	ASSERT( tile_states->size() == m_map_data.width * m_map_data.height, "tile states count mismatch" ); // TODO: /2
+	ASSERT( tile_states->size() == m_map_data.width * m_map_data.height / 2, "tile states count mismatch" );
 
 	for ( size_t y = 0 ; y < m_map_data.height ; y++ ) {
 		for ( size_t x = y & 1 ; x < m_map_data.width ; x += 2 ) {
 			auto* tile = m_tm->GetTile( x, y );
 			//Log( "Initializing tile: " + tile->GetCoords().ToString() );
-			tile->Update( tiles->at( y * m_map_data.width + x / 2 ), tile_states->at( y * m_map_data.width + x / 2 ) );
+			const size_t tile_index = y * ( m_map_data.width / 2 ) + x / 2;
+			tile->Update( tile_render_snapshot_t( tiles->at( tile_index ), tile_states->at( tile_index ) ) );
 		}
 	}
+	InitializeFog();
 
 	m_viewport.bottom_bar_overlap = 32; // it has transparent area on top so let map render through it
 
 	auto* game = g_engine->GetGame();
+	const auto f_is_outside_viewport = [ this ]( const input::Event& event ) -> bool {
+		if ( !( event.flags & input::EF_MOUSE ) ) {
+			return false;
+		}
+		const auto x = event.data.mouse.x;
+		const auto y = event.data.mouse.y;
+		return
+			x < 0 || y < 0 ||
+			(size_t)x >= m_viewport.width ||
+			(size_t)y >= m_viewport.height;
+	};
 
 	m_global_handlers.before = m_ui->AddGlobalHandler(
-		ui::UI::GH_BEFORE, EH( this, game ) {
+		ui::UI::GH_BEFORE, EH( this, game, f_is_outside_viewport ) {
 
 			switch ( event.type ) {
 				case input::EV_MOUSE_DOWN: {
@@ -1384,8 +2059,9 @@ void Game::Initialize(
 					break;
 				}
 				case input::EV_MOUSE_UP: {
-					ASSERT( m_map_control.mouse_buttons_pressed > 0, "mouse_buttons_pressed mismatch" );
-					m_map_control.mouse_buttons_pressed--;
+					if ( m_map_control.mouse_buttons_pressed ) {
+						m_map_control.mouse_buttons_pressed--;
+					}
 					switch ( event.data.mouse.button ) {
 						case input::MB_MIDDLE: {
 							if ( m_map_control.is_dragging ) {
@@ -1403,10 +2079,7 @@ void Game::Initialize(
 			}
 
 			// ignore out-of-viewport events
-			if ( event.flags & input::EF_MOUSE && (
-				event.data.mouse.x > m_viewport.width ||
-					event.data.mouse.y > m_viewport.height
-			) ) {
+			if ( f_is_outside_viewport( event ) ) {
 				return false;
 			}
 
@@ -1435,14 +2108,14 @@ void Game::Initialize(
 					const auto& c = event.data.mouse;
 
 					m_map_control.last_mouse_position = {
-						GetFixedX( c.x ),
+						GetFixedX( (float)c.x ),
 						(float)c.y
 					};
 
 					if ( m_map_control.is_dragging ) {
 						types::Vec2< float > current_drag_position = {
-							m_clamp.x.Clamp( c.x ),
-							m_clamp.y.Clamp( c.y )
+							m_clamp.x.Clamp( (float)c.x ),
+							m_clamp.y.Clamp( (float)c.y )
 						};
 						types::Vec2< float > drag = current_drag_position - m_map_control.last_drag_position;
 
@@ -1457,19 +2130,23 @@ void Game::Initialize(
 							const ssize_t edge_distance = m_viewport.is_fullscreen
 								? Game::s_consts.map_scroll.static_scrolling.edge_distance_px.fullscreen
 								: Game::s_consts.map_scroll.static_scrolling.edge_distance_px.windowed;
-							if ( c.x < edge_distance ) {
+							const auto window_width = (ssize_t)m_viewport.window_width;
+							const auto window_height = (ssize_t)m_viewport.window_height;
+							const auto horizontal_edge_distance = std::min( edge_distance, window_width / 2 );
+							const auto vertical_edge_distance = std::min( edge_distance, window_height / 2 );
+							if ( c.x < horizontal_edge_distance ) {
 								m_map_control.edge_scrolling.speed.x = Game::s_consts.map_scroll.static_scrolling.speed.x;
 							}
-							else if ( c.x >= m_viewport.window_width - edge_distance ) {
+							else if ( c.x >= window_width - horizontal_edge_distance ) {
 								m_map_control.edge_scrolling.speed.x = -Game::s_consts.map_scroll.static_scrolling.speed.x;
 							}
 							else {
 								m_map_control.edge_scrolling.speed.x = 0;
 							}
-							if ( c.y <= edge_distance ) {
+							if ( c.y < vertical_edge_distance ) {
 								m_map_control.edge_scrolling.speed.y = Game::s_consts.map_scroll.static_scrolling.speed.y;
 							}
-							else if ( c.y >= m_viewport.window_height - edge_distance ) {
+							else if ( c.y >= window_height - vertical_edge_distance ) {
 								m_map_control.edge_scrolling.speed.y = -Game::s_consts.map_scroll.static_scrolling.speed.y;
 							}
 							else {
@@ -1509,13 +2186,10 @@ void Game::Initialize(
 	);
 
 	m_global_handlers.after = m_ui->AddGlobalHandler(
-		ui::UI::GH_AFTER, EH( this, game ) {
+		ui::UI::GH_AFTER, EH( this, game, f_is_outside_viewport ) {
 
 			// ignore out-of-viewport events
-			if ( event.flags & input::EF_MOUSE && (
-				event.data.mouse.x > m_viewport.width ||
-					event.data.mouse.y > m_viewport.height
-			) ) {
+			if ( f_is_outside_viewport( event ) ) {
 				return false;
 			}
 
@@ -1566,6 +2240,25 @@ void Game::Initialize(
 									}
 									break;
 								}
+								case input::K_B: {
+									auto* selected_unit = m_um->GetSelectedUnit();
+									if ( selected_unit ) {
+										m_glsmac->WithGSE(
+											[ &game, &selected_unit ]( GSE_CALLABLE ) {
+												auto* unit = game->GetUM()->GetUnit( selected_unit->GetId() );
+												if ( !unit || !unit->m_def->m_can_found_base ) {
+													return;
+												}
+												game->Event(
+													GSE_CALL, "found_base", {
+														{ "unit", unit->Wrap( GSE_CALL ) },
+													}
+												);
+											}
+										);
+									}
+									break;
+								}
 								case input::K_ENTER: {
 									if ( m_turn_status == backend::turn::TS_TURN_COMPLETE ) {
 										CompleteTurn();
@@ -1593,20 +2286,23 @@ void Game::Initialize(
 									std::unordered_map< size_t, unit::Unit* > foreign_units = {};
 									for ( const auto& it : dst_tile->GetUnits() ) {
 										const auto& unit = it.second;
-										if ( !unit->IsOwned() ) { // TODO: pacts
+										if ( CanTargetUnit( selected_unit, unit ) ) { // TODO: pacts
 											// TODO: skip units of treaty/truce faction?
 											foreign_units.insert( it );
 										}
 									}
+									const bool is_planet_buster = selected_unit->IsPlanetBuster();
 									m_glsmac->WithGSE(
-										[ &game, &selected_unit, &tile, &foreign_units ]( GSE_CALLABLE ) {
+										[ &game, &selected_unit, &tile, &foreign_units, is_planet_buster ]( GSE_CALLABLE ) {
 											const auto* um = game->GetUM();
 											if ( foreign_units.empty() ) {
 												// move
 												auto* unit = um->GetUnit( selected_unit->GetId() );
 												const auto& c = tile->GetCoords();
 												auto* dst_tile = game->GetMap()->GetTile( c.x, c.y );
-												ASSERT( unit, "unit not found" );
+												if ( !unit ) {
+													return;
+												}
 												game->Event(
 													GSE_CALL, "move_unit", {
 														{ "unit", unit->Wrap( GSE_CALL ) },
@@ -1617,15 +2313,31 @@ void Game::Initialize(
 											else {
 												// attack
 												auto* attacker = um->GetUnit( selected_unit->GetId() );
-												ASSERT( attacker, "attacker unit not found" );
-												auto* defender = um->GetUnit( foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units ).front() )->GetId() );
-												ASSERT( attacker, "defender unit not found" );
-												game->Event(
-													GSE_CALL, "attack_unit", {
-														{ "attacker", attacker->Wrap( GSE_CALL ) },
-														{ "defender", defender->Wrap( GSE_CALL ) },
-													}
-												);
+												if ( !attacker ) {
+													return;
+												}
+												auto* defender = um->GetUnit( foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units, true, true ).front() )->GetId() );
+												if ( !defender ) {
+													return;
+												}
+												if ( is_planet_buster ) {
+													const auto& c = tile->GetCoords();
+													auto* target = game->GetMap()->GetTile( c.x, c.y );
+													game->Event(
+														GSE_CALL, "planet_buster", {
+															{ "unit", attacker->Wrap( GSE_CALL ) },
+															{ "tile", target->Wrap( GSE_CALL ) },
+														}
+													);
+												}
+												else {
+													game->Event(
+														GSE_CALL, "attack_unit", {
+															{ "attacker", attacker->Wrap( GSE_CALL ) },
+															{ "defender", defender->Wrap( GSE_CALL ) },
+														}
+													);
+												}
 											}
 										}
 									);
@@ -1654,9 +2366,21 @@ void Game::Initialize(
 							m_scroller.Stop();
 							m_map_control.is_dragging = true;
 							m_map_control.last_drag_position = {
-								m_clamp.x.Clamp( c.x ),
-								m_clamp.y.Clamp( c.y )
+								m_clamp.x.Clamp( (float)c.x ),
+								m_clamp.y.Clamp( (float)c.y )
 							};
+							break;
+						}
+						case input::MB_RIGHT: {
+							auto* selected_unit = m_um->GetSelectedUnit();
+							if ( selected_unit && selected_unit->IsActive() ) {
+								m_attack_target_unit_id = selected_unit->GetId();
+								SelectTileAtPoint(
+									backend::TQP_ATTACK_TARGET,
+									c.x,
+									c.y
+								);
+							}
 							break;
 						}
 						default: {
@@ -1665,7 +2389,7 @@ void Game::Initialize(
 					break;
 				}
 				case input::EV_MOUSE_SCROLL: {
-					SmoothScroll( m_map_control.last_mouse_position, event.data.mouse.scroll_y );
+					SmoothScroll( m_map_control.last_mouse_position, (float)event.data.mouse.scroll_y );
 					break;
 				}
 				default: {
@@ -1756,8 +2480,33 @@ void Game::Deinitialize() {
 
 	if ( m_minimap_texture_request_id ) {
 		ASSERT( m_actors.terrain, "minimap texture request pending but terrain actor not set" );
-		m_actors.terrain->GetMeshActor()->CancelDataRequest( m_minimap_texture_request_id );
+		m_actors.terrain->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_texture_request_id );
 		m_minimap_texture_request_id = 0;
+	}
+	if ( m_minimap_fog_texture_request_id ) {
+		ASSERT( m_actors.fog, "minimap fog request pending but fog actor not set" );
+		m_actors.fog->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_fog_texture_request_id );
+		m_minimap_fog_texture_request_id = 0;
+	}
+	if ( m_pending_minimap_terrain ) {
+		DELETE( m_pending_minimap_terrain );
+		m_pending_minimap_terrain = nullptr;
+	}
+	if ( m_pending_minimap_fog ) {
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+	}
+
+	if ( m_actors.territory ) {
+		m_world_scene->RemoveActor( m_actors.territory );
+		DELETE( m_actors.territory );
+		m_actors.territory = nullptr;
+	}
+
+	if ( m_actors.fog ) {
+		m_world_scene->RemoveActor( m_actors.fog );
+		DELETE( m_actors.fog );
+		m_actors.fog = nullptr;
 	}
 
 	if ( m_actors.terrain ) {
@@ -1770,6 +2519,23 @@ void Game::Deinitialize() {
 		DELETE( m_textures.terrain );
 		m_textures.terrain = nullptr;
 	}
+	if ( m_textures.fog ) {
+		DELETE( m_textures.fog );
+		m_textures.fog = nullptr;
+	}
+	if ( m_textures.territory ) {
+		DELETE( m_textures.territory );
+		m_textures.territory = nullptr;
+	}
+	m_explored_tiles.clear();
+	m_currently_visible_tiles.clear();
+	m_fog_states.clear();
+	m_territory_knowledge.clear();
+	m_pending_territory_observations.clear();
+	m_territory_visible_slots = 0;
+	m_territory_borders_dirty = true;
+	m_map_visibility_dirty = true;
+	m_exploration_changed = true;
 
 	for ( const auto& it : m_animations ) {
 		delete it.second;
@@ -1831,8 +2597,64 @@ void Game::SelectTileAtPoint( const backend::tile_query_purpose_t tile_query_pur
 }
 
 void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 
 	ASSERT( m_tile_at_query_purpose != backend::TQP_NONE, "tile query purpose not set" );
+	if ( m_tile_at_query_purpose == backend::TQP_ATTACK_TARGET ) {
+		const auto attacker_id = m_attack_target_unit_id;
+		m_attack_target_unit_id = 0;
+		m_tile_at_query_purpose = backend::TQP_NONE;
+		auto* selected_unit = m_um->GetUnitById( attacker_id );
+		if ( !selected_unit || !selected_unit->IsActive() ) {
+			return;
+		}
+		const bool is_planet_buster = selected_unit->IsPlanetBuster();
+		std::unordered_map< size_t, unit::Unit* > foreign_units = {};
+		for ( const auto& it : tile->GetUnits() ) {
+			if ( CanTargetUnit( selected_unit, it.second ) ) {
+				foreign_units.insert( it );
+			}
+		}
+		if ( foreign_units.empty() && !is_planet_buster ) {
+			return;
+		}
+		const auto defender_id = foreign_units.empty()
+			? 0
+			: foreign_units.at( tile::Tile::GetUnitsOrder( foreign_units, true, true ).front() )->GetId();
+		const auto target_coords = tile->GetCoords();
+		auto* game = m_game;
+		m_glsmac->WithGSE(
+			[ game, attacker_id, defender_id, target_coords, is_planet_buster ]( GSE_CALLABLE ) {
+				auto* attacker = game->GetUM()->GetUnit( attacker_id );
+				if ( !attacker ) {
+					return;
+				}
+				if ( is_planet_buster ) {
+					auto* target = game->GetMap()->GetTile( target_coords.x, target_coords.y );
+					game->Event(
+						GSE_CALL, "planet_buster", {
+							{ "unit", attacker->Wrap( GSE_CALL ) },
+							{ "tile", target->Wrap( GSE_CALL ) },
+						}
+					);
+					return;
+				}
+				auto* defender = game->GetUM()->GetUnit( defender_id );
+				if ( !defender ) {
+					return;
+				}
+				game->Event(
+					GSE_CALL, "attack_unit", {
+						{ "attacker", attacker->Wrap( GSE_CALL ) },
+						{ "defender", defender->Wrap( GSE_CALL ) },
+					}
+				);
+			}
+		);
+		return;
+	}
 
 	DeselectTileOrUnit();
 
@@ -2092,24 +2914,95 @@ const Game::tile_at_result_t Game::GetTileAtScreenCoordsResult() {
 	return {};
 }
 
-void Game::GetMinimapTexture( scene::Camera* camera, const types::Vec2< size_t > texture_dimensions ) {
+void Game::GetMinimapTexture(
+	scene::Camera* terrain_camera,
+	scene::Camera* fog_camera,
+	const types::Vec2< size_t > texture_dimensions
+) {
 	if ( m_minimap_texture_request_id ) {
 		Log( "Canceling minimap texture request" );
-		m_actors.terrain->GetMeshActor()->CancelDataRequest( m_minimap_texture_request_id );
+		m_actors.terrain->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_texture_request_id );
+		m_minimap_texture_request_id = 0;
 	}
-	m_minimap_texture_request_id = m_actors.terrain->GetMeshActor()->CaptureToTexture( camera, texture_dimensions );
+	if ( m_minimap_fog_texture_request_id ) {
+		Log( "Canceling minimap fog texture request" );
+		m_actors.fog->GetMeshActor()->CancelCaptureToTextureRequest( m_minimap_fog_texture_request_id );
+		m_minimap_fog_texture_request_id = 0;
+	}
+	if ( m_pending_minimap_terrain ) {
+		DELETE( m_pending_minimap_terrain );
+		m_pending_minimap_terrain = nullptr;
+	}
+	if ( m_pending_minimap_fog ) {
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+	}
+	m_minimap_texture_request_id = m_actors.terrain->GetMeshActor()->CaptureToTexture(
+		terrain_camera,
+		texture_dimensions
+	);
+	m_minimap_fog_texture_request_id = m_actors.fog->GetMeshActor()->CaptureToTexture(
+		fog_camera,
+		texture_dimensions
+	);
 }
 
 types::texture::Texture* Game::GetMinimapTextureResult() {
-	if ( m_minimap_texture_request_id ) {
+	if ( m_minimap_texture_request_id && !m_pending_minimap_terrain ) {
 		auto result = m_actors.terrain->GetMeshActor()->GetCaptureToTextureResponse( m_minimap_texture_request_id );
 		if ( result ) {
-			Log( "Received minimap texture" );
+			Log( "Received minimap terrain texture" );
 			m_minimap_texture_request_id = 0;
-			return result;
+			m_pending_minimap_terrain = result;
 		}
 	}
-	// no texture (yet)
+	if ( m_minimap_fog_texture_request_id && !m_pending_minimap_fog ) {
+		auto result = m_actors.fog->GetMeshActor()->GetCaptureToTextureResponse( m_minimap_fog_texture_request_id );
+		if ( result ) {
+			uint8_t minimum_alpha = 255;
+			uint8_t maximum_alpha = 0;
+			size_t covered_pixels = 0;
+			for ( size_t y = 0 ; y < result->GetHeight() ; y++ ) {
+				for ( size_t x = 0 ; x < result->GetWidth() ; x++ ) {
+					const auto alpha = static_cast< uint8_t >( result->GetPixel( x, y ) >> 24 );
+					minimum_alpha = std::min( minimum_alpha, alpha );
+					maximum_alpha = std::max( maximum_alpha, alpha );
+					if ( alpha ) {
+						covered_pixels++;
+					}
+				}
+			}
+			Log(
+				"Received minimap fog texture; alpha " + std::to_string( minimum_alpha ) +
+				"-" + std::to_string( maximum_alpha ) + ", " +
+				std::to_string( covered_pixels ) + " covered pixels"
+			);
+			m_minimap_fog_texture_request_id = 0;
+			m_pending_minimap_fog = result;
+		}
+	}
+	if ( m_pending_minimap_terrain && m_pending_minimap_fog ) {
+		const auto width = m_pending_minimap_terrain->GetWidth();
+		const auto height = m_pending_minimap_terrain->GetHeight();
+		ASSERT(
+			m_pending_minimap_fog->GetWidth() == width &&
+			m_pending_minimap_fog->GetHeight() == height,
+			"minimap terrain and fog dimensions differ"
+		);
+		m_pending_minimap_terrain->AddFrom(
+			m_pending_minimap_fog,
+			types::texture::AM_MERGE,
+			0,
+			0,
+			width - 1,
+			height - 1
+		);
+		DELETE( m_pending_minimap_fog );
+		m_pending_minimap_fog = nullptr;
+		auto* const result = m_pending_minimap_terrain;
+		m_pending_minimap_terrain = nullptr;
+		return result;
+	}
 	return nullptr;
 }
 
@@ -2121,25 +3014,30 @@ void Game::UpdateMinimap() {
 	}
 	Log( "Requesting minimap ( " + std::to_string( minimap_size.x ) + "x" + std::to_string( minimap_size.y ) + " )" );
 
-	NEWV( camera, scene::Camera, scene::Camera::CT_ORTHOGRAPHIC );
-	camera->SetAngle( m_camera->GetAngle() );
-	camera->SetScale(
-		{
-			minimap_size.x / (float)m_viewport.window_width / m_viewport.window_aspect_ratio / (float)m_map_data.width * 2.0f,
-			minimap_size.y / (float)m_viewport.window_height / (float)( m_map_data.height + 1 ) * 2.82f,
-			0.01f,
-		}
-	);
-	camera->SetPosition(
-		{
-			0.0f,
-			1.014f - ( minimap_size.y / 2.0f / (float)m_viewport.window_height ),
-			0.5f
-		}
-	);
+	const auto f_create_camera = [ this, &minimap_size ]() -> scene::Camera* {
+		auto* const camera = new scene::Camera( scene::Camera::CT_ORTHOGRAPHIC );
+		camera->SetAngle( m_camera->GetAngle() );
+		camera->SetScale(
+			{
+				minimap_size.x / (float)m_viewport.window_width / m_viewport.window_aspect_ratio / (float)m_map_data.width * 2.0f,
+				minimap_size.y / (float)m_viewport.window_height / (float)( m_map_data.height + 1 ) * 2.82f,
+				0.01f,
+			}
+		);
+		camera->SetPosition(
+			{
+				0.0f,
+				1.014f - ( minimap_size.y / 2.0f / (float)m_viewport.window_height ),
+				0.5f
+			}
+		);
+		return camera;
+	};
 
 	GetMinimapTexture(
-		camera, {
+		f_create_camera(),
+		f_create_camera(),
+		{
 			(size_t)std::floor( minimap_size.x ),
 			(size_t)std::floor( minimap_size.y ),
 		}
@@ -2354,9 +3252,14 @@ void Game::UnregisterWidgets() {
 
 void Game::Trigger( gse::GCWrappable* const object, const std::string& event, const gse::f_args_t& f_args ) {
 	// TODO: some mutexes needed?
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	ASSERT( object, "triggered object is null" );
-	auto* state = m_game->GetState();
-	ASSERT( state, "game state is null" );
+	auto* state = m_game->TryGetState();
+	if ( !state ) {
+		return;
+	}
 	state->WithGSE(
 		state, [ state, object, event, f_args ]( GSE_CALLABLE ) {
 			state->TriggerObject( object, event, f_args );
@@ -2409,6 +3312,9 @@ void Game::SetSelectedTile( tile::Tile* tile ) {
 }
 
 void Game::UpdateTilePreview( tile::Tile* const tile ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	const auto& c = tile->GetCoords();
 	auto* const t = m_game->GetMap()->GetTile( c.x, c.y );
 	Trigger(
@@ -2422,6 +3328,9 @@ void Game::UpdateTilePreview( tile::Tile* const tile ) {
 }
 
 void Game::UpdateUnitPreview( const unit::Unit* const unit ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	auto* const u = unit
 		? m_game->GetUM()->GetUnit( unit->GetId() )
 		: nullptr;
@@ -2438,6 +3347,9 @@ void Game::UpdateUnitPreview( const unit::Unit* const unit ) {
 }
 
 void Game::UpdateBasePreview( const base::Base* const base ) {
+	if ( g_engine->IsShuttingDown() ) {
+		return;
+	}
 	auto* const b = base
 		? m_game->GetBM()->GetBase( base->GetId() )
 		: nullptr;
@@ -2464,6 +3376,9 @@ void Game::UpdatePreviews( tile::Tile* const tile, const unit::Unit* const unit 
 		if ( !selected_unit || selected_unit->GetTile() != tile ) {
 			const auto* const important_unit = tile->GetMostImportantUnit();
 			const auto* base = tile->GetBase();
+			if ( base && !base->IsOwned() && !tile->IsCurrentlyVisible() ) {
+				base = nullptr;
+			}
 			if ( !important_unit && base ) {
 				UpdateBasePreview( base );
 			}

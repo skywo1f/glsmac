@@ -12,14 +12,20 @@ EventHandler::EventHandler(
 	gse::value::Callable* const validate,
 	gse::value::Callable* const resolve,
 	gse::value::Callable* const apply,
-	gse::value::Callable* const rollback
+	gse::value::Callable* const rollback,
+	const bool private_unit_event,
+	const bool unit_snapshot_event,
+	const bool private_player_event
 )
 	: gc::Object( gc_space )
 	, m_name( name )
 	, m_validate( validate )
 	, m_resolve( resolve )
 	, m_apply( apply )
-	, m_rollback( rollback ) {
+	, m_rollback( rollback )
+	, m_private_unit_event( private_unit_event )
+	, m_unit_snapshot_event( unit_snapshot_event )
+	, m_private_player_event( private_player_event ) {
 	ASSERT( validate, "validate not set" );
 	ASSERT( apply, "apply not set" );
 	ASSERT( rollback, "rollback not set" );
@@ -73,6 +79,18 @@ const std::string* const EventHandler::Validate( GSE_CALLABLE, const gse::value:
 
 const bool EventHandler::HasResolve() const {
 	return m_resolve != nullptr;
+}
+
+const bool EventHandler::IsPrivateUnitEvent() const {
+	return m_private_unit_event;
+}
+
+const bool EventHandler::IsUnitSnapshotEvent() const {
+	return m_unit_snapshot_event;
+}
+
+const bool EventHandler::IsPrivatePlayerEvent() const {
+	return m_private_player_event;
 }
 
 gse::Value* const EventHandler::Resolve( GSE_CALLABLE, const gse::value::function_arguments_t& args ) const {

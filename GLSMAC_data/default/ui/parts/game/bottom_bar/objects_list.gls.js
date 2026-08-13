@@ -15,6 +15,13 @@ return {
 		}
 	},
 
+	is_tile_explored: (tile) => {
+		const player = this.p.game.get_player();
+		return player == null || #typeof(player.has_explored) != 'Callable'
+			? true
+			: player.has_explored(tile);
+	},
+
 	add_object: (object, left) => {
 		const cls = #classof(object);
 		let type = null;
@@ -118,16 +125,19 @@ return {
 
 		this.list_width = 0;
 
-		const base = tile.get_base();
+		const explored = this.is_tile_explored(tile);
+		const base = explored ? tile.get_base() : null;
 
 		if (base != null) {
 			this.add_object(base, this.list_width);
 			this.list_width = this.list_width + this.object_width;
 		}
 
-		for (unit of tile.get_units()) {
-			this.add_object(unit, this.list_width);
-			this.list_width = this.list_width + this.object_width;
+		if (explored) {
+			for (unit of tile.get_units(true)) {
+				this.add_object(unit, this.list_width);
+				this.list_width = this.list_width + this.object_width;
+			}
 		}
 
 		this.selected_tile = tile;
@@ -187,6 +197,9 @@ return {
 				if (tile != this.selected_tile) {
 					this.update_tile(tile);
 				}
+				if (!this.is_tile_explored(tile)) {
+					return;
+				}
 				const key = #to_string(e.unit.id);
 				if (!#is_defined(this.units[key])) {
 					this.add_object(e.unit, this.list_width);
@@ -211,7 +224,11 @@ return {
 		this.frame.listen(p.game, 'unit_select', (e) => {
 			this.p.modules.popup.hide('base_screen');
 			const key = #to_string(e.unit.id);
-			this.set_active_item(this.units[key].item);
+			const entry = this.units[key];
+			if (!#is_defined(entry) || entry.object != e.unit) {
+				return;
+			}
+			this.set_active_item(entry.item);
 			this.selected_object = e.unit;
 		});
 
@@ -219,7 +236,11 @@ return {
 			this.set_active_item(null);
 			#async(0, () => { // workaround for objects list active border getting messed up, TODO: investigate and fix properly
 				const key = #to_string(e.base.id);
-				this.set_active_item(this.bases[key].item);
+				const entry = this.bases[key];
+				if (!#is_defined(entry) || entry.object != e.base) {
+					return;
+				}
+				this.set_active_item(entry.item);
 				const last_selected_object = this.selected_object;
 				this.selected_object = e.base;
 				this.p.modules.popup.set('base_screen', {
@@ -258,6 +279,11 @@ return {
 
 		this.frame.listen(p.game, 'turn_status', (e) => {
 			this.is_turn_active = e.status == 'active';
+		});
+		this.frame.listen(p.game, 'map_visibility_updated', (e) => {
+			if (this.selected_tile != null) {
+				this.update_tile(this.selected_tile);
+			}
 		});
 
 		this.frame.on('keydown', (e) => {

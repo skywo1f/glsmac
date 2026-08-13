@@ -25,13 +25,40 @@ class MoraleSet;
 class Def : public gse::Wrappable {
 public:
 
-	Def( const std::string& id, const MoraleSet* moraleset, const def_type_t type, const std::string& name );
+	static constexpr int64_t MAX_MINERAL_COST = 1000000;
+	static constexpr int64_t MAX_COMBAT_STRENGTH = 1000000;
+	static constexpr int64_t MAX_OWNER_PLAYER_ID = 63;
+
+	Def(
+		const std::string& id,
+		const MoraleSet* moraleset,
+		const def_type_t type,
+		const std::string& name,
+		const int64_t mineral_cost,
+		const std::string& required_technology,
+		const bool is_native,
+		const int64_t offense,
+		const int64_t defense,
+		const bool can_found_base,
+		const bool can_terraform,
+		const bool buildable,
+		const int64_t owner_player_id
+	);
 	virtual ~Def() = default;
 
 	const std::string m_id;
 	const MoraleSet* m_moraleset;
 	const def_type_t m_type;
 	const std::string m_name;
+	const int64_t m_mineral_cost;
+	const std::string m_required_technology;
+	const bool m_is_native;
+	const int64_t m_offense;
+	const int64_t m_defense;
+	const bool m_can_found_base;
+	const bool m_can_terraform;
+	const bool m_buildable;
+	const int64_t m_owner_player_id;
 
 	virtual const movement_type_t GetMovementType() const = 0;
 

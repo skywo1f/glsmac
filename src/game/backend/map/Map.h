@@ -1,7 +1,9 @@
 #pragma once
 
 #include <string>
+#include <map>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "types/Serializable.h"
@@ -13,6 +15,7 @@
 #include "types/texture/Types.h"
 
 #include "types/Buffer.h"
+#include "types/Vec2.h"
 
 namespace types {
 namespace texture {
@@ -55,6 +58,18 @@ class Finalize;
 }
 
 CLASS2( Map, types::Serializable, gse::GCWrappable )
+	struct climate_state_t {
+		int64_t level = 0;
+		int64_t future_change = 0;
+		int64_t progress = 0;
+		int64_t dust_cloud_duration = 0;
+	};
+	struct event_projection_t {
+		std::map< size_t, std::string > tiles = {};
+		bool map_state_changed = false;
+		tile::elevation_t sea_level = tile::ELEVATION_LEVEL_COAST;
+		climate_state_t climate = {};
+	};
 
 	Map( Game* game );
 	~Map();
@@ -64,6 +79,8 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 		EC_UNKNOWN = 1,
 		EC_ABORTED = 2,
 		EC_MAPFILE_FORMAT_ERROR = 3,
+		EC_INVALID_MAP_DIMENSIONS = 4,
+		EC_INVALID_MAP_PARAMETERS = 5,
 	};
 
 	const error_code_t Generate( settings::MapSettings* map_settings, MT_CANCELABLE );
@@ -116,6 +133,26 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 
 	const size_t GetWidth() const;
 	const size_t GetHeight() const;
+	const tile::elevation_t GetSeaLevel() const;
+	const climate_state_t& GetClimateState() const;
+	void SetClimateState( const climate_state_t& state );
+	bool BeginEventProjectionCapture();
+	const event_projection_t FinishEventProjectionCapture();
+	void ApplyEventProjection(
+		const std::map< size_t, std::string >& tile_snapshots,
+		const bool map_state_changed,
+		const tile::elevation_t sea_level,
+		const climate_state_t& climate
+	);
+	void RefreshTile( tile::Tile* tile );
+	std::string ApplyCrater( tile::Tile* center, const size_t radius );
+	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
+	std::string ApplyVolcano( tile::Tile* center );
+	std::string ApplyMajorEruption( tile::Tile* center );
+	void RestoreTerrain( const std::string& snapshot );
+	std::string ApplySeaLevelChange( const tile::elevation_t amount );
+	void RestoreSeaLevel( const std::string& snapshot );
+	bool IsTileRefreshTarget( const tile::Tile* tile ) const;
 
 	// be careful using this
 	tile::Tiles* GetTilesPtr() const;
@@ -167,8 +204,17 @@ private:
 	tile::Tiles* m_tiles = nullptr;
 	tile::Tile* m_selected_tile = nullptr;
 	MapState* m_map_state = nullptr;
+	tile::elevation_t m_sea_level = tile::ELEVATION_LEVEL_COAST;
+	climate_state_t m_climate_state = {};
+	struct event_projection_capture_t {
+		tile::elevation_t sea_level = tile::ELEVATION_LEVEL_COAST;
+		climate_state_t climate = {};
+		std::unordered_set< tile::Tile* > changed_tiles = {};
+	};
+	std::vector< event_projection_capture_t > m_event_projection_captures = {};
 
 	typedef std::vector< tile::Tile* > tiles_t;
+	typedef std::unordered_set< tile::Tile* > tile_set_t;
 
 	typedef std::vector< module::Module* > module_pass_t;
 	typedef std::vector< module_pass_t > module_passes_t;
@@ -176,9 +222,14 @@ private:
 	module_passes_t m_modules_deferred; // after finalizing and deferred calls
 
 	void InitTextureAndMesh();
+	const types::Vec2< size_t > GetTextureAtlasDimensions() const;
+	const types::Vec2< size_t > GetTextureAtlasPosition( const size_t tile_x, const size_t tile_y, const tile::tile_layer_type_t layer ) const;
 	void ProcessTiles( module_passes_t& module_passes, const tiles_t& tiles, MT_CANCELABLE );
 	void LoadTiles( const tiles_t& tiles, MT_CANCELABLE );
 	void FixNormals( const tiles_t& tiles, MT_CANCELABLE );
+	void RefreshTerrain( const tile_set_t& changed_tiles );
+	void QueueTerrainUpdates( const tiles_t& tiles );
+	const tiles_t GetAllTiles() const;
 
 	// texture.pcx contains some textures grouped in certain way based on adjactent neighbours
 	// calculate all variants once and cache for faster lookups later
@@ -193,6 +244,9 @@ private:
 
 	tile::TileState* m_current_ts = nullptr;
 	const tile::Tile* m_current_tile = nullptr;
+	std::unordered_set< const tile::Tile* > m_active_refresh_tiles = {};
+	static constexpr size_t MAX_TERRAIN_SNAPSHOT_SIZE = 4 * 1024 * 1024;
+	static constexpr size_t MAX_SEA_LEVEL_SNAPSHOT_SIZE = MAX_TERRAIN_SNAPSHOT_SIZE + 1024;
 };
 
 }

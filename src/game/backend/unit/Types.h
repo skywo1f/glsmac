@@ -18,6 +18,14 @@ enum movement_type_t {
 	MT_AIR
 };
 
+enum convoy_resource_t {
+	CR_INVALID = -1,
+	CR_NONE,
+	CR_NUTRIENTS,
+	CR_MINERALS,
+	CR_ENERGY,
+};
+
 typedef float movement_t;
 
 typedef float health_t;

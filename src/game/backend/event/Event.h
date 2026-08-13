@@ -9,6 +9,15 @@ namespace game {
 namespace backend {
 
 class Game;
+class Player;
+
+namespace unit {
+class Unit;
+}
+
+namespace base {
+class Base;
+}
 
 namespace event {
 
@@ -35,6 +44,27 @@ public:
 	const std::string& GetId() const;
 	const std::string& GetEventName() const;
 	const gse::value::object_properties_t& GetData() const;
+	const gse::value::object_properties_t& GetOriginalData() const;
+	const bool HasInvalidatedReferences() const;
+	const std::unordered_set< const unit::Unit* > GetReferencedUnits();
+	const std::unordered_set< const base::Base* > GetReferencedBases();
+	const std::unordered_set< const Player* > GetReferencedPlayers();
+	static const std::string SerializeUnitVisibilityUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
+	static const std::string SerializeBaseVisibilityUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
+	static const std::string SerializePlayerVisibilityUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
+	static const std::string SerializeMapProjectionUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
 
 	void SetResolved( gse::Value* const resolved );
 	gse::Value* GetResolved();

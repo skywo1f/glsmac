@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vector>
+
 #include "gse/GCWrappable.h"
 
 #include "gse/value/Object.h"
@@ -51,17 +53,27 @@ public:
 
 	WRAPDEFS_PTR( UnitManager )
 
-	void Serialize( types::Buffer& buf ) const;
+	void Serialize(
+		types::Buffer& buf,
+		const std::unordered_set< size_t >* included_unit_ids = nullptr
+	) const;
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
+	void ValidateHomeBases() const;
+	void ValidateTransports() const;
+	std::vector< Unit* > GetCargo( const Unit* transport ) const;
+	void EmbarkUnit( GSE_CALLABLE, Unit* unit, Unit* transport );
+	void DisembarkUnit( GSE_CALLABLE, Unit* unit );
 
 public:
 	// TODO: limit access
 	typedef std::function< void() > cb_oncomplete;
 	const std::string* MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::tile::Tile* dst_tile, const cb_oncomplete& on_complete );
+	const std::string* TeleportUnitToTile( GSE_CALLABLE, Unit* unit, map::tile::Tile* dst_tile );
 	const std::string* AttackUnitValidate( GSE_CALLABLE, Unit* attacker, Unit* defender );
 	gse::Value* const AttackUnitResolve( GSE_CALLABLE, Unit* attacker, Unit* defender );
 	void AttackUnitApply( GSE_CALLABLE, Unit* attacker, Unit* defender, gse::Value* const resolutions );
 	void RefreshUnit( GSE_CALLABLE, const Unit* unit );
+	void ReplaceUnit( GSE_CALLABLE, const Unit* unit );
 
 private:
 	Game* m_game = nullptr;
@@ -76,6 +88,7 @@ private:
 		UUO_SPAWN = 1 << 0,
 		UUO_REFRESH = 1 << 1,
 		UUO_DESPAWN = 1 << 2,
+		UUO_REPLACE = 1 << 3,
 	};
 	struct unit_update_t {
 		unit_update_op_t ops = UUO_NONE;
@@ -86,6 +99,7 @@ private:
 
 	const morale_t GetMorale( GSE_CALLABLE, const int64_t& morale );
 	const health_t GetHealth( GSE_CALLABLE, const float health );
+	const std::string* ValidateEmbark( const Unit* unit, const Unit* transport ) const;
 
 private:
 	friend class Unit;

@@ -1,0 +1,205 @@
+const rules = #include('../default/game/unit_design_rules');
+
+let known = {};
+const player = {
+	id: 3,
+	has_technology: (id) => { return #is_defined(known[id]); },
+};
+let definitions = [];
+const game = {
+	get_um: () => {
+		return {get_unit_defs: () => { return definitions; }};
+	},
+};
+
+const selection = (chassis, weapon, armor, reactor, abilities) => {
+	return {
+		chassis: chassis,
+		weapon: weapon,
+		armor: armor,
+		reactor: reactor,
+		abilities: abilities,
+	};
+};
+
+let scout = selection(
+	'Infantry', 'HandWeapons', 'NoArmor', 'FissionPlant', []
+);
+let preview = rules.get_preview(game, player, scout);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.name == 'Gun Infantry');
+test.assert(preview.data.mineral_cost == 10);
+test.assert(preview.data.owner_player_id == player.id);
+test.assert(preview.data.movement_per_turn == 1);
+test.assert(preview.data.offense == 1);
+test.assert(preview.data.defense == 1);
+test.assert(!preview.exists);
+
+definitions = [{id: preview.id}];
+test.assert(rules.get_preview(game, player, scout).exists);
+definitions = [];
+
+known.CentauriEcology = true;
+known.AdvancedEcologicalEngineering = true;
+const super_former = selection(
+	'Infantry', 'TerraformingUnit', 'NoArmor', 'FissionPlant', ['SuperFormer']
+);
+preview = rules.get_preview(game, player, super_former);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.name == 'Super Former');
+test.assert(preview.data.can_terraform);
+test.assert(preview.data.abilities == ['SuperFormer']);
+
+known.DoctrineFlexibility = true;
+const sea_former = selection(
+	'Foil', 'TerraformingUnit', 'NoArmor', 'FissionPlant', []
+);
+preview = rules.get_preview(game, player, sea_former);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.name == 'Foil Former');
+test.assert(preview.data.can_terraform && preview.data.movement_type == 'water');
+
+known.DoctrineAirPower = true;
+const air_former = selection(
+	'Needlejet', 'TerraformingUnit', 'NoArmor', 'FissionPlant', []
+);
+test.assert(#is_defined(rules.get_error(player, air_former)));
+
+const illegal_super_scout = selection(
+	'Infantry', 'HandWeapons', 'NoArmor', 'FissionPlant', ['SuperFormer']
+);
+test.assert(#is_defined(rules.get_error(player, illegal_super_scout)));
+
+known.DoctrineMobility = true;
+known.GravitonTheory = true;
+const antigrav_speeder = selection(
+	'Speeder', 'HandWeapons', 'NoArmor', 'FissionPlant', ['AntigravStruts']
+);
+preview = rules.get_preview(game, player, antigrav_speeder);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.movement_per_turn == 3);
+
+known.CentauriPsi = true;
+known.Eudaimonia = true;
+const psi = selection(
+	'Infantry', 'PsiAttack', 'PsiDefense', 'FissionPlant', []
+);
+preview = rules.get_preview(game, player, psi);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.offense == 1);
+test.assert(preview.data.defense == 1);
+
+known.CentauriEmpathy = true;
+known.MatterTransmission = true;
+const two_abilities = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['BlinkDisplacer', 'EmpathSong']
+);
+known.AppliedPhysics = true;
+test.assert(#is_defined(rules.get_error(player, two_abilities)));
+known.NeuralGrafting = true;
+preview = rules.get_preview(game, player, two_abilities);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['EmpathSong', 'BlinkDisplacer']);
+test.assert(
+	preview.id == 'WorkshopP3_Infantry_Laser_NoArmor_EmpathSong_BlinkDisplacer_FissionPlant'
+);
+
+known.OrbitalSpaceflight = true;
+const illegal_payload = selection(
+	'Infantry', 'ConventionalPayload', 'NoArmor', 'FissionPlant', []
+);
+test.assert(#is_defined(rules.get_error(player, illegal_payload)));
+const missile = selection(
+	'Missile', 'ConventionalPayload', 'NoArmor', 'FissionPlant', []
+);
+preview = rules.get_preview(game, player, missile);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.is_missile);
+test.assert(preview.data.operational_range == 1);
+
+known.DoctrineInitiative = true;
+const amphibious = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['AmphibiousPods']
+);
+test.assert(!#is_defined(rules.get_error(player, amphibious)));
+known.PlanetaryNetworks = true;
+const amphibious_probe = selection(
+	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['AmphibiousPods']
+);
+test.assert(#is_defined(rules.get_error(player, amphibious_probe)));
+
+known.HighEnergyChemistry = true;
+const nerve_gas = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+);
+preview = rules.get_preview(game, player, nerve_gas);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['NerveGasPods']);
+test.assert(!#is_defined(rules.get_error(player, selection(
+	'Needlejet', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'PsiAttack', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['NerveGasPods']
+))));
+
+known.MindMachineInterface = true;
+const drop_pods = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+);
+preview = rules.get_preview(game, player, drop_pods);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['DropPods']);
+test.assert(!#is_defined(rules.get_error(player, selection(
+	'Infantry', 'PsiAttack', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Needlejet', 'Laser', 'NoArmor', 'FissionPlant', ['DropPods']
+))));
+
+known.AdvancedMilitaryAlgorithms = true;
+const radar_scout = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DeepRadar']
+);
+preview = rules.get_preview(game, player, radar_scout);
+test.assert(!#is_defined(preview.error));
+test.assert(preview.data.abilities == ['DeepRadar']);
+
+known.FrictionlessSurfaces = true;
+const cloaked_laser = selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['CloakingDevice']
+);
+test.assert(!#is_defined(rules.get_error(player, cloaked_laser)));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'ProbeTeam', 'NoArmor', 'FissionPlant', ['CloakingDevice']
+))));
+
+known.Nanometallurgy = true;
+const submarine = selection(
+	'Foil', 'Laser', 'NoArmor', 'FissionPlant', ['DeepPressureHull']
+);
+test.assert(!#is_defined(rules.get_error(player, submarine)));
+test.assert(#is_defined(rules.get_error(player, selection(
+	'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['DeepPressureHull']
+))));
+test.assert(rules.get_error(player, selection(
+	'Foil',
+	'TroopTransport',
+	'NoArmor',
+	'FissionPlant',
+	['DeepPressureHull', 'CarrierDeck']
+)) == 'Deep Pressure Hull cannot be combined with Carrier Deck');
+
+test.assert(
+	#is_defined(rules.get_error(player, selection(
+		'Infantry', 'Laser', 'NoArmor', 'FissionPlant', ['EmpathSong', 'EmpathSong']
+	)))
+);

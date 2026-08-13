@@ -22,12 +22,15 @@ CLASS( Slots, types::Serializable )
 	void Clear();
 
 	const types::Buffer Serialize() const override;
+	const types::Buffer Serialize( const Player* viewer ) const;
 	void Deserialize( types::Buffer buf ) override;
+	void DeserializeUpdate( types::Buffer buf );
 
 private:
 	State* m_state;
 
 	std::vector< Slot > m_slots = {};
+	static constexpr size_t MAX_SERIALIZED_SLOTS = 64;
 
 };
 

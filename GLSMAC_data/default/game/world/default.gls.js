@@ -15,50 +15,46 @@ return (game) => {
 
 	// functions
 	const get_good_starting_base_location = (is_naval_faction) => {
-		// find a good tile for starting base
-		// very simple for now, TODO: improve/optimize
-
-		// to prevent infinite loop on tiny maps with lots of players
-		const max_tries = 1000;
-		let tries = 0;
-
-		// will gradually decrease min base distance when struggling to find suitable tile
-		let min_base_distance = optimal_base_distance;
-		const decrease_min_base_distance_every = max_tries / players_count;
-
-		let next_min_base_distance_decrease_at = decrease_min_base_distance_every;
-		while (tries < max_tries) {
-			const x = game.random.get_int(0, map_width - 1);
-			const y = game.random.get_int(0, map_height - 1);
-			if (x % 2 != y % 2) {
-				// wrong oddity, try again
-				continue;
+		let domain_tiles = [];
+		let selected_tile = null;
+		for (let y = 0; y < map_height; y++) {
+			for (let x = y % 2; x < map_width; x += 2) {
+				const tile = tm.get_tile(x, y);
+				if (tile.is_water == is_naval_faction) {
+					domain_tiles :+tile;
+				}
 			}
-			const tile = tm.get_tile(x, y);
-			if (tile.is_water == is_naval_faction) { // naval factions start in water, others on land
-				// check that no existing bases are too close
+		}
+		for (let min_distance = optimal_base_distance; min_distance >= 1; min_distance--) {
+			let candidates = [];
+			for (tile of domain_tiles) {
 				let is_ok = true;
 				for (other of tiles_with_bases) {
-					if (tm.get_distance(tile, other) < min_base_distance) {
-						is_ok = false; // to close
+					const is_occupied = tile.x == other.x && tile.y == other.y;
+					if (is_occupied || tm.get_distance(tile, other) < min_distance) {
+						is_ok = false;
 						break;
 					}
 				}
 				if (is_ok) {
-					return tile;
-				} else {
-					if (tries >= next_min_base_distance_decrease_at) {
-						// reduce base distance to increase chance of finding tile
-						next_min_base_distance_decrease_at = tries + decrease_min_base_distance_every;
-						if (min_base_distance > 2) {
-							min_base_distance--;
-						}
-					}
+					candidates :+tile;
 				}
 			}
-			tries++;
+			if (#sizeof(candidates) > 0) {
+				const candidate_index = game.random.get_int(0, #sizeof(candidates) - 1);
+				selected_tile = candidates[candidate_index];
+				break;
+			}
 		}
-		throw Error('Failed to find good tile for base (try again, or try larger map or fewer players)');
+		if (selected_tile != null) {
+			return selected_tile;
+		}
+		throw Error(
+			'Failed to find an unoccupied ' + (is_naval_faction ? 'water' : 'land') +
+			' tile for a starting base (domain tiles: ' + #to_string(#sizeof(domain_tiles)) +
+			', bases already placed: ' + #to_string(#sizeof(tiles_with_bases)) +
+			', desired distance: ' + #to_string(optimal_base_distance) + ')'
+		);
 	};
 
 	// initialize each player in game
@@ -72,11 +68,12 @@ return (game) => {
 		game.event('spawn_base', {
 			owner: player,
 			tile: tile,
+			headquarters: true,
 		});
 		tiles_with_bases :+tile;
 
-		// spawn "scout patrol"
-		let type = 'MindWorms';
+		// spawn scout patrol (naval starts keep a sea-native stand-in for now)
+		let type = 'ScoutPatrol';
 		if (faction.is_naval) {
 			type = 'SeaLurk';
 		}
@@ -86,6 +83,7 @@ return (game) => {
 			type: type,
 			health: 1.0,
 			morale: 1,
+			home_base_at_tile: true,
 		});
 
 	}

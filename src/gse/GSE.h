@@ -5,6 +5,7 @@
 #include <map>
 #include <vector>
 #include <functional>
+#include <mutex>
 
 #include "gc/Object.h"
 
@@ -50,6 +51,7 @@ CLASS( GSE, gc::Object )
 	static const char PATH_SEPARATOR;
 
 	void Iterate();
+	void BeginShutdown();
 	void Finish();
 
 	parser::Parser* CreateParser( const std::string& filename, const std::string& source, const size_t initial_line_num = 1 );
@@ -77,7 +79,7 @@ CLASS( GSE, gc::Object )
 
 	void GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) override;
 
-#if defined ( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 
 	void LogCaptureStart() const { m_builtins.LogCaptureStart(); }
 	const std::string& LogCaptureStopGet() const { return m_builtins.LogCaptureStopGet(); }
@@ -100,6 +102,7 @@ private:
 	std::map< std::string, Value* > m_globals = {};
 
 	std::unordered_set< gc::Object* > m_root_objects = {};
+	std::mutex m_root_objects_mutex;
 
 	std::vector< Bindings* > m_bindings = {};
 	builtins::Builtins m_builtins = {};
@@ -116,6 +119,7 @@ private:
 	std::unordered_map< std::string, include_cache_t > m_include_cache = {};
 
 	Async* m_async = nullptr;
+	bool m_is_shutting_down = false;
 };
 
 }

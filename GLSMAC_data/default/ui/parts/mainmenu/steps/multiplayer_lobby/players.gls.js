@@ -16,9 +16,14 @@ return (i) => {
 			}],
 		];
 		for (faction of factions) {
+			if (#is_defined(faction.is_native) && faction.is_native) { continue; }
 			faction_choices :+[faction.id, faction.name, {
 				color: faction.text_color,
 			}];
+		}
+		let difficulty_choices = [];
+		for (difficulty of game.get_settings().global.rules.difficulty_levels) {
+			difficulty_choices :+[difficulty, difficulty];
 		}
 
 		let rows = {};
@@ -70,6 +75,19 @@ return (i) => {
 					});
 					return true;
 				});
+				const difficulty_select = row_el.select({
+					class: 'lobby-player-difficulty',
+					items: difficulty_choices,
+					value: player.difficulty_level,
+					readonly: !is_me,
+					color: faction_color,
+				});
+				difficulty_select.on('select', (e) => {
+					game.event('select_difficulty', {
+						difficulty: e.value,
+					});
+					return true;
+				});
 
 				let row = {
 					row: row_el,
@@ -80,15 +98,7 @@ return (i) => {
 						color: faction_color,
 					}),
 					faction: faction_select,
-					difficulty: row_el.select({
-						class: 'lobby-player-difficulty',
-						items: [
-							['transcend', 'Transcend'],
-						],
-						value: 'transcend', // TODO
-						readonly: !is_me,
-						color: faction_color,
-					}),
+					difficulty: difficulty_select,
 				};
 
 				rows[id] = row;
@@ -109,6 +119,7 @@ return (i) => {
 
 				const color = #is_defined(faction) ? faction.text_color : 'white';
 				row.faction.value = #is_defined(faction) ? faction.id : 'RANDOM';
+				row.difficulty.value = player.difficulty_level;
 				row.name.color = color;
 				row.faction.color = color;
 				row.difficulty.color = color;
@@ -148,8 +159,12 @@ return (i) => {
 			if (player.is_ready()) {
 				const id = #to_string(player.id);
 				ready_players[id] = true;
+				ready_players_count++;
 			}
 			add_row(player);
+		}
+		if (players_count > 0 && ready_players_count == players_count) {
+			lobby.start_countdown();
 		}
 
 		body.listen(i.connection, 'player_join', (e) => {
