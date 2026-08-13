@@ -21,6 +21,9 @@ return {
 		if (#typeof(e.data.winner_id) != 'Int' || e.data.winner_id < 0) {
 			return 'Victory winner ID is invalid';
 		}
+		if (#typeof(e.game.is_master) == 'Callable' && !e.game.is_master()) {
+			return;
+		}
 		let winner = null;
 		if (e.data.type == 'conquest') {
 			const get_diplomatic_winner = #typeof(e.game.get) == 'Callable'

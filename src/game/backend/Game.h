@@ -65,6 +65,7 @@ class UnitManager;
 }
 
 namespace base {
+class Base;
 class BaseManager;
 }
 
@@ -365,6 +366,18 @@ public:
 	base::BaseManager* GetBM() const;
 	animation::AnimationManager* GetAM() const;
 	const std::unordered_set< size_t > GetVisibleUnitIdsForSlot( const size_t slot_num ) const;
+	enum base_visibility_t : uint8_t {
+		BV_HIDDEN = 0,
+		BV_PUBLIC,
+		BV_FULL,
+	};
+	using projected_bases_t = std::map< size_t, std::string >;
+	const base_visibility_t GetBaseVisibilityForSlot(
+		const base::Base* base,
+		const size_t slot_num
+	) const;
+	const projected_bases_t GetProjectedBasesForSlot( const size_t slot_num ) const;
+	const std::unordered_set< size_t > GetFullBaseIdsForSlot( const size_t slot_num ) const;
 
 	gc::Space* const GetGCSpace() const;
 
@@ -381,6 +394,12 @@ private:
 	unit::UnitManager* m_um = nullptr;
 	base::BaseManager* m_bm = nullptr;
 	animation::AnimationManager* m_am = nullptr;
+	struct visibility_tiles_t {
+		std::unordered_set< const map::tile::Tile* > visible = {};
+		std::unordered_set< const map::tile::Tile* > sensor_detected = {};
+		std::unordered_set< const map::tile::Tile* > radar_detected = {};
+	};
+	const visibility_tiles_t GetVisibilityTilesForSlot( const size_t slot_num ) const;
 
 	enum game_state_t {
 		GS_NONE,
@@ -467,6 +486,7 @@ private:
 
 	void ProcessEvents();
 	void ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
+	void ApplyBaseVisibilityUpdate( GSE_CALLABLE, const std::string& payload );
 
 private:
 	friend class map::Map;

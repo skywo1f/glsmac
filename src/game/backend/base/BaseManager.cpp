@@ -269,6 +269,52 @@ std::string BaseManager::SnapshotBase( const base::Base* base ) const {
 	return snapshot;
 }
 
+const PopDef* BaseManager::GetPublicProjectionPopDef( const base::Base* base ) const {
+	const auto worker_it = m_base_popdefs.find( "WORKER" );
+	if ( worker_it != m_base_popdefs.end() ) {
+		const auto* const worker = worker_it->second;
+		const auto& renders = ( base->m_faction->m_flags & faction::Faction::FF_PROGENITOR )
+			? worker->m_renders_progenitor
+			: worker->m_renders_human;
+		if ( ( worker->m_flags & PopDef::PF_TILE_WORKER ) && !renders.empty() ) {
+			return worker;
+		}
+	}
+	std::vector< std::string > ids = {};
+	ids.reserve( m_base_popdefs.size() );
+	for ( const auto& it : m_base_popdefs ) {
+		ids.push_back( it.first );
+	}
+	std::sort( ids.begin(), ids.end() );
+	for ( const auto& id : ids ) {
+		const auto* const def = m_base_popdefs.at( id );
+		const auto& renders = ( base->m_faction->m_flags & faction::Faction::FF_PROGENITOR )
+			? def->m_renders_progenitor
+			: def->m_renders_human;
+		if ( ( def->m_flags & PopDef::PF_TILE_WORKER ) && !renders.empty() ) {
+			return def;
+		}
+	}
+	THROW( "cannot project a public base without a population worker definition" );
+}
+
+std::string BaseManager::ProjectBase(
+	const base::Base* base,
+	const bool include_private_state
+) const {
+	if ( !base ) {
+		THROW( "cannot project a null base" );
+	}
+	const auto it = m_bases.find( base->m_id );
+	if ( it == m_bases.end() || it->second != base ) {
+		THROW( "cannot project a base that is not active" );
+	}
+	return base::Base::Serialize(
+		base,
+		include_private_state ? nullptr : GetPublicProjectionPopDef( base )
+	).ToString();
+}
+
 base::Base* BaseManager::RestoreBase( GSE_CALLABLE, const std::string& snapshot ) {
 	if ( snapshot.empty() || snapshot.size() > MAX_BASE_SNAPSHOT_SIZE ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Serialized base snapshot size is invalid" );
@@ -942,7 +988,10 @@ void BaseManager::TriggerUpdates( GSE_CALLABLE ) {
 	m_updated_bases.clear();
 }
 
-void BaseManager::Serialize( types::Buffer& buf ) const {
+void BaseManager::Serialize(
+	types::Buffer& buf,
+	const std::map< size_t, std::string >* projected_bases
+) const {
 	Log( "Serializing " + std::to_string( m_facility_defs.size() ) + " base facility defs" );
 	buf.WriteInt( m_facility_defs.size() );
 	std::vector< std::string > facility_ids = {};
@@ -963,10 +1012,18 @@ void BaseManager::Serialize( types::Buffer& buf ) const {
 		buf.WriteString( base::PopDef::Serialize( it.second ).ToString() );
 	}
 
-	Log( "Serializing " + std::to_string( m_bases.size() ) + " bases" );
-	buf.WriteInt( m_bases.size() );
-	for ( const auto& it : m_bases ) {
-		buf.WriteString( base::Base::Serialize( it.second ).ToString() );
+	const auto base_count = projected_bases ? projected_bases->size() : m_bases.size();
+	Log( "Serializing " + std::to_string( base_count ) + " bases" );
+	buf.WriteInt( base_count );
+	if ( projected_bases ) {
+		for ( const auto& it : *projected_bases ) {
+			buf.WriteString( it.second );
+		}
+	}
+	else {
+		for ( const auto& it : m_bases ) {
+			buf.WriteString( base::Base::Serialize( it.second ).ToString() );
+		}
 	}
 	buf.WriteInt( base::Base::GetNextId() );
 

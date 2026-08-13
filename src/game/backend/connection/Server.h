@@ -73,6 +73,11 @@ private:
 	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_delivered_unit_ids = {};
 	std::unordered_map< network::cid_t, size_t > m_delivered_next_unit_ids = {};
 	size_t m_unit_visibility_event_id = 1;
+	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_projected_bases = {};
+	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_delivered_bases = {};
+	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_projected_full_base_ids = {};
+	std::unordered_map< network::cid_t, size_t > m_delivered_next_base_ids = {};
+	size_t m_base_visibility_event_id = 1;
 
 	void SendSerializedGameEvent( const network::cid_t cid, const game_event_t& event );
 	bool QueueDeferredGameEvent( const network::cid_t cid, const game_event_t& event );
@@ -82,6 +87,14 @@ private:
 		const std::unordered_set< size_t >& hidden_unit_ids,
 		const std::map< size_t, std::string >& revealed_unit_snapshots,
 		const size_t next_unit_id,
+		const std::string& after_event_id,
+		const bool deferred
+	);
+	bool DeliverBaseVisibilityUpdate(
+		const network::cid_t cid,
+		const std::unordered_set< size_t >& hidden_base_ids,
+		const std::map< size_t, std::string >& projected_base_snapshots,
+		const size_t next_base_id,
 		const std::string& after_event_id,
 		const bool deferred
 	);

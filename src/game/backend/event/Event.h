@@ -14,6 +14,10 @@ namespace unit {
 class Unit;
 }
 
+namespace base {
+class Base;
+}
+
 namespace event {
 
 class Event : public gc::Object {
@@ -42,7 +46,12 @@ public:
 	const gse::value::object_properties_t& GetOriginalData() const;
 	const bool HasInvalidatedReferences() const;
 	const std::unordered_set< const unit::Unit* > GetReferencedUnits();
+	const std::unordered_set< const base::Base* > GetReferencedBases();
 	static const std::string SerializeUnitVisibilityUpdate(
+		const std::string& id,
+		const std::string& payload
+	);
+	static const std::string SerializeBaseVisibilityUpdate(
 		const std::string& id,
 		const std::string& payload
 	);

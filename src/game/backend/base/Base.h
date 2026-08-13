@@ -78,7 +78,8 @@ public:
 		const size_t next_pop_id = 1,
 		const production_queue_t& production_queue = {},
 		const int64_t accumulated_minerals = 0,
-		const facilities_t& facilities = {}
+		const facilities_t& facilities = {},
+		const bool is_redacted = false
 	);
 	virtual ~Base() = default;
 
@@ -116,8 +117,12 @@ public:
 	production_queue_t m_production_queue;
 	int64_t m_accumulated_minerals;
 	facilities_t m_facilities;
+	const bool m_is_redacted;
 
-	static const types::Buffer Serialize( const Base* base );
+	static const types::Buffer Serialize(
+		const Base* base,
+		const PopDef* public_pop_def = nullptr
+	);
 	static Base* Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game );
 
 	WRAPDEFS_DYNAMIC( Base );

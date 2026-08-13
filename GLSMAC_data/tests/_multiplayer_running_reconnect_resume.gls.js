@@ -143,8 +143,7 @@
 				player.has_technology('CentauriEcology') ||
 				state.target != 'Biogenetics' ||
 				state.progress <= 0 ||
-				base == null ||
-				base.can_set_production('unit', 'Former')
+				(base != null && base.can_set_production('unit', 'Former'))
 			) {
 				return 'Centauri Ecology progress or Former production gate was not restored';
 			}
@@ -257,13 +256,13 @@
 				def.weapon != 'HandWeapons' || def.armor != 'NoArmor' ||
 				def.reactor != 'FissionPlant' || def.reactor_power != 1 ||
 				def.offense != 1 || def.defense != 1 ||
-				own_base == null || other_base == null ||
+				own_base == null ||
 				!upgraded_unit_found ||
 				!player.is_unit_design_obsolete(id) ||
 				!player.is_unit_design_retired(id) ||
 				visible_in_workshop ||
 				own_base.can_set_production('unit', id) ||
-				other_base.can_set_production('unit', id)
+				(other_base != null && other_base.can_set_production('unit', id))
 			) {
 				return 'faction Workshop definition or ownership was not restored';
 			}

@@ -57,6 +57,7 @@ public:
 	void SpawnBase( GSE_CALLABLE, base::Base* base );
 	void DespawnBase( GSE_CALLABLE, const size_t base_id );
 	std::string SnapshotBase( const base::Base* base ) const;
+	std::string ProjectBase( const base::Base* base, const bool include_private_state ) const;
 	base::Base* RestoreBase( GSE_CALLABLE, const std::string& snapshot );
 
 	const std::map< size_t, Base* >& GetBases() const;
@@ -70,7 +71,10 @@ public:
 
 	void TriggerUpdates( GSE_CALLABLE );
 
-	void Serialize( types::Buffer& buf ) const;
+	void Serialize(
+		types::Buffer& buf,
+		const std::map< size_t, std::string >* projected_bases = nullptr
+	) const;
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
 
 	void RefreshBase( const base::Base* base );
@@ -103,6 +107,7 @@ private:
 	static constexpr size_t MAX_BASE_SNAPSHOT_SIZE = 4 * 1024 * 1024;
 
 	void QueueBaseUpdate( const base::Base* base, const base_update_op_t op );
+	const PopDef* GetPublicProjectionPopDef( const base::Base* base ) const;
 
 private:
 	std::mutex m_updated_bases_mutex;

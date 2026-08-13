@@ -482,7 +482,7 @@ const size_t Game::GetSlotNum() const {
 	return m_slot_num;
 }
 
-const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t slot_num ) const {
+const Game::visibility_tiles_t Game::GetVisibilityTilesForSlot( const size_t slot_num ) const {
 	ASSERT( m_map && m_um && m_bm, "cannot calculate unit visibility before world initialization" );
 	ASSERT( slot_num < m_state->m_slots->GetCount(), "visibility slot index overflow" );
 	const auto& viewer = m_state->m_slots->GetSlot( slot_num );
@@ -490,9 +490,10 @@ const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t 
 
 	using Tile = map::tile::Tile;
 	using Base = base::Base;
-	std::unordered_set< const Tile* > visible_tiles = {};
-	std::unordered_set< const Tile* > sensor_detected_tiles = {};
-	std::unordered_set< const Tile* > radar_detected_tiles = {};
+	visibility_tiles_t result = {};
+	auto& visible_tiles = result.visible;
+	auto& sensor_detected_tiles = result.sensor_detected;
+	auto& radar_detected_tiles = result.radar_detected;
 
 	const auto add_tiles_in_radius = [](
 		const Tile* const center,
@@ -668,7 +669,14 @@ const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t 
 			add_tiles_in_radius( &tile, 2, sensor_detected_tiles );
 		}
 	}
+	return result;
+}
 
+const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t slot_num ) const {
+	const auto visibility = GetVisibilityTilesForSlot( slot_num );
+	const auto& visible_tiles = visibility.visible;
+	const auto& sensor_detected_tiles = visibility.sensor_detected;
+	const auto& radar_detected_tiles = visibility.radar_detected;
 	std::unordered_set< size_t > result = {};
 	for ( const auto& it : m_um->GetUnits() ) {
 		const auto* const candidate = it.second;
@@ -702,6 +710,62 @@ const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t 
 			);
 		if ( detected ) {
 			result.insert( candidate->m_id );
+		}
+	}
+	return result;
+}
+
+const Game::base_visibility_t Game::GetBaseVisibilityForSlot(
+	const base::Base* base,
+	const size_t slot_num
+) const {
+	ASSERT( base && m_map && m_bm, "cannot calculate base visibility before world initialization" );
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "base visibility slot index overflow" );
+	const auto& viewer_slot = m_state->m_slots->GetSlot( slot_num );
+	ASSERT( viewer_slot.GetState() == slot::Slot::SS_PLAYER, "base visibility slot has no player" );
+	const auto* const viewer = viewer_slot.GetPlayer();
+	ASSERT( viewer, "base visibility slot has no player data" );
+	const auto owner_slot = base->m_owner->GetIndex();
+	if ( owner_slot == slot_num || viewer->HasInfiltrated( owner_slot ) ) {
+		return BV_FULL;
+	}
+	const auto visibility = GetVisibilityTilesForSlot( slot_num );
+	return visibility.visible.find( base->GetTile() ) != visibility.visible.end()
+		? BV_PUBLIC
+		: BV_HIDDEN;
+}
+
+const Game::projected_bases_t Game::GetProjectedBasesForSlot( const size_t slot_num ) const {
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "base projection slot index overflow" );
+	const auto& viewer_slot = m_state->m_slots->GetSlot( slot_num );
+	ASSERT( viewer_slot.GetState() == slot::Slot::SS_PLAYER, "base projection slot has no player" );
+	const auto* const viewer = viewer_slot.GetPlayer();
+	ASSERT( viewer, "base projection slot has no player data" );
+	const auto visibility = GetVisibilityTilesForSlot( slot_num );
+	projected_bases_t result = {};
+	for ( const auto& it : m_bm->GetBases() ) {
+		const auto* const base = it.second;
+		const auto owner_slot = base->m_owner->GetIndex();
+		const bool is_full = owner_slot == slot_num || viewer->HasInfiltrated( owner_slot );
+		if ( is_full || visibility.visible.find( base->GetTile() ) != visibility.visible.end() ) {
+			result.insert({
+				it.first,
+				m_bm->ProjectBase( base, is_full )
+			});
+		}
+	}
+	return result;
+}
+
+const std::unordered_set< size_t > Game::GetFullBaseIdsForSlot( const size_t slot_num ) const {
+	ASSERT( slot_num < m_state->m_slots->GetCount(), "full base projection slot index overflow" );
+	const auto* const viewer = m_state->m_slots->GetSlot( slot_num ).GetPlayer();
+	ASSERT( viewer, "full base projection slot has no player data" );
+	std::unordered_set< size_t > result = {};
+	for ( const auto& it : m_bm->GetBases() ) {
+		const auto owner_slot = it.second->m_owner->GetIndex();
+		if ( owner_slot == slot_num || viewer->HasInfiltrated( owner_slot ) ) {
+			result.insert( it.first );
 		}
 	}
 	return result;
@@ -1588,6 +1652,18 @@ const Game::victory_state_t& Game::GetVictoryState() const {
 }
 
 Player* Game::GetConquestWinner() const {
+	if ( m_state && !m_state->IsMaster() ) {
+		if (
+			m_victory_state.type != VT_CONQUEST ||
+			m_victory_state.winner_slot >= m_state->m_slots->GetCount()
+		) {
+			return nullptr;
+		}
+		auto& winner = m_state->m_slots->GetSlot( m_victory_state.winner_slot );
+		return winner.GetState() == slot::Slot::SS_PLAYER
+			? winner.GetPlayer()
+			: nullptr;
+	}
 	if ( m_current_turn.GetId() == 0 || !m_state || !m_bm || !m_um ) {
 		return nullptr;
 	}
@@ -1686,7 +1762,7 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	if ( winner.GetPlayer()->IsNative() ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Planet cannot claim a faction victory" );
 	}
-	if ( type == VT_CONQUEST ) {
+	if ( type == VT_CONQUEST && m_state->IsMaster() ) {
 		auto* const expected_winner = GetConquestWinner();
 		if (
 			!expected_winner || !expected_winner->GetSlot() ||
@@ -2079,6 +2155,42 @@ void Game::ProcessEvents() {
 					} );
 					continue;
 				}
+				if ( event->GetEventName() == "__base_visibility" ) {
+					const auto& data = event->GetOriginalData();
+					const auto payload_it = data.find( "payload" );
+					if (
+						m_state->IsMaster() || event->GetSource() != event::Event::ES_SERVER ||
+						data.size() != 1 || payload_it == data.end() ||
+						!payload_it->second || payload_it->second->type != gse::VT_STRING
+					) {
+						THROW( "invalid internal base visibility event" );
+					}
+					const auto payload = ( (gse::value::String*)payload_it->second )->value;
+					auto dependency_buf = types::Buffer( payload );
+					const auto after_event_id = dependency_buf.ReadString();
+					if ( !after_event_id.empty() ) {
+						bool is_waiting_for_response = false;
+						{
+							std::lock_guard guard( m_events_waiting_for_responses_mutex );
+							is_waiting_for_response =
+								m_events_waiting_for_responses.find( after_event_id ) !=
+								m_events_waiting_for_responses.end();
+						}
+						if ( is_waiting_for_response ) {
+							std::lock_guard guard( m_pending_events_mutex );
+							m_pending_events.insert(
+								m_pending_events.begin(),
+								events.begin() + event_index,
+								events.end()
+							);
+							break;
+						}
+					}
+					WithRW( [ this, &ctx, &gc_space, &si, &ep, &payload ]() {
+						ApplyBaseVisibilityUpdate( GSE_CALL, payload );
+					} );
+					continue;
+				}
 				auto* obj = VALUE( gse::value::Object, , GSE_CALL_NOGC, event->GetData() );
 				const auto fargs = gse::value::function_arguments_t{ obj };
 				event::EventHandler* handler = nullptr;
@@ -2295,6 +2407,62 @@ void Game::ApplyUnitVisibilityUpdate( GSE_CALLABLE, const std::string& payload )
 			THROW( "invalid authoritative next unit id" );
 		}
 		unit::Unit::SetNextId( next_unit_id );
+	}
+}
+
+void Game::ApplyBaseVisibilityUpdate( GSE_CALLABLE, const std::string& payload ) {
+	ASSERT( !m_state->IsMaster(), "base visibility update applied on master" );
+	auto buf = types::Buffer( payload );
+	buf.ReadString(); // optional local event response dependency, handled by ProcessEvents
+	const auto hidden_count = buf.ReadCollectionSize( "hidden base" );
+	std::unordered_set< size_t > hidden_ids = {};
+	for ( size_t i = 0 ; i < hidden_count ; i++ ) {
+		const auto base_id = buf.ReadInt< size_t >( "hidden base id" );
+		if ( base_id == 0 || !hidden_ids.insert( base_id ).second ) {
+			THROW( "invalid or duplicate hidden base id" );
+		}
+	}
+	const auto projected_count = buf.ReadCollectionSize( "projected base" );
+	std::map< size_t, std::string > projected_bases = {};
+	for ( size_t i = 0 ; i < projected_count ; i++ ) {
+		const auto serialized_base = buf.ReadString();
+		auto id_buf = types::Buffer( serialized_base );
+		const auto base_id = id_buf.ReadInt< size_t >( "projected base id" );
+		if (
+			base_id == 0 || hidden_ids.find( base_id ) != hidden_ids.end() ||
+			!projected_bases.insert({ base_id, serialized_base }).second
+		) {
+			THROW( "invalid, duplicate, or simultaneously hidden projected base id" );
+		}
+	}
+	const auto next_base_id = buf.ReadInt< size_t >( "next base id" );
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after base visibility update" );
+	}
+
+	std::unordered_set< size_t > removed_ids = hidden_ids;
+	for ( const auto& it : projected_bases ) {
+		if ( m_bm->GetBase( it.first ) ) {
+			removed_ids.insert( it.first );
+		}
+	}
+	for ( const auto base_id : removed_ids ) {
+		if ( m_bm->GetBase( base_id ) ) {
+			m_bm->DespawnBase( GSE_CALL, base_id );
+		}
+	}
+	for ( const auto& it : projected_bases ) {
+		m_bm->RestoreBase( GSE_CALL, it.second );
+	}
+	if ( next_base_id != 0 ) {
+		size_t max_base_id = 0;
+		for ( const auto& it : m_bm->GetBases() ) {
+			max_base_id = std::max( max_base_id, it.first );
+		}
+		if ( next_base_id <= max_base_id ) {
+			THROW( "invalid authoritative next base id" );
+		}
+		base::Base::SetNextId( next_base_id );
 	}
 }
 
@@ -2536,7 +2704,8 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 					// bases
 					{
 						types::Buffer b;
-						m_bm->Serialize( b );
+						const auto projected_bases = GetProjectedBasesForSlot( slot_num );
+						m_bm->Serialize( b, &projected_bases );
 						buf.WriteString( b.ToString() );
 					}
 

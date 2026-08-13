@@ -353,8 +353,7 @@
 				player.has_technology('CentauriEcology') ||
 				state.target != 'Biogenetics' ||
 				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
-				base == null ||
-				base.can_set_production('unit', 'Former')
+				(base != null && base.can_set_production('unit', 'Former'))
 			) {
 				return 'Centauri Ecology progress or Former production gate is invalid';
 			}
@@ -646,8 +645,8 @@
 						if (
 							workshop_def.name != workshop_design_name ||
 							workshop_def.owner_player_id != game.get_player().id ||
-							local_base == null || remote_base == null ||
-							remote_base.can_set_production('unit', workshop_id)
+							local_base == null ||
+							(remote_base != null && remote_base.can_set_production('unit', workshop_id))
 						) {
 							#print('RUNNING_RECONNECT_FAIL_CLIENT: initial Workshop design is invalid');
 							glsmac.exit();

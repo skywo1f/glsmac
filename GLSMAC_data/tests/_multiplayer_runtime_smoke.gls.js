@@ -33,6 +33,9 @@
 	let live_visibility_hidden = false;
 	let live_visibility_client_ready = false;
 	let live_visibility_probe_started = false;
+	let host_base_snapshot_probe_started = false;
+	let client_base_snapshot_probe_complete = false;
+	let client_base_infiltration_probe_complete = false;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -141,8 +144,7 @@
 				player.has_technology('CentauriEcology') ||
 				state.target != 'Biogenetics' ||
 				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
-				base == null ||
-				base.can_set_production('unit', 'Former')
+				(base != null && base.can_set_production('unit', 'Former'))
 			) {
 				return 'Centauri Ecology progress or Former production gate is invalid';
 			}
@@ -157,7 +159,7 @@
 			const tm = game.get_tm();
 			let result = null;
 			let reserved_combat_tile = null;
-			if (combat_defender_spawn_requested) {
+			if (client_combat_target_x != 0 || client_combat_target_y != 0) {
 				reserved_combat_tile = tm.get_tile(
 					client_combat_target_x,
 					client_combat_target_y
@@ -483,6 +485,16 @@
 				if (tile == source || tile == movement_target || tile.is_locked()) {
 					continue;
 				}
+				let is_adjacent_to_source = false;
+				for (source_neighbour of source.get_surrounding_tiles()) {
+					if (source_neighbour == tile) {
+						is_adjacent_to_source = true;
+						break;
+					}
+				}
+				if (is_adjacent_to_source) {
+					continue;
+				}
 				const tile_base = tile.get_base();
 				if (tile_base != null && tile_base.name != combat_base_name) {
 					continue;
@@ -601,6 +613,122 @@
 			rollback: (e) => {
 				accepted_event_count = e.applied.previous;
 			},
+		});
+
+		game.register_event('multiplayer_smoke_base_snapshot_probe', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can report base snapshot visibility';
+				}
+				if (
+					#typeof(e.data.x) != 'Int' || #typeof(e.data.y) != 'Int'
+				) {
+					return 'Base snapshot visibility probe is invalid';
+				}
+			},
+			apply: (e) => {
+				const previous = client_base_snapshot_probe_complete;
+				if (!e.game.is_master()) {
+					const tile = e.game.get_tm().get_tile(e.data.x, e.data.y);
+					const projected = tile.get_base();
+					const initially_hidden = projected == null;
+					if (projected != null && !projected.is_redacted) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: foreign base snapshot visibility is invalid');
+						glsmac.exit();
+					}
+					client_base_snapshot_probe_complete = true;
+					#print('MULTIPLAYER_SMOKE_BASE_SNAPSHOT_VISIBILITY_PASS_CLIENT');
+					let full_seen = false;
+					let wait_ticks = 0;
+					#async(100, () => {
+						wait_ticks++;
+						const current = tile.get_base();
+						if (!full_seen && current != null && !current.is_redacted) {
+							if (!#is_defined(current.get_production())) {
+								#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: infiltrated base lacks private production state');
+								glsmac.exit();
+								return false;
+							}
+							full_seen = true;
+							#print('MULTIPLAYER_SMOKE_BASE_INFILTRATION_REVEAL_PASS_CLIENT');
+							game.event('multiplayer_smoke_base_infiltration_seen', {});
+						}
+						else if (
+							full_seen &&
+							(
+								(initially_hidden && current == null) ||
+								(
+									!initially_hidden && current != null &&
+									current.is_redacted && !#is_defined(current.get_production())
+								)
+							)
+						) {
+							client_base_infiltration_probe_complete = true;
+							#print('MULTIPLAYER_SMOKE_BASE_INFILTRATION_REVOKE_PASS_CLIENT');
+							return false;
+						}
+						if (wait_ticks >= 100) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: base infiltration projection timed out');
+							glsmac.exit();
+							return false;
+						}
+						return true;
+					});
+				}
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				client_base_snapshot_probe_complete = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_set_base_infiltration', {
+			validate: (e) => {
+				if (e.caller != 0 || #typeof(e.data.enabled) != 'Bool') {
+					return 'Base infiltration projection request is invalid';
+				}
+			},
+			apply: (e) => {
+				const client = e.game.get_player(get_client_player_id());
+				const previous = client.has_infiltrated(e.game.get_player(0));
+				client.set_infiltrated(e.game.get_player(0), e.data.enabled);
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				e.game.get_player(get_client_player_id()).set_infiltrated(
+					e.game.get_player(0),
+					e.applied.previous
+				);
+			},
+		});
+
+		game.register_event('multiplayer_smoke_base_infiltration_seen', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can acknowledge infiltrated base state';
+				}
+			},
+			apply: (e) => {
+				if (e.game.is_master()) {
+					e.game.event('multiplayer_smoke_set_base_infiltration', {enabled: false});
+				}
+			},
+			rollback: (e) => {},
+		});
+
+		game.register_event('multiplayer_smoke_movement_ready_for_combat', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can finish the movement probe';
+				}
+			},
+			apply: (e) => {
+				if (e.game.is_master() && !spawn_combat_defender()) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat defender could not be spawned');
+					glsmac.exit();
+				}
+			},
+			rollback: (e) => {},
 		});
 
 		game.register_event('multiplayer_smoke_reject_and_rollback', {
@@ -822,11 +950,26 @@
 			return true;
 		};
 
+		const start_host_base_snapshot_probe = () => {
+			if (host_base_snapshot_probe_started) {
+				return;
+			}
+			host_base_snapshot_probe_started = true;
+			const host_base = find_base_for_player(0);
+			const host_base_tile = host_base.get_tile();
+			game.event('multiplayer_smoke_base_snapshot_probe', {
+				x: host_base_tile.x,
+				y: host_base_tile.y,
+			});
+			game.event('multiplayer_smoke_set_base_infiltration', {enabled: true});
+		};
+
 		const wait_for_client_live_visibility_probe = () => {
 			let wait_ticks = 0;
 			#async(100, () => {
 				wait_ticks++;
 				if (live_visibility_client_ready) {
+					start_host_base_snapshot_probe();
 					if (!start_host_live_visibility_probe()) {
 						#print('MULTIPLAYER_SMOKE_FAIL_HOST: live visibility probe could not start');
 						glsmac.exit();
@@ -1069,6 +1212,7 @@
 				) {
 					client_movement_probe_complete = true;
 					#print('MULTIPLAYER_SMOKE_MOVEMENT_PASS_CLIENT');
+					game.event('multiplayer_smoke_movement_ready_for_combat', {});
 					if (!run_client_combat_probe()) {
 						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat probe could not start');
 						glsmac.exit();
@@ -1160,7 +1304,7 @@
 			const bases = game.get_bm().get_bases();
 			if (
 				#sizeof(players) != 2 ||
-				#sizeof(bases) < 2
+				#sizeof(bases) < (game.is_master() ? 2 : 1)
 			) {
 				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': synchronized game state is incomplete');
 				glsmac.exit();
@@ -1172,6 +1316,34 @@
 				return;
 			}
 			if (!game.is_master()) {
+				let own_base_found = false;
+				for (base of bases) {
+					if (base.get_owner().id == game.get_player().id) {
+						if (base.is_redacted || !#is_defined(base.get_production())) {
+							#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: own base snapshot was redacted');
+							glsmac.exit();
+							return;
+						}
+						own_base_found = true;
+					}
+					else if (
+						!base.is_redacted ||
+						#is_defined(base.get_production()) ||
+						#sizeof(base.get_production_queue()) != 0 ||
+						base.get_accumulated_minerals() != 0 ||
+						#sizeof(base.get_worked_tiles()) != 0
+					) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: foreign base private snapshot state leaked');
+						glsmac.exit();
+						return;
+					}
+				}
+				if (!own_base_found) {
+					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: own base snapshot is missing');
+					glsmac.exit();
+					return;
+				}
+				#print('MULTIPLAYER_SMOKE_BASE_PRIVACY_PASS_CLIENT');
 				#print('MULTIPLAYER_SMOKE_SNAPSHOT_REDACTION_PASS_CLIENT');
 			}
 			if (!prepare_client_movement_probe()) {
@@ -1197,11 +1369,15 @@
 				}
 				#print('MULTIPLAYER_SMOKE_RESEARCH_INITIAL_PASS_' + role);
 				if (game.is_master()) {
-					if (!spawn_combat_defender()) {
-						#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat defender could not be spawned');
+					if (!prepare_client_movement_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: movement probe could not be prepared');
 						glsmac.exit();
 						return;
 					}
+					game.event('multiplayer_smoke_set_unit_movement', {
+						unit: game.get_um().get_unit(client_movement_unit_id),
+						movement: 3.0,
+					});
 					if (!spawn_colony_probe()) {
 						#print('MULTIPLAYER_SMOKE_FAIL_HOST: colony probe could not be spawned');
 						glsmac.exit();
@@ -1303,6 +1479,8 @@
 					(!game.is_master() && !client_base_capture_probe_complete) ||
 					(!game.is_master() && !client_base_founding_probe_complete) ||
 					(!game.is_master() && !client_terraform_probe_complete) ||
+					(!game.is_master() && !client_base_snapshot_probe_complete) ||
+					(!game.is_master() && !client_base_infiltration_probe_complete) ||
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||

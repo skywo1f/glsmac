@@ -357,7 +357,16 @@ scenarios, for:
   Arrays, fungal and ability concealment, and foreign transport-cargo filtering;
   live unit events now preserve stream order while revealing and hiding units as
   sight changes, and sender-side projections wait for the authoritative response
-  to the local event they depend on.
+  to the local event they depend on;
+- authoritative per-client base projections for initial snapshots, live events,
+  and running-game reconnects: owners and infiltrators receive full state,
+  currently sighted rivals receive public identity, location, population, and
+  completed Secret Projects, and unseen rival bases are omitted. Public views
+  redact worked tiles, nutrients, minerals, production queues, ordinary
+  facilities, linked artifacts, economic-victory bids, evacuation details,
+  Probe-operation state, and nerve stapling. Infiltration changes upgrade or
+  revoke projections live, and conquest victory remains server-authoritative
+  when clients have an intentionally incomplete base roster.
 
 The base-game content validator currently reports:
 
@@ -378,9 +387,11 @@ The following original-SMAC systems remain absent or materially incomplete:
   trade and counteroffers, loans, surrender, player-authored base exchange,
   coercive demands, and joint Vendetta requests, including richer negotiated
   packages and faction-specific dialogue behavior;
-- remaining multiplayer information-boundary hardening beyond unit rosters,
-  especially hidden base, production, and economy state plus globally
-  consequential events that must update shared world state;
+- remaining multiplayer information-boundary hardening beyond unit and base
+  projection, especially recipient-specific player economy, research, social,
+  and intelligence state plus globally consequential events that must update
+  shared world state; foreign bases currently disappear outside present sight
+  instead of retaining a polished last-known public record;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
   and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -904,6 +915,16 @@ scenarios passed alongside it in 23.96, 120.32, and 30.86 seconds. Native
 coverage verifies clone and save round trips, versions 1 through 4 defaulting
 the new field safely, malformed and bundled-term rejection, and serialization
 extension version 5 carrying the requested target.
+
+After authoritative per-client base privacy was added, the Windows x64 Release
+build succeeded and all 112 isolated native/script tests passed in 234.82
+seconds. The standard and rendered visibility runtimes passed in 46.45 and
+14.82 seconds against the installed original-SMAC assets. Ordinary multiplayer
+passed in 55.88 seconds while checking hidden and public base snapshots, live
+infiltration reveal and revocation, unit visibility, worker assignment, combat,
+capture, founding, terraforming, and server-authored conquest. Running reconnect
+passed in 52.13 seconds while restoring the same redacted snapshot boundary and
+the existing research, production, diplomacy, unit-definition, and world state.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

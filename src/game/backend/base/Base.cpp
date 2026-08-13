@@ -55,7 +55,8 @@ Base::Base(
 	const size_t next_pop_id,
 	const production_queue_t& production_queue,
 	const int64_t accumulated_minerals,
-	const facilities_t& facilities
+	const facilities_t& facilities,
+	const bool is_redacted
 )
 	: MapObject( game->GetMap(), tile )
 	, m_game( game )
@@ -67,6 +68,7 @@ Base::Base(
 	, m_production_queue( production_queue )
 	, m_accumulated_minerals( accumulated_minerals )
 	, m_facilities( facilities )
+	, m_is_redacted( is_redacted )
 	, m_next_pop_id( next_pop_id ) {
 	if ( m_accumulated_minerals < 0 || m_accumulated_minerals > MAX_ACCUMULATED_MINERALS ) {
 		THROW( "invalid base accumulated mineral count" );
@@ -427,7 +429,8 @@ void Base::SetAccumulatedMinerals( GSE_CALLABLE, const int64_t minerals ) {
 	}
 }
 
-const types::Buffer Base::Serialize( const Base* base ) {
+const types::Buffer Base::Serialize( const Base* base, const PopDef* public_pop_def ) {
+	const bool is_redacted = public_pop_def != nullptr;
 	types::Buffer buf;
 	std::unordered_set< map::tile::Tile* > pop_worked_tiles = {};
 	for ( const auto& it : base->m_pops ) {
@@ -459,10 +462,20 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	buf.WriteInt( base->m_pops.size() );
 	for ( const auto& it : base->m_pops ) {
 		buf.WriteInt( it.first );
-		it.second.Serialize( buf );
+		if ( is_redacted ) {
+			buf.WriteInt( it.first );
+			buf.WriteString( public_pop_def->m_id );
+			buf.WriteInt( 0 );
+			buf.WriteBool( false );
+		}
+		else {
+			it.second.Serialize( buf );
+		}
 	}
 	buf.WriteInt( base->m_next_pop_id );
-	auto* const accumulated_nutrients = const_cast< Base* >( base )->CustomGet( "accumulated_nutrients" );
+	auto* const accumulated_nutrients = is_redacted
+		? nullptr
+		: const_cast< Base* >( base )->CustomGet( "accumulated_nutrients" );
 	buf.WriteBool( accumulated_nutrients != nullptr );
 	if ( accumulated_nutrients ) {
 		if ( accumulated_nutrients->type != gse::VT_INT ) {
@@ -480,20 +493,32 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	if ( !base->ValidateFacilities( base->m_facilities, validation_error ) ) {
 		THROW( validation_error );
 	}
-	buf.WriteInt( base->m_production_queue.size() );
-	for ( const auto& production : base->m_production_queue ) {
-		buf.WriteInt( production.kind );
-		buf.WriteString( production.id );
+	buf.WriteInt( is_redacted ? 0 : base->m_production_queue.size() );
+	if ( !is_redacted ) {
+		for ( const auto& production : base->m_production_queue ) {
+			buf.WriteInt( production.kind );
+			buf.WriteString( production.id );
+		}
 	}
-	buf.WriteInt( base->m_accumulated_minerals );
-	std::vector< std::string > facility_ids( base->m_facilities.begin(), base->m_facilities.end() );
+	buf.WriteInt( is_redacted ? 0 : base->m_accumulated_minerals );
+	std::vector< std::string > facility_ids = {};
+	for ( const auto& id : base->m_facilities ) {
+		const auto* const def = base->m_game->GetBM()->GetFacilityDef( id );
+		if ( !def ) {
+			THROW( "base has an unknown facility: " + id );
+		}
+		if ( !is_redacted || def->m_is_project ) {
+			facility_ids.push_back( id );
+		}
+	}
 	std::sort( facility_ids.begin(), facility_ids.end() );
 	buf.WriteInt( facility_ids.size() );
 	for ( const auto& id : facility_ids ) {
 		buf.WriteString( id );
 	}
-	auto* const network_node_artifact_linked =
-		const_cast< Base* >( base )->CustomGet( "network_node_artifact_linked" );
+	auto* const network_node_artifact_linked = is_redacted
+		? nullptr
+		: const_cast< Base* >( base )->CustomGet( "network_node_artifact_linked" );
 	if ( network_node_artifact_linked && network_node_artifact_linked->type != gse::VT_BOOL ) {
 		THROW( "base Network Node artifact state must be a boolean" );
 	}
@@ -508,8 +533,12 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		}
 		return value ? ( (gse::value::Int*)value )->value : int64_t{ 0 };
 	};
-	const auto economic_victory_turn = get_economic_victory_value( "economic_victory_turn" );
-	const auto economic_victory_cost = get_economic_victory_value( "economic_victory_cost" );
+	const auto economic_victory_turn = is_redacted
+		? 0
+		: get_economic_victory_value( "economic_victory_turn" );
+	const auto economic_victory_cost = is_redacted
+		? 0
+		: get_economic_victory_value( "economic_victory_cost" );
 	if (
 		economic_victory_turn < 0 || economic_victory_cost < 0 ||
 		economic_victory_cost > Player::MAX_ENERGY_CREDITS ||
@@ -530,13 +559,15 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	};
 	std::vector< int64_t > headquarters_evacuation = {};
 	headquarters_evacuation.reserve( headquarters_evacuation_keys.size() );
-	for ( const auto& key : headquarters_evacuation_keys ) {
-		auto* const value = const_cast< Base* >( base )->CustomGet( key );
-		if ( value ) {
-			if ( value->type != gse::VT_INT ) {
-				THROW( "base Headquarters evacuation state must contain integers" );
+	if ( !is_redacted ) {
+		for ( const auto& key : headquarters_evacuation_keys ) {
+			auto* const value = const_cast< Base* >( base )->CustomGet( key );
+			if ( value ) {
+				if ( value->type != gse::VT_INT ) {
+					THROW( "base Headquarters evacuation state must contain integers" );
+				}
+				headquarters_evacuation.push_back( ( (gse::value::Int*)value )->value );
 			}
-			headquarters_evacuation.push_back( ( (gse::value::Int*)value )->value );
 		}
 	}
 	if (
@@ -584,9 +615,9 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		}
 		return value ? ( (gse::value::Int*)value )->value : fallback;
 	};
-	const auto former_owner_id = get_probe_int( "former_owner_id", -1 );
-	const auto nerve_stapling_turns = get_probe_int( "nerve_stapling_turns", 0 );
-	const auto nerve_stapling_count = get_probe_int( "nerve_stapling_count", 0 );
+	const auto former_owner_id = is_redacted ? -1 : get_probe_int( "former_owner_id", -1 );
+	const auto nerve_stapling_turns = is_redacted ? 0 : get_probe_int( "nerve_stapling_turns", 0 );
+	const auto nerve_stapling_count = is_redacted ? 0 : get_probe_int( "nerve_stapling_count", 0 );
 	if (
 		former_owner_id < -1 ||
 		former_owner_id >= static_cast< int64_t >( Player::MAX_DIPLOMATIC_PLAYER_ID ) ||
@@ -596,12 +627,14 @@ const types::Buffer Base::Serialize( const Base* base ) {
 		THROW( "invalid base Probe operation state" );
 	}
 	buf.WriteInt( 2 );
-	buf.WriteBool( get_probe_bool( "probe_research_data_stolen" ) );
-	buf.WriteBool( get_probe_bool( "probe_energy_reserves_drained" ) );
-	buf.WriteBool( get_probe_bool( "probe_genetic_plague_introduced" ) );
+	buf.WriteBool( !is_redacted && get_probe_bool( "probe_research_data_stolen" ) );
+	buf.WriteBool( !is_redacted && get_probe_bool( "probe_energy_reserves_drained" ) );
+	buf.WriteBool( !is_redacted && get_probe_bool( "probe_genetic_plague_introduced" ) );
 	buf.WriteInt( former_owner_id );
 	buf.WriteInt( nerve_stapling_turns );
 	buf.WriteInt( nerve_stapling_count );
+	buf.WriteInt( 1 );
+	buf.WriteBool( is_redacted );
 	return buf;
 }
 
@@ -779,6 +812,7 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	int64_t former_owner_id = -1;
 	int64_t nerve_stapling_turns = 0;
 	int64_t nerve_stapling_count = 0;
+	bool is_redacted = false;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto probe_state_version = buf.ReadInt();
 		if ( probe_state_version != 1 && probe_state_version != 2 ) {
@@ -801,6 +835,13 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			THROW( "invalid serialized base Probe operation state" );
 		}
 	}
+	if ( buf.GetRemaining() > 0 ) {
+		const auto projection_state_version = buf.ReadInt();
+		if ( projection_state_version != 1 ) {
+			THROW( "unsupported serialized base projection state version" );
+		}
+		is_redacted = buf.ReadBool();
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
 	}
@@ -815,7 +856,8 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		next_pop_id,
 		production_queue,
 		accumulated_minerals,
-		facilities
+		facilities,
+		is_redacted
 	);
 	if ( has_accumulated_nutrients ) {
 		base->CustomSet(
@@ -912,6 +954,7 @@ WRAPIMPL_DESERIALIZE( Base )
 WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_GET_CUSTOM( "id", Int, m_id )
 	WRAPIMPL_GET_CUSTOM( "name", String, m_name )
+	WRAPIMPL_GET_CUSTOM( "is_redacted", Bool, m_is_redacted )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	WRAPIMPL_CUSTOM_SETTERS

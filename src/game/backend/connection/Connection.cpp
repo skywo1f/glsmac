@@ -7,6 +7,8 @@
 #include "game/backend/Game.h"
 #include "game/backend/unit/Unit.h"
 #include "game/backend/unit/UnitManager.h"
+#include "game/backend/base/Base.h"
+#include "game/backend/base/BaseManager.h"
 #include "Server.h"
 
 namespace game {
@@ -313,12 +315,20 @@ void Connection::SendGameEvent(
 				});
 			}
 		}
+		for ( const auto* const base : event->GetReferencedBases() ) {
+			queued.referenced_base_ids.insert( base->m_id );
+		}
 		auto* const game = g_engine->GetGame();
 		if ( game && game->GetUM() ) {
 			for ( const auto& it : game->GetUM()->GetUnits() ) {
 				if ( it.second->m_health > 0.0f ) {
 					queued.unit_ids_before.insert( it.first );
 				}
+			}
+		}
+		if ( game && game->GetBM() ) {
+			for ( const auto& it : game->GetBM()->GetBases() ) {
+				queued.base_ids_before.insert( it.first );
 			}
 		}
 	}
