@@ -99,7 +99,10 @@ return (glsmac) => {
 			resources.configure(game);
 			technologies.configure(game);
 
-			if (#typeof(game.is_master) != 'Callable' || game.is_master()) {
+			if (
+				(#typeof(game.is_master) != 'Callable' || game.is_master()) &&
+				(#typeof(game.is_loaded_game) != 'Callable' || !game.is_loaded_game())
+			) {
 				resources.define(game);
 				units.define(game);
 				facilities.define(game);

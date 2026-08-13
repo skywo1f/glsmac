@@ -2,6 +2,8 @@
 
 #include "util/FS.h"
 #include "util/String.h"
+#include "util/random/Random.h"
+#include "types/Buffer.h"
 #include "engine/Engine.h"
 #include "config/Config.h"
 #include "resource/ResourceManager.h"
@@ -18,6 +20,7 @@
 #include "gse/callable/Native.h"
 #include "gse/Exception.h"
 #include "gse/value/Undefined.h"
+#include "gse/value/Bool.h"
 
 #include "game/backend/Game.h"
 #include "game/backend/State.h"
@@ -330,6 +333,29 @@ WRAPIMPL_BEGIN( GLSMAC )
 					AddSinglePlayerSlot( nullptr );
 				}
 				StartGame( GSE_CALL );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"has_quicksave",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				return VALUE( gse::value::Bool, , util::FS::FileExists( GetQuicksavePath() ) );
+			} )
+		},
+		{
+			"save_game",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				SaveGame( GSE_CALL );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"load_game",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				LoadGame( GSE_CALL );
 				return VALUE( gse::value::Undefined );
 			} )
 		},
@@ -710,6 +736,111 @@ game::backend::Player* GLSMAC::AddAIPlayerSlot() {
 	slot.SetPlayer( player, 0, "AI" );
 	slot.SetPlayerFlag( game::backend::slot::PF_READY );
 	return player;
+}
+
+const std::string GLSMAC::GetQuicksavePath() const {
+	return util::FS::GeneratePath({
+		g_engine->GetConfig()->GetPrefix() + "saves",
+		"quicksave.glsmac",
+	});
+}
+
+void GLSMAC::SaveGame( GSE_CALLABLE ) {
+	if ( !m_is_game_running || !m_game ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Game is not running" );
+	}
+	const auto path = GetQuicksavePath();
+	util::FS::CreateDirectoryIfNotExists( util::FS::GetDirName( path ) );
+	auto* const game = g_engine->GetGame();
+	const auto mt_id = game->MT_SaveGame( path );
+	const auto& response = game->MT_WaitResponse( mt_id );
+	if ( response.result != game::backend::R_SUCCESS ) {
+		const std::string error = response.data.error.error_text
+			? *response.data.error.error_text
+			: "Unknown save error";
+		game->MT_DestroyResponse( response );
+		GSE_ERROR( gse::EC.GAME_ERROR, "Failed to save game: " + error );
+	}
+	game->MT_DestroyResponse( response );
+}
+
+void GLSMAC::LoadGame( GSE_CALLABLE ) {
+	if ( !m_state ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
+	}
+	if ( m_is_game_running ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Game is already running" );
+	}
+	if ( !m_state->m_slots->GetSlots().empty() ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Game setup is already populated" );
+	}
+
+	const auto path = GetQuicksavePath();
+	if ( !util::FS::FileExists( path ) ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "No quicksave exists" );
+	}
+
+	try {
+		types::Buffer buf( util::FS::ReadTextFile( path ) );
+		if ( buf.ReadString() != game::backend::Game::SAVE_GAME_MAGIC ) {
+			THROW( "Not a GLSMAC saved game" );
+		}
+		const auto version = buf.ReadInt< uint32_t >( "save-game version" );
+		if ( version != game::backend::Game::SAVE_GAME_VERSION ) {
+			THROW( "Unsupported save-game version: " + std::to_string( version ) );
+		}
+		const auto serialized_state = buf.ReadString();
+		const auto serialized_slots = buf.ReadString();
+		const auto local_slot = buf.ReadInt< size_t >( "save-game local slot" );
+		const auto random_state = buf.ReadString();
+		const auto world_snapshot = buf.ReadString();
+		if ( buf.GetRemaining() != 0 ) {
+			THROW( "Unexpected data after saved game" );
+		}
+		util::random::Random::GetStateFromString( random_state );
+		if ( world_snapshot.empty() ) {
+			THROW( "Saved game has no world snapshot" );
+		}
+
+		m_state->Deserialize( types::Buffer( serialized_state ) );
+		m_state->m_slots->Deserialize( types::Buffer( serialized_slots ) );
+		if (
+			local_slot >= game::backend::State::PLAYABLE_SLOT_COUNT ||
+			local_slot >= m_state->m_slots->GetCount()
+		) {
+			THROW( "Saved game has an invalid local player slot" );
+		}
+
+		size_t single_player_count = 0;
+		for ( auto& slot : m_state->m_slots->GetSlots() ) {
+			if ( slot.GetState() != game::backend::slot::Slot::SS_PLAYER ) {
+				continue;
+			}
+			auto* const player = slot.GetPlayer();
+			if ( !player ) {
+				THROW( "Saved player slot is empty" );
+			}
+			if ( player->GetRole() == game::backend::Player::PR_SINGLE ) {
+				single_player_count++;
+			}
+			m_state->AddPlayer( player );
+		}
+		auto* const local_player = m_state->m_slots->GetSlot( local_slot ).GetPlayer();
+		if (
+			!local_player || local_player->GetRole() != game::backend::Player::PR_SINGLE ||
+			single_player_count != 1
+		) {
+			THROW( "Saved game does not have one local single-player commander" );
+		}
+
+		m_state->m_settings.local.game_mode = game::backend::settings::LocalSettings::GM_SINGLEPLAYER;
+		m_state->AddCIDSlot( 0, local_slot );
+		m_state->SetPendingGameLoad({ local_slot, random_state, world_snapshot });
+		StartGame( GSE_CALL );
+	}
+	catch ( const std::exception& e ) {
+		GSE_ERROR( gse::EC.GAME_ERROR, "Failed to load quicksave: " + (std::string)e.what() );
+	}
 }
 
 void GLSMAC::StartGame( GSE_CALLABLE ) {

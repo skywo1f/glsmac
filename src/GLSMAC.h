@@ -107,6 +107,9 @@ private:
 	void AddSinglePlayerSlot( game::backend::faction::Faction* const faction );
 	game::backend::Player* AddAIPlayerSlot();
 	void StartGame( GSE_CALLABLE );
+	const std::string GetQuicksavePath() const;
+	void SaveGame( GSE_CALLABLE );
+	void LoadGame( GSE_CALLABLE );
 
 	game::frontend::Game* m_game = nullptr;
 

@@ -18,6 +18,10 @@ scenarios, for:
 
 - game setup, turn progression, research, economy, base growth, worker
   assignment, production queues, support, and persistent social engineering;
+- versioned offline single-player quicksave/load with authoritative map,
+  roster, faction, unit, base, animation, turn, victory, and random-state
+  restoration; the current UI provides one rolling quicksave slot and does not
+  claim compatibility with original SMAC saves;
 - all 16 original social models, original-faction rating modifiers and immunity,
   technology gating, the complete difficulty-scaled upheaval cost table, atomic
   energy accounting, cost-aware human selection UI, and strategy-weighted AI
@@ -447,8 +451,8 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 144 cases: 112 isolated native/script GSE tests
-and 32 asset-backed runtime scenarios. Script isolation keeps allocator
+The Release CTest matrix contains 145 cases: 112 isolated native/script GSE tests
+and 33 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
 After persistent exploration and world-map exchange were added, the Windows
@@ -1050,6 +1054,15 @@ verified both values after game start, and completed in 53.0 seconds. Its first
 run exposed a fixture race in which base founding requested turn completion
 before its animation ended; the smoke now retries that request within a bounded
 window and fails explicitly if completion never arrives.
+
+Offline single-player quicksave/load now writes a versioned GLSMAC-native world
+snapshot and restores the authoritative roster, definitions, map, units, bases,
+animations, turn, victory state, and deterministic random generator. The
+installed-asset save/load smoke created a game, stamped player and base state,
+saved it, and loaded the same file in two fresh processes with identical random
+output in 60.18 seconds. The main-menu quicksave branches passed their focused
+script test, ordinary single-player runtime passed in 61.54 seconds, and the
+shared running-reconnect snapshot path passed in 82.59 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

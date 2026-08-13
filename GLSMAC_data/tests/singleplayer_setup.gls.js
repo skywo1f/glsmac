@@ -65,6 +65,9 @@ let quick_ai = 0;
 let quick_faction = null;
 let quick_started = 0;
 let randomized = 0;
+let quicksave_exists = false;
+let quicksave_loaded = 0;
+let popup_errors = [];
 const quick_settings = {
 	local: {game_mode: ''},
 	global: {difficulty_level: 'Transcend'},
@@ -81,6 +84,8 @@ const quick_glsmac = {
 	add_single_player: () => { quick_players++; },
 	add_ai_player: () => { quick_ai++; },
 	start_game: () => { quick_started++; },
+	has_quicksave: () => { return quicksave_exists; },
+	load_game: () => { quicksave_loaded++; },
 	exit: () => {},
 };
 main({
@@ -88,6 +93,7 @@ main({
 	settings: quick_settings,
 	randomize_map: () => { randomized++; },
 	sliding: {show: (data) => { quick_menu = data; }},
+	popup: {error: (message) => { popup_errors :+message; }},
 	steps: {},
 });
 quick_menu.entries[1][1]();
@@ -96,3 +102,12 @@ test.assert(quick_players == 1);
 test.assert(quick_faction == 'GAIANS');
 test.assert(quick_ai == 6);
 test.assert(quick_started == 1);
+
+quick_menu.entries[3][1]();
+test.assert(#sizeof(popup_errors) == 1);
+test.assert(popup_errors[0] == 'No quicksave exists yet.');
+test.assert(quicksave_loaded == 0);
+
+quicksave_exists = true;
+quick_menu.entries[3][1]();
+test.assert(quicksave_loaded == 1);

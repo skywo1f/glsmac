@@ -867,6 +867,22 @@ IF ( BUILD_TESTING )
 
 		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
 		IF ( Python3_Interpreter_FOUND )
+			SET( SAVE_LOAD_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/save-load-runtime-smoke" )
+			ADD_TEST( NAME save_load_runtime_smoke COMMAND
+				"${Python3_EXECUTABLE}"
+				"${PROJECT_SOURCE_DIR}/tools/tests/save_load_smoke.py"
+				--executable "$<TARGET_FILE:${PROJECT_NAME}>"
+				--smac-path "${GLSMAC_SMAC_PATH}"
+				--output-dir "${SAVE_LOAD_TEST_OUTPUT_DIR}"
+				--workdir "${PROJECT_SOURCE_DIR}"
+				--timeout 120
+			)
+			SET_TESTS_PROPERTIES( save_load_runtime_smoke PROPERTIES
+				RUN_SERIAL TRUE
+				TIMEOUT 390
+				WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+			)
+
 			SET( MULTIPLAYER_TEST_OUTPUT_DIR "${TEST_PROFILE_DIR}/multiplayer-runtime-smoke" )
 			ADD_TEST( NAME multiplayer_runtime_smoke COMMAND
 				"${Python3_EXECUTABLE}"

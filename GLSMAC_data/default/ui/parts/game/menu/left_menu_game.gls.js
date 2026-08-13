@@ -3,6 +3,18 @@ return {
 	init: (p) => {
 		return p.create([
 			{
+				label: 'Quick Save',
+				open: () => {
+					try {
+						p.glsmac.save_game();
+					} catch {
+						: (e) => {
+							p.game.message(e.message);
+						}
+					}
+				},
+			},
+			{
 				label: 'Start New Game',
 				open: () => {
 					p.maybe_quit(false);

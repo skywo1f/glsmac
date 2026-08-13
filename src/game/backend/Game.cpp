@@ -99,6 +99,15 @@ common::mt_id_t Game::MT_SaveMap( const std::string& path ) {
 	return MT_CreateRequest( request );
 }
 
+common::mt_id_t Game::MT_SaveGame( const std::string& path ) {
+	ASSERT( !path.empty(), "save-game path is empty" );
+	MT_Request request = {};
+	request.op = OP_SAVE_GAME;
+	NEW( request.data.save_map.path, std::string );
+	*request.data.save_map.path = path;
+	return MT_CreateRequest( request );
+}
+
 common::mt_id_t Game::MT_GetFrontendRequests() {
 	MT_Request request = {};
 	request.op = OP_GET_FRONTEND_REQUESTS;
@@ -302,7 +311,7 @@ void Game::Iterate() {
 
 			m_state->WithGSE( this, [ this ]( GSE_CALLABLE ) {
 
-				if ( m_state->IsMaster() ) {
+				if ( m_state->IsMaster() && !m_is_loaded_game ) {
 					try {
 						m_state->TriggerObject(
 							this, "create_world", ARGS_F( this ) {
@@ -330,7 +339,7 @@ void Game::Iterate() {
 				if ( m_game_state == GS_RUNNING ) {
 					ProcessEvents();
 					CheckTurnComplete();
-					if ( !m_state->IsMaster() && m_current_turn.GetId() > 0 ) {
+					if ( ( !m_state->IsMaster() || m_is_loaded_game ) && m_current_turn.GetId() > 0 ) {
 						SetTurnStatus( m_is_turn_complete
 							? turn::TS_TURN_COMPLETE
 							: turn::TS_TURN_ACTIVE
@@ -851,6 +860,13 @@ WRAPIMPL_BEGIN( Game )
 			NATIVE_CALL( this ) {
 			return VALUE( gse::value::Bool, , m_state->IsSlave() );
 		} ),
+		},
+		{
+			"is_loaded_game",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				return VALUE( gse::value::Bool, , m_is_loaded_game );
+			} ),
 		},
 		{
 			"random",
@@ -1494,6 +1510,41 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 			}
 			break;
 		}
+		case OP_SAVE_GAME: {
+			try {
+				if ( !IsRunning() || !m_map ) {
+					THROW( "Game is not running" );
+				}
+				if ( !m_state->IsMaster() || m_state->m_connection ) {
+					THROW( "Quicksave currently supports offline games only" );
+				}
+				if ( !m_player || m_player->GetRole() != Player::PR_SINGLE ) {
+					THROW( "Quicksave requires a single-player commander" );
+				}
+
+				types::Buffer buf;
+				buf.WriteString( SAVE_GAME_MAGIC );
+				buf.WriteInt( SAVE_GAME_VERSION );
+				buf.WriteString( m_state->Serialize().ToString() );
+				buf.WriteString( m_state->m_slots->Serialize().ToString() );
+				buf.WriteInt( m_slot_num );
+				buf.WriteString( m_random->GetStateString() );
+				buf.WriteString( SerializeWorldSnapshot( nullptr ) );
+				util::FS::WriteFile( *request.data.save_map.path, buf.ToString() );
+				if ( !util::FS::FileExists( *request.data.save_map.path ) ) {
+					THROW( "Save file was not created" );
+				}
+
+				response.result = R_SUCCESS;
+				NEW( response.data.save_map.path, std::string, *request.data.save_map.path );
+				Message( "Game saved." );
+			}
+			catch ( const std::exception& e ) {
+				response.result = R_ERROR;
+				NEW( response.data.error.error_text, std::string, e.what() );
+			}
+			break;
+		}
 		case OP_GET_FRONTEND_REQUESTS: {
 			//MTModule::Log( "got events request" );
 			if ( !m_pending_frontend_requests->empty() ) {
@@ -1562,7 +1613,8 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 
 void Game::DestroyRequest( const MT_Request& request ) {
 	switch ( request.op ) {
-		case OP_SAVE_MAP: {
+		case OP_SAVE_MAP:
+		case OP_SAVE_GAME: {
 			if ( request.data.save_map.path ) {
 				DELETE( request.data.save_map.path );
 			}
@@ -1588,7 +1640,8 @@ void Game::DestroyResponse( const MT_Response& response ) {
 		switch ( response.op ) {
 			case OP_INIT:
 			case OP_GET_MAP_DATA:
-			case OP_SAVE_MAP: {
+			case OP_SAVE_MAP:
+			case OP_SAVE_GAME: {
 				if ( response.data.error.error_text ) {
 					DELETE( response.data.error.error_text );
 				}
@@ -1608,7 +1661,8 @@ void Game::DestroyResponse( const MT_Response& response ) {
 				}
 				break;
 			}
-			case OP_SAVE_MAP: {
+			case OP_SAVE_MAP:
+			case OP_SAVE_GAME: {
 				if ( response.data.save_map.path ) {
 					DELETE( response.data.save_map.path );
 				}
@@ -1948,6 +2002,103 @@ void Game::RestoreTurn( const size_t turn_id ) {
 	auto fr = FrontendRequest( FrontendRequest::FR_TURN_ADVANCE );
 	fr.data.turn_advance.turn_id = turn_id;
 	AddFrontendRequest( fr );
+}
+
+const std::string Game::SerializeWorldSnapshot( const size_t* viewer_slot ) const {
+	ASSERT( m_map, "map is not initialized" );
+	ASSERT( m_rm && m_um && m_bm && m_am, "world managers are not initialized" );
+	types::Buffer buf;
+
+	m_map->SaveToBuffer( buf );
+
+	{
+		types::Buffer resources;
+		m_rm->Serialize( resources );
+		buf.WriteString( resources.ToString() );
+	}
+
+	{
+		types::Buffer units;
+		if ( viewer_slot ) {
+			const auto visible_unit_ids = GetVisibleUnitIdsForSlot( *viewer_slot );
+			m_um->Serialize( units, &visible_unit_ids );
+		}
+		else {
+			m_um->Serialize( units );
+		}
+		buf.WriteString( units.ToString() );
+	}
+
+	{
+		types::Buffer bases;
+		if ( viewer_slot ) {
+			const auto projected_bases = GetProjectedBasesForSlot( *viewer_slot );
+			m_bm->Serialize( bases, &projected_bases );
+		}
+		else {
+			m_bm->Serialize( bases );
+		}
+		buf.WriteString( bases.ToString() );
+	}
+
+	{
+		types::Buffer animations;
+		m_am->Serialize( animations );
+		buf.WriteString( animations.ToString() );
+	}
+
+	buf.WriteInt( m_current_turn.GetId() );
+	buf.WriteBool( IsGameOver() );
+	if ( IsGameOver() ) {
+		buf.WriteString( GetVictoryTypeString( m_victory_state.type ) );
+		buf.WriteInt( m_victory_state.winner_slot );
+		buf.WriteInt( m_victory_state.turn_id );
+	}
+	return buf.ToString();
+}
+
+const bool Game::DeserializeWorldSnapshot( GSE_CALLABLE, const std::string& serialized_snapshot ) {
+	auto buf = types::Buffer( serialized_snapshot );
+	NEW( m_map, map::Map, this );
+	const auto ec = m_map->LoadFromBuffer( types::Buffer( buf.ReadString() ) );
+	if ( ec != map::Map::EC_NONE ) {
+		DELETE( m_map );
+		m_map = nullptr;
+		return false;
+	}
+
+	m_rm->Deserialize( types::Buffer( buf.ReadString() ) );
+	m_um->Deserialize( GSE_CALL, types::Buffer( buf.ReadString() ) );
+	m_bm->Deserialize( GSE_CALL, types::Buffer( buf.ReadString() ) );
+	m_am->Deserialize( types::Buffer( buf.ReadString() ) );
+
+	const auto turn_id = buf.ReadInt< size_t >( "snapshot turn id" );
+	const auto has_victory = buf.ReadBool();
+	victory_type_t victory_type = VT_NONE;
+	size_t winner_slot = 0;
+	size_t victory_turn = 0;
+	if ( has_victory ) {
+		const auto victory_type_name = buf.ReadString();
+		if ( !ParseVictoryType( victory_type_name, victory_type ) || victory_type == VT_NONE ) {
+			THROW( "invalid world snapshot victory type" );
+		}
+		winner_slot = buf.ReadInt< size_t >( "snapshot victory winner slot" );
+		victory_turn = buf.ReadInt< size_t >( "snapshot victory turn" );
+		if ( victory_turn == 0 || victory_turn != turn_id ) {
+			THROW( "invalid world snapshot victory turn" );
+		}
+	}
+	if ( buf.GetRemaining() != 0 ) {
+		THROW( "unexpected data after serialized world snapshot" );
+	}
+	if ( turn_id > 0 ) {
+		MTModule::Log( "Restoring turn ID: " + std::to_string( turn_id ) );
+		RestoreTurn( turn_id );
+	}
+	if ( has_victory ) {
+		DeclareVictory( GSE_CALL, victory_type, winner_slot );
+	}
+	return true;
 }
 
 void Game::GlobalFinalizeTurn( GSE_CALLABLE ) {
@@ -2730,6 +2881,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 	ASSERT( m_game_state == GS_NONE, "game still initializing" );
 
 	MTModule::Log( "Initializing game" );
+	m_is_loaded_game = m_state->HasPendingGameLoad();
 
 	m_state->WithGSE( this, [ this ]( GSE_CALLABLE ) {
 		ASSERT( !m_tm, "tm not null" );
@@ -2758,7 +2910,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 
 	auto* const connection = m_state->m_connection;
 
-	if ( m_state->IsMaster() ) {
+	if ( m_state->IsMaster() && !m_is_loaded_game ) {
 
 		// assign random factions to players
 		const auto factions = m_state->GetFM()->GetAll();
@@ -2849,52 +3001,8 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 						return "";
 					}
 					MTModule::Log( "Preparing snapshot for download" );
-					types::Buffer buf;
-
-					// map
-					m_map->SaveToBuffer( buf );
-
-					// resources
-					{
-						types::Buffer b;
-						m_rm->Serialize( b );
-						buf.WriteString( b.ToString() );
-					}
-
-					// units
-					{
-						types::Buffer b;
-						const auto visible_unit_ids = GetVisibleUnitIdsForSlot( slot_num );
-						m_um->Serialize( b, &visible_unit_ids );
-						buf.WriteString( b.ToString() );
-					}
-
-					// bases
-					{
-						types::Buffer b;
-						const auto projected_bases = GetProjectedBasesForSlot( slot_num );
-						m_bm->Serialize( b, &projected_bases );
-						buf.WriteString( b.ToString() );
-					}
-
-					// animations
-					{
-						types::Buffer b;
-						m_am->Serialize( b );
-						buf.WriteString( b.ToString() );
-					}
-
-					// send turn info
 					MTModule::Log( "Sending turn ID: " + std::to_string( m_current_turn.GetId() ) );
-					buf.WriteInt( m_current_turn.GetId() );
-					buf.WriteBool( IsGameOver() );
-					if ( IsGameOver() ) {
-						buf.WriteString( GetVictoryTypeString( m_victory_state.type ) );
-						buf.WriteInt( m_victory_state.winner_slot );
-						buf.WriteInt( m_victory_state.turn_id );
-					}
-
-					return buf.ToString();
+					return SerializeWorldSnapshot( &slot_num );
 				};
 
 				connection->SetGameState( connection::Connection::GS_INITIALIZING );
@@ -2967,10 +3075,38 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 
 	}
 	else {
-		m_slot_num = 0;
+		m_slot_num = m_is_loaded_game
+			? m_state->GetPendingGameLoad().local_slot
+			: 0;
 	}
 	m_player = m_state->m_slots->GetSlot( m_slot_num ).GetPlayer();
+	ASSERT( m_player, "local player is not configured" );
 	m_slot = m_player->GetSlot();
+	ASSERT( m_slot, "local player slot is not configured" );
+
+	if ( m_is_loaded_game ) {
+		ASSERT( m_state->IsMaster(), "loaded game is not authoritative" );
+		ASSERT( !connection, "loaded game unexpectedly has a network connection" );
+		const auto load = m_state->GetPendingGameLoad();
+		m_random->SetState( Random::GetStateFromString( load.random_state ) );
+		MTModule::Log( "Loading saved game at turn snapshot" );
+		m_state->WithGSE( this, [ this, load ]( GSE_CALLABLE ) {
+			try {
+				if ( !DeserializeWorldSnapshot( GSE_CALL, load.world_snapshot ) ) {
+					THROW( "Saved world map format is not supported" );
+				}
+				m_state->ClearPendingGameLoad();
+				m_slot->SetPlayerFlag( slot::PF_MAP_DOWNLOADED );
+				m_game_state = GS_INITIALIZING;
+			}
+			catch ( const std::exception& e ) {
+				m_state->ClearPendingGameLoad();
+				InitFailed( (std::string)"Failed to load saved game: " + e.what() );
+			}
+		});
+		response.result = R_SUCCESS;
+		return;
+	}
 
 	if ( m_state->IsMaster() ) {
 		// generate map
@@ -3064,72 +3200,11 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 						MTModule::Log( "Unpacking world snapshot" );
 
 						m_state->WithGSE( this, [ this, connection, serialized_snapshot ]( GSE_CALLABLE ) {
-
-							auto buf = types::Buffer( serialized_snapshot );
-
-							// map
-							auto b = types::Buffer( buf.ReadString() );
-							NEW( m_map, map::Map, this );
-							const auto ec = m_map->LoadFromBuffer( b );
-							if ( ec == map::Map::EC_NONE ) {
-
-								// resources
-								{
-									auto ub = types::Buffer( buf.ReadString() );
-									m_rm->Deserialize( ub );
-								}
-
-								// units
-								{
-									auto ub = types::Buffer( buf.ReadString() );
-									m_um->Deserialize( GSE_CALL, ub );
-								}
-
-								// bases
-								{
-									auto bb = types::Buffer( buf.ReadString() );
-									m_bm->Deserialize( GSE_CALL, bb );
-								}
-
-								// animations
-								{
-									auto ab = types::Buffer( buf.ReadString() );
-									m_am->Deserialize( ab );
-								}
-
-								// get turn and terminal game info
-								const auto turn_id = buf.ReadInt< size_t >( "snapshot turn id" );
-								const auto has_victory = buf.ReadBool();
-								victory_type_t victory_type = VT_NONE;
-								size_t winner_slot = 0;
-								size_t victory_turn = 0;
-								if ( has_victory ) {
-									const auto victory_type_name = buf.ReadString();
-									if ( !ParseVictoryType( victory_type_name, victory_type ) || victory_type == VT_NONE ) {
-										THROW( "invalid world snapshot victory type" );
-									}
-									winner_slot = buf.ReadInt< size_t >( "snapshot victory winner slot" );
-									victory_turn = buf.ReadInt< size_t >( "snapshot victory turn" );
-									if ( victory_turn == 0 || victory_turn != turn_id ) {
-										THROW( "invalid world snapshot victory turn" );
-									}
-								}
-								if ( buf.GetRemaining() != 0 ) {
-									THROW( "unexpected data after serialized world snapshot" );
-								}
-								if ( turn_id > 0 ) {
-									MTModule::Log( "Received turn ID: " + std::to_string( turn_id ) );
-									RestoreTurn( turn_id );
-								}
-								if ( has_victory ) {
-									DeclareVictory( GSE_CALL, victory_type, winner_slot );
-								}
-
+							if ( DeserializeWorldSnapshot( GSE_CALL, serialized_snapshot ) ) {
 								m_game_state = GS_INITIALIZING;
-
 							}
 							else {
-								MTModule::Log( "WARNING: failed to unpack world snapshot (code=" + std::to_string( ec ) + ")" );
+								MTModule::Log( "WARNING: failed to unpack world snapshot" );
 								connection->Disconnect( "Snapshot format mismatch" );
 							}
 						});
@@ -3212,6 +3287,7 @@ void Game::ResetGame() {
 
 	m_current_turn.Reset();
 	m_victory_state = {};
+	m_is_loaded_game = false;
 	m_is_turn_complete = false;
 
 	if ( m_state ) {

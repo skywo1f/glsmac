@@ -109,6 +109,7 @@ enum op_t {
 	OP_GET_MAP_DATA,
 	OP_RESET,
 	OP_SAVE_MAP,
+	OP_SAVE_GAME,
 	OP_GET_FRONTEND_REQUESTS,
 	OP_SEND_BACKEND_REQUESTS,
 	OP_ADD_EVENT,
@@ -274,6 +275,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 
 	// saves current map into file
 	common::mt_id_t MT_SaveMap( const std::string& path );
+	common::mt_id_t MT_SaveGame( const std::string& path );
 
 	// get all pending frontend requests (will be cleared after)
 	common::mt_id_t MT_GetFrontendRequests();
@@ -354,6 +356,8 @@ public:
 	void DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t winner_slot );
 	static const std::string GetVictoryTypeString( const victory_type_t type );
 	static const bool ParseVictoryType( const std::string& value, victory_type_t& result );
+	static constexpr const char* SAVE_GAME_MAGIC = "GLSMAC_SAVE_GAME";
+	static constexpr uint32_t SAVE_GAME_VERSION = 1;
 
 	void GlobalFinalizeTurn( GSE_CALLABLE );
 	void FirstTurn( GSE_CALLABLE );
@@ -432,6 +436,8 @@ private:
 
 	void InitGame( MT_Response& response, MT_CANCELABLE );
 	void ResetGame();
+	const std::string SerializeWorldSnapshot( const size_t* viewer_slot ) const;
+	const bool DeserializeWorldSnapshot( GSE_CALLABLE, const std::string& serialized_snapshot );
 
 	// seed needs to be consistent during session (to prevent save-scumming and for easier reproduction of bugs)
 	Random* m_random = nullptr;
@@ -442,6 +448,7 @@ private:
 
 	turn::Turn m_current_turn = {};
 	victory_state_t m_victory_state = {};
+	bool m_is_loaded_game = false;
 
 	bool m_is_turn_complete = false;
 	void RestoreTurn( const size_t turn_id );

@@ -191,6 +191,7 @@ void State::Reset() {
 	m_players.clear();
 	m_slots->Clear();
 	m_cid_slots.clear();
+	ClearPendingGameLoad();
 	m_game = nullptr;
 	m_on_gse_error = nullptr;
 }
@@ -241,6 +242,28 @@ void State::Deserialize( types::Buffer buf ) {
 	}
 	m_settings.global.Deserialize( types::Buffer( serialized_global_settings ) );
 	m_fm->Deserialize( types::Buffer( serialized_factions ) );
+}
+
+const bool State::HasPendingGameLoad() const {
+	return m_has_pending_game_load;
+}
+
+const State::pending_game_load_t& State::GetPendingGameLoad() const {
+	ASSERT( m_has_pending_game_load, "no pending game load" );
+	return m_pending_game_load;
+}
+
+void State::SetPendingGameLoad( const pending_game_load_t& load ) {
+	ASSERT( !m_has_pending_game_load, "pending game load already set" );
+	ASSERT( !load.random_state.empty(), "pending game load random state is empty" );
+	ASSERT( !load.world_snapshot.empty(), "pending game load world snapshot is empty" );
+	m_pending_game_load = load;
+	m_has_pending_game_load = true;
+}
+
+void State::ClearPendingGameLoad() {
+	m_has_pending_game_load = false;
+	m_pending_game_load = {};
 }
 
 void State::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
