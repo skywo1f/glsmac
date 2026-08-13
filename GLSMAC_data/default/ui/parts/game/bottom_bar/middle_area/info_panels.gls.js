@@ -146,6 +146,11 @@ return {
 				this.set_research();
 			}
 		});
+		this.page.listen(p.game, 'player_update', (e) => {
+			if (e.player.id == p.game.get_player().id) {
+				this.set_research();
+			}
+		});
 		this.page.listen(p.game, 'turn', (e) => {
 			this.set_research();
 		});

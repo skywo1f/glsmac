@@ -1034,5 +1034,10 @@ Planetary Council test and Windows x64 Release rebuild passed, the core
 host/client scenario passed in 55.4 seconds, and the registered multiplayer
 test passed in 65.28 seconds with malformed-packet and reconnect coverage.
 
+The diplomacy popup, intelligence report, and local research readout now also
+refresh from authoritative player projections. This keeps those open views
+current when a specialized source event is withheld or redacted without adding
+network traffic. The focused UI listener-contract test passed in 1.20 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

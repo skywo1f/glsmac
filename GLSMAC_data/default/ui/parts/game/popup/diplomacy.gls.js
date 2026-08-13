@@ -164,6 +164,7 @@ return {
 		this.reject_loan = null;
 
 		for (event_name of [
+			'player_update',
 			'diplomacy_updated',
 			'diplomatic_proposal',
 			'diplomatic_proposal_updated',

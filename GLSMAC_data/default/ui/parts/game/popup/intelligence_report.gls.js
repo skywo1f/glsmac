@@ -25,6 +25,7 @@ return {
 		this.lines = [];
 
 		for (event_name of [
+			'player_update',
 			'probe_operation',
 			'economy_updated',
 			'research_updated',
