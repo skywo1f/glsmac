@@ -84,6 +84,40 @@ const get_claiming_base = (game, tile) => {
 	return choose_claim(connected, coastal.base, coastal.distance).base;
 };
 
+const get_manifold_nexus_tile = (game) => {
+	if (#typeof(game.get_tm) != 'Callable') {
+		return null;
+	}
+	const tm = game.get_tm();
+	let result = null;
+	let result_neighbours = 0 - 1;
+	for (let y = 0; y < tm.get_map_height(); y++) {
+		for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+			const tile = tm.get_tile(x, y);
+			if (
+				tile == null || !#is_defined(tile.landmarks) ||
+				!tile.landmarks.manifold_nexus
+			) {
+				continue;
+			}
+			let neighbours = 0;
+			for (nearby of tile.get_surrounding_tiles()) {
+				if (
+					#is_defined(nearby.landmarks) &&
+					nearby.landmarks.manifold_nexus
+				) {
+					neighbours++;
+				}
+			}
+			if (result == null || neighbours > result_neighbours) {
+				result = tile;
+				result_neighbours = neighbours;
+			}
+		}
+	}
+	return result;
+};
+
 return (game) => {
 	game.on('start', (e) => {
 		const get_base = (tile) => { return get_claiming_base(game, tile); };
@@ -95,6 +129,18 @@ return (game) => {
 		game.set('f_territory_get_owner', get_owner);
 		game.set('f_territory_is_friendly', (player, tile) => {
 			const owner = get_owner(tile);
+			return owner != null && owner.id == player.id;
+		});
+		const manifold_nexus_tile = get_manifold_nexus_tile(game);
+		game.set('f_territory_has_manifold_nexus', (player) => {
+			if (
+				manifold_nexus_tile == null ||
+				#typeof(player.has_explored) != 'Callable' ||
+				!player.has_explored(manifold_nexus_tile)
+			) {
+				return false;
+			}
+			const owner = get_owner(manifold_nexus_tile);
 			return owner != null && owner.id == player.id;
 		});
 		game.set('f_territory_get_max_distance', () => { return MAX_BASE_DISTANCE; });

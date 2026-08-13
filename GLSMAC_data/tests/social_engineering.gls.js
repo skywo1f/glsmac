@@ -50,6 +50,21 @@ test.assert(ratings.police == 0 - 1);
 test.assert(values.f_social_get_faction_modifier(player, 'planet') == 1);
 test.assert(values.f_social_get_faction_modifier(player, 'economy') == 0);
 
+values.f_territory_has_manifold_nexus = (target_player) => {
+	test.assert(target_player == player);
+	return true;
+};
+ratings = values.f_social_get_ratings(player);
+test.assert(ratings.planet == 2);
+test.assert(values.f_social_get_ratings_for_choices(player, choices).planet == 2);
+test.assert(values.f_social_get_ratings_for_choices(player, {
+	politics: 'Frontier',
+	economics: 'Green',
+	values: 'Survival',
+	future_society: 'None',
+}).planet == 3);
+values.f_territory_has_manifold_nexus = #undefined;
+
 let error = values.f_social_validate_choices(player, {
 	politics: 'Democratic',
 	economics: 'Simple',

@@ -415,6 +415,9 @@
 				let landmark_canyon_tiles = 0;
 				let landmark_geothermal_tiles = 0;
 				let landmark_ridge_tiles = 0;
+				let landmark_borehole_tiles = 0;
+				let landmark_cluster_boreholes = 0;
+				let landmark_nexus_tiles = 0;
 				let generated_landmark_tiles = 0;
 				for (let landmark_y = 0; landmark_y < landmark_tm.get_map_height(); landmark_y++) {
 					for (
@@ -556,6 +559,25 @@
 							}
 							landmark_ridge_tiles++;
 						}
+						if (landmark_tile.landmarks.borehole_cluster) {
+							if (!landmark_tile.is_land) {
+								#print('RUNTIME_SMOKE_FAIL: Borehole Cluster contains water');
+								glsmac.exit();
+								return;
+							}
+							if (landmark_tile.terraforming.borehole) {
+								landmark_cluster_boreholes++;
+							}
+							landmark_borehole_tiles++;
+						}
+						if (landmark_tile.landmarks.manifold_nexus) {
+							if (!landmark_tile.is_land) {
+								#print('RUNTIME_SMOKE_FAIL: Manifold Nexus contains water');
+								glsmac.exit();
+								return;
+							}
+							landmark_nexus_tiles++;
+						}
 					}
 				}
 				if (
@@ -565,14 +587,21 @@
 					landmark_ruins_monolith_tiles == 0 ||
 					landmark_dunes_tiles == 0 || landmark_freshwater_tiles == 0 ||
 					landmark_mesa_tiles == 0 || landmark_canyon_tiles == 0 ||
-					landmark_geothermal_tiles == 0 || landmark_ridge_tiles == 0
+					landmark_geothermal_tiles == 0 || landmark_ridge_tiles == 0 ||
+					landmark_borehole_tiles != 4 || landmark_cluster_boreholes != 3 ||
+					landmark_nexus_tiles != 9
 				) {
-					#print('RUNTIME_SMOKE_FAIL: one or more base-game landmarks were not generated');
+					#print(
+						'RUNTIME_SMOKE_FAIL: one or more base-game landmarks were not generated ' +
+						'(cluster=' + #to_string(landmark_borehole_tiles) +
+						', bores=' + #to_string(landmark_cluster_boreholes) +
+						', nexus=' + #to_string(landmark_nexus_tiles) + ')'
+					);
 					glsmac.exit();
 					return;
 				}
 				#print(
-					'RUNTIME_SMOKE_LANDMARKS_PASS: all 12 types across ' +
+					'RUNTIME_SMOKE_LANDMARKS_PASS: all 14 types across ' +
 					#to_string(generated_landmark_tiles) + ' separated tiles'
 				);
 				const volcano_error = verify_volcano_runtime(game);

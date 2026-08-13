@@ -47,6 +47,8 @@ enum class landmark_shape_t {
 	CANYON,
 	GEOTHERMAL,
 	RIDGE,
+	BOREHOLE_CLUSTER,
+	MANIFOLD_NEXUS,
 };
 
 struct landmark_spec_t {
@@ -131,6 +133,8 @@ static const int64_t GetLandmarkScore(
 			return support - elevation;
 		case landmark_shape_t::URANIUM:
 		case landmark_shape_t::RUINS:
+		case landmark_shape_t::BOREHOLE_CLUSTER:
+		case landmark_shape_t::MANIFOLD_NEXUS:
 			return support - latitude * 50;
 	}
 	return support;
@@ -157,9 +161,33 @@ static void ApplyLandmark(
 	tile::Tile* const center,
 	const std::vector< tile::Tile* >& landmark_tiles
 ) {
+	std::unordered_set< tile::Tile* > borehole_tiles = {};
+	if ( spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ) {
+		static constexpr size_t BOREHOLE_OFFSETS[] = { 1, 4, 7 };
+		for ( const auto offset : BOREHOLE_OFFSETS ) {
+			if ( offset < landmark_tiles.size() ) {
+				borehole_tiles.insert( landmark_tiles[ offset ] );
+			}
+		}
+		if ( borehole_tiles.empty() ) {
+			borehole_tiles.insert( center );
+		}
+	}
 	for ( auto* const landmark_tile : landmark_tiles ) {
 		ClearLandmarkConflicts( landmark_tile );
-		landmark_tile->landmarks |= spec.landmark;
+		const bool is_borehole = borehole_tiles.find( landmark_tile ) != borehole_tiles.end();
+		if (
+			spec.shape != landmark_shape_t::BOREHOLE_CLUSTER ||
+			landmark_tile == center || is_borehole
+		) {
+			landmark_tile->landmarks |= spec.landmark;
+		}
+		if (
+			spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ||
+			spec.shape == landmark_shape_t::MANIFOLD_NEXUS
+		) {
+			landmark_tile->terraforming = tile::TERRAFORMING_NONE;
+		}
 		switch ( spec.shape ) {
 			case landmark_shape_t::CRATER:
 				landmark_tile->features |= tile::FEATURE_GARLAND_CRATER;
@@ -209,6 +237,13 @@ static void ApplyLandmark(
 				break;
 			case landmark_shape_t::RIDGE:
 				landmark_tile->rockiness = std::max( landmark_tile->rockiness, tile::ROCKINESS_ROLLING );
+				break;
+			case landmark_shape_t::BOREHOLE_CLUSTER:
+				if ( is_borehole ) {
+					landmark_tile->terraforming = tile::TERRAFORMING_BOREHOLE;
+				}
+				break;
+			case landmark_shape_t::MANIFOLD_NEXUS:
 				break;
 		}
 	}
@@ -349,11 +384,13 @@ void SimplePerlin::GenerateDetails( tile::Tiles* tiles, const backend::settings:
 
 void SimplePerlin::GenerateLandmarks( tile::Tiles* tiles, const backend::settings::MapSettings* map_settings, MT_CANCELABLE ) {
 	const auto map_tile_count = static_cast< size_t >( tiles->GetWidth() ) * tiles->GetHeight() / 2;
-	const auto landmark_limit = std::max< size_t >( 1, map_tile_count / 16 );
+	const auto landmark_limit = map_tile_count >= 196
+		? size_t( 14 )
+		: std::max< size_t >( 1, map_tile_count / 16 );
 	const auto minimum_center_distance = std::min( tiles->GetWidth(), tiles->GetHeight() ) >= 24 ? 6 : 2;
 	const size_t broad_radius = map_tile_count >= 400 ? 2 : 1;
 	const size_t broad_minimum_tiles = map_tile_count >= 400 ? 9 : 5;
-	const std::vector< landmark_spec_t > specs = {
+	std::vector< landmark_spec_t > specs = {
 		{ "Mount Planet", tile::LANDMARK_MOUNT_PLANET, landmark_shape_t::VOLCANO, false, 1, 5 },
 		{ "New Sargasso", tile::LANDMARK_NEW_SARGASSO, landmark_shape_t::SARGASSO, true, broad_radius, broad_minimum_tiles },
 		{ "Garland Crater", tile::LANDMARK_GARLAND_CRATER, landmark_shape_t::CRATER, false, broad_radius, broad_minimum_tiles },
@@ -366,7 +403,19 @@ void SimplePerlin::GenerateLandmarks( tile::Tiles* tiles, const backend::setting
 		{ "Sunny Mesa", tile::LANDMARK_SUNNY_MESA, landmark_shape_t::MESA, false, 1, 5 },
 		{ "Nessus Canyon", tile::LANDMARK_NESSUS_CANYON, landmark_shape_t::CANYON, false, 1, 5 },
 		{ "Pholus Ridge", tile::LANDMARK_PHOLUS_RIDGE, landmark_shape_t::RIDGE, false, 1, 5 },
+		{ "Borehole Cluster", tile::LANDMARK_BOREHOLE_CLUSTER, landmark_shape_t::BOREHOLE_CLUSTER, false, 1, 9 },
+		{ "Manifold Nexus", tile::LANDMARK_MANIFOLD_NEXUS, landmark_shape_t::MANIFOLD_NEXUS, false, 1, 9 },
 	};
+	if ( landmark_limit == specs.size() ) {
+		const auto needs_full_cluster = []( const landmark_spec_t& spec ) {
+			return
+				spec.shape == landmark_shape_t::VOLCANO ||
+				spec.shape == landmark_shape_t::RUINS ||
+				spec.shape == landmark_shape_t::BOREHOLE_CLUSTER ||
+				spec.shape == landmark_shape_t::MANIFOLD_NEXUS;
+		};
+		std::stable_partition( specs.begin(), specs.end(), needs_full_cluster );
+	}
 	const auto candidates = GetTilesInRandomOrder( tiles, MT_C );
 	MT_RETIF();
 	std::vector< tile::Tile* > centers = {};

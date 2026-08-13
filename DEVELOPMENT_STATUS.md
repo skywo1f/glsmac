@@ -178,13 +178,16 @@ scenarios, for:
   supported combat units outside friendly territory apply the original POLICE
   -3, -4, and -5 pacifism-drone rules, including the air superiority exception
   and base-screen diagnostics;
-- generated maps place separated, deterministic regions for all 12
-  original-release natural landmarks after terrain normalization: Garland
-  Crater, Mount Planet, Monsoon Jungle, Uranium Flats, New Sargasso, The Ruins,
-  Great Dunes, Freshwater Sea, Sunny Mesa, Nessus Canyon, Geothermal Shallows,
-  and Pholus Ridge; persistent landmark metadata, physical terrain, tile
-  information, and old feature-only snapshots are covered, while all eight
-  landmarks with intrinsic resource effects apply their original bonuses;
+- generated maps place separated, deterministic regions for all 14 patched
+  base-game natural landmarks after terrain normalization: Garland Crater,
+  Mount Planet, Monsoon Jungle, Uranium Flats, New Sargasso, The Ruins, Great
+  Dunes, Freshwater Sea, Sunny Mesa, Nessus Canyon, Geothermal Shallows, Pholus
+  Ridge, Borehole Cluster, and Manifold Nexus; persistent landmark metadata,
+  physical terrain, tile information, and old feature-only snapshots are
+  covered, while all eight landmarks with intrinsic tile-resource effects
+  apply their original bonuses; Borehole Cluster contains three prebuilt
+  Thermal Boreholes, and a discovered Manifold Nexus center grants its current
+  territorial owner +1 PLANET up to the normal rating limit;
 - the original one-time ecological volcano creation after ten fungal blooms:
   the host selects a clear ocean region, raises a rocky nine-tile unnamed
   volcano, clears its surface improvements, and synchronizes the reversible
@@ -345,8 +348,6 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- post-release SMAC patch landmark parity for Borehole Cluster and Manifold
-  Nexus;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots and subsequent entity events so concealed information
   is not present client-side;
@@ -797,6 +798,16 @@ requiring exactly two detected units. All 111 isolated native/script tests
 passed in 242.44 seconds. Ordinary multiplayer passed in 58.41 seconds, and
 running reconnect passed in 51.61 seconds with initial exploration snapshots
 prevented from refreshing out-of-sight ownership knowledge.
+
+After Borehole Cluster and Manifold Nexus completed patched base-game landmark
+parity, the Windows x64 Release build succeeded. Five focused social-rating,
+territory, resource-yield, tile-preview, and terraforming tests passed in 6.14
+seconds, including the Nexus bonus and its +3 PLANET ceiling. All 111 isolated
+native/script tests passed in 284.09 seconds. The standard installed-asset
+runtime passed in 52.57 seconds while directly verifying all 14 landmarks, the
+Cluster's three Thermal Boreholes, and the Nexus's nine land tiles. Ordinary
+multiplayer passed in 64.35 seconds, and the compact-map running reconnect
+passed in 57.21 seconds without changing its deterministic six-landmark set.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

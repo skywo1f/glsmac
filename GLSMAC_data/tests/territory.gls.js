@@ -3,10 +3,25 @@ const define_territory = #include('../default/game/territory');
 const callbacks = {};
 const values = {};
 let bases = [];
+let landmark_tiles = [];
+let nexus_explored = false;
 const distance = (a, b) => { return a.x < b.x ? b.x - a.x : a.x - b.x; };
+const get_landmark_tile = (x, y) => {
+	for (candidate of landmark_tiles) {
+		if (candidate.x == x && candidate.y == y) {
+			return candidate;
+		}
+	}
+	return null;
+};
 const game = {
 	get_bm: () => { return {get_bases: () => { return bases; }}; },
-	get_tm: () => { return {get_distance: distance}; },
+	get_tm: () => { return {
+		get_distance: distance,
+		get_map_width: () => { return 28; },
+		get_map_height: () => { return 1; },
+		get_tile: get_landmark_tile,
+	}; },
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (key, value) => { values[key] = value; },
 };
@@ -22,6 +37,7 @@ const make_tile = (x, is_water) => {
 		set_surrounding_tiles: (tiles) => { surrounding = tiles; },
 		get_base: () => { return base; },
 		set_base: (value) => { base = value; },
+		landmarks: {},
 	};
 };
 
@@ -45,7 +61,11 @@ const make_line = (count, is_water) => {
 	return result;
 };
 
-const player_one = {id: 1, name: 'One'};
+const player_one = {
+	id: 1,
+	name: 'One',
+	has_explored: (tile) => { return nexus_explored; },
+};
 const player_two = {id: 2, name: 'Two'};
 const make_base = (id, owner, tile) => {
 	const base = {
@@ -56,6 +76,16 @@ const make_base = (id, owner, tile) => {
 	tile.set_base(base);
 	return base;
 };
+
+const nexus_center = make_tile(20, false);
+nexus_center.landmarks.manifold_nexus = true;
+for (let nexus_i = 0; nexus_i < 3; nexus_i++) {
+	const nexus_edge = make_tile(21 + nexus_i, false);
+	nexus_edge.landmarks.manifold_nexus = true;
+	connect(nexus_center, nexus_edge);
+	landmark_tiles :+nexus_edge;
+}
+landmark_tiles :+nexus_center;
 
 define_territory(game);
 callbacks.start({});
@@ -116,3 +146,10 @@ const connected_sea_base = make_base(7, player_one, connected_sea_base_tile);
 const disconnected_sea_base = make_base(8, player_two, disconnected_sea_base_tile);
 bases = [connected_sea_base, disconnected_sea_base];
 test.assert(values.f_territory_get_owner(contested_water) == player_one);
+
+const nexus_base = make_base(9, player_one, nexus_center);
+bases = [nexus_base];
+test.assert(!values.f_territory_has_manifold_nexus(player_one));
+nexus_explored = true;
+test.assert(values.f_territory_has_manifold_nexus(player_one));
+test.assert(!values.f_territory_has_manifold_nexus(player_two));

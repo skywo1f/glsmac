@@ -384,11 +384,26 @@ return (game) => {
 				: #undefined;
 			return #is_defined(resolver) ? resolver(player) : {};
 		};
+		const apply_landmark_effects = (player, ratings) => {
+			const resolver = #is_defined(game.get)
+				? game.get('f_territory_has_manifold_nexus')
+				: #undefined;
+			if (#is_defined(resolver) && resolver(player)) {
+				ratings.planet = #min(RATING_LIMITS.planet.max, ratings.planet + 1);
+			}
+			return ratings;
+		};
 		const get_game_ratings_for_choices = (player, choices) => {
-			return get_ratings_for_choices(player, choices, get_project_effects(player));
+			return apply_landmark_effects(
+				player,
+				get_ratings_for_choices(player, choices, get_project_effects(player))
+			);
 		};
 		const get_game_ratings = (player) => {
-			return get_ratings(player, get_project_effects(player));
+			return apply_landmark_effects(
+				player,
+				get_ratings(player, get_project_effects(player))
+			);
 		};
 		game.set('f_social_get_categories', () => { return categories; });
 		game.set('f_social_get_ratings', get_game_ratings);
