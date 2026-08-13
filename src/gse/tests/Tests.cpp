@@ -360,6 +360,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					0, "", 0, "", 6, -1,
 				};
 				source.SetDiplomaticTrade( 4, commlink_trade );
+				Player::diplomatic_trade_t ultimatum = {};
+				ultimatum.request_energy = 50;
+				ultimatum.is_ultimatum = true;
+				source.SetDiplomaticTrade( 8, ultimatum );
 				const Player::diplomatic_loan_offer_t loan_offer = { false, 100, 6, 20 };
 				const Player::diplomatic_loan_t loan = { 120, 6 };
 				source.SetDiplomaticLoanOffer( 6, loan_offer );
@@ -455,6 +459,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"commlink-only diplomatic trade was not cloned"
 				);
 				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 8 ) &&
+						*cloned.GetDiplomaticTrade( 8 ) == ultimatum,
+					"pending diplomatic ultimatum was not cloned"
+				);
+				GT_ASSERT(
 					cloned.GetDiplomaticLoanOffer( 6 ) &&
 						*cloned.GetDiplomaticLoanOffer( 6 ) == loan_offer,
 					"pending diplomatic loan offer was not cloned"
@@ -523,6 +532,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"Planetary Council state was not serialized"
 				);
 				source.ClearDiplomaticTrade( 4 );
+				source.ClearDiplomaticTrade( 8 );
 				types::Buffer bool_field;
 				bool_field.WriteBool( true );
 				const auto bool_field_size = bool_field.ToString().size();
@@ -539,7 +549,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				const auto retired_designs_field_size = retired_designs_field.ToString().size();
 				types::Buffer player_extension;
-				player_extension.WriteInt( 3 );
+				player_extension.WriteInt( 4 );
 				player_extension.WriteBool( false );
 				player_extension.WriteInt( source.GetContactedPlayers().size() );
 				for ( const auto player_id : source.GetContactedPlayers() ) {
@@ -553,6 +563,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				player_extension.WriteBool( trade.request_map );
 				player_extension.WriteInt( trade.offer_base );
 				player_extension.WriteInt( trade.request_base );
+				player_extension.WriteBool( trade.is_ultimatum );
 				player_extension.WriteBool( false );
 				player_extension.WriteInt( source.GetExploredTiles().size() );
 				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
@@ -794,7 +805,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_one.GetDiplomaticTrade( 5 ) &&
 					!version_one.GetDiplomaticTrade( 5 )->offer_map &&
 					version_one.GetDiplomaticTrade( 5 )->offer_base == -1 &&
-					version_one.GetDiplomaticTrade( 5 )->request_base == -1,
+					version_one.GetDiplomaticTrade( 5 )->request_base == -1 &&
+					!version_one.GetDiplomaticTrade( 5 )->is_ultimatum,
 					"version-one diplomatic trade unexpectedly gained a map term"
 				);
 				types::Buffer version_two_extension;
@@ -825,8 +837,41 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_two.GetDiplomaticTrade( 5 )->offer_map == trade.offer_map &&
 					version_two.GetDiplomaticTrade( 5 )->request_map == trade.request_map &&
 					version_two.GetDiplomaticTrade( 5 )->offer_base == -1 &&
-					version_two.GetDiplomaticTrade( 5 )->request_base == -1,
+					version_two.GetDiplomaticTrade( 5 )->request_base == -1 &&
+					!version_two.GetDiplomaticTrade( 5 )->is_ultimatum,
 					"version-two diplomatic trade did not preserve map terms or default base terms"
+				);
+				types::Buffer version_three_extension;
+				version_three_extension.WriteInt( 3 );
+				version_three_extension.WriteBool( false );
+				version_three_extension.WriteInt( source.GetContactedPlayers().size() );
+				for ( const auto player_id : source.GetContactedPlayers() ) {
+					version_three_extension.WriteInt( player_id );
+				}
+				version_three_extension.WriteInt( 1 );
+				version_three_extension.WriteInt( 5 );
+				version_three_extension.WriteInt( trade.offer_contact );
+				version_three_extension.WriteInt( trade.request_contact );
+				version_three_extension.WriteBool( trade.offer_map );
+				version_three_extension.WriteBool( trade.request_map );
+				version_three_extension.WriteInt( trade.offer_base );
+				version_three_extension.WriteInt( trade.request_base );
+				version_three_extension.WriteBool( false );
+				version_three_extension.WriteInt( source.GetExploredTiles().size() );
+				for ( const auto& [ x, y ] : source.GetExploredTiles() ) {
+					version_three_extension.WriteInt( x );
+					version_three_extension.WriteInt( y );
+				}
+				auto version_three_data = source.Serialize().ToString();
+				version_three_data.resize( version_three_data.size() - player_extension_size );
+				version_three_data += version_three_extension.ToString();
+				Player version_three( version_three_data );
+				GT_ASSERT(
+					version_three.GetDiplomaticTrade( 5 ) &&
+					version_three.GetDiplomaticTrade( 5 )->offer_base == trade.offer_base &&
+					version_three.GetDiplomaticTrade( 5 )->request_base == trade.request_base &&
+					!version_three.GetDiplomaticTrade( 5 )->is_ultimatum,
+					"version-three diplomatic trade did not preserve bases or default ultimatum state"
 				);
 				auto pre_retirement_data = source.Serialize().ToString();
 				pre_retirement_data.resize(
@@ -899,6 +944,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					roundtrip.GetDiplomaticTrade( 4 ) &&
 						*roundtrip.GetDiplomaticTrade( 4 ) == commlink_trade,
 					"commlink-only diplomatic trade was not serialized"
+				);
+				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 8 ) &&
+						*roundtrip.GetDiplomaticTrade( 8 ) == ultimatum,
+					"pending diplomatic ultimatum was not serialized"
 				);
 				GT_ASSERT(
 					roundtrip.GetDiplomaticLoanOffer( 6 ) &&
@@ -975,6 +1025,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				roundtrip.ClearDiplomaticTrade( 5 );
 				roundtrip.ClearDiplomaticTrade( 4 );
+				roundtrip.ClearDiplomaticTrade( 8 );
 				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
 				roundtrip.ClearDiplomaticLoanOffer( 6 );
 				roundtrip.ClearDiplomaticLoan( 7 );
@@ -1266,6 +1317,37 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					rejected_invalid_trade_base,
 					"out-of-range diplomatic trade base ID accepted"
+				);
+
+				bool rejected_invalid_ultimatum = false;
+				try {
+					Player invalid( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_ultimatum = {};
+					invalid_ultimatum.offer_energy = 10;
+					invalid_ultimatum.request_energy = 25;
+					invalid_ultimatum.is_ultimatum = true;
+					invalid.SetDiplomaticTrade( 1, invalid_ultimatum );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_invalid_ultimatum = true;
+				}
+				GT_ASSERT(
+					rejected_invalid_ultimatum,
+					"bundled diplomatic ultimatum accepted"
+				);
+				Player valid_demander( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+				Player::diplomatic_trade_t energy_ultimatum = {};
+				energy_ultimatum.request_energy = 25;
+				energy_ultimatum.is_ultimatum = true;
+				valid_demander.SetDiplomaticTrade( 1, energy_ultimatum );
+				Player::diplomatic_trade_t technology_ultimatum = {};
+				technology_ultimatum.request_technology = "CentauriEcology";
+				technology_ultimatum.is_ultimatum = true;
+				valid_demander.SetDiplomaticTrade( 2, technology_ultimatum );
+				GT_ASSERT(
+					valid_demander.GetDiplomaticTrade( 1 )->is_ultimatum &&
+					valid_demander.GetDiplomaticTrade( 2 )->is_ultimatum,
+					"valid diplomatic ultimatum was not retained"
 				);
 
 				bool rejected_underfunded_loan_offer = false;

@@ -662,6 +662,18 @@ void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_
 		THROW( "diplomatic trade base ID is out of range" );
 	}
 	if (
+		trade.is_ultimatum &&
+		(
+			trade.offer_energy != 0 || !trade.offer_technology.empty() ||
+			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
+			trade.offer_map || trade.request_map ||
+			trade.offer_base >= 0 || trade.request_base >= 0 ||
+			( trade.request_energy > 0 ) == !trade.request_technology.empty()
+		)
+	) {
+		THROW( "diplomatic ultimatum must demand exactly energy or technology" );
+	}
+	if (
 		trade.offer_energy == 0 && trade.offer_technology.empty() &&
 		trade.request_energy == 0 && trade.request_technology.empty() &&
 		trade.offer_contact < 0 && trade.request_contact < 0 &&
@@ -1583,6 +1595,7 @@ WRAPIMPL_BEGIN( Player )
 						{ "request_map", VALUE( gse::value::Bool, , trade->request_map ) },
 						{ "offer_base", VALUE( gse::value::Int, , trade->offer_base ) },
 						{ "request_base", VALUE( gse::value::Int, , trade->request_base ) },
+						{ "is_ultimatum", VALUE( gse::value::Bool, , trade->is_ultimatum ) },
 					} );
 				} )
 			},
@@ -1606,6 +1619,7 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP_OPT( bool, request_map, terms, "request_map", Bool, false );
 					N_GETPROP_OPT( int64_t, offer_base, terms, "offer_base", Int, -1 );
 					N_GETPROP_OPT( int64_t, request_base, terms, "request_base", Int, -1 );
+					N_GETPROP_OPT( bool, is_ultimatum, terms, "is_ultimatum", Bool, false );
 					try {
 						SetDiplomaticTrade( other->m_slotnum, {
 							offer_energy,
@@ -1618,6 +1632,7 @@ WRAPIMPL_BEGIN( Player )
 							request_map,
 							offer_base,
 							request_base,
+							is_ultimatum,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -1987,7 +2002,7 @@ const types::Buffer Player::Serialize() const {
 	for ( const auto& id : m_retired_unit_designs ) {
 		buf.WriteString( id );
 	}
-	buf.WriteInt( 3 );
+	buf.WriteInt( 4 );
 	buf.WriteBool( m_legacy_unrestricted_contact );
 	buf.WriteInt( m_contacted_players.size() );
 	for ( const auto player_id : m_contacted_players ) {
@@ -1998,7 +2013,8 @@ const types::Buffer Player::Serialize() const {
 		if (
 			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
 			trade.offer_map || trade.request_map ||
-			trade.offer_base >= 0 || trade.request_base >= 0
+			trade.offer_base >= 0 || trade.request_base >= 0 ||
+			trade.is_ultimatum
 		) {
 			extended_trade_count++;
 		}
@@ -2008,7 +2024,8 @@ const types::Buffer Player::Serialize() const {
 		if (
 			trade.offer_contact < 0 && trade.request_contact < 0 &&
 			!trade.offer_map && !trade.request_map &&
-			trade.offer_base < 0 && trade.request_base < 0
+			trade.offer_base < 0 && trade.request_base < 0 &&
+			!trade.is_ultimatum
 		) {
 			continue;
 		}
@@ -2019,6 +2036,7 @@ const types::Buffer Player::Serialize() const {
 		buf.WriteBool( trade.request_map );
 		buf.WriteInt( trade.offer_base );
 		buf.WriteInt( trade.request_base );
+		buf.WriteBool( trade.is_ultimatum );
 	}
 	buf.WriteBool( m_legacy_full_map_visibility );
 	buf.WriteInt( m_explored_tiles.size() );
@@ -2354,7 +2372,10 @@ void Player::Deserialize( types::Buffer buf ) {
 	int64_t clean_mineral_facilities = 0;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto contact_version = buf.ReadInt();
-		if ( contact_version != 1 && contact_version != 2 && contact_version != 3 ) {
+		if (
+			contact_version != 1 && contact_version != 2 &&
+			contact_version != 3 && contact_version != 4
+		) {
 			THROW( "unsupported serialized player contact version" );
 		}
 		legacy_unrestricted_contact = buf.ReadBool();
@@ -2384,6 +2405,7 @@ void Player::Deserialize( types::Buffer buf ) {
 			const auto request_map = contact_version >= 2 ? buf.ReadBool() : false;
 			const auto offer_base = contact_version >= 3 ? buf.ReadInt() : -1;
 			const auto request_base = contact_version >= 3 ? buf.ReadInt() : -1;
+			const auto is_ultimatum = contact_version >= 4 ? buf.ReadBool() : false;
 			auto trade_it = diplomatic_trades.find( player_id );
 			if (
 				trade_it == diplomatic_trades.end() ||
@@ -2397,6 +2419,7 @@ void Player::Deserialize( types::Buffer buf ) {
 			trade_it->second.request_map = request_map;
 			trade_it->second.offer_base = offer_base;
 			trade_it->second.request_base = request_base;
+			trade_it->second.is_ultimatum = is_ultimatum;
 			Player validator( "extended trade validator", PR_NONE, nullptr, "" );
 			validator.SetDiplomaticTrade( player_id, trade_it->second );
 		}

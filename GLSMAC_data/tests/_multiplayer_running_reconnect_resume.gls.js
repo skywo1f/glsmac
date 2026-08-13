@@ -9,6 +9,7 @@
 	const initial_energy_stamp = 137;
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
+	const ultimatum_energy_stamp = 25;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const mind_control_total_stamp = 12;
@@ -289,12 +290,25 @@
 				}
 			}
 			const loan = lender == null ? null : game.get_player().get_diplomatic_loan(lender);
+			const ultimatum = lender == null
+				? null : game.get_player().get_diplomatic_trade(lender);
 			if (
 				loan == null ||
 				loan.balance != loan_balance_stamp ||
 				loan.payment != loan_payment_stamp
 			) {
 				return 'active diplomatic loan was not restored';
+			}
+			if (
+				ultimatum == null || !ultimatum.is_ultimatum ||
+				ultimatum.offer_energy != 0 || ultimatum.offer_technology != '' ||
+				ultimatum.request_energy != ultimatum_energy_stamp ||
+				ultimatum.request_technology != '' ||
+				ultimatum.offer_contact != -1 || ultimatum.request_contact != -1 ||
+				ultimatum.offer_map || ultimatum.request_map ||
+				ultimatum.offer_base != -1 || ultimatum.request_base != -1
+			) {
+				return 'pending diplomatic ultimatum was not restored';
 			}
 			if (!game.get_player().has_contact(lender) || !lender.has_contact(game.get_player())) {
 				return 'bilateral diplomatic contact was not restored';

@@ -64,6 +64,13 @@ const trade_text = (game, terms) => {
 	);
 };
 
+const ultimatum_text = (game, terms) => {
+	return 'Demands ' + trade_side_text(
+		game, terms.request_energy, terms.request_technology, terms.request_contact,
+		terms.request_map, terms.request_base
+	);
+};
+
 const loan_terms_text = (terms, proposer, recipient) => {
 	const lender = terms.proposer_is_lender ? proposer : recipient;
 	const borrower = terms.proposer_is_lender ? recipient : proposer;
@@ -130,6 +137,7 @@ return {
 		this.request_energy = null;
 		this.request_map = null;
 		this.propose_trade_button = null;
+		this.issue_ultimatum_button = null;
 		this.accept_trade = null;
 		this.counter_trade = null;
 		this.reject_trade = null;
@@ -160,6 +168,9 @@ return {
 			'diplomatic_trade_proposed',
 			'diplomatic_trade_updated',
 			'diplomatic_trade_resolved',
+			'diplomatic_ultimatum_proposed',
+			'diplomatic_ultimatum_updated',
+			'diplomatic_ultimatum_resolved',
 			'diplomatic_loan_proposed',
 			'diplomatic_loan_updated',
 			'diplomatic_loan_resolved',
@@ -179,6 +190,7 @@ return {
 				const incoming_diplomacy =
 					(observed_event_name == 'diplomatic_proposal' ||
 						observed_event_name == 'diplomatic_trade_proposed' ||
+						observed_event_name == 'diplomatic_ultimatum_proposed' ||
 						observed_event_name == 'diplomatic_loan_proposed' ||
 						observed_event_name == 'diplomatic_surrender_offered') &&
 					e.target.id == p.game.get_player().id;
@@ -361,10 +373,19 @@ return {
 				class: 'game-popup-text', text: '', left: 10, right: 10, top: 422,
 			});
 			this.propose_trade_button = body.button({
-				class: 'game-popup-button', text: 'Propose Trade', top: 446,
+				class: 'game-popup-button', text: 'Propose Trade', left: 10, top: 446,
+				width: 280,
 			});
 			this.propose_trade_button.on('click', (e) => {
-				this.propose_trade();
+				this.propose_trade(false);
+				return true;
+			});
+			this.issue_ultimatum_button = body.button({
+				class: 'game-popup-button', text: 'Issue Ultimatum', right: 10, top: 446,
+				width: 280,
+			});
+			this.issue_ultimatum_button.on('click', (e) => {
+				this.propose_trade(true);
 				return true;
 			});
 			this.accept_trade = body.button({
@@ -518,7 +539,7 @@ return {
 		return valid && amount >= 0 ? amount : null;
 	},
 
-	propose_trade: () => {
+	propose_trade: (is_ultimatum) => {
 		if (this.player == null || this.target == null) {
 			return;
 		}
@@ -530,17 +551,32 @@ return {
 		}
 		this.trade_error.text = '';
 		const terms = {
-				offer_energy: offer_energy,
-				offer_technology: this.offer_technology.value,
-				request_energy: request_energy,
-				request_technology: this.request_technology.value,
-				offer_contact: #to_int(this.offer_contact.value),
-				request_contact: #to_int(this.request_contact.value),
-				offer_map: this.offer_map.value == '1',
-				request_map: this.request_map.value == '1',
-				offer_base: #to_int(this.offer_base.value),
-				request_base: #to_int(this.request_base.value),
+			offer_energy: offer_energy,
+			offer_technology: this.offer_technology.value,
+			request_energy: request_energy,
+			request_technology: this.request_technology.value,
+			offer_contact: #to_int(this.offer_contact.value),
+			request_contact: #to_int(this.request_contact.value),
+			offer_map: this.offer_map.value == '1',
+			request_map: this.request_map.value == '1',
+			offer_base: #to_int(this.offer_base.value),
+			request_base: #to_int(this.request_base.value),
+			is_ultimatum: is_ultimatum,
 		};
+		if (
+			is_ultimatum &&
+			(
+				terms.offer_energy != 0 || terms.offer_technology != '' ||
+				terms.offer_contact >= 0 || terms.request_contact >= 0 ||
+				terms.offer_map || terms.request_map ||
+				terms.offer_base >= 0 || terms.request_base >= 0 ||
+				(terms.request_energy > 0) == (terms.request_technology != '')
+			)
+		) {
+			this.trade_error.text =
+				'An ultimatum must demand exactly energy or one technology.';
+			return;
+		}
 		const action = get_trade_action(
 			this.player,
 			this.target,
@@ -707,6 +743,7 @@ return {
 			this.request_energy_label, this.request_energy,
 			this.request_map,
 			this.propose_trade_button,
+			this.issue_ultimatum_button,
 		];
 		const loan_editor = [
 			this.loan_principal_label, this.loan_principal,
@@ -744,6 +781,9 @@ return {
 		const outgoing = this.target.get_diplomatic_offer(this.player);
 		const incoming_trade = this.player.get_diplomatic_trade(this.target);
 		const outgoing_trade = this.target.get_diplomatic_trade(this.player);
+		const is_ultimatum = this.p.game.get('f_diplomacy_is_ultimatum');
+		const incoming_ultimatum = incoming_trade != null && is_ultimatum(incoming_trade);
+		const outgoing_ultimatum = outgoing_trade != null && is_ultimatum(outgoing_trade);
 		const incoming_loan = this.player.get_diplomatic_loan_offer(this.target);
 		const outgoing_loan = this.target.get_diplomatic_loan_offer(this.player);
 		const player_debt = this.player.get_diplomatic_loan(this.target);
@@ -796,9 +836,13 @@ return {
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
 		this.trade_text.text = incoming_trade != null
-			? 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)
+			? (incoming_ultimatum
+				? 'Incoming ultimatum: ' + ultimatum_text(this.p.game, incoming_trade)
+				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade))
 			: (outgoing_trade != null
-				? 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade)
+				? (outgoing_ultimatum
+					? 'Ultimatum awaiting response: ' + ultimatum_text(this.p.game, outgoing_trade)
+					: 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade))
 				: '');
 		this.loan_text.text = player_debt != null
 			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
@@ -843,19 +887,29 @@ return {
 		}
 
 		if (incoming_trade != null) {
+			this.accept_trade.text = incoming_ultimatum ? 'Comply' : 'Accept Trade';
+			this.reject_trade.text = incoming_ultimatum ? 'Refuse' : 'Reject Trade';
+			if (incoming_ultimatum) {
+				this.countering_trade = false;
+			}
 			if (!this.countering_trade) {
 				this.accept_trade.show();
-				this.counter_trade.show();
+				if (!incoming_ultimatum) {
+					this.counter_trade.show();
+				}
 				this.reject_trade.show();
 				return;
 			}
 		} else {
 			this.countering_trade = false;
 		}
-		if (
-			outgoing_trade != null || relation == 'vendetta' ||
-			player_sanctions > 0 || target_sanctions > 0
-		) {
+		if (outgoing_trade != null) {
+			return;
+		}
+		const regular_trade_available = relation != 'vendetta' &&
+			player_sanctions == 0 && target_sanctions == 0;
+		const ultimatum_available = relation == 'neutral' || relation == 'vendetta';
+		if (!regular_trade_available && !ultimatum_available) {
 			return;
 		}
 
@@ -885,9 +939,24 @@ return {
 		}
 		this.propose_trade_button.text = this.countering_trade
 			? 'Send Counter' : 'Propose Trade';
-		for (control of trade_editor) {
-			control.show();
+		if (regular_trade_available || this.countering_trade) {
+			for (control of trade_editor) {
+				control.show();
+			}
+			if (!ultimatum_available || this.countering_trade) {
+				this.issue_ultimatum_button.hide();
+			}
+		} else {
+			this.request_technology_label.show();
+			this.request_technology.show();
+			this.request_energy_label.show();
+			this.request_energy.show();
+			this.issue_ultimatum_button.show();
 		}
+		this.request_technology_label.text = regular_trade_available
+			? 'Request technology:' : 'Demand technology:';
+		this.request_energy_label.text = regular_trade_available
+			? 'Request energy:' : 'Demand energy:';
 		if (this.countering_trade) {
 			return;
 		}

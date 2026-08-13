@@ -14,6 +14,7 @@
 	const clean_mineral_facilities_stamp = 5;
 	const loan_balance_stamp = 91;
 	const loan_payment_stamp = 7;
+	const ultimatum_energy_stamp = 25;
 	const sanction_turns_stamp = 3;
 	const integrity_blemishes_stamp = 4;
 	const mind_control_total_stamp = 12;
@@ -188,6 +189,7 @@
 				const borrower = e.game.get_player(e.caller);
 				const previous = {
 					loan: borrower.get_diplomatic_loan(e.data.lender),
+					trade: borrower.get_diplomatic_trade(e.data.lender),
 					borrower_contact: borrower.has_contact(e.data.lender),
 					lender_contact: e.data.lender.has_contact(borrower),
 					sanction_turns: borrower.get_sanction_turns(),
@@ -204,6 +206,19 @@
 				borrower.set_diplomatic_loan(e.data.lender, {
 					balance: loan_balance_stamp,
 					payment: loan_payment_stamp,
+				});
+				borrower.set_diplomatic_trade(e.data.lender, {
+					offer_energy: 0,
+					offer_technology: '',
+					request_energy: ultimatum_energy_stamp,
+					request_technology: '',
+					offer_contact: 0 - 1,
+					request_contact: 0 - 1,
+					offer_map: false,
+					request_map: false,
+					offer_base: 0 - 1,
+					request_base: 0 - 1,
+					is_ultimatum: true,
 				});
 				borrower.set_contact(e.data.lender, true);
 				e.data.lender.set_contact(borrower, true);
@@ -234,6 +249,11 @@
 					borrower.clear_diplomatic_loan(e.data.lender);
 				} else {
 					borrower.set_diplomatic_loan(e.data.lender, e.applied.loan);
+				}
+				if (e.applied.trade == null) {
+					borrower.clear_diplomatic_trade(e.data.lender);
+				} else {
+					borrower.set_diplomatic_trade(e.data.lender, e.applied.trade);
 				}
 				borrower.set_contact(e.data.lender, e.applied.borrower_contact);
 				e.data.lender.set_contact(borrower, e.applied.lender_contact);
@@ -560,6 +580,7 @@
 						energy_requested = false;
 						const lender = game.get_player(get_remote_player_id());
 						const loan = game.get_player().get_diplomatic_loan(lender);
+						const ultimatum = game.get_player().get_diplomatic_trade(lender);
 						const grievance = game.get_player().get_diplomatic_grievance(lender);
 						if (loan == null) {
 							if (!loan_requested) {
@@ -570,6 +591,13 @@
 						}
 						if (
 							loan.balance != loan_balance_stamp || loan.payment != loan_payment_stamp ||
+							ultimatum == null || !ultimatum.is_ultimatum ||
+							ultimatum.offer_energy != 0 || ultimatum.offer_technology != '' ||
+							ultimatum.request_energy != ultimatum_energy_stamp ||
+							ultimatum.request_technology != '' ||
+							ultimatum.offer_contact != -1 || ultimatum.request_contact != -1 ||
+							ultimatum.offer_map || ultimatum.request_map ||
+							ultimatum.offer_base != -1 || ultimatum.request_base != -1 ||
 							!game.get_player().has_contact(lender) ||
 							!lender.has_contact(game.get_player()) ||
 							game.get_player().get_sanction_turns() != sanction_turns_stamp ||

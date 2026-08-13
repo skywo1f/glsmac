@@ -248,10 +248,23 @@ const update_diplomacy = (game, player) => {
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
-				accept: player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
-					diplomacy.get_trade_acceptance_score({
-					relation: player.get_diplomatic_relation(other),
-					own_power: own_power,
+				accept: diplomacy.is_ultimatum(trade)
+					? diplomacy.get_ultimatum_compliance_score({
+						relation: player.get_diplomatic_relation(other),
+						own_power: own_power,
+						other_power: get_player_power(game, other),
+						own_bases: own_bases,
+						other_bases: get_player_base_count(game, other),
+						own_energy: player.energy_credits,
+						other_integrity_blemishes: other.get_integrity_blemishes(),
+						request_technology_cost: request_definition == null
+							? 0 : request_definition.cost,
+						terms: trade,
+					}) >= 0.0
+					: player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
+						diplomacy.get_trade_acceptance_score({
+						relation: player.get_diplomatic_relation(other),
+						own_power: own_power,
 					other_power: get_player_power(game, other),
 					terms: trade,
 					offer_technology_cost: offer_definition == null ? 0 : offer_definition.cost,
@@ -338,6 +351,52 @@ const update_diplomacy = (game, player) => {
 
 	if ((game.get_turn() + player.id) % 8 != 0) {
 		return;
+	}
+	if ((game.get_turn() + player.id) % 24 == 0) {
+		let best_ultimatum = null;
+		let best_ultimatum_target = null;
+		for (other of game.get_players()) {
+			if (
+				other.id == player.id ||
+				!player.has_contact(other) ||
+				other.get_diplomatic_offer(player) != '' ||
+				player.get_diplomatic_offer(other) != '' ||
+				other.get_diplomatic_trade(player) != null ||
+				player.get_diplomatic_trade(other) != null ||
+				(#typeof(other.get_submissive_to_id) == 'Callable' &&
+					other.get_submissive_to_id() >= 0)
+			) {
+				continue;
+			}
+			const proposal = diplomacy.get_ultimatum_proposal({
+				relation: player.get_diplomatic_relation(other),
+				own_power: own_power,
+				other_power: get_player_power(game, other),
+				own_bases: own_bases,
+				other_bases: get_player_base_count(game, other),
+				own_energy: player.energy_credits,
+				other_energy: other.energy_credits,
+				own_integrity_blemishes: player.get_integrity_blemishes(),
+				other_technologies: get_tradeable_technologies(game, other, player),
+			});
+			if (
+				proposal != null &&
+				(best_ultimatum == null || proposal.score > best_ultimatum.score ||
+					(proposal.score == best_ultimatum.score &&
+						other.id < best_ultimatum_target.id))
+			) {
+				best_ultimatum = proposal;
+				best_ultimatum_target = other;
+			}
+		}
+		if (best_ultimatum != null) {
+			game.event_as(player.id, 'propose_diplomatic_trade', {
+				player: player,
+				target: best_ultimatum_target,
+				terms: best_ultimatum.terms,
+			});
+			return;
+		}
 	}
 	let best = null;
 	let best_target = null;

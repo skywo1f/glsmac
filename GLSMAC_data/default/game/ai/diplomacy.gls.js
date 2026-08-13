@@ -167,6 +167,99 @@ const get_trade_acceptance_score = (state) => {
 	return received - given - 5.0;
 };
 
+const is_ultimatum = (terms) => {
+	return #typeof(terms.is_ultimatum) == 'Bool' && terms.is_ultimatum;
+};
+
+const get_ultimatum_compliance_score = (state) => {
+	if (
+		!is_ultimatum(state.terms) ||
+		(state.relation != 'neutral' && state.relation != 'vendetta')
+	) {
+		return 0.0 - 100000.0;
+	}
+	const relative_strength = get_relative_strength(state.own_power, state.other_power);
+	const base_pressure = #to_float(state.other_bases - state.own_bases) * 7.0;
+	const war_pressure = state.relation == 'vendetta' ? 28.0 : 0.0;
+	const integrity_penalty = #to_float(get_other_integrity_blemishes(state)) * 7.0;
+	let demand_cost = #to_float(state.terms.request_energy);
+	let reserve_pressure = 0.0;
+	if (state.terms.request_energy > 0) {
+		reserve_pressure = #to_float(#max(
+			0,
+			50 - (state.own_energy - state.terms.request_energy)
+		)) * 1.5;
+	} else {
+		demand_cost = #to_float(state.request_technology_cost) * 2.5;
+	}
+	return relative_strength * 125.0 + base_pressure + war_pressure -
+		demand_cost * 0.35 - reserve_pressure - integrity_penalty - 5.0;
+};
+
+const get_ultimatum_proposal = (state) => {
+	if (state.relation != 'neutral' && state.relation != 'vendetta') {
+		return null;
+	}
+	const strength_advantage = 0.0 - get_relative_strength(
+		state.own_power,
+		state.other_power
+	);
+	const minimum_advantage = state.relation == 'vendetta' ? 0.1 : 0.2;
+	if (strength_advantage < minimum_advantage) {
+		return null;
+	}
+	let best = null;
+	const consider = (terms, technology_cost, value) => {
+		const compliance_score = get_ultimatum_compliance_score({
+			relation: state.relation,
+			own_power: state.other_power,
+			other_power: state.own_power,
+			own_bases: state.other_bases,
+			other_bases: state.own_bases,
+			own_energy: state.other_energy,
+			other_integrity_blemishes: #is_defined(state.own_integrity_blemishes)
+				? state.own_integrity_blemishes
+				: 0,
+			request_technology_cost: technology_cost,
+			terms: terms,
+		});
+		if (compliance_score < 0.0) {
+			return;
+		}
+		const score = #to_float(value) + compliance_score * 0.1;
+		if (best == null || score > best.score) {
+			best = {terms: terms, score: score};
+		}
+	};
+	const make_terms = (energy, technology) => {
+		return {
+			offer_energy: 0,
+			offer_technology: '',
+			request_energy: energy,
+			request_technology: technology,
+			offer_contact: 0 - 1,
+			request_contact: 0 - 1,
+			offer_map: false,
+			request_map: false,
+			offer_base: 0 - 1,
+			request_base: 0 - 1,
+			is_ultimatum: true,
+		};
+	};
+	const available_energy = #min(200, #max(0, state.other_energy - 50));
+	for (let energy = 25; energy <= available_energy; energy += 25) {
+		consider(make_terms(energy, ''), 0, energy);
+	}
+	for (technology of state.other_technologies) {
+		consider(
+			make_terms(0, technology.id),
+			technology.cost,
+			#to_float(technology.cost) * 2.5
+		);
+	}
+	return best;
+};
+
 const reverse_terms = (terms) => {
 	return {
 		offer_energy: terms.request_energy,
@@ -476,6 +569,9 @@ return {
 	get_proposal: get_proposal,
 	get_trade_acceptance_score: get_trade_acceptance_score,
 	get_trade_proposal: get_trade_proposal,
+	is_ultimatum: is_ultimatum,
+	get_ultimatum_compliance_score: get_ultimatum_compliance_score,
+	get_ultimatum_proposal: get_ultimatum_proposal,
 	get_loan_acceptance_score: get_loan_acceptance_score,
 	get_loan_proposal: get_loan_proposal,
 };

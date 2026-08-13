@@ -22,12 +22,16 @@ return {
 		if (e.data.target.get_diplomatic_trade(e.data.player) != null) {
 			return 'A diplomatic trade is already pending';
 		}
+		if (e.data.player.get_diplomatic_trade(e.data.target) != null) {
+			return 'The existing diplomatic proposal must be answered first';
+		}
 	},
 
 	apply: (e) => {
 		const previous = e.data.target.get_diplomatic_trade(e.data.player);
 		e.data.target.set_diplomatic_trade(e.data.player, e.data.terms);
-		e.game.trigger('diplomatic_trade_proposed', {
+		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
+		e.game.trigger(ultimatum ? 'diplomatic_ultimatum_proposed' : 'diplomatic_trade_proposed', {
 			player: e.data.player,
 			target: e.data.target,
 			terms: e.data.terms,
@@ -41,7 +45,8 @@ return {
 		} else {
 			e.data.target.set_diplomatic_trade(e.data.player, e.applied);
 		}
-		e.game.trigger('diplomatic_trade_updated', {
+		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
+		e.game.trigger(ultimatum ? 'diplomatic_ultimatum_updated' : 'diplomatic_trade_updated', {
 			player: e.data.player,
 			target: e.data.target,
 		});

@@ -694,6 +694,142 @@ test.assert(
 bases = all_bases;
 
 beta.clear_diplomatic_trade(alpha);
+alpha.clear_diplomatic_trade(beta);
+alpha.set_diplomatic_relation(beta, 'neutral');
+beta.set_diplomatic_relation(alpha, 'neutral');
+alpha.energy_credits = 100;
+beta.energy_credits = 80;
+let ultimatum = {
+	caller: alpha.id,
+	game: game,
+	data: {
+		player: alpha,
+		target: beta,
+		terms: {
+			offer_energy: 0,
+			offer_technology: '',
+			request_energy: 25,
+			request_technology: '',
+			offer_contact: 0 - 1,
+			request_contact: 0 - 1,
+			offer_map: false,
+			request_map: false,
+			offer_base: 0 - 1,
+			request_base: 0 - 1,
+			is_ultimatum: true,
+		},
+	},
+};
+const bundled_ultimatum = #clone(ultimatum.data.terms);
+bundled_ultimatum.offer_energy = 5;
+test.assert(#is_defined(
+	values.f_diplomacy_validate_trade(alpha, beta, bundled_ultimatum)
+));
+alpha.set_sanction_turns(10);
+test.assert(!#is_defined(propose_trade.validate(ultimatum)));
+alpha.set_sanction_turns(0);
+ultimatum.applied = propose_trade.apply(ultimatum);
+test.assert(beta.get_diplomatic_trade(alpha).is_ultimatum);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_ultimatum_proposed');
+const conflicting_ultimatum = {
+	caller: beta.id,
+	game: game,
+	data: {player: beta, target: alpha, terms: #clone(ultimatum.data.terms)},
+};
+test.assert(#is_defined(propose_trade.validate(conflicting_ultimatum)));
+
+let ultimatum_response = {
+	caller: beta.id,
+	game: game,
+	data: {
+		player: beta,
+		proposer: alpha,
+		accept: false,
+		counter_terms: #clone(trade.data.terms),
+	},
+};
+test.assert(
+	respond_trade.validate(ultimatum_response) == 'An ultimatum cannot be countered'
+);
+ultimatum_response.data.counter_terms = #undefined;
+test.assert(!#is_defined(respond_trade.validate(ultimatum_response)));
+ultimatum_response.applied = respond_trade.apply(ultimatum_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
+test.assert(alpha.energy_credits == 100 && beta.energy_credits == 80);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+respond_trade.rollback(ultimatum_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'neutral');
+test.assert(beta.get_diplomatic_relation(alpha) == 'neutral');
+test.assert(beta.get_diplomatic_trade(alpha).is_ultimatum);
+propose_trade.rollback(ultimatum);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+
+alpha.set_diplomatic_relation(beta, 'vendetta');
+beta.set_diplomatic_relation(alpha, 'vendetta');
+alpha.set_research_state({
+	technologies: ['CentauriEcology'], target: 'Biogenetics', progress: 3,
+});
+beta.set_research_state({
+	technologies: ['IndustrialBase'], target: 'CentauriEcology', progress: 7,
+});
+let technology_ultimatum = {
+	caller: alpha.id,
+	game: game,
+	data: {
+		player: alpha,
+		target: beta,
+		terms: #clone(ultimatum.data.terms),
+	},
+};
+technology_ultimatum.data.terms.request_energy = 0;
+technology_ultimatum.data.terms.request_technology = 'IndustrialBase';
+test.assert(!#is_defined(propose_trade.validate(technology_ultimatum)));
+technology_ultimatum.applied = propose_trade.apply(technology_ultimatum);
+let technology_response = {
+	caller: beta.id,
+	game: game,
+	data: {player: beta, proposer: alpha, accept: true},
+};
+test.assert(!#is_defined(respond_trade.validate(technology_response)));
+technology_response.applied = respond_trade.apply(technology_response);
+test.assert(alpha.has_technology('IndustrialBase'));
+test.assert(beta.has_technology('IndustrialBase'));
+test.assert(alpha.get_diplomatic_relation(beta) == 'neutral');
+test.assert(beta.get_diplomatic_relation(alpha) == 'neutral');
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_ultimatum_resolved');
+respond_trade.rollback(technology_response);
+test.assert(!alpha.has_technology('IndustrialBase'));
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
+test.assert(beta.get_diplomatic_trade(alpha).request_technology == 'IndustrialBase');
+propose_trade.rollback(technology_ultimatum);
+alpha.set_diplomatic_relation(beta, 'neutral');
+beta.set_diplomatic_relation(alpha, 'neutral');
+
+const ultimatum_action = diplomacy_popup.get_trade_action(
+	alpha,
+	beta,
+	{
+		offer_energy: 0,
+		offer_technology: '',
+		request_energy: 30,
+		request_technology: '',
+		offer_contact: 0 - 1,
+		request_contact: 0 - 1,
+		offer_map: false,
+		request_map: false,
+		offer_base: 0 - 1,
+		request_base: 0 - 1,
+		is_ultimatum: true,
+	},
+	false
+);
+test.assert(ultimatum_action.name == 'propose_diplomatic_trade');
+test.assert(ultimatum_action.data.terms.is_ultimatum);
+test.assert(ultimatum_action.data.terms.request_energy == 30);
+
+beta.clear_diplomatic_trade(alpha);
 alpha.set_sanction_turns(10);
 test.assert(#is_defined(propose_trade.validate(trade)));
 alpha.set_sanction_turns(0);

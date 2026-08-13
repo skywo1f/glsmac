@@ -165,6 +165,109 @@ test.assert(diplomacy.get_trade_proposal({
 	other_technologies: [{id: 'IndustrialBase', cost: 50}],
 }) == null);
 
+const small_energy_ultimatum = {
+	relation: 'vendetta',
+	own_power: 5.0,
+	other_power: 30.0,
+	own_bases: 1,
+	other_bases: 5,
+	own_energy: 150,
+	other_integrity_blemishes: 0,
+	request_technology_cost: 0,
+	terms: {
+		offer_energy: 0,
+		offer_technology: '',
+		request_energy: 25,
+		request_technology: '',
+		is_ultimatum: true,
+	},
+};
+test.assert(diplomacy.is_ultimatum(small_energy_ultimatum.terms));
+const funded_compliance_score =
+	diplomacy.get_ultimatum_compliance_score(small_energy_ultimatum);
+test.assert(funded_compliance_score >= 0.0);
+small_energy_ultimatum.own_power = 30.0;
+small_energy_ultimatum.other_power = 5.0;
+small_energy_ultimatum.own_bases = 5;
+small_energy_ultimatum.other_bases = 1;
+test.assert(diplomacy.get_ultimatum_compliance_score(small_energy_ultimatum) < 0.0);
+small_energy_ultimatum.own_power = 5.0;
+small_energy_ultimatum.other_power = 30.0;
+small_energy_ultimatum.own_bases = 1;
+small_energy_ultimatum.other_bases = 5;
+small_energy_ultimatum.own_energy = 55;
+test.assert(
+	diplomacy.get_ultimatum_compliance_score(small_energy_ultimatum) <
+	funded_compliance_score
+);
+small_energy_ultimatum.own_energy = 150;
+small_energy_ultimatum.other_integrity_blemishes = 20;
+test.assert(diplomacy.get_ultimatum_compliance_score(small_energy_ultimatum) < 0.0);
+
+let ultimatum_proposal = diplomacy.get_ultimatum_proposal({
+	relation: 'neutral',
+	own_power: 30.0,
+	other_power: 5.0,
+	own_bases: 5,
+	other_bases: 1,
+	own_energy: 100,
+	other_energy: 250,
+	own_integrity_blemishes: 0,
+	other_technologies: [],
+});
+test.assert(ultimatum_proposal != null);
+test.assert(ultimatum_proposal.terms.is_ultimatum);
+test.assert(ultimatum_proposal.terms.request_energy > 0);
+test.assert(ultimatum_proposal.terms.request_technology == '');
+
+ultimatum_proposal = diplomacy.get_ultimatum_proposal({
+	relation: 'vendetta',
+	own_power: 30.0,
+	other_power: 5.0,
+	own_bases: 5,
+	other_bases: 1,
+	own_energy: 100,
+	other_energy: 50,
+	own_integrity_blemishes: 0,
+	other_technologies: [{id: 'IndustrialBase', cost: 30}],
+});
+test.assert(ultimatum_proposal != null);
+test.assert(ultimatum_proposal.terms.request_technology == 'IndustrialBase');
+
+test.assert(diplomacy.get_ultimatum_proposal({
+	relation: 'neutral',
+	own_power: 10.0,
+	other_power: 10.0,
+	own_bases: 2,
+	other_bases: 2,
+	own_energy: 100,
+	other_energy: 250,
+	own_integrity_blemishes: 0,
+	other_technologies: [],
+}) == null);
+test.assert(diplomacy.get_ultimatum_proposal({
+	relation: 'treaty',
+	own_power: 30.0,
+	other_power: 5.0,
+	own_bases: 5,
+	other_bases: 1,
+	own_energy: 100,
+	other_energy: 250,
+	own_integrity_blemishes: 0,
+	other_technologies: [],
+}) == null);
+test.assert(diplomacy.get_ultimatum_proposal({
+	relation: 'vendetta',
+	own_power: 30.0,
+	other_power: 5.0,
+	own_bases: 5,
+	other_bases: 1,
+	own_energy: 100,
+	other_energy: 250,
+	own_integrity_blemishes: 20,
+	other_technologies: [],
+}) == null);
+
 const fair_loan = {
 	proposer_is_lender: false,
 	principal: 100,

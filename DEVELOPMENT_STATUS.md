@@ -226,6 +226,14 @@ scenarios, for:
   acquisition effects are applied, and AI factions value and respond to base
   terms alongside the other relation-, strength-, opponent-, and value-aware
   trade terms;
+- persistent coercive energy and technology demands at neutral relations or
+  during a Vendetta; human factions can issue, comply with, or refuse an
+  ultimatum, neutral refusal begins a bilateral Vendetta, and wartime
+  compliance transfers the demanded asset and buys a Blood Truce; AI factions
+  use strength, base count, war pressure, reserves, demand cost, and diplomatic
+  integrity to evaluate threats and originate bounded demands; counteroffers
+  and bundled concessions are rejected, sanctions do not prevent coercion, and
+  authoritative events provide exact rollback plus save/reconnect persistence;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
@@ -352,9 +360,9 @@ not mean that the game is feature-complete or balanced.
 The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper original diplomacy branches beyond the implemented relations, bundled
-  trade and counteroffers, loans, surrender, and player-authored base exchange,
-  including autonomous AI base purchases/swaps, coercive demands, and
-  coordinated military requests;
+  trade and counteroffers, loans, surrender, player-authored base exchange, and
+  coercive demands, including autonomous AI base purchases/swaps and coordinated
+  military requests;
 - remaining multiplayer visibility hardening: authoritative per-client filtering
   of hidden-unit snapshots and subsequent entity events so concealed information
   is not present client-side;
@@ -839,6 +847,17 @@ running reconnect passed in 62.01 seconds. Pending trade base IDs use player
 serialization extension version 3; direct fixtures verify that version 1 and
 version 2 data still load with absent base terms, while new data preserves the
 IDs through cloning, save round trips, and network state.
+
+After coercive energy and technology demands were added, the Windows x64
+Release rebuild succeeded in 126.1 seconds and all 111 isolated native/script
+tests passed in 311.09 seconds. Focused native, AI, and diplomacy coverage
+verifies malformed-term rejection, strength/reserve/integrity-aware decisions,
+neutral refusal, wartime compliance, exact settlement rollback, and versions
+1 through 3 loading with a non-ultimatum default. The installed-asset diplomacy
+runtime passed in 30.25 seconds while directly transferring wartime tribute and
+buying peace. Ordinary multiplayer passed in 67.70 seconds, and running
+reconnect passed in 63.81 seconds while restoring every pending ultimatum term.
+Pending trade serialization extension version 4 carries the ultimatum flag.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

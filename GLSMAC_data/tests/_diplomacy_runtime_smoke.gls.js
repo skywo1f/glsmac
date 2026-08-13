@@ -282,7 +282,7 @@
 							() => {
 								finished = true;
 								#print(
-									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology, world-map and base counteroffers, loan repayment, betrayal integrity, vendetta debt, and AI submission conquest'
+									'DIPLOMACY_RUNTIME_PASS: contact-gated treaty commerce, reciprocal technology, world-map and base counteroffers, loan repayment, betrayal integrity, vendetta debt, wartime ultimatum compliance, and AI submission conquest'
 								);
 								glsmac.exit();
 							}
@@ -291,6 +291,77 @@
 				); };
 				make_offer();
 				await_offer();
+			};
+			const exercise_ultimatum = () => {
+				const player_energy = player.get_energy_credits();
+				const other_energy = other.get_energy_credits();
+				game.event('propose_diplomatic_trade', {
+					player: player,
+					target: other,
+					terms: {
+						offer_energy: 0,
+						offer_technology: '',
+						request_energy: 5,
+						request_technology: '',
+						offer_contact: 0 - 1,
+						request_contact: 0 - 1,
+						offer_map: false,
+						request_map: false,
+						offer_base: 0 - 1,
+						request_base: 0 - 1,
+						is_ultimatum: true,
+					},
+				});
+				wait_for(
+					() => {
+						const pending = other.get_diplomatic_trade(player);
+						return pending != null && pending.is_ultimatum;
+					},
+					'wartime ultimatum was not stored',
+					() => {
+						game.event_as(other.id, 'respond_diplomatic_trade', {
+							player: other,
+							proposer: player,
+							accept: true,
+						});
+						wait_for(
+							() => {
+								return (
+									other.get_diplomatic_trade(player) == null &&
+									player.get_energy_credits() == player_energy + 5 &&
+									other.get_energy_credits() == other_energy - 5 &&
+									player.get_diplomatic_relation(other) == 'neutral' &&
+									other.get_diplomatic_relation(player) == 'neutral'
+								);
+							},
+							() => {
+								const pending = other.get_diplomatic_trade(player);
+								return 'wartime ultimatum compliance did not transfer tribute and buy peace: ' +
+									'pending=' + (pending == null ? 'none' : 'present') +
+									', player_energy=' + #to_string(player.get_energy_credits()) +
+									'/' + #to_string(player_energy + 5) +
+									', other_energy=' + #to_string(other.get_energy_credits()) +
+									'/' + #to_string(other_energy - 5) +
+									', relations=' + player.get_diplomatic_relation(other) +
+									'/' + other.get_diplomatic_relation(player);
+							},
+							() => {
+								game.event('declare_vendetta', {player: player, target: other});
+								wait_for(
+									() => {
+										return (
+											player.get_diplomatic_relation(other) == 'vendetta' &&
+											other.get_diplomatic_relation(player) == 'vendetta' &&
+											player.get_integrity_blemishes() == 1
+										);
+									},
+									'could not restore wartime state after ultimatum compliance',
+									() => { exercise_submission(); }
+								);
+							}
+						);
+					}
+				);
 			};
 			const exercise_vendetta = () => {
 				game.event('declare_vendetta', {player: player, target: other});
@@ -330,7 +401,7 @@
 									wartime_debt.balance == debt_before_vendetta + 6;
 							},
 							'wartime missed payment did not increase loan balance',
-							() => { exercise_submission(); }
+							() => { exercise_ultimatum(); }
 						);
 					}
 				);

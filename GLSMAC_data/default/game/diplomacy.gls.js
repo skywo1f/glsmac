@@ -319,6 +319,10 @@ const get_request_base = (terms) => {
 	return #typeof(terms.request_base) == 'Int' ? terms.request_base : 0 - 1;
 };
 
+const is_ultimatum = (terms) => {
+	return #typeof(terms.is_ultimatum) == 'Bool' && terms.is_ultimatum;
+};
+
 const find_player = (game, player_id) => {
 	if (#typeof(game.get_players) != 'Callable') {
 		return null;
@@ -361,7 +365,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(#is_defined(terms.offer_map) && #typeof(terms.offer_map) != 'Bool') ||
 		(#is_defined(terms.request_map) && #typeof(terms.request_map) != 'Bool') ||
 		(#is_defined(terms.offer_base) && #typeof(terms.offer_base) != 'Int') ||
-		(#is_defined(terms.request_base) && #typeof(terms.request_base) != 'Int')
+		(#is_defined(terms.request_base) && #typeof(terms.request_base) != 'Int') ||
+		(#is_defined(terms.is_ultimatum) && #typeof(terms.is_ultimatum) != 'Bool')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
 	}
@@ -380,6 +385,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	const request_map = get_request_map(terms);
 	const offer_base = get_offer_base(terms);
 	const request_base = get_request_base(terms);
+	const ultimatum = is_ultimatum(terms);
 	if (
 		offer_contact < -1 || offer_contact >= 64 ||
 		request_contact < -1 || request_contact >= 64
@@ -396,6 +402,17 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		return 'Diplomatic trade cannot exchange a commlink for itself';
 	}
 	if (
+		ultimatum &&
+		(
+			terms.offer_energy != 0 || terms.offer_technology != '' ||
+			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
+			offer_base >= 0 || request_base >= 0 ||
+			(terms.request_energy > 0) == (terms.request_technology != '')
+		)
+	) {
+		return 'An ultimatum must demand exactly energy or one technology';
+	}
+	if (
 		terms.offer_energy == 0 && terms.offer_technology == '' &&
 		terms.request_energy == 0 && terms.request_technology == '' &&
 		offer_contact < 0 && request_contact < 0 &&
@@ -409,10 +426,14 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	) {
 		return 'Diplomatic trade cannot exchange a technology for itself';
 	}
-	if (proposer.get_diplomatic_relation(recipient) == 'vendetta') {
+	const relation = proposer.get_diplomatic_relation(recipient);
+	if (!ultimatum && relation == 'vendetta') {
 		return 'Regular trade is unavailable during a vendetta';
 	}
-	if (proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0) {
+	if (ultimatum && relation != 'neutral' && relation != 'vendetta') {
+		return 'Ultimatums require neutral relations or an active vendetta';
+	}
+	if (!ultimatum && (proposer.get_sanction_turns() > 0 || recipient.get_sanction_turns() > 0)) {
 		return 'Regular trade is suspended by economic sanctions';
 	}
 	const proposer_energy = proposer.get_energy_credits();
@@ -685,6 +706,7 @@ return (game) => {
 		});
 		game.set('f_diplomacy_get_offer_base', get_offer_base);
 		game.set('f_diplomacy_get_request_base', get_request_base);
+		game.set('f_diplomacy_is_ultimatum', is_ultimatum);
 		game.set('f_diplomacy_find_base', (base_id) => {
 			return diplomatic_base_transfer.find_base(game, base_id);
 		});
