@@ -385,8 +385,9 @@ scenarios, for:
   unit-private, while bulk unit-design upgrades are player-private.
 - terrain and planetary climate mutations made by an event are captured while
   the authoritative host applies it. When a private base, unit, or player
-  reference causes that event to be withheld, affected clients receive bounded,
-  validated final tile snapshots plus sea-level and climate state instead. This
+  reference causes that event to be withheld, affected clients receive ordered,
+  network-size-bounded, validated final tile snapshots plus sea-level and
+  climate state instead. This
   prevents hidden-base fungal blooms, major volcanic eruptions, and future
   terrain-changing private events from silently diverging the client map.
 
@@ -974,7 +975,7 @@ After authoritative map and climate deltas were added for withheld events, the
 Windows x64 Release build succeeded and all 112 isolated native/script tests
 passed in 235.55 seconds. Focused ecology, fungal-bloom, volcano, and major
 eruption tests passed together in 4.76 seconds, and running reconnect passed in
-52.17 seconds. Ordinary multiplayer passed in 62.08 seconds while proving that
+52.17 seconds. Ordinary multiplayer passed in 62.94 seconds while proving that
 an event referencing a private host base is not delivered to the client, its
 tile and climate mutations still arrive authoritatively without revealing the
 base, and the existing visibility, movement, combat, capture, founding,

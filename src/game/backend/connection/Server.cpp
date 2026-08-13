@@ -747,31 +747,62 @@ bool Server::DeliverMapProjectionUpdate(
 	) {
 		return true;
 	}
-	types::Buffer payload;
-	payload.WriteString( after_event_id );
-	payload.WriteInt( projected_event.projected_map_tiles.size() );
+	static constexpr size_t MAX_MAP_PROJECTION_CHUNK_SIZE = 48 * 1024;
+	std::vector< std::map< size_t, std::string > > chunks = {};
+	std::map< size_t, std::string > chunk = {};
+	size_t chunk_size = 0;
 	for ( const auto& [ key, snapshot ] : projected_event.projected_map_tiles ) {
-		payload.WriteInt( key );
-		payload.WriteString( snapshot );
+		// Leave ample room for Buffer type metadata, event framing, and the packet wrapper.
+		const auto entry_size = snapshot.size() + 128;
+		if ( !chunk.empty() && chunk_size + entry_size > MAX_MAP_PROJECTION_CHUNK_SIZE ) {
+			chunks.push_back( std::move( chunk ) );
+			chunk = {};
+			chunk_size = 0;
+		}
+		if ( entry_size > MAX_MAP_PROJECTION_CHUNK_SIZE ) {
+			THROW( "projected map tile snapshot exceeds the network chunk limit" );
+		}
+		chunk.insert({ key, snapshot });
+		chunk_size += entry_size;
 	}
-	payload.WriteBool( projected_event.projected_map_state_changed );
-	if ( projected_event.projected_map_state_changed ) {
-		payload.WriteInt( projected_event.projected_sea_level );
-		payload.WriteInt( projected_event.projected_climate_level );
-		payload.WriteInt( projected_event.projected_climate_future_change );
-		payload.WriteInt( projected_event.projected_climate_progress );
-		payload.WriteInt( projected_event.projected_dust_cloud_duration );
+	if ( !chunk.empty() ) {
+		chunks.push_back( std::move( chunk ) );
+	}
+	if ( chunks.empty() ) {
+		chunks.push_back({});
 	}
 
-	game_event_t update = {};
-	update.caller = 0;
-	update.id = "__map_projection_" + std::to_string( m_map_projection_event_id++ );
-	update.name = "__map_projection";
-	update.serialized_data = event::Event::SerializeMapProjectionUpdate(
-		update.id,
-		payload.ToString()
-	);
-	return DeliverSerializedGameEvent( cid, update, deferred );
+	for ( size_t chunk_index = 0 ; chunk_index < chunks.size() ; chunk_index++ ) {
+		const bool is_last = chunk_index + 1 == chunks.size();
+		types::Buffer payload;
+		payload.WriteString( after_event_id );
+		payload.WriteInt( chunks.at( chunk_index ).size() );
+		for ( const auto& [ key, snapshot ] : chunks.at( chunk_index ) ) {
+			payload.WriteInt( key );
+			payload.WriteString( snapshot );
+		}
+		payload.WriteBool( is_last && projected_event.projected_map_state_changed );
+		if ( is_last && projected_event.projected_map_state_changed ) {
+			payload.WriteInt( projected_event.projected_sea_level );
+			payload.WriteInt( projected_event.projected_climate_level );
+			payload.WriteInt( projected_event.projected_climate_future_change );
+			payload.WriteInt( projected_event.projected_climate_progress );
+			payload.WriteInt( projected_event.projected_dust_cloud_duration );
+		}
+
+		game_event_t update = {};
+		update.caller = 0;
+		update.id = "__map_projection_" + std::to_string( m_map_projection_event_id++ );
+		update.name = "__map_projection";
+		update.serialized_data = event::Event::SerializeMapProjectionUpdate(
+			update.id,
+			payload.ToString()
+		);
+		if ( !DeliverSerializedGameEvent( cid, update, deferred ) ) {
+			return false;
+		}
+	}
+	return true;
 }
 
 const std::map< size_t, std::string > Server::GetProjectedUnitsForSlot(
