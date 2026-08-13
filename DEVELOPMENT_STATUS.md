@@ -294,6 +294,12 @@ scenarios, for:
   intelligence reports for rival research, economy, bases, social model, and
   force composition, and relationship-, value-, affordability-, and
   distance-aware AI policies are also covered;
+- active nerve stapling with Police-rating legality, original repeated-attempt
+  success rules, ten-year stacking duration and annual decay, complete drone and
+  talent suppression, atrocity and U.N. Charter sanctions, former-owner
+  grievances, exact event rollback, player confirmation controls, instability-
+  and Charter-aware AI policy, backward-compatible saves, and reconnect
+  restoration;
 - land and sea colonization, terraforming, conventional and psi combat, and
   conquest, economic, diplomatic, and transcendence victory;
 - air-unit range and refueling, naval and air combat access, transports and
@@ -336,7 +342,6 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper diplomacy with richer bundled and counteroffers beyond the implemented
   energy, technology, commlink, world-map, loan, and surrender terms;
-- remaining probe-team parity: active nerve-stapling gameplay;
 - remaining territory presentation: rendered faction border overlays and
   treaty-aware foreign-border visibility;
 - post-release SMAC patch landmark parity for Borehole Cluster and Manifold
@@ -354,7 +359,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 140 cases: 109 isolated native/script GSE tests
+The Release CTest matrix contains 142 cases: 111 isolated native/script GSE tests
 and 31 asset-backed runtime scenarios. Script isolation keeps allocator
 lifetime bounded and reports the exact script that fails.
 
@@ -772,6 +777,16 @@ consumption, zero operation cost and effect, unchanged diplomacy, AI engagement,
 human-facing controls, stable notification data, and exact rollback. The
 installed-asset Probe scenario passed in 30.10 seconds while resolving a live
 resident battle before continuing through interrogation and unit subversion.
+
+After active nerve stapling was completed, the Windows x64 Release build and
+installed-asset startup succeeded. Focused action, AI, and psych coverage passed
+in 3.69 seconds. The 111-case isolated suite completed in 239.23 seconds with
+110 immediate passes; its only stale Base mock was corrected and passed in 1.23
+seconds. Running reconnect then passed in 54.56 seconds while directly verifying
+annual duration decay and attempt-count restoration across the live client and
+resumed game. The reconnect fixture initially expected its formerly inert
+duration to remain frozen; separating that assertion from the persistent attempt
+count exposed and corrected the obsolete expectation.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

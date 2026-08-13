@@ -184,7 +184,10 @@ const get_police_state = (game, base) => {
 };
 
 const is_rioting = (game, base) => {
-	if (get_project_effects(game, base).prevent_riots) {
+	if (
+		get_project_effects(game, base).prevent_riots ||
+		(base.has('nerve_stapling_turns') && base.get('nerve_stapling_turns') > 0)
+	) {
 		return false;
 	}
 	let talents = 0;
@@ -336,7 +339,10 @@ const process_psych = (game, base, allocated_psych) => {
 			psych += DOCTOR_PSYCH;
 		}
 	}
-	if (effects.suppress_psych) {
+	if (
+		effects.suppress_psych ||
+		(base.has('nerve_stapling_turns') && base.get('nerve_stapling_turns') > 0)
+	) {
 		for (pop of base.get_pops()) {
 			if (pop.has('worked_tile')) {
 				pop.set_type('WORKER');
@@ -1016,6 +1022,9 @@ return (game) => {
 			if (game.is_master()) {
 				globals.reserved_growth_tiles = {};
 				for (base of bm.get_bases()) {
+					if (game.get('f_nerve_stapling_get_turns')(base) > 0) {
+						game.event('process_nerve_stapling', {base: base});
+					}
 					const psych = game.get('f_economy_get_base_psych')(game, base);
 					game.event('process_base_growth', {
 						base: base,

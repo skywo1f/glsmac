@@ -14,6 +14,8 @@
 	const mind_control_total_stamp = 12;
 	const diplomatic_excuse_turn_stamp = 77;
 	const nerve_stapling_turns_stamp = 6;
+	const nerve_stapling_turns_after_processing = nerve_stapling_turns_stamp - 1;
+	const nerve_stapling_count_stamp = 3;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
@@ -405,10 +407,15 @@
 				base.get('probe_research_data_stolen') != true ||
 				base.get('probe_energy_reserves_drained') != true ||
 				base.get('probe_genetic_plague_introduced') != true ||
-				base.get('former_owner_id') != lender.id ||
-				base.get('nerve_stapling_turns') != nerve_stapling_turns_stamp
+				base.get('former_owner_id') != lender.id
 			) {
 				return 'Probe operation base state was not restored';
+			}
+			if (base.get('nerve_stapling_turns') != nerve_stapling_turns_after_processing) {
+				return 'nerve-stapling duration was not restored after initial turn decay';
+			}
+			if (base.get('nerve_stapling_count') != nerve_stapling_count_stamp) {
+				return 'nerve-stapling attempt count was not restored';
 			}
 			if (game.get_um().get_unit(former_snapshot_unit_id).home_base_id != base.id) {
 				return 'Former home base was not restored from the snapshot';

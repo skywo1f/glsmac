@@ -167,6 +167,7 @@ const make_base = (initial_size, initial_nutrients, center_nutrients) => {
 			}
 			pops = remaining;
 		},
+		has: (key) => { return key == 'accumulated_nutrients'; },
 		get: (key) => { return key == 'accumulated_nutrients' ? accumulated_nutrients : #undefined; },
 		set: (key, value) => {
 			if (key == 'accumulated_nutrients') {

@@ -59,7 +59,7 @@ return (glsmac) => {
 	};
 
 	const modules = [
-		'social_engineering', 'exploration', 'diplomacy', 'projects', 'unit_designs', 'unit_upgrades', 'orbitals', 'territory', 'random_events', 'bases', 'ecology', 'council', 'probes', 'headquarters_evacuation', 'conquest', 'transcendence', 'economic_victory',
+		'social_engineering', 'exploration', 'diplomacy', 'projects', 'unit_designs', 'unit_upgrades', 'orbitals', 'territory', 'random_events', 'nerve_stapling', 'bases', 'ecology', 'council', 'probes', 'headquarters_evacuation', 'conquest', 'transcendence', 'economic_victory',
 		'economy', 'native_ai', 'ai',
 	];
 	let m = {};

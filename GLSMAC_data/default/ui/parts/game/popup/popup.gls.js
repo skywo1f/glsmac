@@ -18,6 +18,7 @@ return {
 		'psi_gate',
 		'unit_upgrade',
 		'unit_workshop',
+		'nerve_stapling',
 		'base_screen',
 	],
 

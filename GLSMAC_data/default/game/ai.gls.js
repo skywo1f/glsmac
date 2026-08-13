@@ -18,6 +18,7 @@ const strategy = #include('ai/strategy');
 const terraforming = #include('ai/terraforming');
 const unity_pods = #include('ai/unity_pods');
 const movement_rules = #include('movement_rules');
+const nerve_stapling = #include('ai/nerve_stapling');
 const unit_abilities = #include('unit_abilities');
 const artifact_rules = #include('artifact_rules');
 const supply_rules = #include('supply_rules');
@@ -1769,6 +1770,7 @@ const play_turn = (game, player, done) => {
 	const turn_id = game.get_turn();
 	update_diplomacy(game, player);
 	update_social_engineering(game, player, bases, units);
+	nerve_stapling.manage(game, player, bases);
 	economic_victory.update(game, player);
 	queue_production(game, player, bases, units);
 

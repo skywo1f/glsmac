@@ -6,6 +6,7 @@ let psych_energy = 2;
 let police_rating = 0;
 let base_units = [];
 let supported_units = [];
+let base_values = {};
 const owner = {id: 1};
 values.f_economy_get_base_psych = (game, base) => { return psych_energy; };
 values.f_social_get_ratings = (player) => {
@@ -74,6 +75,10 @@ const base_tile = {
 };
 const base = {
 	id: 1,
+	has: (key) => { return #is_defined(base_values[key]); },
+	get: (key) => { return base_values[key]; },
+	set: (key, value) => { base_values[key] = value; },
+	unset: (key) => { base_values[key] = #undefined; },
 	get_owner: () => { return owner; },
 	get_tile: () => { return base_tile; },
 	get_pops: () => { return pops; },
@@ -322,3 +327,11 @@ values.f_base_process_psych(game, base, 10);
 state = values.f_base_get_psych(base);
 test.assert(state.police.pacifism_drones == 4);
 test.assert(state.talents == 2 && state.drones == 4 && state.workers == 0);
+
+base.set('nerve_stapling_turns', 5);
+values.f_base_process_psych(game, base, 10);
+state = values.f_base_get_psych(base);
+test.assert(state.talents == 0 && state.drones == 0 && state.workers == 6);
+test.assert(state.is_rioting == false);
+test.assert(values.f_base_get_pending_production(base) == 8);
+base.unset('nerve_stapling_turns');

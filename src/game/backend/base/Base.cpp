@@ -586,19 +586,22 @@ const types::Buffer Base::Serialize( const Base* base ) {
 	};
 	const auto former_owner_id = get_probe_int( "former_owner_id", -1 );
 	const auto nerve_stapling_turns = get_probe_int( "nerve_stapling_turns", 0 );
+	const auto nerve_stapling_count = get_probe_int( "nerve_stapling_count", 0 );
 	if (
 		former_owner_id < -1 ||
 		former_owner_id >= static_cast< int64_t >( Player::MAX_DIPLOMATIC_PLAYER_ID ) ||
-		nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS
+		nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS ||
+		nerve_stapling_count < 0 || nerve_stapling_count > Player::MAX_SANCTION_TURNS
 	) {
 		THROW( "invalid base Probe operation state" );
 	}
-	buf.WriteInt( 1 );
+	buf.WriteInt( 2 );
 	buf.WriteBool( get_probe_bool( "probe_research_data_stolen" ) );
 	buf.WriteBool( get_probe_bool( "probe_energy_reserves_drained" ) );
 	buf.WriteBool( get_probe_bool( "probe_genetic_plague_introduced" ) );
 	buf.WriteInt( former_owner_id );
 	buf.WriteInt( nerve_stapling_turns );
+	buf.WriteInt( nerve_stapling_count );
 	return buf;
 }
 
@@ -775,9 +778,10 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	bool probe_genetic_plague_introduced = false;
 	int64_t former_owner_id = -1;
 	int64_t nerve_stapling_turns = 0;
+	int64_t nerve_stapling_count = 0;
 	if ( buf.GetRemaining() > 0 ) {
 		const auto probe_state_version = buf.ReadInt();
-		if ( probe_state_version != 1 ) {
+		if ( probe_state_version != 1 && probe_state_version != 2 ) {
 			THROW( "unsupported serialized base Probe operation state version" );
 		}
 		probe_research_data_stolen = buf.ReadBool();
@@ -785,10 +789,14 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		probe_genetic_plague_introduced = buf.ReadBool();
 		former_owner_id = buf.ReadInt();
 		nerve_stapling_turns = buf.ReadInt();
+		if ( probe_state_version >= 2 ) {
+			nerve_stapling_count = buf.ReadInt();
+		}
 		if (
 			former_owner_id < -1 ||
 			former_owner_id >= static_cast< int64_t >( Player::MAX_DIPLOMATIC_PLAYER_ID ) ||
-			nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS
+			nerve_stapling_turns < 0 || nerve_stapling_turns > Player::MAX_SANCTION_TURNS ||
+			nerve_stapling_count < 0 || nerve_stapling_count > Player::MAX_SANCTION_TURNS
 		) {
 			THROW( "invalid serialized base Probe operation state" );
 		}
@@ -876,6 +884,12 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		base->CustomSet(
 			"nerve_stapling_turns",
 			VALUE( gse::value::Int, , nerve_stapling_turns )
+		);
+	}
+	if ( nerve_stapling_count > 0 ) {
+		base->CustomSet(
+			"nerve_stapling_count",
+			VALUE( gse::value::Int, , nerve_stapling_count )
 		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );

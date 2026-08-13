@@ -33,6 +33,8 @@ return (game) => {
 		'remove_base_pop',
 		'process_base_growth',
 		'refresh_base_psych',
+		'nerve_staple_base',
+		'process_nerve_stapling',
 		'set_base_production',
 		'queue_base_production',
 		'remove_base_production',
