@@ -264,6 +264,66 @@ select_faction.rollback(faction_event);
 test.assert(selected_factions[1] == 'HIVE');
 test.assert(faction_updates == 4);
 
+const select_difficulty = #include('../default/game/event/select_difficulty');
+let difficulty = 'Transcend';
+let difficulty_updates = 0;
+let difficulty_ready = false;
+let difficulty_player = {};
+difficulty_player = {
+	id: 1,
+	difficulty_level: difficulty,
+	is_ready: () => { return difficulty_ready; },
+	set_difficulty_level: (value) => {
+		difficulty = value;
+		difficulty_player.difficulty_level = value;
+	},
+};
+const difficulty_game = {
+	is_started: () => { return false; },
+	get_settings: () => {
+		return {
+			global: {
+				rules: {
+					difficulty_levels: [
+						'Citizen', 'Specialist', 'Talent',
+						'Librarian', 'Thinker', 'Transcend',
+					],
+				},
+			},
+		};
+	},
+	get_player: (id) => {
+		test.assert(id == difficulty_player.id);
+		return difficulty_player;
+	},
+	trigger: (name, data) => {
+		test.assert(name == 'player_update');
+		test.assert(data.player == difficulty_player);
+		difficulty_updates++;
+	},
+};
+const difficulty_event = {
+	caller: difficulty_player.id,
+	game: difficulty_game,
+	data: {difficulty: 'Librarian'},
+};
+
+test.assert(!#is_defined(select_difficulty.validate(difficulty_event)));
+difficulty_ready = true;
+test.assert(#is_defined(select_difficulty.validate(difficulty_event)));
+difficulty_ready = false;
+difficulty_event.data.difficulty = 'Impossible';
+test.assert(#is_defined(select_difficulty.validate(difficulty_event)));
+difficulty_event.data.difficulty = 0;
+test.assert(#is_defined(select_difficulty.validate(difficulty_event)));
+difficulty_event.data.difficulty = 'Librarian';
+difficulty_event.applied = select_difficulty.apply(difficulty_event);
+test.assert(difficulty_event.applied.difficulty == 'Transcend');
+test.assert(difficulty == 'Librarian');
+select_difficulty.rollback(difficulty_event);
+test.assert(difficulty == 'Transcend');
+test.assert(difficulty_updates == 2);
+
 const chat_message = #include('../default/game/event/chat_message');
 const chat_player = {id: 1};
 let delivered_chat = null;

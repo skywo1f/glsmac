@@ -11,6 +11,7 @@ return (game) => {
 		'retire_unit_design',
 		'game_settings',
 		'select_faction',
+		'select_difficulty',
 		'ready_or_not',
 		'reveal_map_tiles',
 		'spawn_unit',

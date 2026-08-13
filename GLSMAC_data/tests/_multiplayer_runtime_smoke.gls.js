@@ -5,6 +5,8 @@
 
 	let lobby_timer_started = false;
 	let map_size_requested = false;
+	let difficulty_requested = false;
+	let difficulty_retry_ticks = 0;
 	let ready_requested = false;
 	let ready_retry_ticks = 0;
 	let game_configured = false;
@@ -76,6 +78,21 @@
 			}
 
 			const me = game.get_player();
+			const expected_difficulty = game.is_master() ? 'Thinker' : 'Librarian';
+			if (me.difficulty_level != expected_difficulty) {
+				difficulty_retry_ticks++;
+				if (!difficulty_requested || difficulty_retry_ticks >= 10) {
+					difficulty_requested = true;
+					difficulty_retry_ticks = 0;
+					#print('MULTIPLAYER_SMOKE_DIFFICULTY_REQUESTED');
+					game.event('select_difficulty', {
+						difficulty: expected_difficulty,
+					});
+				}
+				return true;
+			}
+			difficulty_requested = false;
+			difficulty_retry_ticks = 0;
 			if (!me.is_ready()) {
 				ready_retry_ticks++;
 				if (!ready_requested || ready_retry_ticks >= 10) {
@@ -102,6 +119,7 @@
 		let handled_turns = {};
 		let client_conquest_ready = false;
 		let conquest_prepare_requested = false;
+		let turn_completion_retry_started = false;
 		let post_victory_mutations = 0;
 		let victory_poll_started = false;
 		#print('MULTIPLAYER_SMOKE_CONFIGURE_' + role);
@@ -160,6 +178,29 @@
 
 		const get_client_player_id = () => {
 			return game.is_master() ? 1 : game.get_player().id;
+		};
+
+		const request_turn_completion = () => {
+			if (turn_completion_retry_started) {
+				return;
+			}
+			turn_completion_retry_started = true;
+			let retry_ticks = 0;
+			#async(100, () => {
+				retry_ticks++;
+				if (game.is_turn_complete(game.get_player().id)) {
+					return false;
+				}
+				if (retry_ticks % 5 == 1) {
+					game.event('complete_turn', {});
+				}
+				if (retry_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': turn completion timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
 		};
 
 		game.on('player_update', (event) => {
@@ -423,7 +464,7 @@
 						}
 						client_base_founding_probe_complete = true;
 						#print('MULTIPLAYER_SMOKE_BASE_FOUNDING_PASS_CLIENT');
-						game.event('complete_turn', {});
+						request_turn_completion();
 						return false;
 					}
 				}
@@ -1112,7 +1153,7 @@
 				}
 				else if (returned && live_visibility_hidden) {
 					#print('MULTIPLAYER_SMOKE_LIVE_VISIBILITY_PASS_HOST');
-					game.event('complete_turn', {});
+					request_turn_completion();
 					return false;
 				}
 				if (wait_ticks >= 100) {
@@ -1698,6 +1739,14 @@
 				glsmac.exit();
 				return;
 			}
+			if (
+				game.get_player(0).difficulty_level != 'Thinker' ||
+				game.get_player(1).difficulty_level != 'Librarian'
+			) {
+				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': player difficulty state is invalid');
+				glsmac.exit();
+				return;
+			}
 			if (game.is_master() ? !game.get_um().has_unit(1) : game.get_um().has_unit(1)) {
 				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': hidden host unit snapshot visibility is invalid');
 				glsmac.exit();
@@ -1742,6 +1791,7 @@
 
 			if (turn_id == 1) {
 				#print('MULTIPLAYER_SMOKE_' + role + ': synchronized turn 1');
+				#print('MULTIPLAYER_SMOKE_DIFFICULTY_PASS_' + role);
 				if (game.get_um().get_unit_def('Former').required_technology != 'CentauriEcology') {
 					#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': Former technology prerequisite is missing');
 					glsmac.exit();

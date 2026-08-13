@@ -846,6 +846,22 @@ WRAPIMPL_BEGIN( Player )
 				VALUE( gse::value::String, , m_difficulty_level )
 			},
 			{
+				"set_difficulty_level",
+				NATIVE_CALL( this, game ) {
+
+					game->CheckRW( GSE_CALL );
+
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( difficulty_level, 0, String );
+					if ( game->IsStarted() ) {
+						GSE_ERROR( gse::EC.GAME_ERROR, "Can't change difficulty after game is started" );
+					}
+					SetDifficultyLevel( difficulty_level );
+
+					return VALUE( gse::value::Undefined );
+				} )
+			},
+			{
 				"energy_credits",
 				VALUE( gse::value::Int, , m_energy_credits )
 			},

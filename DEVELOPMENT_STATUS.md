@@ -1039,5 +1039,17 @@ refresh from authoritative player projections. This keeps those open views
 current when a specialized source event is withheld or redacted without adding
 network traffic. The focused UI listener-contract test passed in 1.20 seconds.
 
+Multiplayer participants can now select any of the six supported difficulty
+levels in their own lobby row instead of every row being an inert Transcend
+placeholder. The choice is server-validated, rollback-safe, propagated through
+the existing player projection and serialization paths, and locked while the
+participant is ready. The focused lobby event test passed in 1.21 seconds and
+the Windows x64 Release rebuild succeeded in 87.6 seconds. The registered
+host/client smoke selected Thinker for the host and Librarian for the client,
+verified both values after game start, and completed in 53.0 seconds. Its first
+run exposed a fixture race in which base founding requested turn completion
+before its animation ended; the smoke now retries that request within a bounded
+window and fails explicitly if completion never arrives.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

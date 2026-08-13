@@ -21,6 +21,10 @@ return (i) => {
 				color: faction.text_color,
 			}];
 		}
+		let difficulty_choices = [];
+		for (difficulty of game.get_settings().global.rules.difficulty_levels) {
+			difficulty_choices :+[difficulty, difficulty];
+		}
 
 		let rows = {};
 		const buttons = {
@@ -71,6 +75,19 @@ return (i) => {
 					});
 					return true;
 				});
+				const difficulty_select = row_el.select({
+					class: 'lobby-player-difficulty',
+					items: difficulty_choices,
+					value: player.difficulty_level,
+					readonly: !is_me,
+					color: faction_color,
+				});
+				difficulty_select.on('select', (e) => {
+					game.event('select_difficulty', {
+						difficulty: e.value,
+					});
+					return true;
+				});
 
 				let row = {
 					row: row_el,
@@ -81,15 +98,7 @@ return (i) => {
 						color: faction_color,
 					}),
 					faction: faction_select,
-					difficulty: row_el.select({
-						class: 'lobby-player-difficulty',
-						items: [
-							['transcend', 'Transcend'],
-						],
-						value: 'transcend', // TODO
-						readonly: !is_me,
-						color: faction_color,
-					}),
+					difficulty: difficulty_select,
 				};
 
 				rows[id] = row;
@@ -110,6 +119,7 @@ return (i) => {
 
 				const color = #is_defined(faction) ? faction.text_color : 'white';
 				row.faction.value = #is_defined(faction) ? faction.id : 'RANDOM';
+				row.difficulty.value = player.difficulty_level;
 				row.name.color = color;
 				row.faction.color = color;
 				row.difficulty.color = color;
