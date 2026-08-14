@@ -42,7 +42,10 @@ return (game) => {
 		};
 
 		const maybe_call_ai = () => {
-			if (!game.is_master() || game.is_game_over() || rules.has_active_session(game)) {
+			if (
+				!game.is_master() || game.is_game_over() || rules.has_active_session(game) ||
+				!rules.can_automatically_convene(game)
+			) {
 				return;
 			}
 			const governor = rules.get_governor(game);

@@ -8,6 +8,7 @@
 	let ui_started = false;
 	let exit_scheduled = false;
 	let initial_council_verified = false;
+	let post_turn_check_scheduled = false;
 
 	const fail = (message) => {
 		if (exit_scheduled) {
@@ -186,15 +187,24 @@
 		});
 
 		game.on('turn', (event) => {
-			if (!ui_started || exit_scheduled || event.year - 2100 < 2) {
+			if (
+				!ui_started || exit_scheduled || post_turn_check_scheduled ||
+				event.year - 2100 < 2
+			) {
 				return;
 			}
-			if (!initial_council_verified || !verify_no_early_council('first completed turn')) {
-				return;
-			}
-			exit_scheduled = true;
-			#print('SMALL_MAP_STARTUP_RUNTIME_PASS');
-			#async(500, () => { glsmac.exit(); });
+			post_turn_check_scheduled = true;
+			#async(1000, () => {
+				if (
+					exit_scheduled || !initial_council_verified ||
+					!verify_no_early_council('first completed turn')
+				) {
+					return;
+				}
+				exit_scheduled = true;
+				#print('SMALL_MAP_STARTUP_RUNTIME_PASS');
+				glsmac.exit();
+			});
 		});
 	});
 

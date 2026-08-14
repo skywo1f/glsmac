@@ -6,7 +6,9 @@
 	let started = false;
 	let finished = false;
 	let ui_started = false;
+	let ui_state = null;
 	let vote_requested = false;
+	let vote_click_pending = false;
 	let observed_session = null;
 	let observed_accession = false;
 	let contact_requests_sent = false;
@@ -22,7 +24,7 @@
 	const finish_if_ready = () => {
 		if (finished && ui_started) {
 			#print(
-				'PLANETARY_COUNCIL_RUNTIME_PASS: installed assets, native Council state, AI ballot, Supreme Leader accession, and diplomatic victory verified'
+				'PLANETARY_COUNCIL_RUNTIME_PASS: installed assets, live Council popup vote, native Council state, AI ballot, Supreme Leader accession, and diplomatic victory verified'
 			);
 			#async(250, () => { glsmac.exit(); });
 		}
@@ -30,6 +32,7 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.set('f_ui_ready', (state) => { ui_state = state; });
 
 		game.on('council_updated', (event) => {
 			if (finished) { return; }
@@ -37,7 +40,7 @@
 			if (#is_defined(get_supreme) && get_supreme() != null) {
 				observed_accession = true;
 			}
-			if (vote_requested) { return; }
+			if (vote_requested || vote_click_pending) { return; }
 			const get_session = game.get('f_council_get_session');
 			if (!#is_defined(get_session)) { return; }
 			const session = get_session();
@@ -62,8 +65,33 @@
 				return;
 			}
 			observed_session = #clone(state);
-			vote_requested = true;
-			game.event('cast_council_vote', {player: player, vote_id: player.id});
+			vote_click_pending = true;
+			let ui_ticks = 0;
+			#async(50, () => {
+				ui_ticks++;
+				if (finished) { return false; }
+				if (
+					ui_state == null || ui_state.modules.popup.popup == null ||
+					ui_state.modules.popup.popup.id != 'planetary_council'
+				) {
+					if (ui_ticks >= 200) {
+						fail('live Planetary Council popup did not open for the pending vote');
+						return false;
+					}
+					return true;
+				}
+				const council_popup = ui_state.modules.popup.popup_defs.planetary_council;
+				const vote_button = session.candidate_a_id == player.id
+					? council_popup.vote_first_button
+					: council_popup.vote_second_button;
+				if (vote_button == null || vote_button.text == '') {
+					fail('live Planetary Council vote button was not initialized');
+					return false;
+				}
+				vote_requested = true;
+				vote_button.trigger('click');
+				return false;
+			});
 		});
 
 		game.on('start_ui', (e) => {

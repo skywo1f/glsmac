@@ -142,6 +142,10 @@ let values = {};
 let master = true;
 let climate_state = {level: 0, future_change: 0, progress: 0};
 
+test.assert(!rules.can_automatically_convene({get_turn: () => { return 1; }}));
+test.assert(!rules.can_automatically_convene({get_turn: () => { return 19; }}));
+test.assert(rules.can_automatically_convene({get_turn: () => { return 20; }}));
+
 let game = null;
 game = {
 	get_bm: () => { return game.bm; },

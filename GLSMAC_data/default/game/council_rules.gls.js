@@ -445,6 +445,10 @@ const has_all_commlinks = (game, player) => {
 	return true;
 };
 
+const can_automatically_convene = (game) => {
+	return game.get_turn() >= MINIMUM_SESSION_INTERVAL;
+};
+
 const validate_call = (game, player, proposal) => {
 	if (game.is_game_over()) {
 		return 'Game already has a winner';
@@ -747,6 +751,7 @@ return {
 	get_session: get_session,
 	get_last_session_turn: get_last_session_turn,
 	has_all_commlinks: has_all_commlinks,
+	can_automatically_convene: can_automatically_convene,
 	validate_call: validate_call,
 	get_available_policy_proposals: get_available_policy_proposals,
 	validate_vote: validate_vote,
