@@ -74,9 +74,9 @@ const get_required_garrison = (tm, base, player_id, units, game) => {
 	for (unit of units) {
 		if (
 			unit.owner != player_id &&
-			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit)) &&
+			tm.get_distance(tile, unit.get_tile()) <= THREAT_DISTANCE &&
 			can_threaten_tile(unit, tile) &&
-			tm.get_distance(tile, unit.get_tile()) <= THREAT_DISTANCE
+			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit))
 		) {
 			result++;
 			if (result >= MAX_GARRISON) {
@@ -255,9 +255,9 @@ const get_assault_score = (tm, attacker, base, player_id, units, game) => {
 			defense += combat_rules.get_attack_powers(attacker, unit, game).defence;
 		} else if (
 			unit.owner == player_id &&
-			can_threaten_tile(unit, base_tile) &&
 			unit.health >= RETREAT_HEALTH &&
-			tm.get_distance(unit.get_tile(), base_tile) <= ASSAULT_SUPPORT_DISTANCE
+			tm.get_distance(unit.get_tile(), base_tile) <= ASSAULT_SUPPORT_DISTANCE &&
+			can_threaten_tile(unit, base_tile)
 		) {
 			support += #to_float(def.offense) * combat_rules.get_morale_multiplier(unit) * unit.health;
 		}

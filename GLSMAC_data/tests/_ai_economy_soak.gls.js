@@ -309,7 +309,16 @@
 				' colony_ms=' + #to_string(sample.colony_ms) +
 				' former_ms=' + #to_string(sample.former_ms) +
 				' combat_ms=' + #to_string(sample.combat_ms) +
+				' combat_prepare_ms=' + #to_string(sample.combat_prepare_ms) +
+				' combat_locked_ms=' + #to_string(sample.combat_locked_ms) +
+				' combat_air_ms=' + #to_string(sample.combat_air_ms) +
+				' combat_repair_ms=' + #to_string(sample.combat_repair_ms) +
+				' combat_probe_ms=' + #to_string(sample.combat_probe_ms) +
+				' combat_garrison_ms=' + #to_string(sample.combat_garrison_ms) +
+				' combat_attack_ms=' + #to_string(sample.combat_attack_ms) +
 				' combat_pod_ms=' + #to_string(sample.combat_pod_ms) +
+				' combat_reinforcement_ms=' + #to_string(sample.combat_reinforcement_ms) +
+				' combat_assault_ms=' + #to_string(sample.combat_assault_ms) +
 				' known_pods=' + #to_string(sample.combat_known_pod_max) +
 				' reason=' + sample.reason
 			);

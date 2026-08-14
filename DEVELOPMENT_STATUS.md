@@ -1318,5 +1318,16 @@ remains unchanged. Overall combat planning still averaged about 205 ms and
 peaked at 1,137 ms, so the next performance pass must profile reinforcement,
 assault scoring, and unreachable-base routing rather than further pod work.
 
+Combat subphase profiling then identified concealment detection in garrison
+threat scans as the dominant repeated cost. Checking ownership and distance
+before threat capability and visibility preserves the same result while
+avoiding expensive detection for distant units. In the identical 30-turn soak,
+garrison work fell from 87.0 ms average and 306 ms maximum to 2.5 ms and 9 ms;
+reinforcement planning, which uses the same requirement calculation, fell from
+19.3/173 ms to 1.0/7 ms. Total combat planning fell from 180.0 ms average to
+67.4 ms, and average complete AI samples fell from 975.2 ms to 654.8 ms. The
+campaign passed in 338.98 seconds. Assault planning still produced a 938 ms
+worst-case spike and is the next measured target.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

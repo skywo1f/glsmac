@@ -1873,11 +1873,22 @@ const move_combat = (
 	known_unity_pods,
 	combat_profile
 ) => {
+	let combat_phase_started = combat_profile == null ? 0 : #monotonic_ms();
+	const finish_combat_phase = (phase) => {
+		if (combat_profile == null) {
+			return;
+		}
+		const now = #monotonic_ms();
+		combat_profile[phase] = combat_profile[phase] + now - combat_phase_started;
+		combat_phase_started = now;
+	};
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
+		finish_combat_phase('locked_ms');
 		return 0;
 	}
 	const air_refuel_delay = move_air_to_refuel(game, player, unit, strategic_bases);
+	finish_combat_phase('air_ms');
 	if (air_refuel_delay >= 0) {
 		return air_refuel_delay;
 	}
@@ -1885,9 +1896,11 @@ const move_combat = (
 	if (repair_base != null) {
 		const destination = repair_base.get_tile();
 		if (tile == destination) {
+			finish_combat_phase('repair_ms');
 			return 0;
 		}
 		if (psi_gates.try_teleport(game, player, unit, destination, all_bases)) {
+			finish_combat_phase('repair_ms');
 			return 100;
 		}
 		const current_distance = game.get_tm().get_distance(tile, destination);
@@ -1911,12 +1924,16 @@ const move_combat = (
 		}
 		if (repair_step != null && can_enter(unit, repair_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: repair_step});
+			finish_combat_phase('repair_ms');
 			return 100;
 		}
 	}
+	finish_combat_phase('repair_ms');
 	if (interrogate_adjacent_probe(game, player, unit)) {
+		finish_combat_phase('probe_ms');
 		return 100;
 	}
+	finish_combat_phase('probe_ms');
 	const current_base = tile.get_base();
 	if (current_base != null && current_base.get_owner().id == player.id) {
 		const defenders = combat.get_garrison_count(current_base, player.id);
@@ -1928,10 +1945,13 @@ const move_combat = (
 			game
 		);
 		if (defenders <= required_garrison) {
+			finish_combat_phase('garrison_ms');
 			return 0;
 		}
 	}
+	finish_combat_phase('garrison_ms');
 	if (attack_enemy_in_tiles(game, player, unit, tile.get_surrounding_tiles(), strategic_units)) {
+		finish_combat_phase('attack_ms');
 		return 1000;
 	}
 	if (unit.get_def().id == 'SporeLauncher') {
@@ -1944,19 +1964,18 @@ const move_combat = (
 			}
 		}
 		if (attack_enemy_in_tiles(game, player, unit, ranged_tiles, strategic_units)) {
+			finish_combat_phase('attack_ms');
 			return 1000;
 		}
 	}
-	const pod_started = combat_profile == null ? 0 : #monotonic_ms();
+	finish_combat_phase('attack_ms');
 	const pod_destination = unity_pods.choose_destination(
 		game,
 		unit,
 		(source, candidate) => { return can_enter(unit, candidate, source); },
 		known_unity_pods
 	);
-	if (combat_profile != null) {
-		combat_profile.pod_ms = combat_profile.pod_ms + #monotonic_ms() - pod_started;
-	}
+	finish_combat_phase('pod_ms');
 	if (
 		pod_destination != null && pod_destination.step != null &&
 		can_enter(unit, pod_destination.step)
@@ -2014,9 +2033,11 @@ const move_combat = (
 	if (reinforcement_base != null) {
 		const destination = reinforcement_base.get_tile();
 		if (airdrops.try_drop(game, player, unit, destination)) {
+			finish_combat_phase('reinforcement_ms');
 			return 100;
 		}
 		if (psi_gates.try_teleport(game, player, unit, destination, all_bases)) {
+			finish_combat_phase('reinforcement_ms');
 			return 100;
 		}
 		const current_distance = game.get_tm().get_distance(tile, destination);
@@ -2040,10 +2061,12 @@ const move_combat = (
 		}
 		if (reinforcement_step != null && can_enter(unit, reinforcement_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: reinforcement_step});
+			finish_combat_phase('reinforcement_ms');
 			return 100;
 		}
 		reinforcement_assignments[unit_key] = #undefined;
 	}
+	finish_combat_phase('reinforcement_ms');
 	const enemy_base = combat.choose_assault_target(
 		game.get_tm(),
 		unit,
@@ -2059,12 +2082,14 @@ const move_combat = (
 		enemy_base != null &&
 		airdrops.try_drop(game, player, unit, enemy_base.get_tile())
 	) {
+		finish_combat_phase('assault_ms');
 		return 100;
 	}
 	if (
 		enemy_base != null &&
 		psi_gates.try_teleport(game, player, unit, enemy_base.get_tile(), all_bases)
 	) {
+		finish_combat_phase('assault_ms');
 		return 100;
 	}
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {
@@ -2090,13 +2115,16 @@ const move_combat = (
 		);
 		if (path_step != null && can_enter(unit, path_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
+			finish_combat_phase('assault_ms');
 			return 100;
 		}
 	}
 	if (target != null && can_enter(unit, target)) {
 		game.event_as(player.id, 'move_unit', {unit: unit, tile: target});
+		finish_combat_phase('assault_ms');
 		return 100;
 	}
+	finish_combat_phase('assault_ms');
 	return 0;
 };
 
@@ -2150,7 +2178,19 @@ const play_turn = (game, player, done) => {
 	let probe_ms = 0;
 	let former_ms = 0;
 	let combat_ms = 0;
-	let combat_profile = is_profiling ? {pod_ms: 0, known_pod_max: 0} : null;
+	let combat_profile = is_profiling ? {
+		prepare_ms: 0,
+		locked_ms: 0,
+		air_ms: 0,
+		repair_ms: 0,
+		probe_ms: 0,
+		garrison_ms: 0,
+		attack_ms: 0,
+		pod_ms: 0,
+		reinforcement_ms: 0,
+		assault_ms: 0,
+		known_pod_max: 0,
+	} : null;
 	let completion_check_ms = 0;
 	let action_phase_started = 0;
 	const finish_action_phase = (phase) => {
@@ -2206,7 +2246,16 @@ const play_turn = (game, player, done) => {
 			probe_ms: probe_ms,
 			former_ms: former_ms,
 			combat_ms: combat_ms,
+			combat_prepare_ms: combat_profile == null ? 0 : combat_profile.prepare_ms,
+			combat_locked_ms: combat_profile == null ? 0 : combat_profile.locked_ms,
+			combat_air_ms: combat_profile == null ? 0 : combat_profile.air_ms,
+			combat_repair_ms: combat_profile == null ? 0 : combat_profile.repair_ms,
+			combat_probe_ms: combat_profile == null ? 0 : combat_profile.probe_ms,
+			combat_garrison_ms: combat_profile == null ? 0 : combat_profile.garrison_ms,
+			combat_attack_ms: combat_profile == null ? 0 : combat_profile.attack_ms,
 			combat_pod_ms: combat_profile == null ? 0 : combat_profile.pod_ms,
+			combat_reinforcement_ms: combat_profile == null ? 0 : combat_profile.reinforcement_ms,
+			combat_assault_ms: combat_profile == null ? 0 : combat_profile.assault_ms,
 			combat_known_pod_max: combat_profile == null ? 0 : combat_profile.known_pod_max,
 			completion_check_ms: completion_check_ms,
 			completion_requests: completion_requests,
@@ -2379,9 +2428,14 @@ const play_turn = (game, player, done) => {
 		}
 		finish_action_phase('formers');
 		if (!action_started && !waiting_for_action) {
+			const combat_prepare_started = combat_profile == null ? 0 : #monotonic_ms();
 			const strategic_bases = filter_hostile_bases(game, player, all_bases);
 			const strategic_units = filter_hostile_units(game, player, all_units);
 			const known_unity_pods = unity_pods.get_known_pods(player);
+			if (combat_profile != null) {
+				combat_profile.prepare_ms = combat_profile.prepare_ms +
+					#monotonic_ms() - combat_prepare_started;
+			}
 			if (
 				combat_profile != null && known_unity_pods != null &&
 				#sizeof(known_unity_pods) > combat_profile.known_pod_max
