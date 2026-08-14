@@ -19,25 +19,29 @@ const has_facility = (facilities, id) => {
 };
 
 const calculate = (context) => {
-	let terraforming_raw = 0;
-	for (tile of context.tiles) {
-		const multiplier = tile.worked ? 2 : 1;
-		for (id of ECOLOGICAL_IMPROVEMENTS) {
-			if (tile.terraforming[id]) {
-				terraforming_raw += multiplier;
+	let terraforming_raw = #is_defined(context.terraforming_raw)
+		? context.terraforming_raw
+		: 0;
+	if (!#is_defined(context.terraforming_raw)) {
+		for (tile of context.tiles) {
+			const multiplier = tile.worked ? 2 : 1;
+			for (id of ECOLOGICAL_IMPROVEMENTS) {
+				if (tile.terraforming[id]) {
+					terraforming_raw += multiplier;
+				}
 			}
-		}
-		if (tile.terraforming.borehole) {
-			terraforming_raw += 8;
-		}
-		if (tile.terraforming.mirror) {
-			terraforming_raw += 6;
-		}
-		if (tile.terraforming.condenser) {
-			terraforming_raw += 4;
-		}
-		if (tile.terraforming.forest) {
-			terraforming_raw--;
+			if (tile.terraforming.borehole) {
+				terraforming_raw += 8;
+			}
+			if (tile.terraforming.mirror) {
+				terraforming_raw += 6;
+			}
+			if (tile.terraforming.condenser) {
+				terraforming_raw += 4;
+			}
+			if (tile.terraforming.forest) {
+				terraforming_raw--;
+			}
 		}
 	}
 
@@ -120,12 +124,26 @@ const get_effective_facilities = (game, base) => {
 
 const get_base_damage = (game, base) => {
 	const owner = base.get_owner();
-	let tiles = [];
+	let base_terraforming_raw = 0;
 	for (tile of base.get_workable_tiles()) {
-		tiles :+{
-			terraforming: tile.terraforming,
-			worked: base.is_tile_worked(tile),
-		};
+		const base_tile_multiplier = base.is_tile_worked(tile) ? 2 : 1;
+		for (improvement_id of ECOLOGICAL_IMPROVEMENTS) {
+			if (tile.terraforming[improvement_id]) {
+				base_terraforming_raw += base_tile_multiplier;
+			}
+		}
+		if (tile.terraforming.borehole) {
+			base_terraforming_raw += 8;
+		}
+		if (tile.terraforming.mirror) {
+			base_terraforming_raw += 6;
+		}
+		if (tile.terraforming.condenser) {
+			base_terraforming_raw += 4;
+		}
+		if (tile.terraforming.forest) {
+			base_terraforming_raw--;
+		}
 	}
 	let facility_ids = {};
 	for (facility of get_effective_facilities(game, base)) {
@@ -142,7 +160,7 @@ const get_base_damage = (game, base) => {
 		? owner.difficulty_level
 		: settings.difficulty_level;
 	return calculate({
-		tiles: tiles,
+		terraforming_raw: base_terraforming_raw,
 		facilities: facility_ids,
 		ecology_divisor_bonus: #is_defined(project_effects.ecology_divisor_bonus)
 			? project_effects.ecology_divisor_bonus
@@ -407,9 +425,12 @@ return (game) => {
 			if (!game.is_master()) {
 				return;
 			}
+			const turn_profile = game.get('f_turn_profile');
+			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			if (sea_level_change != 0) {
 				game.event('change_sea_level', {amount: sea_level_change});
 			}
+			const ecology_damage_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			let reserved_tiles = {};
 			for (base of game.get_bm().get_bases()) {
 				const damage = get_base_damage(game, base);
@@ -429,11 +450,25 @@ return (game) => {
 					}
 				}
 			}
+			if (#typeof(turn_profile) == 'Callable') {
+				turn_profile({
+					phase: 'ecology_damage',
+					elapsed_ms: #monotonic_ms() - ecology_damage_started,
+				});
+			}
+			const ecology_volcano_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			if (can_create_volcano(game)) {
 				const volcano_tile = select_volcano_tile(game);
 				if (volcano_tile != null) {
 					game.event('create_volcano', {tile: volcano_tile});
 				}
+			}
+			if (#typeof(turn_profile) == 'Callable') {
+				turn_profile({
+					phase: 'ecology_volcano',
+					elapsed_ms: #monotonic_ms() - ecology_volcano_started,
+				});
+				turn_profile({phase: 'ecology', elapsed_ms: #monotonic_ms() - turn_profile_started});
 			}
 		});
 	});

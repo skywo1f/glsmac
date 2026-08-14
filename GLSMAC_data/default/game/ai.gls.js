@@ -1,4 +1,5 @@
 const MOVEMENT_ACTION_DELAY = 200;
+const TURN_COMPLETION_POLL_DELAY = 200;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
 const airdrops = #include('ai/airdrops');
@@ -1989,8 +1990,40 @@ const play_turn = (game, player, done) => {
 	let actions_started = 0;
 	let action_wait_checks = 0;
 	let animation_wait_checks = 0;
+	let completion_requested = false;
 	let completion_requested_at = 0;
 	let profile_finished = false;
+	let action_state_ms = 0;
+	let orbital_ms = 0;
+	let upgrade_ms = 0;
+	let artifact_ms = 0;
+	let supply_ms = 0;
+	let colony_ms = 0;
+	let probe_ms = 0;
+	let former_ms = 0;
+	let combat_ms = 0;
+	let completion_check_ms = 0;
+	let action_phase_started = 0;
+	const finish_action_phase = (phase) => {
+		if (!is_profiling) {
+			return;
+		}
+		const action_phase_now = #monotonic_ms();
+		const action_phase_elapsed = action_phase_now - action_phase_started;
+		switch (phase) {
+			case 'state': { action_state_ms += action_phase_elapsed; break; }
+			case 'orbitals': { orbital_ms += action_phase_elapsed; break; }
+			case 'upgrades': { upgrade_ms += action_phase_elapsed; break; }
+			case 'artifacts': { artifact_ms += action_phase_elapsed; break; }
+			case 'supply': { supply_ms += action_phase_elapsed; break; }
+			case 'colonies': { colony_ms += action_phase_elapsed; break; }
+			case 'probes': { probe_ms += action_phase_elapsed; break; }
+			case 'formers': { former_ms += action_phase_elapsed; break; }
+			case 'combat': { combat_ms += action_phase_elapsed; break; }
+			case 'completion': { completion_check_ms += action_phase_elapsed; break; }
+		}
+		action_phase_started = action_phase_now;
+	};
 	const finish_profile = (reason) => {
 		if (!is_profiling || profile_finished) {
 			return;
@@ -2014,18 +2047,33 @@ const play_turn = (game, player, done) => {
 			actions_started: actions_started,
 			action_wait_checks: action_wait_checks,
 			animation_wait_checks: animation_wait_checks,
+			action_state_ms: action_state_ms,
+			orbital_ms: orbital_ms,
+			upgrade_ms: upgrade_ms,
+			artifact_ms: artifact_ms,
+			supply_ms: supply_ms,
+			colony_ms: colony_ms,
+			probe_ms: probe_ms,
+			former_ms: former_ms,
+			combat_ms: combat_ms,
+			completion_check_ms: completion_check_ms,
 			completion_ack_ms: completion_requested_at == 0
 				? 0
 				: #monotonic_ms() - completion_requested_at,
 		});
 	};
 	const play_next_action = () => {
+		action_phase_started = is_profiling ? #monotonic_ms() : 0;
 		if (
 			!game.is_master() || game.is_game_over() || game.get_turn() != turn_id ||
 			game.is_turn_complete(player.id)
 		) {
 			finish_profile(game.is_turn_complete(player.id) ? 'complete' : 'aborted');
 			done();
+			return;
+		}
+		if (completion_requested) {
+			#async(TURN_COMPLETION_POLL_DELAY, play_next_action);
 			return;
 		}
 		const all_units = game.get_um().get_units();
@@ -2041,6 +2089,7 @@ const play_turn = (game, player, done) => {
 				break;
 			}
 		}
+		finish_action_phase('state');
 		if (!waiting_for_action && !waiting_for_animation) {
 			const orbital_target = orbitals.choose_target(game, player);
 			if (orbital_target != null) {
@@ -2052,6 +2101,7 @@ const play_turn = (game, player, done) => {
 				action_delay = 100;
 			}
 		}
+		finish_action_phase('orbitals');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			const choose_upgrade = game.get('f_unit_upgrade_choose_ai_target');
 			if (#is_defined(choose_upgrade)) {
@@ -2073,6 +2123,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('upgrades');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2087,6 +2138,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('artifacts');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2101,6 +2153,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('supply');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2116,6 +2169,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('colonies');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2130,6 +2184,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('probes');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2145,6 +2200,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('formers');
 		if (!action_started && !waiting_for_action && !waiting_for_animation) {
 			for (unit of current_units) {
 				if (!action_state.can_attempt_action(unit, action_attempts)) {
@@ -2170,6 +2226,7 @@ const play_turn = (game, player, done) => {
 				}
 			}
 		}
+		finish_action_phase('combat');
 		steps++;
 		if (action_started && steps < 1000) {
 			actions_started++;
@@ -2184,7 +2241,9 @@ const play_turn = (game, player, done) => {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
-		if (turn_rules.has_pending_owned_animation(game, player.id)) {
+		const has_pending_animation = turn_rules.has_pending_owned_animation(game, player.id);
+		finish_action_phase('completion');
+		if (has_pending_animation) {
 			completion_ready_checks = 0;
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
@@ -2195,11 +2254,12 @@ const play_turn = (game, player, done) => {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
+		completion_requested = true;
 		completion_requested_at = is_profiling ? #monotonic_ms() : 0;
 		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
-		#async(MOVEMENT_ACTION_DELAY, play_next_action);
+		#async(TURN_COMPLETION_POLL_DELAY, play_next_action);
 	};
-	#async(100, play_next_action);
+	#async(0, play_next_action);
 };
 
 return (game) => {

@@ -207,6 +207,13 @@ return (game) => {
 			}
 		});
 		scan_entities(game);
-		game.on('turn', (e) => { scan_entities(game); });
+		game.on('turn', (e) => {
+			const turn_profile = game.get('f_turn_profile');
+			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
+			scan_entities(game);
+			if (#typeof(turn_profile) == 'Callable') {
+				turn_profile({phase: 'exploration', elapsed_ms: #monotonic_ms() - turn_profile_started});
+			}
+		});
 	});
 };

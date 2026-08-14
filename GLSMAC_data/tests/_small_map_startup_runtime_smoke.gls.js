@@ -56,6 +56,7 @@
 		game.set('f_ai_profile', (sample) => {
 			#print(
 				'AI_PROFILE: faction=' + sample.faction_id +
+				' since_start_ms=' + #to_string(#monotonic_ms() - runtime_started) +
 				' total_ms=' + #to_string(sample.total_ms) +
 				' setup_ms=' + #to_string(sample.setup_ms) +
 				' ownership_ms=' + #to_string(sample.ownership_ms) +
@@ -70,6 +71,16 @@
 				' actions=' + #to_string(sample.actions_started) +
 				' action_waits=' + #to_string(sample.action_wait_checks) +
 				' animation_waits=' + #to_string(sample.animation_wait_checks) +
+				' action_state_ms=' + #to_string(sample.action_state_ms) +
+				' orbital_ms=' + #to_string(sample.orbital_ms) +
+				' upgrade_ms=' + #to_string(sample.upgrade_ms) +
+				' artifact_ms=' + #to_string(sample.artifact_ms) +
+				' supply_ms=' + #to_string(sample.supply_ms) +
+				' colony_ms=' + #to_string(sample.colony_ms) +
+				' probe_ms=' + #to_string(sample.probe_ms) +
+				' former_ms=' + #to_string(sample.former_ms) +
+				' combat_ms=' + #to_string(sample.combat_ms) +
+				' completion_check_ms=' + #to_string(sample.completion_check_ms) +
 				' completion_ack_ms=' + #to_string(sample.completion_ack_ms) +
 				' reason=' + sample.reason
 			);
@@ -81,12 +92,26 @@
 				' total_ms=' + #to_string(sample.total_ms)
 			);
 		});
+		game.set('f_turn_profile', (sample) => {
+			#print(
+				'TURN_PROFILE: phase=' + sample.phase +
+				' elapsed_ms=' + #to_string(sample.elapsed_ms)
+			);
+		});
 
 		game.on('start_ui', (event) => {
 			if (exit_scheduled) {
 				return;
 			}
 			ui_started = true;
+			#async(0, () => {
+				game.on('turn', (turn_event) => {
+					#print(
+						'TURN_CALLBACKS_COMPLETE: year=' + #to_string(turn_event.year) +
+						' since_start_ms=' + #to_string(#monotonic_ms() - runtime_started)
+					);
+				});
+			});
 			const player = game.get_player();
 			if (player.get_faction().id != 'GAIANS') {
 				fail('requested Gaians faction was not assigned');

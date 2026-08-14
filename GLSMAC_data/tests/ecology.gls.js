@@ -64,6 +64,14 @@ test.assert(result.mineral_damage == 5);
 test.assert(result.value == 5);
 test.assert(result.percent == 6);
 
+const precomputed_context = #clone(context);
+precomputed_context.terraforming_raw = result.terraforming_raw;
+precomputed_context.tiles = [];
+const precomputed_result = values.f_ecology_calculate(precomputed_context);
+for (precomputed_key in result) {
+	test.assert(precomputed_result[precomputed_key] == result[precomputed_key]);
+}
+
 context.perihelion = true;
 result = values.f_ecology_calculate(context);
 test.assert(result.value == 10);

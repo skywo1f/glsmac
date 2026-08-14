@@ -826,6 +826,8 @@ return (game) => {
 			if (!game.is_master()) {
 				return;
 			}
+			const turn_profile = game.get('f_turn_profile');
+			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			scan_contacts(game);
 			if (#is_defined(e.initial) && e.initial) {
 				return;
@@ -842,6 +844,9 @@ return (game) => {
 						});
 					}
 				}
+			}
+			if (#typeof(turn_profile) == 'Callable') {
+				turn_profile({phase: 'diplomacy', elapsed_ms: #monotonic_ms() - turn_profile_started});
 			}
 		});
 	});

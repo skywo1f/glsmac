@@ -1112,5 +1112,17 @@ about 555 ms because hidden Support and Psych tabs are populated on demand.
 Focused catalog, cell-cache, navigation, and resource tests passed along with
 the strengthened frontend runtime check.
 
+Turn profiling showed that an idle AI faction spends only about 22-40 ms in
+unit decision scans; most of its remaining variable latency is event delivery
+and turn-completion acknowledgement. AI turn completion is now requested only
+once while awaiting authoritative acknowledgement, and the first action scan
+no longer adds a fixed 100 ms startup delay. Base psych processing computes
+only the values required for drone and talent handling and shares a per-turn
+headquarters index, while ecology damage accumulates terraforming effects in a
+single pass without temporary tile records. In the deterministic seven-faction
+scenario, base psych fell from about 267 ms to 162-182 ms and ecology damage
+from about 246 ms to 193-204 ms. Nine focused script and installed-asset runtime
+tests passed in 35.6 seconds; the full startup scenario passed in 17.9 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

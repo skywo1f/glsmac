@@ -1092,19 +1092,58 @@ return (game) => {
 		// new turn, process all bases
 		game.on('turn', (e) => {
 			if (game.is_master() && (!#is_defined(e.initial) || !e.initial)) {
+				const turn_profile = game.get('f_turn_profile');
+				const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
+				let turn_psych_ms = 0;
+				let turn_growth_ms = 0;
+				let turn_production_ms = 0;
+				let turn_headquarters_by_owner = {};
+				for (turn_candidate of bm.get_bases()) {
+					if (!turn_candidate.has_facility('Headquarters')) {
+						continue;
+					}
+					const turn_headquarters_key =
+						'p' + #to_string(turn_candidate.get_owner().id);
+					if (!#is_defined(turn_headquarters_by_owner[turn_headquarters_key])) {
+						turn_headquarters_by_owner[turn_headquarters_key] = [];
+					}
+					turn_headquarters_by_owner[turn_headquarters_key] :+turn_candidate;
+				}
 				globals.reserved_growth_tiles = {};
 				for (base of bm.get_bases()) {
 					if (game.get('f_nerve_stapling_get_turns')(base) > 0) {
 						game.event('process_nerve_stapling', {base: base});
 					}
-					const psych = game.get('f_economy_get_base_psych')(game, base);
+					const turn_base_phase_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
+					const psych = game.get('f_economy_get_base_psych')(
+						game,
+						base,
+						turn_headquarters_by_owner
+					);
+					if (#typeof(turn_profile) == 'Callable') {
+						turn_psych_ms += #monotonic_ms() - turn_base_phase_started;
+					}
+					const turn_growth_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 					game.event('process_base_growth', {
 						base: base,
 						psych: psych,
 					});
+					if (#typeof(turn_profile) == 'Callable') {
+						turn_growth_ms += #monotonic_ms() - turn_growth_started;
+					}
+					const turn_production_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 					game.event('process_base_production', {
 						base: base,
 					});
+					if (#typeof(turn_profile) == 'Callable') {
+						turn_production_ms += #monotonic_ms() - turn_production_started;
+					}
+				}
+				if (#typeof(turn_profile) == 'Callable') {
+					turn_profile({phase: 'bases_psych', elapsed_ms: turn_psych_ms});
+					turn_profile({phase: 'bases_growth', elapsed_ms: turn_growth_ms});
+					turn_profile({phase: 'bases_production', elapsed_ms: turn_production_ms});
+					turn_profile({phase: 'bases', elapsed_ms: #monotonic_ms() - turn_profile_started});
 				}
 			}
 		});

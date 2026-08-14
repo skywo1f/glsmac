@@ -26,14 +26,23 @@ const get_efficiency_rating = (game, base, facilities) => {
 	return ratings.effic + facility_bonus;
 };
 
-const get_headquarters_distance = (game, base) => {
+const get_headquarters_distance = (game, base, headquarters_by_owner) => {
 	let distance = 16;
 	let found = false;
 	const owner = base.get_owner();
-	for (candidate of game.get_bm().get_bases()) {
+	let candidates = game.get_bm().get_bases();
+	if (#is_defined(headquarters_by_owner)) {
+		const headquarters_key = 'p' + #to_string(owner.id);
+		candidates = #is_defined(headquarters_by_owner[headquarters_key])
+			? headquarters_by_owner[headquarters_key]
+			: [];
+	}
+	for (candidate of candidates) {
 		if (
-			candidate.get_owner().id == owner.id &&
-			candidate.has_facility('Headquarters')
+			#is_defined(headquarters_by_owner) || (
+				candidate.get_owner().id == owner.id &&
+				candidate.has_facility('Headquarters')
+			)
 		) {
 			const candidate_distance = game.get_tm().get_distance(
 				base.get_tile(),
@@ -48,10 +57,10 @@ const get_headquarters_distance = (game, base) => {
 	return distance;
 };
 
-const get_base_energy = (game, base, facilities) => {
+const get_base_energy = (game, base, facilities, headquarters_by_owner) => {
 	const gross = #max(base.get_intake().ENERGY, 0);
 	const efficiency = get_efficiency_rating(game, base, facilities);
-	const distance = get_headquarters_distance(game, base);
+	const distance = get_headquarters_distance(game, base, headquarters_by_owner);
 	const denominator = 64 - ((4 - efficiency) * 8);
 	const inefficiency = denominator <= 0
 		? gross
@@ -306,9 +315,27 @@ const get_player_commerce = (game, player) => {
 	return result;
 };
 
-const get_base_psych = (game, base) => {
-	const psych = get_base_allocation(game, base).psych;
-	return psych.value + psych.bonus;
+const get_base_psych = (game, base, headquarters_by_owner) => {
+	const consumption = base.get_consumption();
+	const facilities = get_effective_facilities(game, base);
+	const energy = get_base_energy(
+		game,
+		base,
+		facilities,
+		headquarters_by_owner
+	);
+	const energy_surplus = #max(energy.net - consumption.ENERGY, 0);
+	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
+	let psych_bonus = 0;
+	let psych_multiplier = 0.0;
+	for (facility of facilities) {
+		psych_bonus += facility.psych_bonus;
+		psych_multiplier += #is_defined(facility.psych_multiplier)
+			? facility.psych_multiplier
+			: 0.0;
+	}
+	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
+	return psych + psych_bonus;
 };
 
 const get_base_stockpile_energy = (game, base) => {
@@ -413,6 +440,8 @@ return (game) => {
 			if ((#is_defined(e.initial) && e.initial) || !game.is_master()) {
 				return;
 			}
+			const turn_profile = game.get('f_turn_profile');
+			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			for (player of game.get_players()) {
 				game.event('settle_player_economy', {
 					player: player,
@@ -423,6 +452,9 @@ return (game) => {
 				if (player.get_sanction_turns() > 0) {
 					game.event('process_diplomatic_sanctions', {player: player});
 				}
+			}
+			if (#typeof(turn_profile) == 'Callable') {
+				turn_profile({phase: 'economy', elapsed_ms: #monotonic_ms() - turn_profile_started});
 			}
 		});
 	});
