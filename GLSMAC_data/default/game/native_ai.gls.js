@@ -88,7 +88,7 @@ const play_turn = (game, player, done) => {
 			#async(ACTION_DELAY, play_next_action);
 			return;
 		}
-		game.event_as(player.id, 'complete_turn', {});
+		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
 		#async(ACTION_DELAY, play_next_action);
 	};
 	#async(100, play_next_action);
@@ -119,7 +119,13 @@ return (game) => {
 				return;
 			}
 			native_running = true;
-			play_turn(game, player, () => { native_running = false; });
+			const started_turn = game.get_turn();
+			play_turn(game, player, () => {
+				native_running = false;
+				if (game.get_turn() != started_turn) {
+					#async(0, play_native);
+				}
+			});
 		};
 		game.on('start_ui', (e) => {
 			ui_started = true;

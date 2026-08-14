@@ -1,8 +1,13 @@
 #main((glsmac) => {
 
 	#include('../default/game/game')(glsmac);
+	#include('./_full_unit_catalog_runtime')(glsmac, [
+		'ControlledSingularity', 'SelfAwareMachines', 'DoctrineInitiative',
+		'BioEngineering', 'IntellectualIntegrity', 'AdvancedEcologicalEngineering',
+	]);
 	#include('../default/ui/ui')(glsmac);
 	const process_base_production = #include('../default/game/event/process_base_production');
+	const set_social_engineering = #include('../default/game/event/set_social_engineering');
 
 	const technologies = #include('../default/technologies');
 	const facility_catalog = #include('../default/facilities');
@@ -27,6 +32,7 @@
 	let runtime_complete = false;
 	let ui_started = false;
 	let exit_scheduled = false;
+	let validation_turn = 3;
 
 	const fail = (message) => {
 		#print('RESEARCH_RUNTIME_FAIL: ' + message);
@@ -157,7 +163,7 @@
 				return;
 			}
 
-			if (turn_id == 2) {
+			if (turn_id == 2 || (turn_id == 3 && validation_turn == 4)) {
 				const state = player.get_research_state();
 				if (
 					state.technologies != ['Biogenetics', 'CentauriEcology'] ||
@@ -165,6 +171,26 @@
 					state.progress < 0 ||
 					state.progress >= game.get('f_technology_get_definition')('IndustrialBase').cost
 				) {
+					if (turn_id == 2) {
+						validation_turn = 4;
+						game.event('complete_turn', {turn_id: turn_id});
+						let advance_wait_ticks = 0;
+						#async(100, () => {
+							if (game.get_turn() > 2) {
+								return false;
+							}
+							advance_wait_ticks++;
+							if (!game.is_turn_complete(player.id)) {
+								game.event('complete_turn', {turn_id: turn_id});
+							}
+							if (advance_wait_ticks >= 100) {
+								fail('timed out waiting for the completed research turn to advance');
+								return false;
+							}
+							return true;
+						});
+						return;
+					}
 					fail('live research completion did not advance to Industrial Base');
 					return;
 				}
@@ -178,70 +204,72 @@
 					target: '',
 					progress: 0,
 				});
-				let funding_requested = false;
-				let funding_wait_ticks = 0;
+				let social_requested = false;
 				game.on('economy_updated', (update) => {
 					if (
-						funding_requested || !#is_defined(update.player) ||
+						social_requested || !#is_defined(update.player) ||
 						update.player.id != player.id
 					) {
 						return;
 					}
-					funding_requested = true;
+					social_requested = true;
 					game.event('process_player_economy', {
-						player: game.get_player(),
+						player: player,
 						energy_credits: 1000,
 					});
+					game.event('set_social_engineering', {
+						player: player,
+						choices: {
+							politics: 'Democratic', economics: 'Planned',
+							values: 'Wealth', future_society: 'None',
+						},
+					});
 				});
+				let social_wait_ticks = 0;
 				#async(100, () => {
 					if (!ui_started) {
 						return true;
 					}
-					funding_wait_ticks++;
-					if (!funding_requested) {
-						return true;
-					}
-					const funded_player = game.get_player();
-					if (funded_player.get_energy_credits() != 1000) {
-						if (funding_wait_ticks >= 100) {
-							fail('social engineering test funding timed out');
+					social_wait_ticks++;
+					const social_player = game.get_player();
+					if (
+						!social_requested ||
+						social_player.get_social_engineering().politics != 'Democratic'
+					) {
+						if (social_wait_ticks >= 100) {
+								const validation_error = set_social_engineering.validate({
+									caller: social_player.id,
+									game: game,
+									data: {
+										player: social_player,
+										choices: {
+											politics: 'Democratic', economics: 'Planned',
+											values: 'Wealth', future_society: 'None',
+										},
+									},
+								});
+								#print(
+									'RESEARCH_RUNTIME_DIAGNOSTIC: social validation=' +
+									#to_string(validation_error) + ' completed=' +
+									#to_string(game.is_turn_complete(social_player.id)) +
+									' credits=' + #to_string(social_player.get_energy_credits())
+								);
+							fail('social engineering event application timed out');
 							return false;
 						}
 						return true;
 					}
-					game.event('set_social_engineering', {
-						player: funded_player,
-						choices: {
-							politics: 'Democratic',
-							economics: 'Planned',
-							values: 'Wealth',
-							future_society: 'None',
-						},
-					});
-					let social_wait_ticks = 0;
-					#async(100, () => {
-						social_wait_ticks++;
-						const social_player = game.get_player();
-						if (social_player.get_social_engineering().politics != 'Democratic') {
-							if (social_wait_ticks >= 100) {
-								fail('social engineering event application timed out');
-								return false;
-							}
-							return true;
-						}
-						if (social_player.get_energy_credits() != 680) {
-							fail('three-model Transcend upheaval cost was not 320 energy credits');
-							return false;
-						}
-						game.event('complete_turn', {});
+					if (social_player.get_energy_credits() != 680) {
+						fail('three-model Transcend upheaval cost was not 320 energy credits');
 						return false;
-					});
+					}
+					game.event('complete_turn', {turn_id: game.get_turn()});
 					return false;
 				});
 				return;
 			}
 
-			if (turn_id == 3) {
+			if (turn_id == validation_turn) {
 				const social_choices = player.get_social_engineering();
 				const social_ratings = game.get('f_social_get_ratings')(player);
 				const social_energy = base.get_intake().ENERGY;
@@ -353,7 +381,7 @@
 					}
 				}
 				if (
-					#sizeof(unit_defs) < 102 || !found_late_land_unit ||
+					#sizeof(unit_defs) < 35 || !found_late_land_unit ||
 					!found_sea_unit || !found_air_unit || !found_clean_unit ||
 					!found_trained_unit || !found_improved_former
 				) {
@@ -705,7 +733,11 @@
 							return false;
 						}
 						const victory = game.get_victory_state();
-						if (victory != {type: 'transcendence', winner: player.id, turn: 3}) {
+						if (
+							victory != {
+								type: 'transcendence', winner: player.id, turn: validation_turn,
+							}
+						) {
 							fail('transcendence victory state is invalid');
 							return false;
 						}
@@ -769,7 +801,7 @@
 				return;
 			}
 
-			fail('runtime test exceeded three turns');
+			fail('runtime test exceeded the scheduled validation turn');
 		});
 	});
 

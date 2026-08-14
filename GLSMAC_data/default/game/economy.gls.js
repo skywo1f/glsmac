@@ -11,11 +11,14 @@ const get_project_effects = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : {};
 };
 
-const get_efficiency_rating = (game, base) => {
+const get_efficiency_rating = (game, base, facilities) => {
 	const resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
 	let facility_bonus = 0;
-	for (facility of get_effective_facilities(game, base)) {
+	const effective_facilities = #is_defined(facilities)
+		? facilities
+		: get_effective_facilities(game, base);
+	for (facility of effective_facilities) {
 		facility_bonus += #is_defined(facility.efficiency_rating_bonus)
 			? facility.efficiency_rating_bonus
 			: 0;
@@ -45,9 +48,9 @@ const get_headquarters_distance = (game, base) => {
 	return distance;
 };
 
-const get_base_energy = (game, base) => {
+const get_base_energy = (game, base, facilities) => {
 	const gross = #max(base.get_intake().ENERGY, 0);
-	const efficiency = get_efficiency_rating(game, base);
+	const efficiency = get_efficiency_rating(game, base, facilities);
 	const distance = get_headquarters_distance(game, base);
 	const denominator = 64 - ((4 - efficiency) * 8);
 	const inefficiency = denominator <= 0
@@ -66,31 +69,43 @@ const get_base_energy = (game, base) => {
 	};
 };
 
-const get_base_economy_multiplier = (game, base) => {
+const get_base_economy_multiplier = (game, base, facilities, project_effects) => {
 	let result = 0.0;
-	for (facility of get_effective_facilities(game, base)) {
+	const effective_facilities = #is_defined(facilities)
+		? facilities
+		: get_effective_facilities(game, base);
+	for (facility of effective_facilities) {
 		if (#is_defined(facility.economy_multiplier)) {
 			result += facility.economy_multiplier;
 		}
 	}
-	const project_effects = get_project_effects(game, base);
+	const effects = #is_defined(project_effects)
+		? project_effects
+		: get_project_effects(game, base);
 	return result + (
-		#is_defined(project_effects.economy_multiplier)
-			? project_effects.economy_multiplier
+		#is_defined(effects.economy_multiplier)
+			? effects.economy_multiplier
 			: 0.0
 	);
 };
 
 const get_base_allocation = (game, base) => {
 	const consumption = base.get_consumption();
-	const energy = get_base_energy(game, base);
+	const facilities = get_effective_facilities(game, base);
+	const project_effects = get_project_effects(game, base);
+	const energy = get_base_energy(game, base, facilities);
 	const total_energy = energy.net - consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
-	const labs = game.get('f_technology_get_base_labs')(base);
+	const labs = game.get('f_technology_get_base_labs')(
+		base,
+		energy,
+		consumption,
+		facilities
+	);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
 	let psych_bonus = 0;
 	let psych_multiplier = 0.0;
-	for (facility of get_effective_facilities(game, base)) {
+	for (facility of facilities) {
 		psych_bonus += facility.psych_bonus;
 		psych_multiplier += #is_defined(facility.psych_multiplier)
 			? facility.psych_multiplier
@@ -99,7 +114,12 @@ const get_base_allocation = (game, base) => {
 	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
 	const economy_value = total_energy - labs.value - psych;
 	const economy_bonus = #ceil(
-		#to_float(#max(economy_value, 0)) * get_base_economy_multiplier(game, base)
+		#to_float(#max(economy_value, 0)) * get_base_economy_multiplier(
+			game,
+			base,
+			facilities,
+			project_effects
+		)
 	);
 	return {
 		economy: {
@@ -118,26 +138,31 @@ const get_base_allocation = (game, base) => {
 
 const get_base_economy = (game, base) => {
 	const consumption = base.get_consumption();
-	const total_energy = get_base_energy(game, base).net - consumption.ENERGY;
+	const facilities = get_effective_facilities(game, base);
+	const project_effects = get_project_effects(game, base);
+	const energy = get_base_energy(game, base, facilities);
+	const total_energy = energy.net - consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs_resolver = game.get('f_technology_get_base_labs_value');
 	const labs = #is_defined(labs_resolver)
-		? labs_resolver(base)
+		? labs_resolver(base, energy, consumption)
 		: #round(#to_float(energy_surplus) * LABS_ALLOCATION);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
 	const value = total_energy - labs - psych;
 	const bonus = #ceil(
-		#to_float(#max(value, 0)) * get_base_economy_multiplier(game, base)
+		#to_float(#max(value, 0)) * get_base_economy_multiplier(
+			game,
+			base,
+			facilities,
+			project_effects
+		)
 	);
 	return value + bonus;
 };
 
-const get_ranked_bases = (game, player) => {
+const rank_bases = (game, bases) => {
 	let ranked = [];
-	for (base of game.get_bm().get_bases()) {
-		if (base.get_owner().id != player.id) {
-			continue;
-		}
+	for (base of bases) {
 		ranked :+{
 			base: base,
 			energy: get_base_energy(game, base).net,
@@ -161,6 +186,16 @@ const get_ranked_bases = (game, player) => {
 	return ranked;
 };
 
+const get_ranked_bases = (game, player) => {
+	let bases = [];
+	for (base of game.get_bm().get_bases()) {
+		if (base.get_owner().id == player.id) {
+			bases :+base;
+		}
+	}
+	return rank_bases(game, bases);
+};
+
 const get_commerce_technology = (game, player) => {
 	let result = 0;
 	const definition_resolver = game.get('f_technology_get_definition');
@@ -179,17 +214,18 @@ const get_commerce_technology = (game, player) => {
 
 const get_player_commerce_ledger = (game, player) => {
 	let ledger = {};
-	const own_bases = get_ranked_bases(game, player);
-	for (entry of own_bases) {
-		ledger['b' + #to_string(entry.base.id)] = {total: 0, partners: []};
+	let own_base_candidates = [];
+	for (base of game.get_bm().get_bases()) {
+		if (base.get_owner().id == player.id) {
+			own_base_candidates :+base;
+			ledger['b' + #to_string(base.id)] = {total: 0, partners: []};
+		}
 	}
 	const faction = player.get_faction();
 	if (faction.is_progenitor || player.get_sanction_turns() > 0) {
 		return ledger;
 	}
-	const total_resolver = game.get('f_technology_get_total_commerce_bonus');
-	const total_technology = total_resolver();
-	const commerce_technology = get_commerce_technology(game, player);
+	let partners = [];
 	for (partner of game.get_players()) {
 		if (
 			partner.id == player.id || partner.get_faction().is_progenitor ||
@@ -199,11 +235,22 @@ const get_player_commerce_ledger = (game, player) => {
 		}
 		const relation = player.get_diplomatic_relation(partner);
 		if (
-			(relation != 'treaty' && relation != 'pact') ||
-			partner.get_diplomatic_relation(player) != relation
+			(relation == 'treaty' || relation == 'pact') &&
+			partner.get_diplomatic_relation(player) == relation
 		) {
-			continue;
+			partners :+{player: partner, relation: relation};
 		}
+	}
+	if (#sizeof(partners) == 0) {
+		return ledger;
+	}
+	const own_bases = rank_bases(game, own_base_candidates);
+	const total_resolver = game.get('f_technology_get_total_commerce_bonus');
+	const total_technology = total_resolver();
+	const commerce_technology = get_commerce_technology(game, player);
+	for (partner_data of partners) {
+		const partner = partner_data.player;
+		const relation = partner_data.relation;
 		const partner_bases = get_ranked_bases(game, partner);
 		const pair_count = #min(#sizeof(own_bases), #sizeof(partner_bases));
 		let index = 0;
@@ -363,7 +410,7 @@ return (game) => {
 		game.set('f_economy_get_hurry_cost', (base) => { return get_hurry_cost(game, base); });
 		game.set('f_economy_get_liquidation_candidate', get_liquidation_candidate);
 		game.on('turn', (e) => {
-			if (!game.is_master()) {
+			if ((#is_defined(e.initial) && e.initial) || !game.is_master()) {
 				return;
 			}
 			for (player of game.get_players()) {

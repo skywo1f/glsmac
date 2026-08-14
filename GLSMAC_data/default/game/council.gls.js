@@ -205,6 +205,9 @@ return (game) => {
 		});
 		game.on('submission_updated', (event) => { process_supreme(); });
 		game.on('turn', (e) => {
+			if (#is_defined(e.initial) && e.initial) {
+				return;
+			}
 			process_session();
 			process_supreme();
 			maybe_call_ai();

@@ -197,7 +197,7 @@ const special_unit = (
 	};
 };
 
-const units = [
+const predefined_units = [
 	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
 	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
 	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
@@ -218,7 +218,8 @@ const units = [
 	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0, ''),
 ];
 
-for (unit of generated.definitions) {
+let units = [];
+for (unit of predefined_units) {
 	units :+unit;
 }
 
@@ -233,10 +234,39 @@ for (unit of units) {
 	}
 }
 
-const result = {
+let cataloged = {};
+for (unit of units) {
+	cataloged[unit.id] = true;
+}
+
+let result = null;
+const synchronize_generated_catalog = () => {
+	for (unit of generated.definitions) {
+		if (!#is_defined(cataloged[unit.id])) {
+			cataloged[unit.id] = true;
+			units :+unit;
+		}
+	}
+	result.definitions = units;
+	result.generated_definitions = generated.definitions;
+	result.generated_count = #sizeof(generated.definitions);
+	return result.generated_definitions;
+};
+
+result = {
 	moralesets: moralesets,
 	definitions: units,
-	generated_count: #sizeof(generated.definitions),
+	predefined_definitions: predefined_units,
+	generated_definitions: generated.definitions,
+	generated_count: 0,
+	generate_available: (known) => {
+		generated.generate_available(known);
+		return synchronize_generated_catalog();
+	},
+	ensure_full_catalog: () => {
+		generated.generate_all();
+		return synchronize_generated_catalog();
+	},
 
 	define: (game) => {
 
@@ -244,9 +274,9 @@ const result = {
 			game.event('define_moraleset', moraleset);
 		}
 
-		for (unit of units) {
-			game.event('define_unit', unit);
-		}
+		game.event('define_units', {
+			units: units,
+		});
 
 	},
 };

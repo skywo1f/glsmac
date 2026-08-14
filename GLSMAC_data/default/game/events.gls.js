@@ -6,6 +6,7 @@ return (game) => {
 		'define_animation',
 		'define_moraleset',
 		'define_unit',
+		'define_units',
 		'create_unit_design',
 		'set_unit_design_obsolete',
 		'retire_unit_design',

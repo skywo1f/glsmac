@@ -92,12 +92,12 @@ const filter_hostile_bases = (game, player, bases) => {
 	return result;
 };
 
-const get_combat_power_metrics = (game, player) => {
+const get_combat_power_metrics = (player, players, units) => {
 	let own = 0.0;
 	let strongest_rival = 0.0;
-	for (candidate of game.get_players()) {
+	for (candidate of players) {
 		let power = 0.0;
-		for (unit of game.get_um().get_units()) {
+		for (unit of units) {
 			if (unit.owner == candidate.id) {
 				power += combat.get_force_power(unit);
 			}
@@ -654,13 +654,16 @@ const get_strategy_metrics = (game, player, bases, units) => {
 	}
 
 	const tm = game.get_tm();
+	const players = game.get_players();
 	const all_units = game.get_um().get_units();
-	const combat_power = get_combat_power_metrics(game, player);
+	const all_bases = game.get_bm().get_bases();
+	const combat_power = get_combat_power_metrics(player, players, all_units);
 	let underdefended_bases = 0;
 	let growth_stalled_bases = 0;
 	let unstable_bases = 0;
 	let base_labs = 0;
 	let sea_base_count = 0;
+	let base_metrics = {};
 	for (base of bases) {
 		if (base.get_tile().is_water) {
 			sea_base_count++;
@@ -673,18 +676,29 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
+		const population_limit = game.get('f_base_get_population_limit')(base);
 		if (
 			base.get_size() < 3 ||
-			base.get_size() >= game.get('f_base_get_population_limit')(base) ||
+			base.get_size() >= population_limit ||
 			intake.NUTRIENTS - consumption.NUTRIENTS <= 0
 		) {
 			growth_stalled_bases++;
 		}
-		const psych = game.get('f_economy_get_base_psych')(game, base);
-		if (game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size()) {
+		const allocation = game.get('f_economy_get_base_allocation')(game, base);
+		const psych = allocation.psych.value + allocation.psych.bonus;
+		const stable_worker_count = game.get('f_base_get_stable_worker_count')(base, psych);
+		if (stable_worker_count < base.get_size()) {
 			unstable_bases++;
 		}
-		base_labs += game.get('f_technology_get_base_labs')(base).total;
+		base_labs += allocation.labs.total;
+		base_metrics['b' + #to_string(base.id)] = {
+			intake: intake,
+			consumption: consumption,
+			psych: psych,
+			stable_worker_count: stable_worker_count,
+			population_limit: population_limit,
+			labs: allocation.labs.total,
+		};
 	}
 	return {
 		base_count: #sizeof(bases),
@@ -710,6 +724,10 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		energy_income: game.get('f_economy_get_player')(game, player),
 		own_combat_power: combat_power.own,
 		strongest_rival_power: combat_power.strongest_rival,
+		players: players,
+		all_units: all_units,
+		all_bases: all_bases,
+		base_metrics: base_metrics,
 	};
 };
 
@@ -913,8 +931,7 @@ const interrogate_adjacent_probe = (game, player, unit) => {
 	return true;
 };
 
-const queue_production = (game, player, bases, units) => {
-	const metrics = get_strategy_metrics(game, player, bases, units);
+const queue_production = (game, player, bases, units, metrics) => {
 	let former_count = metrics.former_count;
 	let land_former_count = metrics.land_former_count;
 	let sea_former_count = metrics.sea_former_count;
@@ -955,7 +972,7 @@ const queue_production = (game, player, bases, units) => {
 	}
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
-	const all_units = game.get_um().get_units();
+	const all_units = metrics.all_units;
 	let air_superiority_count = 0;
 	let amphibious_count = 0;
 	for (unit of units) {
@@ -971,7 +988,7 @@ const queue_production = (game, player, bases, units) => {
 	}
 	let hostile_air_unit_count = 0;
 	let hostile_coastal_base_count = 0;
-	for (other of game.get_players()) {
+	for (other of metrics.players) {
 		if (other.id == player.id || is_protected_partner(game, player, other.id)) {
 			continue;
 		}
@@ -980,7 +997,7 @@ const queue_production = (game, player, bases, units) => {
 				hostile_air_unit_count++;
 			}
 		}
-		for (candidate of game.get_bm().get_bases()) {
+		for (candidate of metrics.all_bases) {
 			if (candidate.get_owner().id != other.id) {
 				continue;
 			}
@@ -1008,7 +1025,7 @@ const queue_production = (game, player, bases, units) => {
 	const planet_buster_minimum_target_size = get_planet_buster_minimum_target_size(game);
 	let orbital_defense_threats = 0;
 	let planet_buster_target_value = 0;
-	for (other of game.get_players()) {
+	for (other of metrics.players) {
 		if (
 			other.id == player.id ||
 			player.get_diplomatic_relation(other) != 'vendetta'
@@ -1028,7 +1045,7 @@ const queue_production = (game, player, bases, units) => {
 		if (has_planet_buster) {
 			orbital_defense_threats++;
 		}
-		for (candidate of game.get_bm().get_bases()) {
+		for (candidate of metrics.all_bases) {
 			if (candidate.get_owner().id == other.id) {
 				planet_buster_target_value = #max(
 					planet_buster_target_value,
@@ -1063,7 +1080,7 @@ const queue_production = (game, player, bases, units) => {
 		: 0;
 	let empath_guild_infiltration_count = 0;
 	const has_intelligence = game.get('f_council_has_intelligence');
-	for (other of game.get_players()) {
+	for (other of metrics.players) {
 		if (
 			other.id != player.id &&
 			!(#is_defined(has_intelligence)
@@ -1074,7 +1091,7 @@ const queue_production = (game, player, bases, units) => {
 		}
 	}
 	let global_network_node_count = 0;
-	for (candidate of game.get_bm().get_bases()) {
+	for (candidate of metrics.all_bases) {
 		if (candidate.has_facility('NetworkNode')) {
 			global_network_node_count++;
 		}
@@ -1110,6 +1127,7 @@ const queue_production = (game, player, bases, units) => {
 			}
 		}
 		const commerce_key = 'b' + #to_string(base.id);
+		const base_metric = metrics.base_metrics[commerce_key];
 		const base_commerce = #is_defined(commerce_ledger[commerce_key])
 			? commerce_ledger[commerce_key].total
 			: 0;
@@ -1132,9 +1150,9 @@ const queue_production = (game, player, bases, units) => {
 			all_units,
 			game
 		);
-		const psych = game.get('f_economy_get_base_psych')(game, base);
-		const intake = base.get_intake();
-		const consumption = base.get_consumption();
+		const psych = base_metric.psych;
+		const intake = base_metric.intake;
+		const consumption = base_metric.consumption;
 		const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
 		const mineral_surplus = intake.MINERALS - consumption.MINERALS;
 		const priorities = get_strategy_priorities(
@@ -1202,10 +1220,10 @@ const queue_production = (game, player, bases, units) => {
 			needs_headquarters:
 				!has_headquarters &&
 				(headquarters_queue_base == null || headquarters_queue_base == base),
-			needs_psych: game.get('f_base_get_stable_worker_count')(base, psych) < base.get_size(),
+			needs_psych: base_metric.stable_worker_count < base.get_size(),
 			needs_growth: base.get_size() < 3 || nutrient_surplus <= 0,
 			needs_population_capacity:
-				base.get_size() >= game.get('f_base_get_population_limit')(base),
+				base.get_size() >= base_metric.population_limit,
 			base_size: base.get_size(),
 			can_expand: base.get_size() > 1,
 			can_start_project: can_start_project,
@@ -1231,7 +1249,7 @@ const queue_production = (game, player, bases, units) => {
 				planet_buster_target_value >= planet_buster_minimum_target_size &&
 				metrics.own_combat_power * 1.25 < metrics.strongest_rival_power,
 			planet_buster_target_value: planet_buster_target_value,
-			base_labs: game.get('f_technology_get_base_labs')(base).total,
+			base_labs: base_metric.labs,
 			planetary_datalinks_technology_count: planetary_datalinks_technology_count,
 			empath_guild_infiltration_count: empath_guild_infiltration_count,
 			network_backbone_research_bonus:
@@ -1370,8 +1388,7 @@ const choose_research_target = (game, player, available) => {
 	);
 };
 
-const update_social_engineering = (game, player, bases, units) => {
-	const metrics = get_strategy_metrics(game, player, bases, units);
+const update_social_engineering = (game, player, metrics) => {
 	const priorities = get_strategy_priorities(
 		metrics,
 		metrics.former_count,
@@ -1940,11 +1957,12 @@ const play_turn = (game, player, done) => {
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
 	const turn_id = game.get_turn();
+	const metrics = get_strategy_metrics(game, player, bases, units);
 	update_diplomacy(game, player);
-	update_social_engineering(game, player, bases, units);
+	update_social_engineering(game, player, metrics);
 	nerve_stapling.manage(game, player, bases);
 	economic_victory.update(game, player);
-	queue_production(game, player, bases, units);
+	queue_production(game, player, bases, units, metrics);
 
 	let steps = 0;
 	let completion_ready_checks = 0;
@@ -2121,7 +2139,7 @@ const play_turn = (game, player, done) => {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
-		game.event_as(player.id, 'complete_turn', {});
+		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
 		#async(MOVEMENT_ACTION_DELAY, play_next_action);
 	};
 	#async(100, play_next_action);

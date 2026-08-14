@@ -10,8 +10,12 @@ return {
 	},
 
 	apply: (e) => {
-		e.game.get('f_base_process_growth')(e.game, e.data.base, e.data.psych);
-		if (e.game.is_master()) {
+		const psych_changed = e.game.get('f_base_process_growth')(
+			e.game,
+			e.data.base,
+			e.data.psych
+		);
+		if (e.game.is_master() && psych_changed) {
 			e.game.event('refresh_base_psych', {
 				base: e.data.base,
 			});

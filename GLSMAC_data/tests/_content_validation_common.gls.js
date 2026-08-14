@@ -4,6 +4,8 @@ const facilities = #include('../default/facilities');
 const units = #include('../default/units');
 const factions = #include('../default/factions');
 
+units.ensure_full_catalog();
+
 const make_catalog = () => {
 	return {
 		technologies: {

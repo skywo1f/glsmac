@@ -195,6 +195,11 @@ const assert_stable_size_four = (base) => {
 	test.assert(state.is_rioting == false);
 };
 
+const stable_base = make_base(1, 0, 4);
+process_base_growth.apply({caller: 0, game: game, data: {base: stable_base, psych: 0}});
+test.assert(pending_events == []);
+test.assert(stable_base.get('accumulated_nutrients') == 2);
+
 const growing_base = make_base(3, 38, 8);
 process_base_growth.apply({caller: 0, game: game, data: {base: growing_base, psych: 0}});
 test.assert(growing_base.get_size() == 3);

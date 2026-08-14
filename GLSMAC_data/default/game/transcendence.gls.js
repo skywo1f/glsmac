@@ -22,6 +22,8 @@ return (game) => {
 
 		game.set('f_check_transcendence_victory', check_victory);
 		game.on('update_base', (event) => { check_victory(); });
-		game.on('turn', (event) => { check_victory(); });
+		game.on('turn', (event) => {
+			if (!#is_defined(event.initial) || !event.initial) { check_victory(); }
+		});
 	});
 };

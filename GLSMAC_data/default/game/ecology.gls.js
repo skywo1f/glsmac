@@ -400,6 +400,9 @@ return (game) => {
 		});
 
 		game.on('turn', (e) => {
+			if (#is_defined(e.initial) && e.initial) {
+				return;
+			}
 			const sea_level_change = advance_pending_climate(game);
 			if (!game.is_master()) {
 				return;

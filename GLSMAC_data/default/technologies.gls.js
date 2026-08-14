@@ -79,26 +79,35 @@ const get_network_backbone_research_bonus = (base, game) => {
 	return result;
 };
 
-const get_base_labs_value = (base, game) => {
-	const intake = base.get_intake();
-	const consumption = base.get_consumption();
+const get_base_labs_value = (base, game, energy, consumption) => {
+	const base_consumption = #is_defined(consumption)
+		? consumption
+		: base.get_consumption();
 	const energy_resolver = #is_defined(game)
 		? game.get('f_economy_get_base_energy')
 		: #undefined;
-	const energy = #is_defined(energy_resolver)
-		? energy_resolver(base).net
-		: intake.ENERGY;
-	const energy_surplus = #max(energy - consumption.ENERGY, 0);
+	let net_energy = 0;
+	if (#is_defined(energy)) {
+		net_energy = energy.net;
+	} else if (#is_defined(energy_resolver)) {
+		net_energy = energy_resolver(base).net;
+	} else {
+		net_energy = base.get_intake().ENERGY;
+	}
+	const energy_surplus = #max(net_energy - base_consumption.ENERGY, 0);
 	return #round(#to_float(energy_surplus) * LABS_ALLOCATION);
 };
 
-const get_base_labs = (base, game) => {
+const get_base_labs = (base, game, energy, consumption, effective_facilities) => {
 	const base_bonus = 2;
-	const allocated = get_base_labs_value(base, game);
+	const allocated = get_base_labs_value(base, game, energy, consumption);
 	let research_multiplier = 0.0;
 	let fixed_facility_bonus = 0;
 	const resolver = #is_defined(game) ? game.get('f_base_get_effective_facilities') : #undefined;
-	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	let facilities = effective_facilities;
+	if (!#is_defined(facilities)) {
+		facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	}
 	for (facility of facilities) {
 		research_multiplier += facility.research_multiplier;
 		fixed_facility_bonus += #is_defined(facility.research_bonus) ? facility.research_bonus : 0;
@@ -167,10 +176,15 @@ return {
 			game.set('f_technology_get_definition', get_definition);
 			game.set('f_technology_get_order', () => { return technology_order; });
 			game.set('f_technology_get_total_commerce_bonus', get_total_commerce_bonus);
-			game.set('f_technology_get_base_labs_value', (base) => {
-				return get_base_labs_value(base, game);
+			game.set('f_technology_get_base_labs_value', (base, energy, consumption) => {
+				return get_base_labs_value(base, game, energy, consumption);
 			});
-			game.set('f_technology_get_base_labs', (base) => { return get_base_labs(base, game); });
+			game.set(
+				'f_technology_get_base_labs',
+				(base, energy, consumption, facilities) => {
+					return get_base_labs(base, game, energy, consumption, facilities);
+				}
+			);
 			game.set('f_technology_get_next_target', choose_next_target);
 			game.set('f_technology_get_player_labs', get_player_labs);
 
@@ -186,7 +200,7 @@ return {
 			}
 
 			game.on('turn', (e) => {
-				if (!game.is_master()) {
+				if ((#is_defined(e.initial) && e.initial) || !game.is_master()) {
 					return;
 				}
 				for (player of game.get_players()) {

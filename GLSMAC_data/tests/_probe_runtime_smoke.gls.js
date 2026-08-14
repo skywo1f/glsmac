@@ -412,7 +412,7 @@
 				const intercepted_probe_moved = intercepted_probe.moved_this_turn == true;
 				const interceptor_movement = interceptor.movement + 0.0;
 				const interceptor_moved = interceptor.moved_this_turn == true;
-				game.event('attack_unit', {
+				game.event_as(target_player.id, 'attack_unit', {
 					attacker: interceptor,
 					defender: intercepted_probe,
 					probe_interception_action: 'interrogate',

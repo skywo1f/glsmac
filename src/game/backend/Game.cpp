@@ -209,7 +209,6 @@ void Game::Iterate() {
 		}
 
 		if ( !ec ) {
-
 #ifdef DEBUG
 			const auto* config = g_engine->GetConfig();
 			// also handy to have dump of generated map
@@ -1968,48 +1967,55 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 		AddFrontendRequest( fr );
 	}
 
-	m_state->WithGSE( this, [ this ]( GSE_CALLABLE ) {
-		for ( const auto& slot : m_state->m_slots->GetSlots() ) {
-			if (
-				slot.GetState() == slot::Slot::SS_PLAYER &&
-				!slot.GetPlayer()->IsNative()
-			) {
-				slot.GetPlayer()->SetOrbitalDefenseDeployments( 0 );
+	m_state->WithGSE( this, [ this, turn_id ]( GSE_CALLABLE ) {
+		if ( turn_id > 1 ) {
+			for ( const auto& slot : m_state->m_slots->GetSlots() ) {
+				if (
+					slot.GetState() == slot::Slot::SS_PLAYER &&
+					!slot.GetPlayer()->IsNative()
+				) {
+					slot.GetPlayer()->SetOrbitalDefenseDeployments( 0 );
+				}
 			}
-		}
 
-		for ( auto& it : m_um->GetUnits() ) {
-			auto* unit = it.second;
-			m_state->TriggerObject(
-				m_um, "unit_turn", ARGS_F( &unit ) {
-					{
-						"unit",
-						unit->Wrap( GSE_CALL )
-					},
-				}; }
-			);
-			unit->m_moved_this_turn = false;
-			unit->m_airdropped_this_turn = false;
-			m_um->RefreshUnit( GSE_CALL, unit );
-		}
+			for ( auto& it : m_um->GetUnits() ) {
+				auto* unit = it.second;
+				m_state->TriggerObject(
+					m_um, "unit_turn", ARGS_F( &unit ) {
+						{
+							"unit",
+							unit->Wrap( GSE_CALL )
+						},
+					}; }
+				);
+				unit->m_moved_this_turn = false;
+				unit->m_airdropped_this_turn = false;
+				m_um->RefreshUnit( GSE_CALL, unit );
+			}
 
-		for ( auto& it : m_bm->GetBases() ) {
-			auto* base = it.second;
-			m_state->TriggerObject(
-				m_bm, "base_turn", ARGS_F( &base ) {
-					{
-						"base",
-						base->Wrap( GSE_CALL )
-					},
-				}; }
-			);
-			m_bm->RefreshBase( base );
+			for ( auto& it : m_bm->GetBases() ) {
+				auto* base = it.second;
+				m_state->TriggerObject(
+					m_bm, "base_turn", ARGS_F( &base ) {
+						{
+							"base",
+							base->Wrap( GSE_CALL )
+						},
+					}; }
+				);
+				m_bm->RefreshBase( base );
+			}
+
 		}
 
 		m_state->TriggerObject( this, "turn", ARGS_F( this ) {
 			{
 				"year",
 				VALUE( gse::value::Int,, m_current_turn.GetId() + 2100 /* TODO: better way to define starting year? */ ),
+			},
+			{
+				"initial",
+				VALUE( gse::value::Bool,, m_current_turn.GetId() == 1 ),
 			},
 		}; } );
 	});

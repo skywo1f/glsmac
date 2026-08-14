@@ -103,9 +103,12 @@
 						tile.is_land && tile.get_base() == null &&
 						#sizeof(tile.get_units(true)) == 0
 					) {
-						bm.spawn_base(player, tile, {
+						game.event('spawn_base', {
+							owner: player,
+							tile: tile,
 							name: 'Council Runtime Base ' + #to_string(added_bases + 1),
 							production: 'ScoutPatrol',
+							initial_population: true,
 						});
 						added_bases++;
 					}
@@ -121,7 +124,7 @@
 				population_ticks++;
 				const get_voters = game.get('f_council_get_voters');
 				if (
-					game.get('f_council_get_votes')(player) <= 0 ||
+					game.get('f_council_get_votes')(player) < 10 ||
 					#sizeof(get_voters()) < 2
 				) {
 					if (population_ticks >= 400) {
@@ -164,6 +167,27 @@
 					victory_ticks++;
 					if (!game.is_game_over()) {
 						if (victory_ticks >= 200) {
+							const session = game.get('f_council_get_session')();
+							const tally = game.get('f_council_get_tally')();
+							const supreme = game.get('f_council_get_supreme_state')();
+							#print(
+								'PLANETARY_COUNCIL_RUNTIME_DIAGNOSTIC: session=' +
+								#to_string(session != null) + ' tally=' +
+								#to_string(tally != null) + ' all_voted=' +
+								#to_string(tally != null && tally.all_voted) + ' supreme=' +
+								#to_string(supreme != null) + ' resolved=' +
+								#to_string(supreme != null && supreme.resolved)
+							);
+							for (voter of game.get('f_council_get_voters')()) {
+								const state = voter.get_council_state();
+								#print(
+									'PLANETARY_COUNCIL_RUNTIME_DIAGNOSTIC: player=' +
+									#to_string(voter.id) + ' type=' + voter.type +
+									' vote=' + #to_string(state.vote_id) +
+									' leader=' + #to_string(state.supreme_leader_id) +
+									' response=' + #to_string(state.supreme_response)
+								);
+							}
 							fail('diplomatic victory resolution timed out');
 							return false;
 						}

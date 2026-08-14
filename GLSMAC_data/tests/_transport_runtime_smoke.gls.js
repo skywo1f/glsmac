@@ -1,6 +1,9 @@
 #main((glsmac) => {
 
 	#include('../default/game/game')(glsmac);
+	#include('./_full_unit_catalog_runtime')(glsmac, [
+		'DoctrineFlexibility', 'Nanometallurgy',
+	]);
 	#include('../default/ui/ui')(glsmac);
 
 	const despawn_event = #include('../default/game/event/despawn_unit');

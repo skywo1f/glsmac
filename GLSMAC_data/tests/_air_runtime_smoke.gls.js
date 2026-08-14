@@ -1,6 +1,10 @@
 #main((glsmac) => {
 
 	#include('../default/game/game')(glsmac);
+	#include('./_full_unit_catalog_runtime')(glsmac, [
+		'DoctrineAirPower', 'MindMachineInterface', 'GravitonTheory',
+		'OrbitalSpaceflight',
+	]);
 	#include('../default/ui/ui')(glsmac);
 
 	let countdown_id = 0;

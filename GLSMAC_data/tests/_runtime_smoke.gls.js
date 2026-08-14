@@ -379,6 +379,80 @@
 			},
 		});
 
+		game.register_event('runtime_smoke_prepare_turn_three', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can prepare runtime turn three';
+				}
+			},
+			apply: (e) => {
+				const base = e.data.base;
+				const unit = e.data.unit;
+				const old_health = unit.health;
+				const old_minerals = base.get_accumulated_minerals();
+				const had_command_center = base.has_facility('CommandCenter');
+				base.add_facility('CommandCenter');
+				unit.health = 0.3;
+				base.set_accumulated_minerals(e.data.production_cost);
+				return {
+					base: base,
+					unit: unit,
+					old_health: old_health,
+					old_minerals: old_minerals,
+					had_command_center: had_command_center,
+				};
+			},
+			rollback: (e) => {
+				if (!e.applied.had_command_center) {
+					e.applied.base.remove_facility('CommandCenter');
+				}
+				e.applied.unit.health = e.applied.old_health;
+				e.applied.base.set_accumulated_minerals(e.applied.old_minerals);
+			},
+		});
+
+		game.register_event('runtime_smoke_headquarters_roundtrip', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the host can validate Headquarters relocation';
+				}
+			},
+			apply: (e) => {
+				const headquarters = e.game.get_bm().get_facility_def('Headquarters');
+				e.data.base.set_production('facility', headquarters.id);
+				e.data.base.set_accumulated_minerals(headquarters.mineral_cost);
+				let headquarters_event = {
+					caller: 0,
+					game: e.game,
+					data: {base: e.data.base},
+				};
+				headquarters_event.applied = process_base_production.apply(headquarters_event);
+				if (
+					!e.data.base.has_facility('Headquarters') ||
+					e.data.capital.has_facility('Headquarters') ||
+					#sizeof(headquarters_event.applied.previous_headquarters) != 1
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not complete');
+					glsmac.exit();
+					return {};
+				}
+				process_base_production.rollback(headquarters_event);
+				if (
+					e.data.base.has_facility('Headquarters') ||
+					!e.data.capital.has_facility('Headquarters')
+				) {
+					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not roll back');
+					glsmac.exit();
+					return {};
+				}
+				#print('RUNTIME_SMOKE_HEADQUARTERS_RELOCATION_PASS');
+				return {};
+			},
+			rollback: (e) => {
+				throw Error('Accepted Headquarters round-trip test event was rolled back');
+			},
+		});
+
 		game.on('start_ui', (e) => {
 			if (game.get_player().difficulty_level != 'Transcend') {
 				#print('RUNTIME_SMOKE_FAIL: quickstart player difficulty was not preserved');
@@ -400,6 +474,7 @@
 
 		game.on('turn', (e) => {
 			const turn_id = e.year - 2100;
+			const process_turn = () => {
 			if (turn_id == 1) {
 				const landmark_tm = game.get_tm();
 				let mount_planet_tiles = 0;
@@ -755,6 +830,7 @@
 						candidate.is_land &&
 						candidate.rockiness < 3 &&
 						!candidate.features.xenofungus &&
+						!has_terraforming(candidate) &&
 						candidate.get_resources().NUTRIENTS < 2 &&
 						candidate.get_base() == null &&
 						#sizeof(candidate.get_units()) == 0
@@ -882,7 +958,19 @@
 					intake.MINERALS != starting_intake.minerals + 1 ||
 					intake.ENERGY != starting_intake.energy + 1
 				) {
-					#print('RUNTIME_SMOKE_FAIL: facility completion, queue advancement, or resource bonus is invalid');
+					#print(
+						'RUNTIME_SMOKE_FAIL: facility completion, queue advancement, or resource bonus is invalid: ' +
+						'facility=' + #to_string(base.has_facility('RecyclingTanks')) +
+						' queue_size=' + #to_string(#sizeof(queue)) +
+						' queue_kind=' + (#sizeof(queue) > 0 ? queue[0].production_kind : 'none') +
+						' queue_id=' + (#sizeof(queue) > 0 ? queue[0].id : 'none') +
+						' expected_id=' + queued_unit_id +
+						' intake=' + #to_string(intake.NUTRIENTS) + '/' +
+							#to_string(intake.MINERALS) + '/' + #to_string(intake.ENERGY) +
+						' expected=' + #to_string(starting_intake.nutrients + 1) + '/' +
+							#to_string(starting_intake.minerals + 1) + '/' +
+							#to_string(starting_intake.energy + 1)
+					);
 					glsmac.exit();
 					return;
 				}
@@ -926,10 +1014,12 @@
 					glsmac.exit();
 					return;
 				}
-				base.add_facility(command_center.id);
 				const repair_unit = game.get_um().get_unit(1);
-				repair_unit.health = 0.3;
-				base.set_accumulated_minerals(queue[0].mineral_cost);
+				game.event('runtime_smoke_prepare_turn_three', {
+					base: base,
+					unit: repair_unit,
+					production_cost: queue[0].mineral_cost,
+				});
 				game.event('complete_turn', {});
 			}
 			else if (turn_id == 3) {
@@ -986,30 +1076,10 @@
 				}
 				#print('RUNTIME_SMOKE_EFFICIENCY_PASS');
 				const capital = bases[0];
-				const headquarters = game.get_bm().get_facility_def('Headquarters');
-				lifecycle_base.set_production('facility', headquarters.id);
-				lifecycle_base.set_accumulated_minerals(headquarters.mineral_cost);
-				let headquarters_event = {caller: 0, game: game, data: {base: lifecycle_base}};
-				headquarters_event.applied = process_base_production.apply(headquarters_event);
-				if (
-					!lifecycle_base.has_facility('Headquarters') ||
-					capital.has_facility('Headquarters') ||
-					#sizeof(headquarters_event.applied.previous_headquarters) != 1
-				) {
-					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not complete');
-					glsmac.exit();
-					return;
-				}
-				process_base_production.rollback(headquarters_event);
-				if (
-					lifecycle_base.has_facility('Headquarters') ||
-					!capital.has_facility('Headquarters')
-				) {
-					#print('RUNTIME_SMOKE_FAIL: Headquarters relocation did not roll back');
-					glsmac.exit();
-					return;
-				}
-				#print('RUNTIME_SMOKE_HEADQUARTERS_RELOCATION_PASS');
+				game.event('runtime_smoke_headquarters_roundtrip', {
+					base: lifecycle_base,
+					capital: capital,
+				});
 
 				const old_base_id = lifecycle_base.id;
 				const founding_site_coords = find_founding_site_coords();
@@ -1131,6 +1201,7 @@
 					glsmac.exit();
 					return;
 				}
+				terraform_site_resources = terraform_site.get_resources();
 				game.event('complete_turn', {});
 			}
 			else if (turn_id == 5) {
@@ -1145,7 +1216,20 @@
 					updated_resources.MINERALS != terraform_site_resources.MINERALS ||
 					updated_resources.ENERGY != terraform_site_resources.ENERGY
 				) {
-					#print('RUNTIME_SMOKE_FAIL: Farm completion or resource yields are invalid');
+					#print(
+						'RUNTIME_SMOKE_FAIL: Farm completion or resource yields are invalid: ' +
+						'order=' + former.terraforming +
+						' remaining=' + #to_string(former.terraforming_turns_remaining) +
+						' movement=' + #to_string(former.movement) +
+						' expected_movement=' + #to_string(former.get_def().movement_per_turn) +
+						' farm=' + #to_string(terraform_site.terraforming.farm) +
+						' resources=' + #to_string(updated_resources.NUTRIENTS) + '/' +
+							#to_string(updated_resources.MINERALS) + '/' +
+							#to_string(updated_resources.ENERGY) +
+						' expected=' + #to_string(terraform_site_resources.NUTRIENTS + 1) + '/' +
+							#to_string(terraform_site_resources.MINERALS) + '/' +
+							#to_string(terraform_site_resources.ENERGY)
+					);
 					glsmac.exit();
 					return;
 				}
@@ -1153,6 +1237,42 @@
 				terraforming_verified = true;
 				#print('RUNTIME_SMOKE_TERRAFORMING_PASS');
 				finish_if_ready();
+			}
+			};
+			if (e.initial) {
+				process_turn();
+			} else {
+				let readiness_ticks = 0;
+				#async(50, () => {
+					readiness_ticks++;
+					let ready = false;
+					const bases = game.get_bm().get_bases();
+					if (turn_id == 2) {
+						ready = #sizeof(bases) > 0 && bases[0].has_facility('RecyclingTanks');
+					} else if (turn_id == 3) {
+						ready = #sizeof(bases) > 0 && game.get_um().has_unit(1) &&
+							game.get_um().get_unit(1).health == 1.0 &&
+							#sizeof(bases[0].get_tile().get_units()) > starting_base_unit_count;
+					} else if (turn_id == 4) {
+						ready = game.get_um().has_unit(former_id) &&
+							game.get_um().get_unit(former_id).terraforming_turns_remaining == 1;
+					} else if (turn_id == 5) {
+						ready = terraform_site != null && terraform_site.terraforming.farm;
+					}
+					if (!ready && readiness_ticks < 100) {
+						return true;
+					}
+					if (!ready) {
+						#print(
+							'RUNTIME_SMOKE_FAIL: turn ' + #to_string(turn_id) +
+							' processing did not settle'
+						);
+						glsmac.exit();
+						return false;
+					}
+					process_turn();
+					return false;
+				});
 			}
 		});
 	});

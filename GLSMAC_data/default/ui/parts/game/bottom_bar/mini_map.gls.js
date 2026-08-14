@@ -258,14 +258,14 @@ return {
 					p.modules.popup.show('turn_confirmation', (result) => {
 						if (result) {
 							f_set_status('please_wait');
-							p.game.event('complete_turn', {});
+							p.game.event('complete_turn', {turn_id: p.game.get_turn()});
 						}
 					});
 					break;
 				}
 				case 'turn_complete': {
 					f_set_status('please_wait');
-					p.game.event('complete_turn', {});
+					p.game.event('complete_turn', {turn_id: p.game.get_turn()});
 					break;
 				}
 				case 'waiting_for_players': {

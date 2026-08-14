@@ -827,6 +827,9 @@ return (game) => {
 				return;
 			}
 			scan_contacts(game);
+			if (#is_defined(e.initial) && e.initial) {
+				return;
+			}
 			for (borrower of game.get_players()) {
 				for (lender of game.get_players()) {
 					if (

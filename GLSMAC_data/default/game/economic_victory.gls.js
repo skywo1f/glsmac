@@ -44,6 +44,8 @@ return (game) => {
 				);
 			}
 		});
-		game.on('turn', check_victory);
+		game.on('turn', (event) => {
+			if (!#is_defined(event.initial) || !event.initial) { check_victory(); }
+		});
 	});
 };

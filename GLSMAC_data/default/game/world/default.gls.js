@@ -12,19 +12,23 @@ return (game) => {
 	const map_height = tm.get_map_height();
 	const optimal_base_distance = #max((map_width + map_height) / 2 / players_count, 2);
 	let tiles_with_bases = [];
+	let land_tiles = [];
+	let water_tiles = [];
+	for (let y = 0; y < map_height; y++) {
+		for (let x = y % 2; x < map_width; x += 2) {
+			const tile = tm.get_tile(x, y);
+			if (tile.is_water) {
+				water_tiles :+tile;
+			} else {
+				land_tiles :+tile;
+			}
+		}
+	}
 
 	// functions
 	const get_good_starting_base_location = (is_naval_faction) => {
-		let domain_tiles = [];
+		const domain_tiles = is_naval_faction ? water_tiles : land_tiles;
 		let selected_tile = null;
-		for (let y = 0; y < map_height; y++) {
-			for (let x = y % 2; x < map_width; x += 2) {
-				const tile = tm.get_tile(x, y);
-				if (tile.is_water == is_naval_faction) {
-					domain_tiles :+tile;
-				}
-			}
-		}
 		for (let min_distance = optimal_base_distance; min_distance >= 1; min_distance--) {
 			let candidates = [];
 			for (tile of domain_tiles) {
@@ -69,6 +73,7 @@ return (game) => {
 			owner: player,
 			tile: tile,
 			headquarters: true,
+			initial_population: true,
 		});
 		tiles_with_bases :+tile;
 

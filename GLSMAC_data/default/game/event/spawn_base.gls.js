@@ -10,6 +10,12 @@ return {
 		) {
 			return 'Headquarters flag must be a boolean';
 		}
+		if (
+			#is_defined(e.data.initial_population) &&
+			#typeof(e.data.initial_population) != 'Bool'
+		) {
+			return 'Initial population flag must be a boolean';
+		}
 	},
 
 	apply: (e) => {
@@ -31,6 +37,25 @@ return {
 		);
 		if (#is_defined(e.data.headquarters) && e.data.headquarters) {
 			base.add_facility('Headquarters');
+		}
+		if (#is_defined(e.data.initial_population) && e.data.initial_population) {
+			const candidates = base.get_unworked_tiles();
+			const selected = e.game.get('f_base_find_best_or_worst_tiles')(
+				base,
+				candidates,
+				1,
+				1,
+				1,
+				true,
+				{}
+			);
+			const pop = base.create_pop({type: 'WORKER'});
+			if (#sizeof(selected) > 0) {
+				e.game.get('f_base_pop_work_tile')(base, pop, selected[0]);
+			} else {
+				pop.set_type('DOCTOR');
+			}
+			base.set('accumulated_nutrients', 0);
 		}
 
 		return {

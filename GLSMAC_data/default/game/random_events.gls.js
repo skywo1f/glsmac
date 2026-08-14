@@ -122,7 +122,7 @@ return (game) => {
 		});
 
 		game.on('turn', (e) => {
-			if (!game.is_master()) {
+			if ((#is_defined(e.initial) && e.initial) || !game.is_master()) {
 				return;
 			}
 			const climate = game.get_tm().get_climate_state();

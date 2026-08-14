@@ -30,6 +30,12 @@
 				fail('seven-player starting roster is invalid');
 				return;
 			}
+			for (base of game.get_bm().get_bases()) {
+				if (base.get_size() != 1) {
+					fail('starting bases must begin at population one');
+					return;
+				}
+			}
 			#print('SMALL_MAP_FRONTEND_RUNTIME_PASS');
 			#async(100, () => { glsmac.exit(); });
 		});

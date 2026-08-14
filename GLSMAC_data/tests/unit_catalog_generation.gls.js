@@ -2,7 +2,11 @@ const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 const manifest = #include('../default/content/base_units');
 
+units.ensure_full_catalog();
+
 test.assert(units.generated_count > 92);
+test.assert(#sizeof(units.predefined_definitions) == 17);
+test.assert(#sizeof(units.generated_definitions) == units.generated_count);
 test.assert(#sizeof(units.definitions) == units.generated_count + 17);
 
 const get_unit = (id) => {

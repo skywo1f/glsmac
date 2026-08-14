@@ -454,11 +454,41 @@ const add_milestone_designs = (technology_id) => {
 	}
 };
 
-add_milestone_designs('');
-for (technology_id of technologies.order) {
-	add_milestone_designs(technology_id);
-}
+let generated_milestones = {};
 
-return {
-	definitions: definitions,
+const generate_milestone = (technology_id) => {
+	const key = technology_id == '' ? 'initial' : technology_id;
+	if (#is_defined(generated_milestones[key])) {
+		return;
+	}
+	generated_milestones[key] = true;
+	add_milestone_designs(technology_id);
 };
+
+const generate_available = (known) => {
+	generate_milestone('');
+	for (technology_id of technologies.order) {
+		if (#is_defined(known[technology_id])) {
+			generate_milestone(technology_id);
+		}
+	}
+	result.definitions = definitions;
+	return definitions;
+};
+
+const generate_all = () => {
+	generate_milestone('');
+	for (technology_id of technologies.order) {
+		generate_milestone(technology_id);
+	}
+	result.definitions = definitions;
+	return definitions;
+};
+
+let result = {
+	definitions: definitions,
+	generate_available: generate_available,
+	generate_all: generate_all,
+};
+
+return result;

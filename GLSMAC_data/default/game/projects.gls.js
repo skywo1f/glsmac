@@ -357,6 +357,10 @@ return (game) => {
 	game.set('f_project_apply_completion_effects', apply_completion_effects);
 	game.set('f_project_rollback_completion_effects', rollback_completion_effects);
 	if (#is_defined(game.on)) {
-		game.on('turn', queue_planetary_datalinks);
+		game.on('turn', (event) => {
+			if (!#is_defined(event.initial) || !event.initial) {
+				queue_planetary_datalinks(event);
+			}
+		});
 	}
 };

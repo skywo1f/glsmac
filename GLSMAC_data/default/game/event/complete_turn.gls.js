@@ -3,6 +3,12 @@ const turn_rules = #include('../turn_rules');
 return {
 
 	validate: (e) => {
+		if (
+			#is_defined(e.data.turn_id) &&
+			(#typeof(e.data.turn_id) != 'Int' || e.data.turn_id != e.game.get_turn())
+		) {
+			return 'Turn completion request is stale';
+		}
 		if (e.game.is_turn_complete(e.caller)) {
 			return;
 		}

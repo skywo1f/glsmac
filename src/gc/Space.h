@@ -56,11 +56,11 @@ private:
 
 	// objects that have been accumulated but won't be collected until accumulator function finishes (that allows for temp values to move and assign where needed)
 	common::Mutex m_accumulation_mutex;
-	std::unordered_set< Object* > m_accumulated_objects = {};
+	std::vector< Object* > m_accumulated_objects = {};
 
 	// objects that are already collectable
 	common::Mutex m_objects_mutex;
-	std::unordered_set< Object* > m_objects = {};
+	std::vector< Object* > m_objects = {};
 
 	// thread-safety of collection logic, to make sure only one thread can run collection of this space at any given time
 	common::Mutex m_collect_mutex;

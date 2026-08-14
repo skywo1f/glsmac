@@ -394,13 +394,17 @@ const reset_nutrients = (game, base) => {
 	base.set('accumulated_nutrients', updated);
 };
 
-const get_tile_score = (base, tile, projected_size) => {
+const get_tile_score = (base, tile, projected_size, current_nutrients) => {
 	const resources = tile.get_resources(base.get_owner());
 	let score = resources.NUTRIENTS * 3 + resources.MINERALS * 2 + resources.ENERGY;
 	if (#is_defined(projected_size)) {
 		const is_growth = projected_size > base.get_size();
 		const nutrient_change = is_growth ? resources.NUTRIENTS : 0 - resources.NUTRIENTS;
-		const projected_nutrients = base.get_intake().NUTRIENTS + nutrient_change;
+		const projected_nutrients = (
+			#is_defined(current_nutrients)
+				? current_nutrients
+				: base.get_intake().NUTRIENTS
+		) + nutrient_change;
 		const nutrient_deficit = #max(projected_size * 2 - projected_nutrients, 0);
 		// Avoid starvation first, then gain or preserve the highest-value tile.
 		score = (0 - nutrient_deficit * 1000) + (is_growth ? score : 0 - score);
@@ -424,6 +428,9 @@ const get_population_limit = (game, base) => {
 const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, require_available, excluded_keys) => { // modifier 1 to find best tiles, -1 to find worst tiles
 	let keys = {};
 	let result = [];
+	const current_nutrients = #is_defined(projected_size)
+		? base.get_intake().NUTRIENTS
+		: #undefined;
 	for (let i = 0; i < count; i++) {
 		if (i >= #sizeof(tiles)) {
 			break;
@@ -444,7 +451,12 @@ const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, 
 			if (#is_defined(keys[key])) {
 				continue;
 			}
-			const score = get_tile_score(base, tile, projected_size) * modifier;
+			const score = get_tile_score(
+				base,
+				tile,
+				projected_size,
+				current_nutrients
+			) * modifier;
 			if (best == null || score > best.score) {
 				best = {
 					tile: tile,
@@ -567,6 +579,7 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 };
 
 const rebalance_workers = (base, target_worker_count) => {
+	let changed = false;
 	let workers = [];
 	let population = [];
 	let candidates = [];
@@ -629,19 +642,24 @@ const rebalance_workers = (base, target_worker_count) => {
 	for (base_pop of displaced) {
 		if (tile_index < #sizeof(new_tiles)) {
 			pop_work_tile(base, base_pop, new_tiles[tile_index]);
+			changed = true;
 			tile_index++;
 		} else {
 			pop_unwork(base, base_pop, 'DOCTOR');
+			changed = true;
 		}
 	}
 	for (base_pop of specialists) {
 		if (tile_index < #sizeof(new_tiles)) {
 			pop_work_tile(base, base_pop, new_tiles[tile_index]);
+			changed = true;
 			tile_index++;
-		} else {
+		} else if (base_pop.get_type() != 'DOCTOR') {
 			base_pop.set_type('DOCTOR');
+			changed = true;
 		}
 	}
+	return changed;
 };
 
 const select_population_for_reduction = (base) => {
@@ -666,12 +684,44 @@ const select_population_for_reduction = (base) => {
 
 const rebalance_ai_workers = (game, base, allocated_psych) => {
 	if (base.get_owner().type == 'ai') {
-		rebalance_workers(base, get_stable_worker_count(game, base, allocated_psych));
+		const target_worker_count = get_stable_worker_count(game, base, allocated_psych);
+		let current_worker_count = 0;
+		for (pop of base.get_pops()) {
+			if (pop.has('worked_tile')) {
+				current_worker_count++;
+			}
+		}
+		const base_key = 'b' + #to_string(base.id);
+		const is_dirty = #is_defined(globals.ai_worker_rebalance_dirty) &&
+			#is_defined(globals.ai_worker_rebalance_dirty[base_key]);
+		const is_periodic_review =
+			#typeof(game.get_turn) == 'Callable' && #typeof(base.id) == 'Int' &&
+			(game.get_turn() + base.id) % 8 == 0;
+		if (
+			current_worker_count == target_worker_count &&
+			!is_dirty && !is_periodic_review
+		) {
+			return false;
+		}
+		if (is_dirty) {
+			let remaining_dirty = {};
+			for (key in globals.ai_worker_rebalance_dirty) {
+				if (key != base_key) {
+					remaining_dirty[key] = true;
+				}
+			}
+			globals.ai_worker_rebalance_dirty = remaining_dirty;
+		}
+		return rebalance_workers(
+			base,
+			target_worker_count
+		);
 	}
+	return false;
 };
 
 const process_growth = (game, base, allocated_psych) => {
-	rebalance_ai_workers(game, base, allocated_psych);
+	const workers_changed = rebalance_ai_workers(game, base, allocated_psych);
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
@@ -682,10 +732,10 @@ const process_growth = (game, base, allocated_psych) => {
 	if (accumulated < 0) {
 		if (base.get_size() <= 1) {
 			base.set('accumulated_nutrients', 0);
-			return;
+			return workers_changed;
 		}
 		if (!game.is_master()) {
-			return;
+			return workers_changed;
 		}
 		const pop = select_population_for_reduction(base);
 		if (pop == null) {
@@ -695,7 +745,7 @@ const process_growth = (game, base, allocated_psych) => {
 			base: base,
 			pop: pop,
 		});
-		return;
+		return true;
 	}
 	base.set('accumulated_nutrients', accumulated);
 	const population_limit = get_population_limit(game, base);
@@ -704,7 +754,7 @@ const process_growth = (game, base, allocated_psych) => {
 			'accumulated_nutrients',
 			#min(accumulated, get_nutrients_for_growth(game, base))
 		);
-		return;
+		return workers_changed;
 	}
 	if (base.get_size() == 0) {
 		grow = true; // always grow new bases to 1
@@ -722,7 +772,7 @@ const process_growth = (game, base, allocated_psych) => {
 
 	if (grow) {
 		if (!game.is_master()) {
-			return;
+			return workers_changed;
 		}
 		if (!#is_defined(globals.reserved_growth_tiles)) {
 			globals.reserved_growth_tiles = {};
@@ -751,7 +801,9 @@ const process_growth = (game, base, allocated_psych) => {
 				type: 'DOCTOR',
 			});
 		}
+		return true;
 	}
+	return workers_changed;
 };
 
 const calculate_growth_base = (game) => {
@@ -990,6 +1042,26 @@ return (game) => {
 		calculate_growth_base(game);
 
 		const bm = game.get_bm();
+		globals.ai_worker_rebalance_dirty = {};
+		const mark_ai_worker_assignments_dirty = (event) => {
+			for (base of bm.get_bases()) {
+				if (base.get_owner().type == 'ai') {
+					globals.ai_worker_rebalance_dirty[
+						'b' + #to_string(base.id)
+					] = true;
+				}
+			}
+		};
+		for (event_name of [
+			'terraforming_completed',
+			'unity_pod_opened',
+			'sea_level_changed',
+			'volcano_created',
+			'major_volcanic_eruption',
+			'ecological_damage'
+		]) {
+			game.on(event_name, mark_ai_worker_assignments_dirty);
+		}
 
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
@@ -1019,7 +1091,7 @@ return (game) => {
 
 		// new turn, process all bases
 		game.on('turn', (e) => {
-			if (game.is_master()) {
+			if (game.is_master() && (!#is_defined(e.initial) || !e.initial)) {
 				globals.reserved_growth_tiles = {};
 				for (base of bm.get_bases()) {
 					if (game.get('f_nerve_stapling_get_turns')(base) > 0) {
