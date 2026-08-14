@@ -122,7 +122,7 @@ const get_effective_facilities = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : base.get_facilities();
 };
 
-const get_base_damage = (game, base) => {
+const get_base_damage = (game, base, intake) => {
 	const owner = base.get_owner();
 	let worked_tile_keys = null;
 	if (#typeof(base.get_worked_tiles) == 'Callable') {
@@ -177,7 +177,7 @@ const get_base_damage = (game, base) => {
 		ecology_divisor_bonus: #is_defined(project_effects.ecology_divisor_bonus)
 			? project_effects.ecology_divisor_bonus
 			: 0,
-		minerals: base.get_intake().MINERALS,
+		minerals: (#is_defined(intake) ? intake : base.get_intake()).MINERALS,
 		previous_damages: owner.get_ecological_damage_events(),
 		clean_mineral_facilities: owner.get_clean_mineral_facilities(),
 		major_atrocities: owner.get_major_atrocities(),
@@ -406,7 +406,9 @@ const advance_pending_climate = (game) => {
 return (game) => {
 	game.on('start', (e) => {
 		game.set('f_ecology_calculate', calculate);
-		game.set('f_ecology_get_base_damage', (base) => { return get_base_damage(game, base); });
+		game.set('f_ecology_get_base_damage', (base, intake) => {
+			return get_base_damage(game, base, intake);
+		});
 		game.set('f_ecology_get_life_level', get_life_level);
 		game.set('f_ecology_is_perihelion', is_perihelion);
 		game.set('f_ecology_apply_facility_completion', apply_facility_completion);
@@ -445,7 +447,15 @@ return (game) => {
 			const ecology_damage_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
 			let reserved_tiles = {};
 			for (base of game.get_bm().get_bases()) {
-				const damage = get_base_damage(game, base);
+				const snapshot_resolver = game.get('f_base_get_turn_resource_snapshot');
+				const snapshot = #is_defined(snapshot_resolver)
+					? snapshot_resolver(base)
+					: null;
+				const damage = get_base_damage(
+					game,
+					base,
+					snapshot == null ? #undefined : snapshot.intake
+				);
 				if (
 					damage.percent > 0 &&
 					game.random.get_int(0, 99) < damage.percent

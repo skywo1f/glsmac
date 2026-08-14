@@ -11,13 +11,21 @@ const facilities = [{
 	psych_bonus: 2,
 	psych_multiplier: 0.5,
 }];
+let intake_calls = 0;
+let consumption_calls = 0;
 let base = null;
 base = {
 	id: 7,
 	get_owner: () => { return owner; },
 	get_tile: () => { return tile; },
-	get_consumption: () => { return {ENERGY: 2}; },
-	get_intake: () => { return {ENERGY: 20}; },
+	get_consumption: () => {
+		consumption_calls++;
+		return {ENERGY: 2};
+	},
+	get_intake: () => {
+		intake_calls++;
+		return {ENERGY: 20};
+	},
 	get_facilities: () => { return facilities; },
 	has_facility: (id) => { return id == 'Headquarters'; },
 };
@@ -53,3 +61,15 @@ const headquarters = {p1: [base]};
 test.assert(
 	values.f_economy_get_base_psych(game, base, headquarters) == expected_psych
 );
+
+const calls_before_snapshot = intake_calls + consumption_calls;
+test.assert(
+	values.f_economy_get_base_psych(
+		game,
+		base,
+		headquarters,
+		{ENERGY: 20},
+		{ENERGY: 2}
+	) == expected_psych
+);
+test.assert(intake_calls + consumption_calls == calls_before_snapshot);

@@ -28,6 +28,7 @@
 #include "game/backend/Random.h"
 #include "game/backend/resource/ResourceManager.h"
 #include "game/backend/unit/Def.h"
+#include "game/backend/unit/Unit.h"
 #include "game/backend/unit/UnitManager.h"
 
 namespace game {
@@ -1430,6 +1431,20 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 		} ),
 	},
 	{
+		"get_supported_units",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			return GetSupportedUnits( GSE_CALL );
+		} ),
+	},
+	{
+		"get_convoy_units",
+		NATIVE_CALL( this ) {
+			N_EXPECT_ARGS( 0 );
+			return GetConvoyUnits( GSE_CALL );
+		} ),
+	},
+	{
 		"get_intake",
 		NATIVE_CALL( this ) {
 			N_EXPECT_ARGS( 0 );
@@ -1506,6 +1521,28 @@ gse::value::Array* const Base::GetUnworkedTiles( GSE_CALLABLE ) {
 		}
 	}
 	return VALUE( gse::value::Array,, result );
+}
+
+gse::value::Array* const Base::GetSupportedUnits( GSE_CALLABLE ) {
+	gse::value::array_elements_t result = {};
+	for ( const auto& it : m_game->GetUM()->GetUnits() ) {
+		auto* const unit = it.second;
+		if ( unit->m_owner == m_owner && unit->m_home_base_id == m_id ) {
+			result.push_back( unit->Wrap( GSE_CALL ) );
+		}
+	}
+	return VALUE( gse::value::Array, , result );
+}
+
+gse::value::Array* const Base::GetConvoyUnits( GSE_CALLABLE ) {
+	gse::value::array_elements_t result = {};
+	for ( const auto& it : m_game->GetUM()->GetUnits() ) {
+		auto* const candidate = it.second;
+		if ( candidate->m_owner == m_owner && candidate->m_convoy_resource != unit::CR_NONE ) {
+			result.push_back( candidate->Wrap( GSE_CALL ) );
+		}
+	}
+	return VALUE( gse::value::Array, , result );
 }
 
 gse::value::Object* const Base::GetIntake( GSE_CALLABLE ) {

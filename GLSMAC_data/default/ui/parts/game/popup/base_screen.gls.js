@@ -131,10 +131,14 @@ return {
 
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
-		let supported_units = [];
-		for (unit of game.get_um().get_units()) {
-			if (unit.owner == owner.id && unit.home_base_id == base.id) {
-				supported_units :+unit;
+		let supported_units = #is_defined(base.get_supported_units)
+			? base.get_supported_units()
+			: [];
+		if (!#is_defined(base.get_supported_units)) {
+			for (unit of game.get_um().get_units()) {
+				if (unit.owner == owner.id && unit.home_base_id == base.id) {
+					supported_units :+unit;
+				}
 			}
 		}
 		const free_support_capacity = #max(base.get_size(), 1);
@@ -170,7 +174,7 @@ return {
 		this.sections.game_state.set({
 			year: game.get_year(),
 			energy: owner.energy_credits,
-			ecodamage: game.get('f_ecology_get_base_damage')(base).percent,
+			ecodamage: game.get('f_ecology_get_base_damage')(base, intake).percent,
 		});
 		finish_base_phase('game_state');
 
@@ -198,14 +202,16 @@ return {
 				loss: consumption.ENERGY,
 			},
 		};
-		const energy_diagnostics = game.get('f_economy_get_base_energy')(base);
+		const energy_diagnostics = game.get('f_economy_get_base_energy')(base, intake);
 		resource_data.energy.loss =
 			resource_data.energy.loss + energy_diagnostics.inefficiency;
 		resource_data.energy_inefficiency = energy_diagnostics;
 		this.sections.resources.set(resource_data);
 		finish_base_phase('resources');
 
-		this.sections.energy.set(game.get('f_economy_get_base_allocation')(game, base));
+		this.sections.energy.set(
+			game.get('f_economy_get_base_allocation')(game, base, intake, consumption)
+		);
 		finish_base_phase('energy');
 
 		this.sections.middle_area.set({

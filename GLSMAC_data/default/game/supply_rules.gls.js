@@ -125,12 +125,15 @@ const get_base_convoy_adjustment = (game, base, tile_bonuses) => {
 		? bonuses.forest_energy_bonus
 		: 0;
 	const owner = base.get_owner();
-	const owner_id = base.get_owner().id;
-	for (unit of game.get_um().get_units()) {
+	const owner_id = owner.id;
+	const convoy_candidates = #is_defined(base.get_convoy_units)
+		? base.get_convoy_units()
+		: game.get_um().get_units();
+	for (unit of convoy_candidates) {
 		if (
-			unit.owner != owner_id || !is_supply_transport(unit) ||
-			!#is_defined(unit.convoy_resource) || unit.convoy_resource == 'none' ||
-			!#is_defined(unit.health) || unit.health <= 0.0
+			unit.owner != owner_id || !#is_defined(unit.convoy_resource) ||
+			unit.convoy_resource == 'none' || !#is_defined(unit.health) ||
+			unit.health <= 0.0 || !is_supply_transport(unit)
 		) {
 			continue;
 		}
@@ -172,12 +175,15 @@ const get_base_convoy_consumption = (game, base) => {
 		return result;
 	}
 	const owner_id = base.get_owner().id;
-	for (unit of game.get_um().get_units()) {
+	const convoy_candidates = #is_defined(base.get_convoy_units)
+		? base.get_convoy_units()
+		: game.get_um().get_units();
+	for (unit of convoy_candidates) {
 		if (
-			unit.owner != owner_id || !is_supply_transport(unit) ||
-			!#is_defined(unit.convoy_resource) || unit.convoy_resource == 'none' ||
-			!#is_defined(unit.health) || unit.health <= 0.0 ||
-			unit.home_base_id != base.id || !is_resource(unit.convoy_resource)
+			unit.owner != owner_id || !#is_defined(unit.convoy_resource) ||
+			unit.convoy_resource == 'none' || !#is_defined(unit.health) ||
+			unit.health <= 0.0 || unit.home_base_id != base.id ||
+			!is_supply_transport(unit) || !is_resource(unit.convoy_resource)
 		) {
 			continue;
 		}

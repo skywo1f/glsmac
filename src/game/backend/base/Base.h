@@ -143,6 +143,8 @@ private:
 	gse::value::Array* const GetWorkableTiles( GSE_CALLABLE );
 	gse::value::Array* const GetWorkedTiles( GSE_CALLABLE );
 	gse::value::Array* const GetUnworkedTiles( GSE_CALLABLE );
+	gse::value::Array* const GetSupportedUnits( GSE_CALLABLE );
+	gse::value::Array* const GetConvoyUnits( GSE_CALLABLE );
 	gse::value::Object* const GetIntake( GSE_CALLABLE );
 	gse::value::Object* const GetConsumption( GSE_CALLABLE );
 	void RestoreWorkedTiles( GSE_CALLABLE );

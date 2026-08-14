@@ -9,6 +9,16 @@ const PSYCH_PER_IMPROVEMENT = 2;
 const DOCTOR_PSYCH = 2;
 const DEFAULT_POPULATION_LIMIT = 7;
 
+const get_turn_resource_snapshot = (base) => {
+	if (!#is_defined(globals.turn_resource_snapshots)) {
+		return null;
+	}
+	const key = 'b' + #to_string(base.id);
+	return #is_defined(globals.turn_resource_snapshots[key])
+		? globals.turn_resource_snapshots[key]
+		: null;
+};
+
 const get_social_ratings = (game, player) => {
 	const resolver = #is_defined(game.get) ? game.get('f_social_get_ratings') : #undefined;
 	return #is_defined(resolver) ? resolver(player) : {
@@ -350,13 +360,14 @@ const process_psych = (game, base, allocated_psych) => {
 		}
 		return;
 	}
-	suppress_drones(base, get_police_state(game, base).suppression);
+	const police = get_police_state(game, base);
+	suppress_drones(base, police.suppression);
 	apply_psych_improvements(base, effects.talent_bonus);
 	apply_psych_improvements(
 		base,
 		#floor(#to_float(psych) / #to_float(PSYCH_PER_IMPROVEMENT))
 	);
-	apply_pacifism_drones(base, get_police_state(game, base).pacifism_drones);
+	apply_pacifism_drones(base, police.pacifism_drones);
 };
 
 const get_nutrients_for_growth = (game, base) => {
@@ -896,21 +907,15 @@ return (game) => {
 				? facility.forest_energy_bonus
 				: 0;
 		}
-		const f_get_tile = (tile) => {
+		const f_add_tile = (tile) => {
 			const r = tile.get_resources(e.base.get_owner());
 			const is_forest = tile.is_land && tile.terraforming.forest;
-			return {
-				NUTRIENTS: r.NUTRIENTS + (is_forest ? forest_nutrient_bonus : 0),
-				MINERALS: r.MINERALS + (is_forest ? forest_mineral_bonus : 0),
-				ENERGY: r.ENERGY + worked_tile_energy_bonus + social_tile_energy_bonus +
-					(is_forest ? forest_energy_bonus : 0),
-			};
-		};
-		const f_add_tile = (tile) => {
-			const r = f_get_tile(tile);
-			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS;
-			result.MINERALS = result.MINERALS + r.MINERALS;
-			result.ENERGY = result.ENERGY + r.ENERGY;
+			result.NUTRIENTS = result.NUTRIENTS + r.NUTRIENTS +
+				(is_forest ? forest_nutrient_bonus : 0);
+			result.MINERALS = result.MINERALS + r.MINERALS +
+				(is_forest ? forest_mineral_bonus : 0);
+			result.ENERGY = result.ENERGY + r.ENERGY + worked_tile_energy_bonus +
+				social_tile_energy_bonus + (is_forest ? forest_energy_bonus : 0);
 		};
 
 		f_add_tile(e.base.get_tile());
@@ -974,7 +979,10 @@ return (game) => {
 			? support_cost_resolver(owner)
 			: 1;
 		let unit_support = 0;
-		for (unit of game.get_um().get_units()) {
+		const support_candidates = #is_defined(e.base.get_supported_units)
+			? e.base.get_supported_units()
+			: game.get_um().get_units();
+		for (unit of support_candidates) {
 			if (unit.owner == owner.id && unit.home_base_id == e.base.id) {
 				unit_support += unit_abilities.get_support_cost(unit) * social_support_cost;
 			}
@@ -1068,6 +1076,7 @@ return (game) => {
 		// set bases-related globals
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
+		game.set('f_base_get_turn_resource_snapshot', get_turn_resource_snapshot);
 		game.set('f_base_get_nutrients_for_growth', get_nutrients_for_growth);
 		game.set('f_base_get_population_limit', (base) => { return get_population_limit(game, base); });
 		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
@@ -1112,15 +1121,25 @@ return (game) => {
 					turn_headquarters_by_owner[turn_headquarters_key] :+turn_candidate;
 				}
 				globals.reserved_growth_tiles = {};
+				globals.turn_resource_snapshots = {};
 				for (base of bm.get_bases()) {
 					if (game.get('f_nerve_stapling_get_turns')(base) > 0) {
 						game.event('process_nerve_stapling', {base: base});
 					}
 					const turn_base_phase_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
+					const resource_snapshot = {
+						intake: base.get_intake(),
+						consumption: base.get_consumption(),
+					};
+					globals.turn_resource_snapshots[
+						'b' + #to_string(base.id)
+					] = resource_snapshot;
 					const psych = game.get('f_economy_get_base_psych')(
 						game,
 						base,
-						turn_headquarters_by_owner
+						turn_headquarters_by_owner,
+						resource_snapshot.intake,
+						resource_snapshot.consumption
 					);
 					if (#typeof(turn_profile) == 'Callable') {
 						turn_psych_ms += #monotonic_ms() - turn_base_phase_started;

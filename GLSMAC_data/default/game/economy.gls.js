@@ -316,16 +316,19 @@ const get_player_commerce = (game, player) => {
 	return result;
 };
 
-const get_base_psych = (game, base, headquarters_by_owner) => {
-	const consumption = base.get_consumption();
+const get_base_psych = (game, base, headquarters_by_owner, intake, consumption) => {
+	const base_consumption = #is_defined(consumption)
+		? consumption
+		: base.get_consumption();
 	const facilities = get_effective_facilities(game, base);
 	const energy = get_base_energy(
 		game,
 		base,
 		facilities,
-		headquarters_by_owner
+		headquarters_by_owner,
+		intake
 	);
-	const energy_surplus = #max(energy.net - consumption.ENERGY, 0);
+	const energy_surplus = #max(energy.net - base_consumption.ENERGY, 0);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
 	let psych_bonus = 0;
 	let psych_multiplier = 0.0;
@@ -440,7 +443,9 @@ const get_liquidation_candidate = (game, player) => {
 
 return (game) => {
 	game.on('start', (e) => {
-		game.set('f_economy_get_base_energy', (base) => { return get_base_energy(game, base); });
+		game.set('f_economy_get_base_energy', (base, intake) => {
+			return get_base_energy(game, base, #undefined, #undefined, intake);
+		});
 		game.set('f_economy_get_base_allocation', get_base_allocation);
 		game.set('f_economy_get_base', get_base_economy);
 		game.set('f_economy_get_base_commerce', get_base_commerce);
