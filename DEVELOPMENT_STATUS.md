@@ -1247,5 +1247,13 @@ repeat runs, a 16-18% improvement without skipping AI decisions. All 128 GSE
 tests passed in 218.43 seconds, followed by eight AI, save/load, multiplayer,
 and reconnect runtime scenarios in 127.37 seconds.
 
+Release builds now write thread-safe runtime diagnostics to `GLSMAC.log` in
+the active profile and retain the immediately preceding session as
+`GLSMAC.previous.log`. This makes ordinary launcher-based crashes and freezes
+actionable without requiring a console repro, while keeping host and client
+logs isolated by profile. Consecutive-launch rotation passed, as did the native
+suite, a six-opponent AI turn, and the real host/client runtime; the latter
+completed in 21.96 seconds with independent nonempty logs for both peers.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

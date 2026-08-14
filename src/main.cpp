@@ -32,6 +32,7 @@
 #endif
 
 #include "logger/Stdout.h"
+#include "logger/File.h"
 
 #include "resource/ResourceManager.h"
 
@@ -200,6 +201,10 @@ int main( const int argc, char* const argv[] ) {
 	// logger needs to be outside of scope to be destroyed last
 
 	std::vector< logger::Logger* > loggers = {};
+	loggers.push_back( new logger::File(
+		config.GetPrefix() + "GLSMAC.log",
+		config.GetPrefix() + "GLSMAC.previous.log"
+	) );
 	bool enable_stdout_logger = config.HasLaunchFlag( config::Config::LF_VERBOSE );
 #if defined( DEBUG ) || defined( FASTDEBUG )
 	enable_stdout_logger = enable_stdout_logger || !config.HasDebugFlag( config::Config::DF_QUIET );
