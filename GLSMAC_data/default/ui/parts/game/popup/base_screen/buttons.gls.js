@@ -3,6 +3,7 @@ return {
 	init: (p) => {
 		this.p = p;
 		this.base = null;
+		this.hurry_pending = false;
 		this.get_hurry_state = () => {
 			if (this.base == null) {
 				return {cost: 0, can_hurry: false};
@@ -17,11 +18,13 @@ return {
 			const is_owned = owner.id == player.id;
 			const is_turn_active = !this.p.game.is_turn_complete(player.id);
 			const affordable = owner.energy_credits >= cost;
+			const is_not_pending = this.hurry_pending == false;
 			return {
 				cost: cost,
 				affordable: affordable,
 				can_hurry:
 					cost > 0 &&
+					is_not_pending &&
 					is_owned &&
 					is_turn_active &&
 					affordable,
@@ -66,6 +69,7 @@ return {
 		this.btn_hurry.on('click', (e) => {
 			const state = this.get_hurry_state();
 			if (state.can_hurry) {
+				this.hurry_pending = true;
 				this.btn_hurry.text = 'HURRYING...';
 				this.p.game.event('hurry_base_production', {base: this.base});
 			}
@@ -76,6 +80,7 @@ return {
 
 	set: (data) => {
 		this.base = data.base;
+		this.hurry_pending = false;
 		const state = this.get_hurry_state();
 		this.btn_hurry.text = state.cost <= 0
 			? 'HURRY'

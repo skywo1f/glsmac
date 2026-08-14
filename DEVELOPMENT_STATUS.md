@@ -1064,5 +1064,16 @@ output in 60.18 seconds. The main-menu quicksave branches passed their focused
 script test, ordinary single-player runtime passed in 61.54 seconds, and the
 shared running-reconnect snapshot path passed in 82.59 seconds.
 
+The manual-play regression pass restored the original `units.pcx` coordinates
+for stock units and chassis-aware placeholders for generated and Workshop unit
+designs, replacing the artifact-like generic icons introduced by the prior
+visibility fix. Hurry production now suppresses duplicate clicks while an
+authoritative request is pending. Repeating SDL sounds stream across buffer
+boundaries without gaps or skipped samples, while one-shot sounds zero-pad their
+final buffer. Focused native audio, unit-catalog, Workshop, and hurry-button
+tests passed. Installed-asset Gaians seven-player startup, visibility, and
+Planetary Council runtime checks also passed, and a real SDL audio/OpenGL run
+reached turn 5 with no logged warning, error, or assertion.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

@@ -1,27 +1,5 @@
 const generated = #include('generated');
 
-const role_render = (role) => {
-	let x = 518;
-	let y = 82;
-	if (role == 'former' || role == 'supply' || role == 'probe') {
-		y = 158;
-	} else if (role == 'colony') {
-		y = 235;
-	} else if (role == 'artifact') {
-		y = 312;
-	}
-	return {
-		type: 'sprite',
-		file: 'newicons.pcx',
-		x: x,
-		y: y,
-		w: 80,
-		h: 69,
-		cx: x + 40,
-		cy: y + 35,
-	};
-};
-
 const moralesets = [
 	{
 		id: 'STANDARD',
@@ -136,15 +114,13 @@ const conventional_unit = (
 			operational_range: 0,
 			is_missile: false,
 			cargo_capacity: 0,
-			render: role_render(
-				can_found_base ? 'colony' : (
-					can_terraform ? 'former' : (
-						weapon == 'AlienArtifact' ? 'artifact' : (
-							weapon == 'ProbeTeam' ? 'probe' : 'combat'
-						)
-					)
-				)
-			),
+			render: {
+				type: 'sprite',
+				file: 'units.pcx',
+				x: sprite_x, y: sprite_y,
+				w: 100, h: 75,
+				cx: sprite_x + 51, cy: sprite_y + 51,
+			},
 		},
 	};
 };
@@ -190,9 +166,13 @@ const special_unit = (
 			operational_range: operational_range,
 			is_missile: false,
 			cargo_capacity: cargo_capacity,
-			render: role_render(
-				weapon == 'TroopTransport' ? 'supply' : 'combat'
-			),
+			render: {
+				type: 'sprite',
+				file: 'units.pcx',
+				x: sprite_x, y: sprite_y,
+				w: 100, h: 75,
+				cx: sprite_x + 51, cy: sprite_y + 51,
+			},
 		},
 	};
 };

@@ -1,6 +1,7 @@
 #include "Tests.h"
 
 #include <array>
+#include <cstdlib>
 #include <limits>
 #include <memory>
 #include <utility>
@@ -53,7 +54,9 @@
 #include "types/Color.h"
 #include "types/mesh/Mesh.h"
 #include "types/Packet.h"
+#include "types/Sound.h"
 #include "types/texture/Texture.h"
+#include "scene/actor/Sound.h"
 #include "util/FS.h"
 
 namespace gse {
@@ -75,6 +78,67 @@ void AddTests( task::gsetests::GSETests* task ) {
 				const auto normalized = util::FS::NormalizePath( path );
 				GT_ASSERT( !normalized.empty(), "missing path normalized to an empty string" );
 				GT_ASSERT( normalized.find( "missing.txt" ) != std::string::npos, "missing path lost its filename while normalizing" );
+				GT_OK();
+			}
+		);
+		task->AddTest(
+			"sound playback preserves loop boundaries",
+			GT() {
+				types::Sound source;
+				source.m_buffer_size = 6;
+				source.m_buffer = static_cast< unsigned char* >( malloc( source.m_buffer_size ) );
+				GT_ASSERT( source.m_buffer, "could not allocate sound test buffer" );
+				for ( size_t i = 0 ; i < source.m_buffer_size ; i++ ) {
+					source.m_buffer[ i ] = static_cast< unsigned char >( i + 1 );
+				}
+
+				{
+					scene::actor::Sound one_shot( "one-shot", &source );
+					one_shot.Play();
+					unsigned char first[ 4 ] = {};
+					unsigned char second[ 4 ] = {};
+					one_shot.GetNextBuffer( first, sizeof( first ) );
+					one_shot.GetNextBuffer( second, sizeof( second ) );
+					GT_ASSERT(
+						( std::array< unsigned char, 4 >{ first[ 0 ], first[ 1 ], first[ 2 ], first[ 3 ] } ==
+						std::array< unsigned char, 4 >{ 1, 2, 3, 4 } ),
+						"one-shot sound changed its first buffer"
+					);
+					GT_ASSERT(
+						( std::array< unsigned char, 4 >{ second[ 0 ], second[ 1 ], second[ 2 ], second[ 3 ] } ==
+						std::array< unsigned char, 4 >{ 5, 6, 0, 0 } ),
+						"one-shot sound did not silence its final partial buffer"
+					);
+					GT_ASSERT( one_shot.IsFinished(), "one-shot sound did not finish" );
+				}
+
+				{
+					scene::actor::Sound repeating( "repeating", &source );
+					repeating.SetRepeatable( true );
+					repeating.Play();
+					unsigned char first[ 4 ] = {};
+					unsigned char second[ 4 ] = {};
+					unsigned char third[ 4 ] = {};
+					repeating.GetNextBuffer( first, sizeof( first ) );
+					repeating.GetNextBuffer( second, sizeof( second ) );
+					repeating.GetNextBuffer( third, sizeof( third ) );
+					GT_ASSERT(
+						( std::array< unsigned char, 4 >{ first[ 0 ], first[ 1 ], first[ 2 ], first[ 3 ] } ==
+						std::array< unsigned char, 4 >{ 1, 2, 3, 4 } ),
+						"repeating sound changed its first buffer"
+					);
+					GT_ASSERT(
+						( std::array< unsigned char, 4 >{ second[ 0 ], second[ 1 ], second[ 2 ], second[ 3 ] } ==
+						std::array< unsigned char, 4 >{ 5, 6, 1, 2 } ),
+						"repeating sound inserted silence at the loop boundary"
+					);
+					GT_ASSERT(
+						( std::array< unsigned char, 4 >{ third[ 0 ], third[ 1 ], third[ 2 ], third[ 3 ] } ==
+						std::array< unsigned char, 4 >{ 3, 4, 5, 6 } ),
+						"repeating sound skipped samples after looping"
+					);
+					GT_ASSERT( !repeating.IsFinished(), "repeating sound stopped after looping" );
+				}
 				GT_OK();
 			}
 		);

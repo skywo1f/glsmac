@@ -32,6 +32,22 @@ test.assert(artifact != null);
 test.assert(!artifact.data.buildable);
 test.assert(artifact.data.weapon == 'AlienArtifact');
 
+const scout = get_unit('ScoutPatrol');
+const colony = get_unit('ColonyPod');
+const former = get_unit('Former');
+test.assert(
+	scout.data.render.file == 'units.pcx' &&
+	scout.data.render.x == 2 && scout.data.render.y == 156
+);
+test.assert(
+	colony.data.render.file == 'units.pcx' &&
+	colony.data.render.x == 2 && colony.data.render.y == 2
+);
+test.assert(
+	former.data.render.file == 'units.pcx' &&
+	former.data.render.x == 206 && former.data.render.y == 156
+);
+
 const unity_rover = get_unit('UnityRover');
 const unity_chopper = get_unit('UnityScoutChopper');
 const unity_foil = get_unit('UnityFoil');
@@ -102,6 +118,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
+	test.assert(data.render.file == 'units.pcx');
 	test.assert(data.chassis != '');
 	test.assert(data.weapon != '');
 	test.assert(data.armor != '');

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstring>
 #include <cmath>
 
@@ -30,35 +31,47 @@ void Sound::Rewind() {
 }
 
 void Sound::GetNextBuffer( uint8_t* buffer, size_t len ) {
-
-	ASSERT( len <= m_sound->m_buffer_size, "buffer size is smaller than len" );
-
-	if ( m_is_finished || !m_is_active ) {
+	if ( len == 0 ) {
+		return;
+	}
+	if ( m_is_finished || !m_is_active || m_sound->m_buffer_size == 0 ) {
 		memset( ptr( buffer, 0, len ), 0, len );
+		if ( m_sound->m_buffer_size == 0 && !m_is_finished ) {
+			Stop();
+		}
 		return;
 	}
 
-	size_t newlen = 0;
-	if ( len + m_pos > m_sound->m_buffer_size ) {
-		newlen = m_sound->m_buffer_size - m_pos;
-		//if ( !m_is_repeatable ) { // need to test this first (maybe not needed at all)
-		memset( ptr( buffer, newlen, len - newlen ), 0, len - newlen );
-		Stop();
-		//}
-		len = newlen;
-	}
-	if ( m_is_muted ) {
-		memset( ptr( buffer, 0, len ), 0, len );
-	}
-	else {
-		memcpy( ptr( buffer, 0, len ), ptr( m_sound->m_buffer, m_pos, len ), len );
-	}
-	m_pos += len;
-	if ( m_is_finished && m_is_repeatable ) {
-		Rewind();
+	size_t written = 0;
+	while ( written < len ) {
+		const size_t remaining = m_sound->m_buffer_size - m_pos;
+		const size_t chunk = std::min( len - written, remaining );
+		if ( m_is_muted ) {
+			memset( ptr( buffer, written, chunk ), 0, chunk );
+		}
+		else {
+			memcpy(
+				ptr( buffer, written, chunk ),
+				ptr( m_sound->m_buffer, m_pos, chunk ),
+				chunk
+			);
+		}
+		written += chunk;
+		m_pos += chunk;
 
-		// need to test this first (maybe not needed at all)
-		//GetNextBuffer( ptr( buffer, newlen, len - newlen ), newlen );
+		if ( m_pos < m_sound->m_buffer_size ) {
+			continue;
+		}
+		if ( m_is_repeatable ) {
+			m_pos = 0;
+		}
+		else {
+			Stop();
+			if ( written < len ) {
+				memset( ptr( buffer, written, len - written ), 0, len - written );
+			}
+			break;
+		}
 	}
 }
 
