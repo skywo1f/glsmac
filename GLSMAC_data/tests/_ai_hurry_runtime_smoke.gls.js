@@ -35,6 +35,7 @@
 			return true;
 		}
 		base_id = base.id;
+		game.select_base(base);
 		game.event('process_player_economy', {
 			player: game.get_player(ai_id),
 			energy_credits: initial_credits,

@@ -1124,5 +1124,14 @@ scenario, base psych fell from about 267 ms to 162-182 ms and ecology damage
 from about 246 ms to 193-204 ms. Nine focused script and installed-asset runtime
 tests passed in 35.6 seconds; the full startup scenario passed in 17.9 seconds.
 
+AI production planning now skips Planetary Datalinks rival-technology analysis
+until that project is actually available to the faction. In the deterministic
+seven-faction startup scenario, measured AI production work fell from roughly
+126-143 ms to 105-118 ms per faction. The hurry-production runtime check now
+keeps the affected base screen open while the authoritative hurry event pays
+for and completes a unit, covering the UI refresh path involved in the reported
+manual-play crash. That runtime check and the duplicate-click button test both
+passed; a real mouse-driven retry remains part of the next playtest.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
