@@ -962,6 +962,7 @@ const queue_production = (game, player, bases, units, metrics) => {
 		available_unit_defs :+def;
 	}
 	let available_facility_defs = [];
+	let can_consider_planetary_datalinks = false;
 	for (def of facility_defs) {
 		if (
 			#is_defined(def.required_technology) && def.required_technology != '' &&
@@ -970,6 +971,9 @@ const queue_production = (game, player, bases, units, metrics) => {
 			continue;
 		}
 		available_facility_defs :+def;
+		if (def.id == 'ThePlanetaryDatalinks') {
+			can_consider_planetary_datalinks = true;
+		}
 	}
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
@@ -1076,7 +1080,8 @@ const queue_production = (game, player, bases, units, metrics) => {
 	const get_datalinks_candidates = game.get(
 		'f_project_get_planetary_datalinks_candidates'
 	);
-	const planetary_datalinks_technology_count = #is_defined(get_datalinks_candidates)
+	const planetary_datalinks_technology_count =
+		can_consider_planetary_datalinks && #is_defined(get_datalinks_candidates)
 		? #sizeof(get_datalinks_candidates(player))
 		: 0;
 	let empath_guild_infiltration_count = 0;
