@@ -51,11 +51,19 @@
 					energy: player.energy_credits,
 					nutrients: base.get('accumulated_nutrients'),
 					minerals: base.get_accumulated_minerals(),
+					governor_enabled: base.has('governor_enabled')
+						? base.get('governor_enabled')
+						: #undefined,
+					governor_priority: base.has('governor_priority')
+						? base.get('governor_priority')
+						: #undefined,
 				};
 				player.set_energy_credits(energy_stamp);
 				base.set('accumulated_nutrients', nutrient_stamp);
 				base.set_accumulated_minerals(mineral_stamp);
 				base.set('network_node_artifact_linked', true);
+				base.set('governor_enabled', true);
+				base.set('governor_priority', 'discover');
 				return previous;
 			},
 			rollback: (e) => {
@@ -65,6 +73,16 @@
 				base.set('accumulated_nutrients', e.applied.nutrients);
 				base.set_accumulated_minerals(e.applied.minerals);
 				base.set('network_node_artifact_linked', false);
+				if (#is_defined(e.applied.governor_enabled)) {
+					base.set('governor_enabled', e.applied.governor_enabled);
+				} else {
+					base.unset('governor_enabled');
+				}
+				if (#is_defined(e.applied.governor_priority)) {
+					base.set('governor_priority', e.applied.governor_priority);
+				} else {
+					base.unset('governor_priority');
+				}
 			},
 		});
 
@@ -92,7 +110,9 @@
 			if (
 				(expected_nutrients != null && base.get('accumulated_nutrients') != expected_nutrients) ||
 				(expected_minerals != null && base.get_accumulated_minerals() != expected_minerals) ||
-				!base.get('network_node_artifact_linked')
+				base.get('network_node_artifact_linked') != true ||
+				base.get('governor_enabled') != true ||
+				base.get('governor_priority') != 'discover'
 			) {
 				return 'base state was not restored';
 			}

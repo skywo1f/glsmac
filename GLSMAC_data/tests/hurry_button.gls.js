@@ -15,11 +15,22 @@ const ok_button = {
 	text: '',
 	on: (name, handler) => {},
 };
+let workshop_handler = null;
+const workshop_button = {
+	text: '',
+	on: (name, handler) => {
+		if (name == 'click') {
+			workshop_handler = handler;
+		}
+	},
+};
 let button_count = 0;
 const frame = {
 	button: (properties) => {
 		button_count++;
-		const button = button_count == 1 ? hurry_button : ok_button;
+		const button = button_count == 1
+			? hurry_button
+			: (button_count == 2 ? workshop_button : ok_button);
 		button.text = properties.text;
 		return button;
 	},
@@ -56,12 +67,19 @@ module.init({
 	body: {panel: (properties) => { return frame; }},
 	ui: {class: (name) => { return ui_class; }},
 	game: game,
+	modules: {
+		popup: {
+			set: (name, data) => {},
+			show: (name) => {},
+		},
+	},
 	hide: () => {},
 });
 module.set({base: base});
 
 test.assert(hurry_button.text == 'HURRY (25)');
 test.assert(hurry_handler != null);
+test.assert(workshop_handler != null);
 hurry_handler({});
 hurry_handler({});
 test.assert(#sizeof(emitted) == 1);

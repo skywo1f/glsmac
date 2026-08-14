@@ -29,6 +29,7 @@ const supply_rules = #include('supply_rules');
 const technology_acquisition = #include('technology_acquisition');
 const probe_interception = #include('probe_interception');
 const visibility_rules = #include('visibility_rules');
+const governor_rules = #include('base_governor_rules');
 const air = #include('../units/air');
 
 const owned_bases = (game, player) => {
@@ -934,7 +935,16 @@ const interrogate_adjacent_probe = (game, player, unit) => {
 	return true;
 };
 
-const queue_production = (game, player, bases, units, metrics) => {
+const queue_production = (
+	game,
+	player,
+	managed_bases,
+	bases,
+	units,
+	metrics,
+	preserve_current,
+	allow_hurry
+) => {
 	let former_count = metrics.former_count;
 	let land_former_count = metrics.land_former_count;
 	let sea_former_count = metrics.sea_former_count;
@@ -1124,8 +1134,11 @@ const queue_production = (game, player, bases, units, metrics) => {
 			}
 		}
 	}
-	for (base of bases) {
+	for (base of managed_bases) {
 		const queue = base.get_production_queue();
+		if (preserve_current && #sizeof(queue) > 0) {
+			continue;
+		}
 		if (#sizeof(queue) > 0) {
 			if (queue[0].id == 'OrbitalDefensePod') {
 				orbital_defense_committed--;
@@ -1163,13 +1176,19 @@ const queue_production = (game, player, bases, units, metrics) => {
 		const consumption = base_metric.consumption;
 		const nutrient_surplus = intake.NUTRIENTS - consumption.NUTRIENTS;
 		const mineral_surplus = intake.MINERALS - consumption.MINERALS;
-		const priorities = get_strategy_priorities(
+		let priorities = get_strategy_priorities(
 			metrics,
 			former_count,
 			colony_count,
 			combat_count,
 			mobile_combat_count
 		);
+		if (governor_rules.is_enabled(base)) {
+			priorities = governor_rules.apply_priority(
+				priorities,
+				governor_rules.get_priority(base)
+			);
+		}
 		const can_start_project =
 			#sizeof(bases) >= 3 &&
 			former_count >= #sizeof(bases) &&
@@ -1339,11 +1358,19 @@ const queue_production = (game, player, bases, units, metrics) => {
 			queue[0].production_kind != selected.kind ||
 			queue[0].id != selected.id
 		) {
-			game.event_as(player.id, 'set_base_production', {
-				base: base,
-				kind: selected.kind,
-				id: selected.id,
-			});
+			if (player.type == 'ai') {
+				game.event_as(player.id, 'set_base_production', {
+					base: base,
+					kind: selected.kind,
+					id: selected.id,
+				});
+			} else {
+				game.event('set_governed_base_production', {
+					base: base,
+					kind: selected.kind,
+					id: selected.id,
+				});
+			}
 			production_changed = true;
 		}
 		if (selected != null && !production_changed) {
@@ -1359,13 +1386,39 @@ const queue_production = (game, player, bases, units, metrics) => {
 			}
 		}
 	}
-	const hurry = production.choose_hurry(hurry_candidates);
+	const hurry = allow_hurry ? production.choose_hurry(hurry_candidates) : null;
 	if (hurry != null) {
 		const cost = game.get('f_economy_get_hurry_cost')(hurry.base);
 		if (cost > 0 && player.energy_credits >= cost) {
 			game.event_as(player.id, 'hurry_base_production', {base: hurry.base});
 		}
 	}
+};
+
+const manage_governed_bases = (game, player) => {
+	const bases = owned_bases(game, player);
+	let managed_bases = [];
+	for (base of bases) {
+		if (governor_rules.is_enabled(base)) {
+			managed_bases :+base;
+		}
+	}
+	if (#sizeof(managed_bases) == 0) {
+		return 0;
+	}
+	const units = owned_units(game, player);
+	const metrics = get_strategy_metrics(game, player, bases, units);
+	queue_production(
+		game,
+		player,
+		managed_bases,
+		bases,
+		units,
+		metrics,
+		true,
+		false
+	);
+	return #sizeof(managed_bases);
 };
 
 const choose_research_target = (game, player, available) => {
@@ -1986,7 +2039,7 @@ const play_turn = (game, player, done) => {
 	economic_victory.update(game, player);
 	const economic_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
 	phase_started = is_profiling ? #monotonic_ms() : 0;
-	queue_production(game, player, bases, units, metrics);
+	queue_production(game, player, bases, bases, units, metrics, false, true);
 	const production_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
 	const setup_ms = is_profiling ? #monotonic_ms() - profile_started : 0;
 
@@ -2305,8 +2358,21 @@ return (game) => {
 		game.set('f_ai_choose_research_target', (player, available) => {
 			return choose_research_target(game, player, available);
 		});
+		game.set('f_ai_manage_governed_bases', (player) => {
+			return manage_governed_bases(game, player);
+		});
 		let ui_started = false;
 		let ai_running = false;
+		const manage_human_governors = () => {
+			if (!game.is_master() || game.is_game_over()) {
+				return;
+			}
+			for (player of game.get_players()) {
+				if (player.type != 'ai' && !game.is_turn_complete(player.id)) {
+					manage_governed_bases(game, player);
+				}
+			}
+		};
 		const human_turns_complete = () => {
 			for (player of game.get_players()) {
 				if (player.type != 'ai' && !game.is_turn_complete(player.id)) {
@@ -2347,9 +2413,16 @@ return (game) => {
 		};
 		game.on('start_ui', (e) => {
 			ui_started = true;
+			#async(0, manage_human_governors);
 			#async(500, play_ai_players);
 		});
+		game.on('base_governor_changed', (e) => {
+			if (e.enabled) {
+				#async(0, manage_human_governors);
+			}
+		});
 		game.on('turn', (e) => {
+			manage_human_governors();
 			if (ui_started) {
 				#async(500, play_ai_players);
 			}

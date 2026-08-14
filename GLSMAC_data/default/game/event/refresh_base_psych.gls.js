@@ -1,3 +1,5 @@
+const governor_rules = #include('../base_governor_rules');
+
 return {
 
 	validate: (e) => {
@@ -9,7 +11,7 @@ return {
 	apply: (e) => {
 		const base = e.data.base;
 		const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
-		if (base.get_owner().type == 'ai') {
+		if (base.get_owner().type == 'ai' || governor_rules.is_enabled(base)) {
 			const stable_workers = e.game.get('f_base_get_stable_worker_count')(base, psych);
 			e.game.get('f_base_rebalance_workers')(base, stable_workers);
 		}

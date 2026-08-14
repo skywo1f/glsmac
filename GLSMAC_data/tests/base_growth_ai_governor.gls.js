@@ -85,7 +85,7 @@ const make_tile = (x) => {
 };
 
 const make_base = (initial_size, initial_nutrients, center_nutrients) => {
-	let accumulated_nutrients = initial_nutrients;
+	let properties = {accumulated_nutrients: initial_nutrients};
 	let pops = [];
 	let tiles = [];
 	let base = null;
@@ -167,13 +167,9 @@ const make_base = (initial_size, initial_nutrients, center_nutrients) => {
 			}
 			pops = remaining;
 		},
-		has: (key) => { return key == 'accumulated_nutrients'; },
-		get: (key) => { return key == 'accumulated_nutrients' ? accumulated_nutrients : #undefined; },
-		set: (key, value) => {
-			if (key == 'accumulated_nutrients') {
-				accumulated_nutrients = value;
-			}
-		},
+		has: (key) => { return #is_defined(properties[key]); },
+		get: (key) => { return properties[key]; },
+		set: (key, value) => { properties[key] = value; },
 	};
 
 	for (let pop_index = 0; pop_index < initial_size; pop_index++) {
@@ -220,3 +216,20 @@ test.assert(pending_events[1].name == 'refresh_base_psych');
 drain_events();
 test.assert(starving_base.get('accumulated_nutrients') == 0);
 assert_stable_size_four(starving_base);
+
+owner.type = 'human';
+const manual_base = make_base(4, 0, 8);
+process_base_growth.apply({caller: 0, game: game, data: {base: manual_base, psych: 0}});
+test.assert(pending_events == []);
+test.assert(#sizeof(manual_base.get_worked_tiles()) == 4);
+
+const governed_base = make_base(4, 0, 8);
+governed_base.set('governor_enabled', true);
+governed_base.set('governor_priority', 'build');
+process_base_growth.apply({caller: 0, game: game, data: {base: governed_base, psych: 0}});
+test.assert(pending_events[0].name == 'refresh_base_psych');
+drain_events();
+test.assert(#sizeof(governed_base.get_worked_tiles()) == 3);
+const governed_psych = values.f_base_get_psych(governed_base);
+test.assert(governed_psych.specialists == 1);
+test.assert(governed_psych.is_rioting == false);

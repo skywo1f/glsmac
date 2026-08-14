@@ -4,6 +4,8 @@ const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const FORMER_OWNER_KEY = 'former_owner_id';
+const GOVERNOR_ENABLED_KEY = 'governor_enabled';
+const GOVERNOR_PRIORITY_KEY = 'governor_priority';
 
 const snapshot_base_value = (base, key) => {
 	if (#typeof(base.has) != 'Callable') {
@@ -193,8 +195,18 @@ const capture_base = (game, base, new_owner) => {
 	const old_queue = get_queue_specs(base);
 	const research_data_stolen = snapshot_base_value(base, RESEARCH_DATA_STOLEN_KEY);
 	const former_owner = snapshot_base_value(base, FORMER_OWNER_KEY);
+	const governor_enabled = snapshot_base_value(base, GOVERNOR_ENABLED_KEY);
+	const governor_priority = snapshot_base_value(base, GOVERNOR_PRIORITY_KEY);
 	if (research_data_stolen.defined && #typeof(base.unset) == 'Callable') {
 		base.unset(RESEARCH_DATA_STOLEN_KEY);
+	}
+	if (#typeof(base.unset) == 'Callable') {
+		if (governor_enabled.defined) {
+			base.unset(GOVERNOR_ENABLED_KEY);
+		}
+		if (governor_priority.defined) {
+			base.unset(GOVERNOR_PRIORITY_KEY);
+		}
 	}
 	const rehomed_units = rehome_units(game, base, old_owner.id);
 	const captured_headquarters = base.has_facility('Headquarters');
@@ -292,6 +304,8 @@ const capture_base = (game, base, new_owner) => {
 		old_queue: old_queue,
 		research_data_stolen: research_data_stolen,
 		former_owner: former_owner,
+		governor_enabled: governor_enabled,
+		governor_priority: governor_priority,
 		rehomed_units: rehomed_units,
 		captured_headquarters: captured_headquarters,
 		headquarters_evacuation: headquarters_evacuation,
@@ -369,6 +383,12 @@ const restore_base = (game, base, snapshot) => {
 	}
 	if (#is_defined(snapshot.former_owner)) {
 		restore_base_value(base, snapshot.former_owner);
+	}
+	if (#is_defined(snapshot.governor_enabled)) {
+		restore_base_value(base, snapshot.governor_enabled);
+	}
+	if (#is_defined(snapshot.governor_priority)) {
+		restore_base_value(base, snapshot.governor_priority);
 	}
 	restore_units(snapshot.rehomed_units);
 };

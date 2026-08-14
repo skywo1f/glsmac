@@ -1578,7 +1578,6 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 
 				response.result = R_SUCCESS;
 				NEW( response.data.save_map.path, std::string, *request.data.save_map.path );
-				Message( "Game saved." );
 			}
 			catch ( const std::exception& e ) {
 				response.result = R_ERROR;

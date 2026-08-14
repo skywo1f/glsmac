@@ -1,8 +1,35 @@
+const governor_rules = #include('../../../../../game/base_governor_rules');
+
 return {
 
 	init: (p) => {
 		this.p = p;
 		this.base = null;
+		this.get_live_base = () => {
+			if (this.base == null) {
+				return null;
+			}
+			for (candidate of this.p.game.get_bm().get_bases()) {
+				if (candidate.id == this.base.id) {
+					return candidate;
+				}
+			}
+			return null;
+		};
+		this.set_governor = (enabled, priority) => {
+			const base = this.get_live_base();
+			if (
+				base != null &&
+				base.get_owner().id == this.p.game.get_player().id &&
+				!this.p.game.is_turn_complete(this.p.game.get_player().id)
+			) {
+				this.p.game.event('set_base_governor', {
+					base: base,
+					enabled: enabled,
+					priority: priority,
+				});
+			}
+		};
 
 		this.buttons = p.body.panel({
 			align: 'top',
@@ -64,31 +91,31 @@ return {
 			},
 		});
 
-		this.buttons.button({
+		this.explore_button = this.buttons.button({
 			class: 'base-screen-top-button-1',
 			align: 'left',
 			left: 3,
 			text: 'EXPLORE',
 		});
-		this.buttons.button({
+		this.discover_button = this.buttons.button({
 			class: 'base-screen-top-button-1',
 			align: 'left',
 			left: 116,
 			text: 'DISCOVER',
 		});
 
-		this.buttons.button({
+		this.previous_button = this.buttons.button({
 			class: 'base-screen-top-button-dropdown',
 			align: 'left',
 			left: 230,
 		});
-		this.buttons.button({
+		this.governor_button = this.buttons.button({
 			class: 'base-screen-top-button-2',
 			align: 'center',
 			width: 170,
 			text: 'GOVERNOR',
 		});
-		this.buttons.button({
+		this.next_button = this.buttons.button({
 			class: 'base-screen-top-button-dropdown',
 			align: 'right',
 			right: 230,
@@ -100,27 +127,78 @@ return {
 			right: 116,
 			text: 'BUILD',
 		});
-		this.build_button.on('click', (e) => {
-			if (
-				this.base != null &&
-				this.base.get_owner().id == this.p.game.get_player().id
-			) {
-				this.p.modules.popup.set('unit_workshop', {base: this.base});
-				this.p.modules.popup.show('unit_workshop');
-			}
-			return true;
-		});
-		this.buttons.button({
+		this.conquer_button = this.buttons.button({
 			class: 'base-screen-top-button-1',
 			align: 'right',
 			right: 3,
 			text: 'CONQUER',
 		});
 
+		this.priority_buttons = {
+			explore: this.explore_button,
+			discover: this.discover_button,
+			build: this.build_button,
+			conquer: this.conquer_button,
+		};
+		this.explore_button.on('click', (e) => {
+			this.set_governor(true, 'explore');
+			return true;
+		});
+		this.discover_button.on('click', (e) => {
+			this.set_governor(true, 'discover');
+			return true;
+		});
+		this.build_button.on('click', (e) => {
+			this.set_governor(true, 'build');
+			return true;
+		});
+		this.conquer_button.on('click', (e) => {
+			this.set_governor(true, 'conquer');
+			return true;
+		});
+		this.governor_button.on('click', (e) => {
+			const base = this.get_live_base();
+			if (base != null) {
+				this.set_governor(
+					!governor_rules.is_enabled(base),
+					governor_rules.get_priority(base)
+				);
+			}
+			return true;
+		});
+		const cycle_priority = (direction) => {
+			const base = this.get_live_base();
+			if (base != null) {
+				this.set_governor(
+					true,
+					governor_rules.get_next_priority(
+						governor_rules.get_priority(base),
+						direction
+					)
+				);
+			}
+		};
+		this.previous_button.on('click', (e) => {
+			cycle_priority(0 - 1);
+			return true;
+		});
+		this.next_button.on('click', (e) => {
+			cycle_priority(1);
+			return true;
+		});
+
 	},
 
 	set: (data) => {
 		this.base = data.base;
+		const priority = governor_rules.get_priority(data.base);
+		const enabled = governor_rules.is_enabled(data.base);
+		this.governor_button.text = enabled ? 'GOVERNOR ON' : 'GOVERNOR OFF';
+		this.governor_button.active = enabled;
+		this.explore_button.active = priority == 'explore';
+		this.discover_button.active = priority == 'discover';
+		this.build_button.active = priority == 'build';
+		this.conquer_button.active = priority == 'conquer';
 	},
 
 };

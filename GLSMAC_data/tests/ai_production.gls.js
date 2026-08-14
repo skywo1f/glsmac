@@ -176,6 +176,14 @@ sea_expansion_context.needs_sea_colony = false;
 test.assert(production.choose(base, [colony, sea_colony], [], sea_expansion_context).id == 'Colony');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, true, 10)).id == 'Recreation');
 test.assert(production.choose(base, all_units, all_facilities, context(false, false, false, false, 10)).id == 'Recycling');
+let low_research_context = context(false, false, false, false, 10);
+low_research_context.priorities = {development: 20, research: 0};
+let high_research_context = context(false, false, false, false, 10);
+high_research_context.priorities = {development: 20, research: 100};
+test.assert(
+	production.score_facility(biology_lab, high_research_context) >
+	production.score_facility(biology_lab, low_research_context)
+);
 test.assert(
 	production.score_unit(fusion_laser, context(false, false, false, false, 10)) >
 	production.score_unit(laser, context(false, false, false, false, 10))

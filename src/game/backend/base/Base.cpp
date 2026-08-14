@@ -635,6 +635,36 @@ const types::Buffer Base::Serialize( const Base* base, const PopDef* public_pop_
 	buf.WriteInt( nerve_stapling_count );
 	buf.WriteInt( 1 );
 	buf.WriteBool( is_redacted );
+	auto* const governor_enabled = const_cast< Base* >( base )->CustomGet( "governor_enabled" );
+	auto* const governor_priority = const_cast< Base* >( base )->CustomGet( "governor_priority" );
+	if ( ( governor_enabled != nullptr ) != ( governor_priority != nullptr ) ) {
+		THROW( "base governor state is incomplete" );
+	}
+	if ( governor_enabled && governor_enabled->type != gse::VT_BOOL ) {
+		THROW( "base governor enabled state must be a boolean" );
+	}
+	if ( governor_priority && governor_priority->type != gse::VT_STRING ) {
+		THROW( "base governor priority must be a string" );
+	}
+	const auto governor_priority_value = governor_priority
+		? ( (gse::value::String*)governor_priority )->value
+		: std::string{};
+	if (
+		governor_priority &&
+		governor_priority_value != "explore" &&
+		governor_priority_value != "discover" &&
+		governor_priority_value != "build" &&
+		governor_priority_value != "conquer"
+	) {
+		THROW( "base governor priority is invalid" );
+	}
+	const bool has_governor_state = !is_redacted && governor_enabled;
+	buf.WriteInt( 1 );
+	buf.WriteBool( has_governor_state );
+	if ( has_governor_state ) {
+		buf.WriteBool( ( (gse::value::Bool*)governor_enabled )->value );
+		buf.WriteString( governor_priority_value );
+	}
 	return buf;
 }
 
@@ -813,6 +843,9 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	int64_t nerve_stapling_turns = 0;
 	int64_t nerve_stapling_count = 0;
 	bool is_redacted = false;
+	bool has_governor_state = false;
+	bool governor_enabled = false;
+	std::string governor_priority = {};
 	if ( buf.GetRemaining() > 0 ) {
 		const auto probe_state_version = buf.ReadInt();
 		if ( probe_state_version != 1 && probe_state_version != 2 ) {
@@ -841,6 +874,28 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 			THROW( "unsupported serialized base projection state version" );
 		}
 		is_redacted = buf.ReadBool();
+	}
+	if ( buf.GetRemaining() > 0 ) {
+		const auto governor_state_version = buf.ReadInt();
+		if ( governor_state_version != 1 ) {
+			THROW( "unsupported serialized base governor state version" );
+		}
+		has_governor_state = buf.ReadBool();
+		if ( has_governor_state ) {
+			governor_enabled = buf.ReadBool();
+			governor_priority = buf.ReadString();
+			if (
+				is_redacted ||
+				(
+					governor_priority != "explore" &&
+					governor_priority != "discover" &&
+					governor_priority != "build" &&
+					governor_priority != "conquer"
+				)
+			) {
+				THROW( "invalid serialized base governor state" );
+			}
+		}
 	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized base" );
@@ -932,6 +987,16 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 		base->CustomSet(
 			"nerve_stapling_count",
 			VALUE( gse::value::Int, , nerve_stapling_count )
+		);
+	}
+	if ( has_governor_state ) {
+		base->CustomSet(
+			"governor_enabled",
+			VALUE( gse::value::Bool, , governor_enabled )
+		);
+		base->CustomSet(
+			"governor_priority",
+			VALUE( gse::value::String, , governor_priority )
 		);
 	}
 	base->RestoreWorkedTiles( GSE_CALL );

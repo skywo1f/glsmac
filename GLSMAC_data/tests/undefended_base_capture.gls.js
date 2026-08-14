@@ -13,6 +13,7 @@ const make_base = (id, owner, distance, initial_queue, initial_headquarters) => 
 	let current_owner = owner;
 	let production_queue = initial_queue;
 	let has_headquarters = initial_headquarters;
+	let properties = {};
 	return {
 		id: id,
 		name: 'Base ' + #to_string(id),
@@ -41,6 +42,10 @@ const make_base = (id, owner, distance, initial_queue, initial_headquarters) => 
 				};
 			}
 		},
+		has: (key) => { return #is_defined(properties[key]); },
+		get: (key) => { return properties[key]; },
+		set: (key, value) => { properties[key] = value; },
+		unset: (key) => { properties[key] = #undefined; },
 	};
 };
 
@@ -49,6 +54,8 @@ const available_unit = {production_kind: 'unit', id: 'AvailableUnit'};
 const captured_base = make_base(9, defender_owner, 0, [locked_unit, available_unit], true);
 const higher_id_base = make_base(11, defender_owner, 2, [], false);
 const lower_id_base = make_base(10, defender_owner, 2, [], false);
+captured_base.set('governor_enabled', true);
+captured_base.set('governor_priority', 'conquer');
 const source = {
 	is_land: true,
 	features: {river: false, xenofungus: false},
@@ -123,6 +130,8 @@ let event = {
 event.applied = move_unit.apply(event);
 test.assert(current_tile == destination);
 test.assert(captured_base.get_owner() == attacker_owner);
+test.assert(!captured_base.has('governor_enabled'));
+test.assert(!captured_base.has('governor_priority'));
 test.assert(!captured_base.has_facility('Headquarters'));
 test.assert(lower_id_base.has_facility('Headquarters'));
 test.assert(!higher_id_base.has_facility('Headquarters'));
@@ -138,6 +147,8 @@ test.assert(#sizeof(event.applied.rehomed_units) == 1);
 move_unit.rollback(event);
 test.assert(current_tile == source);
 test.assert(captured_base.get_owner() == defender_owner);
+test.assert(captured_base.get('governor_enabled') == true);
+test.assert(captured_base.get('governor_priority') == 'conquer');
 test.assert(captured_base.has_facility('Headquarters'));
 test.assert(!lower_id_base.has_facility('Headquarters'));
 test.assert(defender_energy == 1500);

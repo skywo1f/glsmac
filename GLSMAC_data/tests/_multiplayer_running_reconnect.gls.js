@@ -822,6 +822,15 @@
 								glsmac.exit();
 								return false;
 							}
+							if (
+								!history_base.has('governor_enabled') ||
+								history_base.get('governor_enabled') != false ||
+								history_base.get('governor_priority') != 'explore'
+							) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: infiltrated base lacks governor state');
+								glsmac.exit();
+								return false;
+							}
 							historical_base_tile = history_base.get_tile();
 							base_history_phase = 2;
 							game.event('running_reconnect_set_base_infiltration', {enabled: false});
@@ -833,7 +842,9 @@
 							#is_defined(historical_base.get_production()) ||
 							#sizeof(historical_base.get_production_queue()) != 0 ||
 							historical_base.get_accumulated_minerals() != 0 ||
-							#sizeof(historical_base.get_worked_tiles()) != 0
+							#sizeof(historical_base.get_worked_tiles()) != 0 ||
+							historical_base.has('governor_enabled') ||
+							historical_base.has('governor_priority')
 						) {
 							return true;
 						}
@@ -1009,6 +1020,13 @@
 				return 'Network Node artifact state is missing';
 			}
 			if (
+				!base.has('governor_enabled') ||
+				base.get('governor_enabled') != false ||
+				base.get('governor_priority') != 'discover'
+			) {
+				return 'base governor state is missing';
+			}
+			if (
 				base.get('probe_research_data_stolen') != true ||
 				base.get('probe_energy_reserves_drained') != true ||
 				base.get('probe_genetic_plague_introduced') != true ||
@@ -1161,6 +1179,16 @@
 					client_base.set('former_owner_id', game.get_player().id);
 					client_base.set('nerve_stapling_turns', nerve_stapling_turns_stamp);
 					client_base.set('nerve_stapling_count', nerve_stapling_count_stamp);
+					client_base.set('governor_enabled', false);
+					client_base.set('governor_priority', 'discover');
+					const host_base = find_base_for_player(game.get_player().id);
+					if (host_base == null) {
+						#print('RUNNING_RECONNECT_FAIL_HOST: host base is missing');
+						glsmac.exit();
+						return;
+					}
+					host_base.set('governor_enabled', false);
+					host_base.set('governor_priority', 'explore');
 					const production_ids = get_snapshot_production_ids(client_base);
 					client_base.add_facility('RecyclingTanks');
 					client_base.set_production_queue([

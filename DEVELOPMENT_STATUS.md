@@ -18,6 +18,12 @@ scenarios, for:
 
 - game setup, turn progression, research, economy, base growth, worker
   assignment, production queues, support, and persistent social engineering;
+- opt-in, persistent per-base governors with Explore, Discover, Build, and
+  Conquer priorities; governors rebalance workers to prevent riots, preserve
+  existing player production orders, select legal production only for empty
+  queues through the shared strategic scorer, and never spend player energy to
+  hurry production; governor state survives saves and owner reconnects, remains
+  private in redacted rival snapshots, and is cleared when ownership changes;
 - versioned offline single-player quicksave/load with authoritative map,
   roster, faction, unit, base, animation, turn, victory, and random-state
   restoration; the current UI provides one rolling quicksave plus five manual
@@ -1214,6 +1220,21 @@ or a return to the main menu. Completed games restored from a save open the
 same popup even though their original notification predates UI startup. The
 focused screen test passed in 1.19 seconds, and the installed-asset AI conquest
 scenario passed in 6.72 seconds after matching the event to the terminal state.
+
+The base-screen governor controls now provide real per-base automation instead
+of seven inert decorative buttons. Explore, Discover, Build, and Conquer select
+strategy priorities, the arrow controls cycle them, and the center control
+enables or disables automation; Unit Workshop remains directly available beside
+Hurry and OK. The live installed-asset governor scenario preserved an existing
+manual order, filled an emptied queue without spending energy, and passed in
+5.88 seconds. The four-phase save/load gate retained enabled state and priority
+in three consecutive stress runs, then passed again in the final matrix in
+21.94 seconds. Save completion notifications now return to the script thread
+after the backend publishes its response, removing a lock cycle that could
+freeze synchronous saves. The running reconnect gate retained owner state and
+removed both governor fields from redacted rival bases in 24.97 seconds.
+Focused worker, production, UI, capture, validation, and rollback tests also
+passed; the final targeted matrix completed 12 of 12 checks in 63.59 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

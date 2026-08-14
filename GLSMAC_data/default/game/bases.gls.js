@@ -682,8 +682,10 @@ const select_population_for_reduction = (base) => {
 	return #is_defined(pop) ? pop : null;
 };
 
-const rebalance_ai_workers = (game, base, allocated_psych) => {
-	if (base.get_owner().type == 'ai') {
+const governor_rules = #include('base_governor_rules');
+
+const rebalance_automated_workers = (game, base, allocated_psych) => {
+	if (base.get_owner().type == 'ai' || governor_rules.is_enabled(base)) {
 		const target_worker_count = get_stable_worker_count(game, base, allocated_psych);
 		let current_worker_count = 0;
 		for (pop of base.get_pops()) {
@@ -721,7 +723,7 @@ const rebalance_ai_workers = (game, base, allocated_psych) => {
 };
 
 const process_growth = (game, base, allocated_psych) => {
-	const workers_changed = rebalance_ai_workers(game, base, allocated_psych);
+	const workers_changed = rebalance_automated_workers(game, base, allocated_psych);
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
@@ -1043,9 +1045,9 @@ return (game) => {
 
 		const bm = game.get_bm();
 		globals.ai_worker_rebalance_dirty = {};
-		const mark_ai_worker_assignments_dirty = (event) => {
+		const mark_automated_worker_assignments_dirty = (event) => {
 			for (base of bm.get_bases()) {
-				if (base.get_owner().type == 'ai') {
+				if (base.get_owner().type == 'ai' || governor_rules.is_enabled(base)) {
 					globals.ai_worker_rebalance_dirty[
 						'b' + #to_string(base.id)
 					] = true;
@@ -1060,7 +1062,7 @@ return (game) => {
 			'major_volcanic_eruption',
 			'ecological_damage'
 		]) {
-			game.on(event_name, mark_ai_worker_assignments_dirty);
+			game.on(event_name, mark_automated_worker_assignments_dirty);
 		}
 
 		// set bases-related globals

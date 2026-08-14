@@ -47,7 +47,7 @@ return {
 		this.frame = p.body.panel({
 			class: 'base-screen-frame',
 			align: 'bottom center',
-			width: 428,
+			width: 638,
 			height: 28,
 			bottom: -32,
 		});
@@ -65,6 +65,12 @@ return {
 			width: 210,
 			text: 'HURRY',
 		});
+		const btn_workshop = this.frame.button({
+			class: 'base-screen-popup-bottom-button',
+			align: 'center',
+			width: 210,
+			text: 'UNIT WORKSHOP',
+		});
 		const btn_ok = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
 			align: 'right',
@@ -78,6 +84,17 @@ return {
 		btn_ok.on('click', (e) => {
 			p.hide();
 			return false;
+		});
+		btn_workshop.on('click', (e) => {
+			const base = this.get_live_base();
+			if (
+				base != null &&
+				base.get_owner().id == this.p.game.get_player().id
+			) {
+				this.p.modules.popup.set('unit_workshop', {base: base});
+				this.p.modules.popup.show('unit_workshop');
+			}
+			return true;
 		});
 		this.btn_hurry.on('click', (e) => {
 			const state = this.get_hurry_state();

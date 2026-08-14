@@ -262,12 +262,13 @@ const score_facility = (def, context) => {
 	const psych_priority = get_priority(context, 'psych', context.needs_psych ? 100 : 0);
 	const defense_priority = get_priority(context, 'defense', 0);
 	const development_priority = get_priority(context, 'development', 50);
+	const research_priority = get_priority(context, 'research', development_priority);
 	const military_priority = get_priority(context, 'military', context.needs_military ? 100 : 0);
 	const nutrient_weight = 1000 + growth_priority * 15;
 	const psych_weight = 100 + psych_priority * 11;
 	const defense_weight = 5000 + defense_priority * 500;
 	const economy_weight = 5000 + development_priority * 300;
-	const research_weight = 3000 + development_priority * 200;
+	const research_weight = 3000 + research_priority * 300;
 	const morale_weight = 5000 + military_priority * 300;
 	const infrastructure_bonus = (
 		#is_defined(context.needs_infrastructure) && context.needs_infrastructure
