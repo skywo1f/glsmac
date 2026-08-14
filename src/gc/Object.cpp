@@ -1,8 +1,13 @@
 #include "Object.h"
 
+#include <atomic>
+
 #include "Space.h"
 
 namespace gc {
+
+static std::atomic< uint64_t > s_next_reachability_pass = 1;
+thread_local static uint64_t s_reachability_pass = 0;
 
 Object::Object( gc::Space* const gc_space ) {
 	if ( gc_space ) {
@@ -13,6 +18,7 @@ Object::Object( gc::Space* const gc_space ) {
 void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
 	GC_DEBUG_BEGIN( "gc::Object" );
 
+	m_reachability_pass = s_reachability_pass;
 	GC_DEBUG( "this", this );
 	reachable_objects.insert( this );
 
@@ -27,6 +33,17 @@ void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objec
 	}
 
 	GC_DEBUG_END();
+}
+
+void Object::BeginReachabilityPass() {
+	s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
+	if ( s_reachability_pass == 0 ) {
+		s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
+	}
+}
+
+const bool Object::IsReachable() const {
+	return s_reachability_pass != 0 && m_reachability_pass == s_reachability_pass;
 }
 
 void Object::Persist( Object* const obj ) {

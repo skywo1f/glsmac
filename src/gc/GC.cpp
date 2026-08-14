@@ -4,9 +4,12 @@
 
 #if defined( DEBUG ) || defined( FASTDEBUG )
 #include "util/LogHelper.h"
+#include "common/Mutex.h"
+#endif
+
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 #include "engine/Engine.h"
 #include "config/Config.h"
-#include "common/Mutex.h"
 #endif
 
 namespace gc {
@@ -20,7 +23,7 @@ void GC::Stop() {
 }
 
 void GC::Iterate() {
-#if defined( DEBUG ) || defined( FASTDEBUG )
+#if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	ASSERT( g_engine, "engine not set" );
 	static const bool s_no_gc = g_engine->GetConfig()->HasDebugFlag( config::Config::DF_NO_GC );
 	if ( s_no_gc ) {

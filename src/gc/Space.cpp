@@ -181,10 +181,12 @@ void Space::AccumulateImpl( const f_accum_t& f ) {
 }
 
 const bool Space::Collect() {
+	const auto collection_started = std::chrono::steady_clock::now();
 	std::lock_guard guard2( m_pending_accumulations_mutex );
 	std::lock_guard guard( m_collect_mutex ); // allow only one collection at same space at same time
 
 	ASSERT( m_reachable_objects_tmp.empty(), "reachable objects tmp not empty" );
+	Object::BeginReachabilityPass();
 
 	GC_DEBUG_LOCK();
 	GC_DEBUG_BEGIN( "Root" );
@@ -195,7 +197,7 @@ const bool Space::Collect() {
 	if ( !m_pending_accumulations.empty() ) {
 		GC_DEBUG_BEGIN( "pending accumulations owners" );
 		for ( const auto& it : m_pending_accumulations ) {
-			if ( it.second.owner ) {
+			if ( it.second.owner && !it.second.owner->IsReachable() ) {
 				it.second.owner->GetReachableObjects( m_reachable_objects_tmp );
 			}
 		}
@@ -203,6 +205,8 @@ const bool Space::Collect() {
 	}
 
 	size_t removed_count = 0;
+	size_t retained_count = 0;
+	size_t reachable_count = 0;
 	{
 		std::lock_guard guard3( m_accumulations_mutex ); // prevent collection during accumulation // TODO: improve
 
@@ -210,11 +214,9 @@ const bool Space::Collect() {
 			std::lock_guard guard2( m_objects_mutex );
 
 			g_engine->GetGraphics()->NoRender( // tmp: prevent race conditions with render thread
-				[ this, &removed_count ]() {
-					size_t retained_count = 0;
+				[ this, &removed_count, &retained_count ]() {
 					for ( auto* const object : m_objects ) {
-						const auto reachability_it = m_reachable_objects_tmp.find( object );
-						if ( reachability_it == m_reachable_objects_tmp.end() ) {
+						if ( !object->IsReachable() ) {
 #if defined( DEBUG ) || defined( FASTDEBUG )
 							GC_LOG( "Destroying unreachable object: " + util::String::ToHexString( (unsigned long long)object ) /* TODO + "[ " + object->ToString() + " ]"*/ );
 #endif
@@ -233,8 +235,20 @@ const bool Space::Collect() {
 				}
 			);
 
+			reachable_count = m_reachable_objects_tmp.size();
 			m_reachable_objects_tmp.clear();
 		}
+	}
+	const auto collection_elapsed = std::chrono::duration_cast< std::chrono::milliseconds >(
+		std::chrono::steady_clock::now() - collection_started
+	).count();
+	if ( collection_elapsed >= 50 ) {
+		Log(
+			"Slow collection: " + std::to_string( collection_elapsed ) + " ms, " +
+			std::to_string( reachable_count ) + " reachable, " +
+			std::to_string( retained_count ) + " retained, " +
+			std::to_string( removed_count ) + " removed"
+		);
 	}
 	return removed_count > 0;
 }

@@ -401,6 +401,14 @@ Config::Config( const std::string& path )
 	);
 #endif
 
+#if defined( GLSMAC_TESTING ) && !defined( DEBUG ) && !defined( FASTDEBUG )
+	m_manager->AddRule(
+		"no-gc", "Disable garbage collection for a bounded diagnostic run", AH( this ) {
+			m_debug_flags |= DF_NO_GC;
+		}
+	);
+#endif
+
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )
 	m_manager->AddRule(
 		"headless", "Run without graphics, input, or audio for automated testing", AH( this ) {

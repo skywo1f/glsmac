@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <unordered_set>
 #include "common/Mutex.h"
 #include <string>
@@ -7,7 +8,7 @@
 #include "common/Common.h"
 
 #define GC_REACHABLE( _var ) \
-    if ( reachable_objects.find( _var ) == reachable_objects.end() ) { \
+    if ( !(_var)->IsReachable() ) { \
         (_var)->GetReachableObjects( reachable_objects ); \
     } \
     else { \
@@ -44,6 +45,7 @@ CLASS( Object, common::Class )
 	virtual ~Object() = default;
 
 	virtual void GetReachableObjects( std::unordered_set< Object* >& reachable_objects );
+	const bool IsReachable() const;
 
 protected:
 	void Persist( Object* const obj );
@@ -51,7 +53,12 @@ protected:
 	const bool IsPersisted( Object* const obj ) const;
 
 private:
+	static void BeginReachabilityPass();
+	uint64_t m_reachability_pass = 0;
 	std::unordered_set< Object* > m_persisted_objects = {};
+
+private:
+	friend class Space;
 
 };
 

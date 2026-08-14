@@ -1,6 +1,7 @@
 #include "Game.h"
 
 #include <algorithm>
+#include <chrono>
 
 #include "engine/Engine.h"
 #include "types/Exception.h"
@@ -187,9 +188,19 @@ void Game::Stop() {
 
 void Game::Iterate() {
 	MTModule::Iterate();
+	const auto log_slow_phase = [ this ]( const std::string& phase, const std::chrono::steady_clock::time_point started ) {
+		const auto elapsed = std::chrono::duration_cast< std::chrono::milliseconds >(
+			std::chrono::steady_clock::now() - started
+		).count();
+		if ( elapsed >= 50 ) {
+			MTModule::Log( "Slow backend phase \"" + phase + "\": " + std::to_string( elapsed ) + " ms" );
+		}
+	};
 
 	if ( m_state ) {
+		const auto started = std::chrono::steady_clock::now();
 		m_state->Iterate();
+		log_slow_phase( "state", started );
 	}
 
 	if ( m_game_state == GS_INITIALIZING ) {
@@ -357,6 +368,7 @@ void Game::Iterate() {
 	}
 	if ( m_state ) {
 
+		const auto events_started = std::chrono::steady_clock::now();
 		m_state->m_gc_space->Accumulate( this, [ this ]() {
 
 			{
@@ -433,7 +445,9 @@ void Game::Iterate() {
 			}
 			ProcessEvents();
 		});
+		log_slow_phase( "events", events_started );
 
+		const auto base_triggers_started = std::chrono::steady_clock::now();
 		m_state->WithGSE(
 			this, [ this ]( GSE_CALLABLE ) {
 				if ( m_bm ) {
@@ -441,19 +455,28 @@ void Game::Iterate() {
 				}
 			}
 		);
+		log_slow_phase( "base triggers", base_triggers_started );
 
 	}
 	if ( m_um ) {
+		const auto started = std::chrono::steady_clock::now();
 		m_um->PushUpdates();
+		log_slow_phase( "unit updates", started );
 	}
 	if ( m_bm ) {
+		const auto started = std::chrono::steady_clock::now();
 		m_bm->PushUpdates();
+		log_slow_phase( "base updates", started );
 	}
 	if ( m_tm ) {
 		m_tm->ProcessTileLockRequests();
 	}
+	const auto exploration_started = std::chrono::steady_clock::now();
 	PushExplorationUpdate();
+	log_slow_phase( "exploration updates", exploration_started );
+	const auto territory_started = std::chrono::steady_clock::now();
 	PushTerritoryVisibilityUpdate();
+	log_slow_phase( "territory updates", territory_started );
 }
 
 const bool Game::IsStarted() const {
@@ -2366,6 +2389,7 @@ void Game::ProcessEvents() {
 						GSE_CALL,
 						types::Buffer( pending.serialized_event )
 					);
+				const auto event_started = std::chrono::steady_clock::now();
 				errptr = nullptr;
 #if defined(DEBUG) || defined(FASTDEBUG)
 				MTModule::Log( "Event begin: " + event->ToString() );
@@ -2635,6 +2659,15 @@ void Game::ProcessEvents() {
 						}
 					}
 					delete ( errptr );
+				}
+				const auto event_elapsed = std::chrono::duration_cast< std::chrono::milliseconds >(
+					std::chrono::steady_clock::now() - event_started
+				).count();
+				if ( event_elapsed >= 50 ) {
+					MTModule::Log(
+						"Slow event \"" + event->GetEventName() + "\": " +
+						std::to_string( event_elapsed ) + " ms"
+					);
 				}
 #if defined(DEBUG) || defined(FASTDEBUG)
 				MTModule::Log( "Event end: " + event->ToString() );
