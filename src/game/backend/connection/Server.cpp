@@ -13,6 +13,7 @@
 #include "game/backend/unit/UnitManager.h"
 #include "game/backend/base/Base.h"
 #include "game/backend/base/BaseManager.h"
+#include "game/backend/map/Map.h"
 
 namespace game {
 namespace backend {
@@ -345,9 +346,10 @@ void Server::ProcessEvent( const network::Event& event ) {
 							// Pending events have already changed the authoritative world. Flush
 							// them before taking the snapshot so they are not replayed after it.
 							FlushPendingGameEvents();
+							const auto projected_bases = GetProjectedBasesWithHistory( cid_slot_it->second );
 							m_download_data[ event.cid ] = download_data_t{ // override previous request
 								0,
-								m_on_download_request( cid_slot_it->second )
+								m_on_download_request( cid_slot_it->second, projected_bases )
 							};
 							const auto visible_unit_ids = g_engine->GetGame()->GetVisibleUnitIdsForSlot(
 								cid_slot_it->second
@@ -358,9 +360,6 @@ void Server::ProcessEvent( const network::Event& event ) {
 							m_projected_units[ event.cid ] = projected_units;
 							m_delivered_units[ event.cid ] = projected_units;
 							m_delivered_next_unit_ids[ event.cid ] = unit::Unit::GetNextId();
-							const auto projected_bases = g_engine->GetGame()->GetProjectedBasesForSlot(
-								cid_slot_it->second
-							);
 							m_projected_bases[ event.cid ] = projected_bases;
 							m_delivered_bases[ event.cid ] = projected_bases;
 							const auto full_base_ids = g_engine->GetGame()->GetFullBaseIdsForSlot(
@@ -582,7 +581,10 @@ void Server::FinalizeGameEventProjection( game_event_t& event ) {
 		const auto full_it = m_projected_full_base_ids.find( cid );
 		ASSERT( full_it != m_projected_full_base_ids.end(), "projected client has no full base state" );
 		projection.full_before = full_it->second;
-		auto projected_after = game->GetProjectedBasesForSlot( slot_it->second );
+		auto projected_after = GetProjectedBasesWithHistory(
+			slot_it->second,
+			&projection.full_before
+		);
 		auto full_after = game->GetFullBaseIdsForSlot( slot_it->second );
 		projection.projected_after = projected_after;
 		projection.full_after = full_after;
@@ -839,6 +841,56 @@ const std::map< size_t, std::string > Server::GetProjectedPlayersForSlot(
 		if ( full_player_ids && viewer->CanViewPrivateStateOf( target ) ) {
 			full_player_ids->insert( target_slot.GetIndex() );
 		}
+	}
+	return result;
+}
+
+const std::map< size_t, std::string > Server::GetProjectedBasesWithHistory(
+	const size_t slot_num,
+	const std::unordered_set< size_t >* const previously_full_base_ids
+) {
+	auto* const game = g_engine->GetGame();
+	ASSERT( game && game->GetMap() && game->GetBM(), "base history requested without a world" );
+	auto result = game->GetProjectedBasesForSlot( slot_num );
+	const auto full_base_ids = game->GetFullBaseIdsForSlot( slot_num );
+	const auto visible_tiles = game->GetVisibleTilesForSlot( slot_num );
+	auto& history = m_last_known_bases[ slot_num ];
+	const auto& active_bases = game->GetBM()->GetBases();
+
+	for ( const auto& it : active_bases ) {
+		const auto* const base = it.second;
+		const bool was_full = previously_full_base_ids &&
+			previously_full_base_ids->find( it.first ) != previously_full_base_ids->end();
+		if (
+			full_base_ids.find( it.first ) != full_base_ids.end() || was_full ||
+			visible_tiles.find( base->GetTile() ) != visible_tiles.end()
+		) {
+			history.insert_or_assign(
+				it.first,
+				last_known_base_t{
+					game->GetBM()->ProjectBase( base, false ),
+					base->GetTile()->coord.x,
+					base->GetTile()->coord.y,
+				}
+			);
+		}
+	}
+
+	for ( auto it = history.begin() ; it != history.end() ; ) {
+		if ( result.find( it->first ) != result.end() ) {
+			it++;
+			continue;
+		}
+		const bool was_full = previously_full_base_ids &&
+			previously_full_base_ids->find( it->first ) != previously_full_base_ids->end();
+		const bool is_active = active_bases.find( it->first ) != active_bases.end();
+		const auto* const tile = game->GetMap()->GetTile( it->second.x, it->second.y );
+		if ( ( was_full && !is_active ) || visible_tiles.find( tile ) != visible_tiles.end() ) {
+			it = history.erase( it );
+			continue;
+		}
+		result.insert({ it->first, it->second.public_snapshot });
+		it++;
 	}
 	return result;
 }
@@ -1204,6 +1256,7 @@ void Server::ResetHandlers() {
 	m_delivered_bases.clear();
 	m_projected_full_base_ids.clear();
 	m_delivered_next_base_ids.clear();
+	m_last_known_bases.clear();
 	m_base_visibility_event_id = 1;
 	m_projected_players.clear();
 	m_delivered_players.clear();

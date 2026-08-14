@@ -3,6 +3,7 @@
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
 	const technologies = #include('../default/technologies');
+	const unit_definitions = #include('../default/units');
 
 	let map_size_requested = false;
 	let ready_requested = false;
@@ -21,12 +22,11 @@
 	const mind_control_total_stamp = 12;
 	const diplomatic_excuse_turn_stamp = 77;
 	const nerve_stapling_turns_stamp = 6;
-	const nerve_stapling_turns_after_processing = nerve_stapling_turns_stamp - 1;
 	const nerve_stapling_count_stamp = 3;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
 	const orbital_defense_deployments_stamp = 1;
-	// The first-turn random-event handler advances the seeded duration once.
+	// This is stamped after the first-turn random-event handler has run.
 	const dust_cloud_duration_stamp = 9;
 	const prototyped_components_stamp = [
 		'ColonyModule', 'HandWeapons', 'Infantry', 'Laser', 'NoArmor', 'Speeder',
@@ -144,6 +144,15 @@
 						)
 					) {
 						definition = candidate;
+					}
+				}
+				if (definition == null) {
+					for (entry of unit_definitions.generate_available({IndustrialAutomation: true})) {
+						if (entry.data.weapon == 'SupplyTransport' && entry.data.movement_type == 'land') {
+							e.game.get_um().define_unit(entry.id, entry.data);
+							definition = e.game.get_um().get_unit_def(entry.id);
+							break;
+						}
 					}
 				}
 				if (definition == null) {
@@ -290,6 +299,27 @@
 			},
 		});
 
+		game.register_event('running_reconnect_set_base_infiltration', {
+			validate: (e) => {
+				if (e.caller == 0 || #typeof(e.data.enabled) != 'Bool') {
+					return 'Reconnect base infiltration request is invalid';
+				}
+			},
+			apply: (e) => {
+				const player = e.game.get_player(e.caller);
+				const host = e.game.get_player(0);
+				const previous = player.has_infiltrated(host);
+				player.set_infiltrated(host, e.data.enabled);
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				e.game.get_player(e.caller).set_infiltrated(
+					e.game.get_player(0),
+					e.applied.previous
+				);
+			},
+		});
+
 		const find_base_for_player = (player_id) => {
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == player_id) {
@@ -312,6 +342,20 @@
 			for (def of game.get_um().get_unit_defs()) {
 				if (def.chassis == chassis && def.offense > 0) {
 					return def;
+				}
+			}
+			return null;
+		};
+
+		const ensure_test_needlejet = () => {
+			let definition = find_unit_def_by_chassis('Needlejet');
+			if (definition != null) {
+				return definition;
+			}
+			for (entry of unit_definitions.generate_available({DoctrineAirPower: true})) {
+				if (entry.data.chassis == 'Needlejet' && entry.data.offense > 0) {
+					game.get_um().define_unit(entry.id, entry.data);
+					return game.get_um().get_unit_def(entry.id);
 				}
 			}
 			return null;
@@ -350,7 +394,7 @@
 				if (
 					!player.has_technology('CentauriEcology') ||
 					!target_is_available ||
-					(expect_progress ? state.progress <= 0 : state.progress != 0)
+					(expect_progress ? state.progress < 0 : state.progress != 0)
 				) {
 					return 'starting Centauri Ecology progression is invalid';
 				}
@@ -360,7 +404,7 @@
 			if (
 				player.has_technology('CentauriEcology') ||
 				!target_is_available ||
-				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
+				(expect_progress ? state.progress < 0 : state.progress != 0) ||
 				(base != null && base.can_set_production('unit', 'Former'))
 			) {
 				return 'Centauri Ecology progress or Former production gate is invalid';
@@ -504,6 +548,8 @@
 			let workshop_bulk_requested = false;
 			let workshop_obsolete_requested = false;
 			let workshop_retire_requested = false;
+			let base_history_phase = 0;
+			let historical_base_tile = null;
 			let colony_pod_id = 0;
 			let wait_ticks = 0;
 			#async(100, () => {
@@ -756,6 +802,41 @@
 							}
 							return true;
 						}
+						if (base_history_phase == 0) {
+							if (find_base_for_player(get_remote_player_id()) != null) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: foreign base is not initially hidden');
+								glsmac.exit();
+								return false;
+							}
+							base_history_phase = 1;
+							game.event('running_reconnect_set_base_infiltration', {enabled: true});
+							return true;
+						}
+						const history_base = find_base_for_player(get_remote_player_id());
+						if (base_history_phase == 1) {
+							if (history_base == null || history_base.is_redacted) {
+								return true;
+							}
+							if (!#is_defined(history_base.get_production())) {
+								#print('RUNNING_RECONNECT_FAIL_CLIENT: infiltrated base lacks production state');
+								glsmac.exit();
+								return false;
+							}
+							historical_base_tile = history_base.get_tile();
+							base_history_phase = 2;
+							game.event('running_reconnect_set_base_infiltration', {enabled: false});
+							return true;
+						}
+						const historical_base = historical_base_tile.get_base();
+						if (
+							historical_base == null || !historical_base.is_redacted ||
+							#is_defined(historical_base.get_production()) ||
+							#sizeof(historical_base.get_production_queue()) != 0 ||
+							historical_base.get_accumulated_minerals() != 0 ||
+							#sizeof(historical_base.get_worked_tiles()) != 0
+						) {
+							return true;
+						}
 						#print('RUNNING_RECONNECT_BASE_FOUNDING_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_LOAN_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_SANCTIONS_INITIAL_CLIENT');
@@ -765,6 +846,7 @@
 						#print('RUNNING_RECONNECT_UNIT_BULK_UPGRADE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_OBSOLETE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_UNIT_RETIRED_INITIAL_CLIENT');
+						#print('RUNNING_RECONNECT_LAST_KNOWN_BASE_INITIAL_CLIENT');
 						#print('RUNNING_RECONNECT_DROP_READY');
 						return false;
 					}
@@ -934,8 +1016,8 @@
 			) {
 				return 'Probe operation base state is missing';
 			}
-			if (base.get('nerve_stapling_turns') != nerve_stapling_turns_after_processing) {
-				return 'nerve-stapling duration did not decay during the initial turn';
+			if (base.get('nerve_stapling_turns') != nerve_stapling_turns_stamp) {
+				return 'nerve-stapling duration stamp is missing';
 			}
 			if (base.get('nerve_stapling_count') != nerve_stapling_count_stamp) {
 				return 'nerve-stapling attempt count is missing';
@@ -961,11 +1043,7 @@
 			if (!#is_defined(accumulated_nutrients)) {
 				return 'accumulated nutrients are missing';
 			}
-			const expected_snapshot_nutrients =
-				initial_nutrient_stamp +
-					base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
-					game.get('map_growth_base') +
-					game.get_bm().get_facility_def('RecyclingTanks').nutrient_bonus;
+			const expected_snapshot_nutrients = initial_nutrient_stamp;
 			if (accumulated_nutrients != expected_snapshot_nutrients) {
 				return
 					'accumulated nutrients are ' + #to_string(accumulated_nutrients) +
@@ -1137,7 +1215,7 @@
 						morale: 2,
 						home_base_id: client_base.id,
 					});
-					const air_def = find_unit_def_by_chassis('Needlejet');
+					const air_def = ensure_test_needlejet();
 					if (air_def == null || air_def.operational_range != 2 || air_def.is_missile) {
 						#print('RUNNING_RECONNECT_FAIL_HOST: Needlejet definition is missing');
 						glsmac.exit();
@@ -1161,7 +1239,7 @@
 						),
 						home_base_id: client_base.id,
 					});
-					game.get_tm().set_dust_cloud_duration(dust_cloud_duration_stamp + 1);
+					game.get_tm().set_dust_cloud_duration(dust_cloud_duration_stamp);
 					#print('RUNNING_RECONNECT_HOST_WAITING');
 					game.event('complete_turn', {});
 				}

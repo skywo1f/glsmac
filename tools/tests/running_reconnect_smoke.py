@@ -21,6 +21,7 @@ from multiplayer_smoke import (
 
 DROP_READY = "RUNNING_RECONNECT_DROP_READY"
 RESUMED = "RUNNING_RECONNECT_RESUMED_CLIENT"
+LAST_KNOWN_BASE = "RUNNING_RECONNECT_LAST_KNOWN_BASE_RESUMED_CLIENT"
 PASS_HOST = "RUNNING_RECONNECT_PASS_HOST"
 PASS_CLIENT = "RUNNING_RECONNECT_PASS_CLIENT"
 FAIL_MARKER = "RUNNING_RECONNECT_FAIL_"
@@ -211,6 +212,7 @@ def run(args):
     host_pass = PASS_HOST in host_text
     client_pass = PASS_CLIENT in resumed_text
     resumed = RESUMED in resumed_text
+    last_known_base = LAST_KNOWN_BASE in resumed_text
     explicit_failure = (
         FAIL_MARKER in host_text
         or FAIL_MARKER in initial_text
@@ -233,6 +235,7 @@ def run(args):
     print("PeerExitTimedOut: {}".format(peer_exit_timed_out))
     print("DisconnectObserved: {}".format(disconnect_observed))
     print("ResumedClientInitialized: {}".format(resumed))
+    print("LastKnownBaseRestored: {}".format(last_known_base))
     print("HostExit: {}".format(host_exit))
     print("ResumedClientExit: {}".format(resumed_exit))
     print("HostPass: {}".format(host_pass))
@@ -245,6 +248,7 @@ def run(args):
         and not peer_exit_timed_out
         and disconnect_observed
         and resumed
+        and last_known_base
         and host_exit == 0
         and resumed_exit == 0
         and host_pass

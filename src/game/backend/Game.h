@@ -373,6 +373,9 @@ public:
 	unit::UnitManager* GetUM() const;
 	base::BaseManager* GetBM() const;
 	animation::AnimationManager* GetAM() const;
+	const std::unordered_set< const map::tile::Tile* > GetVisibleTilesForSlot(
+		const size_t slot_num
+	) const;
 	const std::unordered_set< size_t > GetVisibleUnitIdsForSlot( const size_t slot_num ) const;
 	enum base_visibility_t : uint8_t {
 		BV_HIDDEN = 0,
@@ -443,7 +446,10 @@ private:
 
 	void InitGame( MT_Response& response, MT_CANCELABLE );
 	void ResetGame();
-	const std::string SerializeWorldSnapshot( const size_t* viewer_slot ) const;
+	const std::string SerializeWorldSnapshot(
+		const size_t* viewer_slot,
+		const projected_bases_t* projected_bases_override = nullptr
+	) const;
 	const bool DeserializeWorldSnapshot( GSE_CALLABLE, const std::string& serialized_snapshot );
 
 	// seed needs to be consistent during session (to prevent save-scumming and for easier reproduction of bugs)

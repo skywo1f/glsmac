@@ -682,6 +682,12 @@ const Game::visibility_tiles_t Game::GetVisibilityTilesForSlot( const size_t slo
 	return result;
 }
 
+const std::unordered_set< const map::tile::Tile* > Game::GetVisibleTilesForSlot(
+	const size_t slot_num
+) const {
+	return GetVisibilityTilesForSlot( slot_num ).visible;
+}
+
 const std::unordered_set< size_t > Game::GetVisibleUnitIdsForSlot( const size_t slot_num ) const {
 	const auto visibility = GetVisibilityTilesForSlot( slot_num );
 	const auto& visible_tiles = visibility.visible;
@@ -2046,9 +2052,13 @@ void Game::RestoreTurn( const size_t turn_id ) {
 	AddFrontendRequest( fr );
 }
 
-const std::string Game::SerializeWorldSnapshot( const size_t* viewer_slot ) const {
+const std::string Game::SerializeWorldSnapshot(
+	const size_t* viewer_slot,
+	const projected_bases_t* const projected_bases_override
+) const {
 	ASSERT( m_map, "map is not initialized" );
 	ASSERT( m_rm && m_um && m_bm && m_am, "world managers are not initialized" );
+	ASSERT( viewer_slot || !projected_bases_override, "base projection override requires a viewer" );
 	types::Buffer buf;
 
 	m_map->SaveToBuffer( buf );
@@ -2073,7 +2083,10 @@ const std::string Game::SerializeWorldSnapshot( const size_t* viewer_slot ) cons
 
 	{
 		types::Buffer bases;
-		if ( viewer_slot ) {
+		if ( projected_bases_override ) {
+			m_bm->Serialize( bases, projected_bases_override );
+		}
+		else if ( viewer_slot ) {
 			const auto projected_bases = GetProjectedBasesForSlot( *viewer_slot );
 			m_bm->Serialize( bases, &projected_bases );
 		}
@@ -3043,14 +3056,17 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 					m_tm->ReleaseTileLocks( slot_num );
 				};*/
 
-				connection->m_on_download_request = [ this ]( const size_t slot_num ) -> const std::string {
+				connection->m_on_download_request = [ this ](
+					const size_t slot_num,
+					const projected_bases_t& projected_bases
+				) -> const std::string {
 					if ( !m_map ) {
 						// map not generated yet
 						return "";
 					}
 					MTModule::Log( "Preparing snapshot for download" );
 					MTModule::Log( "Sending turn ID: " + std::to_string( m_current_turn.GetId() ) );
-					return SerializeWorldSnapshot( &slot_num );
+					return SerializeWorldSnapshot( &slot_num, &projected_bases );
 				};
 
 				connection->SetGameState( connection::Connection::GS_INITIALIZING );

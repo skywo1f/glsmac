@@ -805,7 +805,6 @@
 				if (!e.game.is_master()) {
 					const tile = e.game.get_tm().get_tile(e.data.x, e.data.y);
 					const projected = tile.get_base();
-					const initially_hidden = projected == null;
 					if (projected != null && !projected.is_redacted) {
 						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: foreign base snapshot visibility is invalid');
 						glsmac.exit();
@@ -828,16 +827,14 @@
 							game.event('multiplayer_smoke_base_infiltration_seen', {});
 						}
 						else if (
-							full_seen &&
-							(
-								(initially_hidden && current == null) ||
-								(
-									!initially_hidden && current != null &&
-									current.is_redacted && !#is_defined(current.get_production())
-								)
-							)
+							full_seen && current != null && current.is_redacted &&
+							!#is_defined(current.get_production()) &&
+							#sizeof(current.get_production_queue()) == 0 &&
+							current.get_accumulated_minerals() == 0 &&
+							#sizeof(current.get_worked_tiles()) == 0
 						) {
 							client_base_infiltration_probe_complete = true;
+							#print('MULTIPLAYER_SMOKE_LAST_KNOWN_BASE_PASS_CLIENT');
 							#print('MULTIPLAYER_SMOKE_BASE_INFILTRATION_REVOKE_PASS_CLIENT');
 							return false;
 						}

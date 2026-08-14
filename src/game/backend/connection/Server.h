@@ -20,7 +20,10 @@ public:
 	Server( gc::Space* const gc_space, settings::LocalSettings* const settings );
 
 	std::function< void() > m_on_listen = nullptr;
-	std::function< const std::string( const size_t slot_num ) > m_on_download_request = nullptr; // return serialized snapshot of world for player slot
+	std::function< const std::string(
+		const size_t slot_num,
+		const std::map< size_t, std::string >& projected_bases
+	) > m_on_download_request = nullptr; // return serialized snapshot of world for player slot
 
 	void SendGameEventResponse( const size_t cid, const std::string& event_id, const bool result, const gse::Value* const resolved );
 
@@ -79,6 +82,12 @@ private:
 	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_delivered_bases = {};
 	std::unordered_map< network::cid_t, std::unordered_set< size_t > > m_projected_full_base_ids = {};
 	std::unordered_map< network::cid_t, size_t > m_delivered_next_base_ids = {};
+	struct last_known_base_t {
+		std::string public_snapshot = "";
+		size_t x = 0;
+		size_t y = 0;
+	};
+	std::unordered_map< size_t, std::map< size_t, last_known_base_t > > m_last_known_bases = {};
 	size_t m_base_visibility_event_id = 1;
 	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_projected_players = {};
 	std::unordered_map< network::cid_t, std::map< size_t, std::string > > m_delivered_players = {};
@@ -122,6 +131,10 @@ private:
 		const size_t slot_num,
 		std::unordered_set< size_t >* const full_player_ids = nullptr
 	) const;
+	const std::map< size_t, std::string > GetProjectedBasesWithHistory(
+		const size_t slot_num,
+		const std::unordered_set< size_t >* const previously_full_base_ids = nullptr
+	);
 	void DeliverProjectedGameEvent( const network::cid_t cid, const game_event_t& event, const bool deferred );
 	void FlushDeferredGameEvents( const network::cid_t cid );
 

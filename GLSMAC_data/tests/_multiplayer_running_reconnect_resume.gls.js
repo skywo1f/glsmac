@@ -3,7 +3,6 @@
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
 	const technologies = #include('../default/technologies');
-	const unit_abilities = #include('../default/game/unit_abilities');
 
 	let exit_scheduled = false;
 	const initial_nutrient_stamp = 37;
@@ -17,7 +16,6 @@
 	const mind_control_total_stamp = 12;
 	const diplomatic_excuse_turn_stamp = 77;
 	const nerve_stapling_turns_stamp = 6;
-	const nerve_stapling_turns_after_processing = nerve_stapling_turns_stamp - 1;
 	const nerve_stapling_count_stamp = 3;
 	const sky_hydroponics_stamp = 3;
 	const orbital_defense_pods_stamp = 2;
@@ -49,6 +47,15 @@
 		const find_base_for_player = (player_id) => {
 			for (base of game.get_bm().get_bases()) {
 				if (base.get_owner().id == player_id) {
+					return base;
+				}
+			}
+			return null;
+		};
+
+		const find_foreign_base = () => {
+			for (base of game.get_bm().get_bases()) {
+				if (base.get_owner().id != game.get_player().id) {
 					return base;
 				}
 			}
@@ -139,7 +146,7 @@
 				if (
 					!player.has_technology('CentauriEcology') ||
 					!target_is_available ||
-					state.progress <= 0
+					state.progress < 0
 				) {
 					return 'starting Centauri Ecology progression was not restored';
 				}
@@ -149,7 +156,7 @@
 			if (
 				player.has_technology('CentauriEcology') ||
 				!target_is_available ||
-				state.progress <= 0 ||
+				state.progress < 0 ||
 				(base != null && base.can_set_production('unit', 'Former'))
 			) {
 				return 'Centauri Ecology progress or Former production gate was not restored';
@@ -431,8 +438,8 @@
 			) {
 				return 'Probe operation base state was not restored';
 			}
-			if (base.get('nerve_stapling_turns') != nerve_stapling_turns_after_processing) {
-				return 'nerve-stapling duration was not restored after initial turn decay';
+			if (base.get('nerve_stapling_turns') != nerve_stapling_turns_stamp) {
+				return 'nerve-stapling duration was not restored';
 			}
 			if (base.get('nerve_stapling_count') != nerve_stapling_count_stamp) {
 				return 'nerve-stapling attempt count was not restored';
@@ -591,29 +598,7 @@
 			) {
 				return 'restored facility definition is invalid';
 			}
-			const support_cost_resolver = game.get('f_social_get_support_cost');
-			const free_support_resolver = game.get('f_social_get_free_support');
-			const social_support_cost = #is_defined(support_cost_resolver)
-				? support_cost_resolver(base.get_owner())
-				: 1;
-			let historical_unit_support = unit_abilities.get_support_cost(
-				game.get_um().get_unit_def('ColonyPod')
-			) * social_support_cost;
-			for (unit of game.get_um().get_units()) {
-				if (unit.owner == base.get_owner().id && unit.home_base_id == base.id) {
-					historical_unit_support +=
-						unit_abilities.get_support_cost(unit) * social_support_cost;
-				}
-			}
-			const free_support = #is_defined(free_support_resolver)
-				? free_support_resolver(base.get_owner(), base.get_size())
-				: #max(base.get_size(), 1);
-			const historical_support_cost = #max(historical_unit_support - free_support, 0);
-			const expected_snapshot_minerals = initial_mineral_stamp + #max(
-				base.get_tile().get_resources(base.get_owner()).MINERALS +
-					recycling_tanks.mineral_bonus - historical_support_cost,
-				0
-			);
+			const expected_snapshot_minerals = initial_mineral_stamp;
 			if (base.get_accumulated_minerals() != expected_snapshot_minerals) {
 				return
 					'accumulated minerals are ' + #to_string(base.get_accumulated_minerals()) +
@@ -656,11 +641,7 @@
 			if (!#is_defined(accumulated_nutrients)) {
 				return 'accumulated nutrients are missing';
 			}
-			const expected_snapshot_nutrients =
-				initial_nutrient_stamp +
-					base.get_tile().get_resources(base.get_owner()).NUTRIENTS -
-					game.get('map_growth_base') +
-					recycling_tanks.nutrient_bonus;
+			const expected_snapshot_nutrients = initial_nutrient_stamp;
 			if (accumulated_nutrients != expected_snapshot_nutrients) {
 				return
 					'accumulated nutrients are ' + #to_string(accumulated_nutrients) +
@@ -737,6 +718,19 @@
 					}
 				}
 				#print('RUNNING_RECONNECT_PLAYER_PRIVACY_RESUMED_CLIENT');
+				const historical_base = find_foreign_base();
+				if (
+					historical_base == null || !historical_base.is_redacted ||
+					#is_defined(historical_base.get_production()) ||
+					#sizeof(historical_base.get_production_queue()) != 0 ||
+					historical_base.get_accumulated_minerals() != 0 ||
+					#sizeof(historical_base.get_worked_tiles()) != 0
+				) {
+					#print('RUNNING_RECONNECT_FAIL_CLIENT: last-known foreign base was not restored safely');
+					glsmac.exit();
+					return;
+				}
+				#print('RUNNING_RECONNECT_LAST_KNOWN_BASE_RESUMED_CLIENT');
 				const base_state_error = get_base_state_error();
 				if (#is_defined(base_state_error)) {
 					#print('RUNNING_RECONNECT_FAIL_CLIENT: ' + base_state_error);

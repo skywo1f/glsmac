@@ -365,9 +365,11 @@ scenarios, for:
 - authoritative per-client base projections for initial snapshots, live events,
   and running-game reconnects: owners and infiltrators receive full state,
   currently sighted rivals receive public identity, location, population, and
-  completed Secret Projects, and unseen rival bases are omitted. Public views
-  redact worked tiles, nutrients, minerals, production queues, ordinary
-  facilities, linked artifacts, economic-victory bids, evacuation details,
+  completed Secret Projects. Never-seen rival bases are omitted; previously
+  observed bases remain as last-known public records outside current sight,
+  including across a running-game reconnect, until their tile is seen empty.
+  Public views redact worked tiles, nutrients, minerals, production queues,
+  ordinary facilities, linked artifacts, economic-victory bids, evacuation details,
   Probe-operation state, and nerve stapling. Infiltration changes upgrade or
   revoke projections live, and conquest victory remains server-authoritative
   when clients have an intentionally incomplete base roster.
@@ -442,9 +444,7 @@ The following original-SMAC systems remain absent or materially incomplete:
   coercive demands, and joint Vendetta requests, including richer negotiated
   packages and faction-specific dialogue behavior;
 - remaining multiplayer information-boundary audits for content handlers not
-  yet exercised by adversarial multi-client coverage, extended soak testing,
-  and polished last-known public records; foreign bases currently disappear
-  outside present sight instead of retaining a historical public shell;
+  yet exercised by adversarial multi-client coverage and extended soak testing;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
   and release documentation;
 - long campaign balance, adversarial multiplayer soak testing, and broad
@@ -455,9 +455,9 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 145 cases: 112 isolated native/script GSE tests
-and 33 asset-backed runtime scenarios. Script isolation keeps allocator
-lifetime bounded and reports the exact script that fails.
+The Release CTest matrix contains 159 registered cases, including isolated
+native/script GSE tests and asset-backed runtime scenarios. Script isolation
+keeps allocator lifetime bounded and reports the exact script that fails.
 
 After persistent exploration and world-map exchange were added, the Windows
 x64 Release build succeeded and all 100 isolated tests passed in 217.28
@@ -1181,6 +1181,19 @@ research targets now follow the actual technology graph for every faction,
 zero-labs starts are legal, and live player-privacy checks complete after a
 post-snapshot readiness handshake but before intentional infiltration grants
 full intelligence. The focused sea-level script test passed in 1.23 seconds.
+
+Foreign bases now retain a server-owned, per-player last-known public record
+after leaving current sight. The record is always regenerated through the
+public base serializer, so infiltration revocation cannot retain production,
+queue, mineral, worked-tile, facility, Probe, or other private state. A visible
+empty tile clears obsolete history, while a hidden destruction remains unknown
+until observed. Running-game reconnect snapshots include these records directly
+instead of briefly omitting them and delivering them after UI startup. The live
+multiplayer gate passed in 21.90 seconds, and a real disconnect/reconnect gate
+passed in 24.96 seconds after verifying the historical base on the first resumed
+turn callback. That reconnect gate also replaced stale turn-one assumptions for
+technology-gated Needlejet and Supply Crawler definitions, legal zero-lab
+research starts, and post-turn fixture stamps.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
