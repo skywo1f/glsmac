@@ -12,6 +12,8 @@ return {
 		this.p = p;
 		this.catalog_key = '';
 		this.catalog = [];
+		this.candidates_key = '';
+		this.candidates = {set: [], queue: []};
 
 		this.parts = {};
 
@@ -127,12 +129,40 @@ return {
 		return result;
 	},
 
-	set: (data) => {
-		const base = data.base;
-		const production = base.get_production();
-		const queue = base.get_production_queue();
-		const pending = this.p.game.get('f_base_get_pending_production')(base);
-		const definitions = this.get_catalog(base);
+	get_candidates: (base, definitions) => {
+		const tile = base.get_tile();
+		let has_water_access = tile.is_water;
+		if (!has_water_access) {
+			for (nearby of tile.get_surrounding_tiles()) {
+				if (nearby.is_water) {
+					has_water_access = true;
+					break;
+				}
+			}
+		}
+		let key = this.catalog_key + '|b' + #to_string(base.id) +
+			'|water:' + #to_string(has_water_access);
+		for (facility of base.get_facilities()) {
+			key += '|f:' + facility.id;
+		}
+		for (queued of base.get_production_queue()) {
+			key += '|q:' + queued.production_kind + ':' + queued.id;
+		}
+		for (def of definitions) {
+			if (#is_defined(def.is_project) && def.is_project) {
+				const project_base = this.p.game.get_bm().get_project_base(def.id);
+				const has_project_base =
+					#is_defined(project_base) && project_base != null;
+				key += '|p:' + def.id + ':' + (!has_project_base
+					? '-'
+					: #to_string(project_base.id) + '@' +
+						#to_string(project_base.get_owner().id));
+			}
+		}
+		if (key == this.candidates_key) {
+			return this.candidates;
+		}
+
 		let set_candidates = [];
 		let queue_candidates = [];
 		for (def of definitions) {
@@ -143,6 +173,21 @@ return {
 				queue_candidates :+def;
 			}
 		}
+		this.candidates_key = key;
+		this.candidates = {
+			set: set_candidates,
+			queue: queue_candidates,
+		};
+		return this.candidates;
+	},
+
+	set: (data) => {
+		const base = data.base;
+		const production = base.get_production();
+		const queue = base.get_production_queue();
+		const pending = this.p.game.get('f_base_get_pending_production')(base);
+		const definitions = this.get_catalog(base);
+		const candidates = this.get_candidates(base, definitions);
 
 		if (#is_defined(production)) {
 			const production_cost = this.p.game.get('f_base_get_production_cost')(
@@ -184,8 +229,8 @@ return {
 			base: base,
 			production: production,
 			queue: queue,
-			set_candidates: set_candidates,
-			queue_candidates: queue_candidates,
+			set_candidates: candidates.set,
+			queue_candidates: candidates.queue,
 		});
 
 		this.parts.middle_area.set({

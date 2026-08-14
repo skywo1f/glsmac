@@ -194,20 +194,22 @@ return {
 			const d = data[type];
 			const total = d.profit - d.loss;
 
-			// cells
-			let left = 0;
-			for (let i = 0; i < this.total_cells; i++) {
-				let cls = 'base-screen-resources-cell-' + type;
-				if (i < d.loss) {
-					cls += '-loss';
-				} else if (i >= this.total_cells - total) {
-					cls += '-profit';
-				}
+			const loss_count = #min(#max(d.loss, 0), this.total_cells);
+			for (let i = 0; i < loss_count; i++) {
 				this.cells.surface({
-					class: cls,
-					left: left,
+					class: 'base-screen-resources-cell-' + type + '-loss',
+					left: i * w,
 				});
-				left += w;
+			}
+			const profit_start = #max(
+				loss_count,
+				#min(#max(this.total_cells - total, 0), this.total_cells)
+			);
+			for (let profit_i = profit_start; profit_i < this.total_cells; profit_i++) {
+				this.cells.surface({
+					class: 'base-screen-resources-cell-' + type + '-profit',
+					left: profit_i * w,
+				});
 			}
 
 			// labels

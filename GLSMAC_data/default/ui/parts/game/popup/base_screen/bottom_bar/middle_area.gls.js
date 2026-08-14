@@ -1,8 +1,72 @@
 return {
+	_get_relative_base: (direction) => {
+		if (this.base == null) {
+			return null;
+		}
+		const owner_id = this.base.get_owner().id;
+		let first = null;
+		let last = null;
+		let previous = null;
+		let next = null;
+		for (candidate of this.p.game.get_bm().get_bases()) {
+			if (candidate.get_owner().id != owner_id) {
+				continue;
+			}
+			if (first == null || candidate.id < first.id) {
+				first = candidate;
+			}
+			if (last == null || candidate.id > last.id) {
+				last = candidate;
+			}
+			if (
+				candidate.id < this.base.id &&
+				(previous == null || candidate.id > previous.id)
+			) {
+				previous = candidate;
+			}
+			if (
+				candidate.id > this.base.id &&
+				(next == null || candidate.id < next.id)
+			) {
+				next = candidate;
+			}
+		}
+		return direction < 0
+			? (previous == null ? last : previous)
+			: (next == null ? first : next);
+	},
+
+	_select_relative_base: (direction) => {
+		const target = this._get_relative_base(direction);
+		if (target != null) {
+			this.p.game.select_base(target);
+		}
+	},
+
+	_get_pop_renders: (owner) => {
+		const faction_id = owner.get_faction().id;
+		if (#is_defined(this.renders_by_faction[faction_id])) {
+			return this.renders_by_faction[faction_id];
+		}
+		const renders = this.p.game.get_bm().get_pop_renders(owner);
+		for (id in renders) {
+			const variants = renders[id];
+			for (i in variants) {
+				this.p.ui.class(
+					'base-screen-bottombar-pop-' + id + '-' + #to_string(i)
+				).extend('base-screen-bottombar-pop').set({
+					background: variants[i],
+				});
+			}
+		}
+		this.renders_by_faction[faction_id] = renders;
+		return renders;
+	},
 
 	init: (p) => {
 
 		this.p = p;
+		this.renders_by_faction = {};
 
 		this.frame = p.body.panel({
 			class: 'default-panel',
@@ -56,8 +120,12 @@ return {
 				background: 'interface.pcx:crop(290,136,309,170)',
 			},
 		});
-		header.button({
+		this.previous_button = header.button({
 			class: 'base-screen-bottombar-arrow-left',
+		});
+		this.previous_button.on('click', (e) => {
+			this._select_relative_base(0 - 1);
+			return true;
 		});
 		p.ui.class('base-screen-bottombar-arrow-right').extend('base-screen-bottombar-arrow').set({
 			align: 'top right',
@@ -70,8 +138,12 @@ return {
 				background: 'interface.pcx:crop(311,136,330,170)',
 			},
 		});
-		header.button({
+		this.next_button = header.button({
 			class: 'base-screen-bottombar-arrow-right',
+		});
+		this.next_button.on('click', (e) => {
+			this._select_relative_base(1);
+			return true;
 		});
 
 		p.ui.class('base-screen-bottombar-pop').set({
@@ -138,17 +210,7 @@ return {
 			this.nerve_stapling_panel.hide();
 		}
 
-		// prepare classes with population images
-		const renders = this.p.game.get_bm().get_pop_renders(base.get_owner());
-		for (id in renders) {
-			const variants = renders[id];
-			for (i in variants) {
-				const variant = variants[i];
-				this.p.ui.class('base-screen-bottombar-pop-' + id + '-' + #to_string(i)).extend('base-screen-bottombar-pop').set({
-					background: variants[i],
-				});
-			}
-		}
+		const renders = this._get_pop_renders(base.get_owner());
 
 		this.pops.clear();
 		let left = 3;

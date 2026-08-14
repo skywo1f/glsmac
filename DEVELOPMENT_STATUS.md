@@ -1075,5 +1075,16 @@ tests passed. Installed-asset Gaians seven-player startup, visibility, and
 Planetary Council runtime checks also passed, and a real SDL audio/OpenGL run
 reached turn 5 with no logged warning, error, or assertion.
 
+The base screen now creates only visible nutrient, mineral, and energy cells
+instead of rebuilding 174 mostly transparent surfaces on every update. It also
+caches production-candidate validation across unrelated economy updates and
+reuses faction population renders while switching bases. The previous and next
+base arrows now cycle through the local faction's bases with wraparound.
+Focused resource-rendering, production-catalog, navigation, and hurry-button
+tests passed, as did the installed-asset frontend and two-turn small-map runtime
+checks. The latter remained near its established 22-second baseline, so this
+checkpoint reduces base-screen refresh work but does not claim an AI-turn speed
+improvement.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
