@@ -319,6 +319,8 @@
 				' combat_pod_ms=' + #to_string(sample.combat_pod_ms) +
 				' combat_reinforcement_ms=' + #to_string(sample.combat_reinforcement_ms) +
 				' combat_assault_ms=' + #to_string(sample.combat_assault_ms) +
+				' combat_assault_target_ms=' + #to_string(sample.combat_assault_target_ms) +
+				' combat_assault_route_ms=' + #to_string(sample.combat_assault_route_ms) +
 				' known_pods=' + #to_string(sample.combat_known_pod_max) +
 				' reason=' + sample.reason
 			);

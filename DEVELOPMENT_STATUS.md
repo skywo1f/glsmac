@@ -1329,5 +1329,15 @@ reinforcement planning, which uses the same requirement calculation, fell from
 campaign passed in 338.98 seconds. Assault planning still produced a 938 ms
 worst-case spike and is the next measured target.
 
+Splitting assault profiling into target selection and routing showed that
+blocked fallback routes, not target scoring, owned the worst spikes. Reducing
+only that fallback detour radius from 12 to 8 leaves direct greedy movement
+unchanged while cutting the worst route sample from 719 ms to 448 ms, the worst
+assault sample from 850 ms to 573 ms, and the worst complete combat phase from
+900 ms to 620 ms. Deferring unit-definition lookup until a nearby support unit
+is actually scored also reduced average target selection from 34.0 ms to 26.8
+ms. All six factions again passed the 30-turn campaign, which completed in
+251.80 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

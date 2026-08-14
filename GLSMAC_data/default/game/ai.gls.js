@@ -3,7 +3,7 @@ const TURN_COMPLETION_POLL_DELAY = 50;
 const TURN_COMPLETION_RETRY_CHECKS = 20;
 const AI_TURN_START_DELAY = 100;
 const COLONY_SEARCH_MAX_DISTANCE = 12;
-const COMBAT_DETOUR_MAX_DISTANCE = 12;
+const COMBAT_DETOUR_MAX_DISTANCE = 8;
 const FORMER_SEARCH_MAX_DISTANCE = 16;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
@@ -2067,6 +2067,7 @@ const move_combat = (
 		reinforcement_assignments[unit_key] = #undefined;
 	}
 	finish_combat_phase('reinforcement_ms');
+	const assault_target_started = combat_profile == null ? 0 : #monotonic_ms();
 	const enemy_base = combat.choose_assault_target(
 		game.get_tm(),
 		unit,
@@ -2075,6 +2076,10 @@ const move_combat = (
 		strategic_units,
 		game
 	);
+	if (combat_profile != null) {
+		combat_profile.assault_target_ms = combat_profile.assault_target_ms +
+			#monotonic_ms() - assault_target_started;
+	}
 	const enemy_distance = enemy_base == null
 		? 100000
 		: game.get_tm().get_distance(tile, enemy_base.get_tile());
@@ -2189,6 +2194,7 @@ const play_turn = (game, player, done) => {
 		pod_ms: 0,
 		reinforcement_ms: 0,
 		assault_ms: 0,
+		assault_target_ms: 0,
 		known_pod_max: 0,
 	} : null;
 	let completion_check_ms = 0;
@@ -2256,6 +2262,10 @@ const play_turn = (game, player, done) => {
 			combat_pod_ms: combat_profile == null ? 0 : combat_profile.pod_ms,
 			combat_reinforcement_ms: combat_profile == null ? 0 : combat_profile.reinforcement_ms,
 			combat_assault_ms: combat_profile == null ? 0 : combat_profile.assault_ms,
+			combat_assault_target_ms: combat_profile == null ? 0 : combat_profile.assault_target_ms,
+			combat_assault_route_ms: combat_profile == null
+				? 0
+				: combat_profile.assault_ms - combat_profile.assault_target_ms,
 			combat_known_pod_max: combat_profile == null ? 0 : combat_profile.known_pod_max,
 			completion_check_ms: completion_check_ms,
 			completion_requests: completion_requests,

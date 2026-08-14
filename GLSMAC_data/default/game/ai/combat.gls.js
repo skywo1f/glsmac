@@ -56,8 +56,8 @@ const get_repair_destination = (tm, unit, player_id, bases) => {
 	return find_nearest_friendly_base(tm, player_id, tile, bases);
 };
 
-const can_threaten_tile = (unit, tile) => {
-	const def = unit.get_def();
+const can_threaten_tile = (unit, tile, definition) => {
+	const def = #is_defined(definition) ? definition : unit.get_def();
 	if (
 		def.offense <= 0 ||
 		unit.health <= 0.0 ||
@@ -247,19 +247,22 @@ const get_assault_score = (tm, attacker, base, player_id, units, game) => {
 	let defense = 0.0;
 	let support = 0.0;
 	for (unit of units) {
-		const def = unit.get_def();
-		if (
-			unit.owner != player_id && unit.get_tile() == base_tile &&
-			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit))
-		) {
-			defense += combat_rules.get_attack_powers(attacker, unit, game).defence;
+		if (unit.owner != player_id) {
+			if (
+				unit.get_tile() == base_tile &&
+				(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit))
+			) {
+				defense += combat_rules.get_attack_powers(attacker, unit, game).defence;
+			}
 		} else if (
-			unit.owner == player_id &&
 			unit.health >= RETREAT_HEALTH &&
-			tm.get_distance(unit.get_tile(), base_tile) <= ASSAULT_SUPPORT_DISTANCE &&
-			can_threaten_tile(unit, base_tile)
+			tm.get_distance(unit.get_tile(), base_tile) <= ASSAULT_SUPPORT_DISTANCE
 		) {
-			support += #to_float(def.offense) * combat_rules.get_morale_multiplier(unit) * unit.health;
+			const def = unit.get_def();
+			if (can_threaten_tile(unit, base_tile, def)) {
+				support += #to_float(def.offense) *
+					combat_rules.get_morale_multiplier(unit) * unit.health;
+			}
 		}
 	}
 	const market_target_bonus =
