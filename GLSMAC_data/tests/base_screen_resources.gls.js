@@ -12,8 +12,15 @@ const make_container = () => {
 		area: (properties) => { return make_container(); },
 		text: (properties) => { return make_label(properties); },
 		surface: (properties) => {
-			surfaces :+properties;
-			return make_container();
+			const surface_object = {
+				class: properties.class,
+				left: properties.left,
+				hidden: false,
+				hide: () => { this.hidden = true; },
+				show: () => { this.hidden = false; },
+			};
+			surfaces :+surface_object;
+			return surface_object;
 		},
 		clear: () => { clear_count++; },
 	};
@@ -35,7 +42,7 @@ resources.set({
 	energy_inefficiency: {efficiency: 0, inefficiency: 0, distance: 0},
 });
 
-test.assert(clear_count == 1);
+test.assert(clear_count == 0);
 test.assert(#sizeof(surfaces) == 9);
 test.assert(surfaces[0].class == 'base-screen-resources-cell-nutrients-loss');
 test.assert(surfaces[0].left == 0);
@@ -56,5 +63,19 @@ resources.set({
 	energy: {profit: 0, loss: 0},
 	energy_inefficiency: {efficiency: 0, inefficiency: 0, distance: 0},
 });
-test.assert(clear_count == 2);
+test.assert(clear_count == 0);
 test.assert(#sizeof(surfaces) == 9);
+for (surface of surfaces) {
+	test.assert(surface.hidden);
+}
+
+resources.set({
+	nutrients: {profit: 2, loss: 1},
+	minerals: {profit: 2, loss: 2},
+	energy: {profit: 5, loss: 2},
+	energy_inefficiency: {efficiency: 0, inefficiency: 0, distance: 0},
+});
+test.assert(#sizeof(surfaces) == 9);
+for (surface of surfaces) {
+	test.assert(!surface.hidden);
+}

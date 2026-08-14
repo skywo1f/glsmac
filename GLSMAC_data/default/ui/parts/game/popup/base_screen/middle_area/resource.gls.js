@@ -6,9 +6,14 @@ return {
 	init: (p) => {
 
 		this.p = p;
+		this.render_signature = null;
+		this.click_context = null;
 
 		this.el = p.area.panel({
 			class: 'base-screen-middle-area',
+		});
+		this.el.on('mousedown', (e) => {
+			return this._handle_mousedown(e);
 		});
 
 		p.ui.class('base-screen-middle-area-tile').set({
@@ -18,7 +23,101 @@ return {
 
 	},
 
+	_tile_key: (tile) => {
+		return #to_string(tile.x) + '_' + #to_string(tile.y);
+	},
+
+	_handle_mousedown: (e) => {
+		if (e.button != 'left' || this.click_context == null) {
+			return true;
+		}
+		const click = this.click_context;
+		const click_base = click.base;
+		const click_half_width = this.tile_width / 2;
+		const click_x = e.x - click.c_left - click_half_width;
+		const click_y = e.y - click.c_top - this.tile_height / 2;
+		const find_best_or_worst = this.p.game.get('f_base_find_best_or_worst_tiles');
+		const get_assignable = this.p.game.get('f_base_get_assignable_worker_tiles');
+		for (click_tile of click.existing_tiles) {
+			const click_distance =
+				#abs(click_tile.cx - click_x) +
+				#abs(click_tile.cy - click_y) * click.tile_aspect_ratio;
+			if (click_distance > click_half_width) {
+				continue;
+			}
+			if (click_tile == click.center) {
+				let click_pops = click_base.get_pops();
+				const best_tiles = find_best_or_worst(
+					click_base,
+					get_assignable(click_base),
+					#sizeof(click_pops),
+					1
+				);
+				let click_pop_index = 0;
+				for (click_pop of click_pops) {
+					const worked_tile = click_pop.get('worked_tile');
+					if (#is_defined(worked_tile)) {
+						this.p.game.event('unwork_base_tile', {
+							base: click_base,
+							tile: worked_tile,
+						});
+					}
+				}
+				for (click_pop of click_pops) {
+					const best_tile = best_tiles[click_pop_index++];
+					if (!#is_defined(best_tile)) {
+						break;
+					}
+					this.p.game.event('work_base_tile', {
+						base: click_base,
+						tile: best_tile,
+						pop: click_pop,
+					});
+				}
+			} else if (#is_defined(click_tile.el_resources)) {
+				this.p.game.event('unwork_base_tile', {
+					base: click_base,
+					tile: click_tile.tile,
+				});
+			} else {
+				let target_pop = null;
+				for (candidate_pop of click_base.get_pops()) {
+					if (candidate_pop.get_type() != 'WORKER') {
+						target_pop = candidate_pop;
+						break;
+					}
+				}
+				if (target_pop == null) {
+					const worst_tile = (
+						find_best_or_worst(click_base, click_base.get_worked_tiles(), 1, 0 - 1)
+					)[0];
+					if (#is_defined(worst_tile)) {
+						target_pop = worst_tile.get('working_pop');
+					}
+				}
+				if (target_pop != null) {
+					this.p.game.event('work_base_tile', {
+						base: click_base,
+						tile: click_tile.tile,
+						pop: target_pop,
+					});
+				}
+			}
+			break;
+		}
+		return true;
+	},
+
 	set: (data) => {
+		let render_signature = #to_string(data.base.id);
+		for (signature_tile of data.base.get_worked_tiles()) {
+			render_signature += '|' + this._tile_key(signature_tile);
+		}
+		if (render_signature == this.render_signature) {
+			this.click_context.base = data.base;
+			return;
+		}
+		this.render_signature = render_signature;
 
 		this.el.clear();
 
@@ -30,12 +129,8 @@ return {
 
 		const tile_aspect_ratio = this.tile_width / this.tile_height;
 
-		const f_tile_key = (tile) => {
-			return #to_string(tile.x) + '_' + #to_string(tile.y);
-		};
-
 		const f_tile = (tile, cx, cy) => {
-			const key = f_tile_key(tile);
+			const key = this._tile_key(tile);
 			if (#is_defined(existing_tiles[key])) {
 				// don't draw duplicate tiles
 				return;
@@ -127,89 +222,19 @@ return {
 		// resources
 		f_resources(t_center);
 		for (tile of data.base.get_worked_tiles()) {
-			const key = f_tile_key(tile);
+			const key = this._tile_key(tile);
 			if (#is_defined(existing_tiles[key])) {
 				f_resources(existing_tiles[key]);
 			}
 		}
-
-		this.el.on('mousedown', (e) => {
-			if (e.button == 'left') {
-				// check if any tile was clicked
-				const twh = this.tile_width / 2;
-				const mx = e.x - c_left - twh;
-				const my = e.y - c_top - this.tile_height / 2;
-				const f_base_find_best_or_worst_tiles = this.p.game.get('f_base_find_best_or_worst_tiles');
-				const f_base_get_assignable_worker_tiles = this.p.game.get('f_base_get_assignable_worker_tiles');
-				for (t of existing_tiles) {
-					const distance = #abs(t.cx - mx) + #abs(t.cy - my) * tile_aspect_ratio;
-					if (distance <= twh) {
-						if (t == t_center) {
-							let pops = data.base.get_pops();
-							const tiles = f_base_find_best_or_worst_tiles(
-								data.base,
-								f_base_get_assignable_worker_tiles(data.base),
-								#sizeof(pops),
-								1
-							);
-							let i = 0;
-							// TODO: optimize excessive unwork/work events
-							// unwork all tiles
-							for (pop of pops) {
-								const worked_tile = pop.get('worked_tile');
-								if (#is_defined(worked_tile)) {
-									this.p.game.event('unwork_base_tile', {
-										base: data.base,
-										tile: worked_tile,
-									});
-								}
-							}
-							// work best tiles
-							for (pop of pops) {
-								const tile = tiles[i++];
-								if (!#is_defined(tile)) {
-									break;
-								}
-								this.p.game.event('work_base_tile', {
-									base: data.base,
-									tile: tile,
-									pop: pop,
-								});
-							}
-						} else if (#is_defined(t.el_resources)) {
-							this.p.game.event('unwork_base_tile', {
-								base: data.base,
-								tile: t.tile,
-							});
-						} else {
-							let target_pop = null;
-							for (pop of data.base.get_pops()) {
-								if (pop.get_type() != 'WORKER') {
-									target_pop = pop;
-									break;
-								}
-							}
-							if (target_pop == null) {
-								// find worst worked tile
-								const tile = (f_base_find_best_or_worst_tiles(data.base, data.base.get_worked_tiles(), 1, 0 - 1))[0]; // TODO: 0 - 1
-								if (#is_defined(tile)) {
-									target_pop = tile.get('working_pop');
-								}
-							}
-							if (target_pop != null) {
-								this.p.game.event('work_base_tile', {
-									base: data.base,
-									tile: t.tile,
-									pop: target_pop,
-								});
-							}
-						}
-						break;
-					}
-				}
-			}
-			return true;
-		});
+		this.click_context = {
+			base: data.base,
+			c_left: c_left,
+			c_top: c_top,
+			tile_aspect_ratio: tile_aspect_ratio,
+			existing_tiles: existing_tiles,
+			center: t_center,
+		};
 	},
 
 };

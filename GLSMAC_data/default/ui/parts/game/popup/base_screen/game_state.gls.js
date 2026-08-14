@@ -1,6 +1,9 @@
 return {
 
 	init: (p) => {
+		this.last_year = #undefined;
+		this.last_energy = #undefined;
+		this.last_ecodamage = #undefined;
 
 		this.frame = p.body.panel({
 			class: 'base-screen-side-frame',
@@ -48,9 +51,18 @@ return {
 	},
 
 	set: (data) => {
-		this.info_year.text = #to_string(data.year);
-		this.info_energy.text = #to_string(data.energy);
-		this.info_ecodamage.text = 'Eco-Damage: ' + #to_string(data.ecodamage);
+		if (data.year != this.last_year) {
+			this.info_year.text = #to_string(data.year);
+			this.last_year = data.year;
+		}
+		if (data.energy != this.last_energy) {
+			this.info_energy.text = #to_string(data.energy);
+			this.last_energy = data.energy;
+		}
+		if (data.ecodamage != this.last_ecodamage) {
+			this.info_ecodamage.text = 'Eco-Damage: ' + #to_string(data.ecodamage);
+			this.last_ecodamage = data.ecodamage;
+		}
 	},
 
 };

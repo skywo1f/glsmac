@@ -5,6 +5,12 @@ return {
 	init: (p) => {
 
 		this.p = p;
+		this.cell_cache = {
+			cells: [],
+			columns: 0,
+			rows: 0,
+			capacity: 0,
+		};
 
 		this.frame = p.body.panel({
 			class: 'base-screen-frame',
@@ -68,6 +74,8 @@ return {
 			(progress_in) => {
 				return #to_string(progress_in) + ' TURNS';
 			},
+			#undefined,
+			this.cell_cache,
 		);
 		if (#is_defined(data.conversion_label)) {
 			this.production_label.text = data.conversion_label;

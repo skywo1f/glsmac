@@ -1100,5 +1100,17 @@ clicked instead of depending on stale popup state. Eight focused script tests,
 the installed-asset Council runtime, and the small-map frontend runtime passed;
 the optimized startup runtime also passed repeatedly.
 
+The base-screen runtime check now opens a real human base and immediately
+refreshes it, reporting both script and observed latency. Nutrient and
+production grids retain their UI cells when dimensions are unchanged, resource
+bars reuse visible surfaces, unchanged labels avoid redundant assignments, and
+the middle panel updates only its active tab while retaining a single resource
+map click listener. On the deterministic installed-asset scenario, base-screen
+script refresh work fell from 644 ms to 167 ms and observed refresh latency
+fell from 1.86 seconds to 0.40 seconds. First-open script work also fell to
+about 555 ms because hidden Support and Psych tabs are populated on demand.
+Focused catalog, cell-cache, navigation, and resource tests passed along with
+the strengthened frontend runtime check.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

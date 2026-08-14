@@ -3,6 +3,12 @@ return {
 	init: (p) => {
 
 		this.p = p;
+		this.cell_cache = {
+			cells: [],
+			columns: 0,
+			rows: 0,
+			capacity: 0,
+		};
 
 		this.frame = p.body.panel({
 			class: 'base-screen-side-frame',
@@ -80,6 +86,7 @@ return {
 				return progress_text;
 			},
 			data.capacity,
+			this.cell_cache,
 		);
 	},
 

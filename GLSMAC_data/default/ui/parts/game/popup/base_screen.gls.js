@@ -109,6 +109,20 @@ return {
 	set: (data) => {
 
 		const game = this.p.game;
+		const base_profile_callback = game.get('f_base_screen_profile');
+		const is_base_profiling = #typeof(base_profile_callback) == 'Callable';
+		const base_profile_started = is_base_profiling ? #monotonic_ms() : 0;
+		let base_phase_started = base_profile_started;
+		const finish_base_phase = (phase) => {
+			if (!is_base_profiling) { return; }
+			const now = #monotonic_ms();
+			base_profile_callback({
+				phase: phase,
+				elapsed_ms: now - base_phase_started,
+				total_ms: now - base_profile_started,
+			});
+			base_phase_started = now;
+		};
 		const base = data.base;
 		const owner = base.get_owner();
 		const faction = owner.get_faction();
@@ -129,6 +143,7 @@ return {
 			free_units: #min(#sizeof(supported_units), free_support_capacity),
 			mineral_upkeep: consumption.MINERALS,
 		};
+		finish_base_phase('prepare');
 
 		// dummy data for now
 
@@ -139,6 +154,7 @@ return {
 			filled: base.get('accumulated_nutrients'),
 			pending: game.get('f_base_get_pending_growth')(base),
 		});
+		finish_base_phase('nutrients');
 
 		if (faction.is_progenitor) {
 			this.sections.economy.set_energy_grid({
@@ -149,20 +165,24 @@ return {
 				game.get('f_economy_get_base_commerce')(game, base)
 			);
 		}
+		finish_base_phase('economy');
 
 		this.sections.game_state.set({
 			year: game.get_year(),
 			energy: owner.energy_credits,
 			ecodamage: game.get('f_ecology_get_base_damage')(base).percent,
 		});
+		finish_base_phase('game_state');
 
 		this.sections.top_buttons.set({base: base});
+		finish_base_phase('top_buttons');
 
 		let facility_names = [];
 		for (facility of base.get_facilities()) {
 			facility_names :+(facility.is_project ? 'PROJECT: ' : '') + facility.name;
 		}
 		this.sections.facilities.set(facility_names);
+		finish_base_phase('facilities');
 
 		const resource_data = {
 			nutrients: {
@@ -183,21 +203,26 @@ return {
 			resource_data.energy.loss + energy_diagnostics.inefficiency;
 		resource_data.energy_inefficiency = energy_diagnostics;
 		this.sections.resources.set(resource_data);
+		finish_base_phase('resources');
 
 		this.sections.energy.set(game.get('f_economy_get_base_allocation')(game, base));
+		finish_base_phase('energy');
 
 		this.sections.middle_area.set({
 			base: base,
 			support: support,
 		});
+		finish_base_phase('middle_area');
 		this.sections.buttons.set({
 			base: base,
 		});
+		finish_base_phase('buttons');
 
 		this.sections.bottom_bar.set({
 			base: base,
 			support: support,
 		});
+		finish_base_phase('bottom_bar');
 	},
 
 	on_hide: () => {
@@ -210,16 +235,31 @@ return {
 		this.sections.bottom_bar.frame.show();
 	},
 
-	set_cells: (total_width, total_height, columns, rows, filled, pending, cells_el, cell_baseclass, label_el, f_label, capacity_in) => {
-		cells_el.clear();
-
+	set_cells: (total_width, total_height, columns, rows, filled, pending, cells_el, cell_baseclass, label_el, f_label, capacity_in, cell_cache) => {
 		const width = #floor(#to_float(total_width) / #to_float(columns));
 		const height = #floor(#to_float(total_height) / #to_float(rows));
+		const capacity = #is_defined(capacity_in) ? capacity_in : rows * columns;
+		const has_cell_cache = #is_defined(cell_cache);
+		const can_reuse_cells =
+			has_cell_cache &&
+			cell_cache.columns == columns &&
+			cell_cache.rows == rows &&
+			cell_cache.capacity == capacity &&
+			#sizeof(cell_cache.cells) == capacity;
 
 		this.p.ui.class(cell_baseclass).set({
 			width: width - 1,
 			height: height - 1,
 		});
+		if (!can_reuse_cells) {
+			cells_el.clear();
+			if (has_cell_cache) {
+				cell_cache.cells = [];
+				cell_cache.columns = columns;
+				cell_cache.rows = rows;
+				cell_cache.capacity = capacity;
+			}
+		}
 
 		const offset_left = (total_width - (columns * width)) / 2;
 		let left = offset_left;
@@ -227,7 +267,6 @@ return {
 
 		let i = 0;
 		let cls = '';
-		const capacity = #is_defined(capacity_in) ? capacity_in : rows * columns;
 
 		for (let y = 0; y < rows; y++) {
 			for (let x = 0; x < columns; x++) {
@@ -242,14 +281,22 @@ return {
 				} else {
 					cls = 'empty';
 				}
-				i++;
-				if (i <= capacity) {
-					cells_el.panel({
-						class: cell_baseclass + '-' + cls,
-						left: left + 1,
-						top: top + 1,
-					});
+				if (i < capacity) {
+					const cell_class = cell_baseclass + '-' + cls;
+					if (can_reuse_cells) {
+						cell_cache.cells[i].class = cell_class;
+					} else {
+						const cell = cells_el.panel({
+							class: cell_class,
+							left: left + 1,
+							top: top + 1,
+						});
+						if (has_cell_cache) {
+							cell_cache.cells :+cell;
+						}
+					}
 				}
+				i++;
 				left += width;
 			}
 			top += height;

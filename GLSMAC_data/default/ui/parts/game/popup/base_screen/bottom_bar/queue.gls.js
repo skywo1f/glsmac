@@ -141,6 +141,20 @@ return {
 	},
 
 	set: (data) => {
+		const queue_profile_callback = this.p.game.get('f_base_screen_profile');
+		const is_queue_profiling = #typeof(queue_profile_callback) == 'Callable';
+		const queue_profile_started = is_queue_profiling ? #monotonic_ms() : 0;
+		let queue_phase_started = queue_profile_started;
+		const finish_queue_phase = (phase) => {
+			if (!is_queue_profiling) { return; }
+			const queue_now = #monotonic_ms();
+			queue_profile_callback({
+				phase: phase,
+				elapsed_ms: queue_now - queue_phase_started,
+				total_ms: queue_now - queue_profile_started,
+			});
+			queue_phase_started = queue_now;
+		};
 		this.base = data.base;
 		this.production = data.production;
 		this.queue = data.queue;
@@ -148,6 +162,7 @@ return {
 		this.queue_candidates = data.queue_candidates;
 		this.set_candidates_by_key = {};
 		this.queue_candidates_by_key = {};
+		finish_queue_phase('queue_setup');
 
 		let set_items = [];
 		if (!#is_defined(this.production)) {
@@ -173,6 +188,7 @@ return {
 		this.change_select.value = #is_defined(this.production)
 			? this._candidate_key(this.production)
 			: '';
+		finish_queue_phase('queue_change_select');
 
 		let queue_items = [];
 		for (candidate of this.queue_candidates) {
@@ -199,6 +215,7 @@ return {
 		this.queue_select.value = this.queue_candidate == null
 			? ''
 			: this._candidate_key(this.queue_candidate);
+		finish_queue_phase('queue_add_select');
 
 		this.items.clear();
 		let i = 0;
@@ -219,6 +236,7 @@ return {
 			});
 			i++;
 		}
+		finish_queue_phase('queue_rows');
 	},
 
 };

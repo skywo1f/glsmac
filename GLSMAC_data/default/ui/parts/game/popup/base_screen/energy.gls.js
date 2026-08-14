@@ -1,6 +1,7 @@
 return {
 
 	init: (p) => {
+		this.last_values = {};
 
 		p.ui.class('base-screen-energy-percentage-header').extend('base-screen-side-header').set({
 			left: 131,
@@ -195,10 +196,19 @@ return {
 		for (type in data) {
 			const d = data[type];
 			const l = this.labels[type];
-			l.percentage.text = this._pad(#round(d.allocation * 100.0)) + '%';
-			l.value.text = this._pad(d.value);
-			l.bonus.text = this._pad(d.bonus);
-			l.total.text = this._pad(d.value + d.bonus);
+			const percentage_text = this._pad(#round(d.allocation * 100.0)) + '%';
+			const value_text = this._pad(d.value);
+			const bonus_text = this._pad(d.bonus);
+			const total_text = this._pad(d.value + d.bonus);
+			const value_signature =
+				percentage_text + '|' + value_text + '|' + bonus_text + '|' + total_text;
+			if (!#is_defined(this.last_values[type]) || this.last_values[type] != value_signature) {
+				l.percentage.text = percentage_text;
+				l.value.text = value_text;
+				l.bonus.text = bonus_text;
+				l.total.text = total_text;
+				this.last_values[type] = value_signature;
+			}
 		}
 	},
 

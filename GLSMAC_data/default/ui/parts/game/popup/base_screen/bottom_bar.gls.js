@@ -182,12 +182,29 @@ return {
 	},
 
 	set: (data) => {
+		const bottom_profile_callback = this.p.game.get('f_base_screen_profile');
+		const is_bottom_profiling = #typeof(bottom_profile_callback) == 'Callable';
+		const bottom_profile_started = is_bottom_profiling ? #monotonic_ms() : 0;
+		let bottom_phase_started = bottom_profile_started;
+		const finish_bottom_phase = (phase) => {
+			if (!is_bottom_profiling) { return; }
+			const bottom_now = #monotonic_ms();
+			bottom_profile_callback({
+				phase: phase,
+				elapsed_ms: bottom_now - bottom_phase_started,
+				total_ms: bottom_now - bottom_profile_started,
+			});
+			bottom_phase_started = bottom_now;
+		};
 		const base = data.base;
 		const production = base.get_production();
 		const queue = base.get_production_queue();
 		const pending = this.p.game.get('f_base_get_pending_production')(base);
+		finish_bottom_phase('bottom_state');
 		const definitions = this.get_catalog(base);
+		finish_bottom_phase('bottom_catalog');
 		const candidates = this.get_candidates(base, definitions);
+		finish_bottom_phase('bottom_candidates');
 
 		if (#is_defined(production)) {
 			const production_cost = this.p.game.get('f_base_get_production_cost')(
@@ -224,6 +241,7 @@ return {
 				pending: 0,
 			});
 		}
+		finish_bottom_phase('bottom_production');
 
 		this.parts.queue.set({
 			base: base,
@@ -232,6 +250,7 @@ return {
 			set_candidates: candidates.set,
 			queue_candidates: candidates.queue,
 		});
+		finish_bottom_phase('bottom_queue');
 
 		this.parts.middle_area.set({
 			base: base,
@@ -239,8 +258,10 @@ return {
 			owner: base.get_owner(),
 			pops: base.get_pops(),
 		});
+		finish_bottom_phase('bottom_middle_area');
 
 		this.parts.support.set(data.support);
+		finish_bottom_phase('bottom_support');
 
 	},
 
