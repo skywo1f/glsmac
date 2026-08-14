@@ -13,11 +13,17 @@ const is_priority = (priority) => {
 };
 
 const is_enabled = (base) => {
-	return base.has(ENABLED_KEY) && base.get(ENABLED_KEY) == true;
+	return (
+		#typeof(base.has) == 'Callable' && #typeof(base.get) == 'Callable' &&
+		base.has(ENABLED_KEY) && base.get(ENABLED_KEY) == true
+	);
 };
 
 const get_priority = (base) => {
-	if (base.has(PRIORITY_KEY)) {
+	if (
+		#typeof(base.has) == 'Callable' && #typeof(base.get) == 'Callable' &&
+		base.has(PRIORITY_KEY)
+	) {
 		const priority = base.get(PRIORITY_KEY);
 		if (#typeof(priority) == 'String' && is_priority(priority)) {
 			return priority;

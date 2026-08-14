@@ -1236,5 +1236,16 @@ removed both governor fields from redacted rival bases in 24.97 seconds.
 Focused worker, production, UI, capture, validation, and rollback tests also
 passed; the final targeted matrix completed 12 of 12 checks in 63.59 seconds.
 
+The standard-small-map AI turn now has a dedicated six-opponent headless
+profile gate. AI movement polling is twice as responsive and turn-completion
+acknowledgement polling is four times as responsive while preserving the
+existing one-second retry window. The authoritative host drains bounded chains
+of child events before publishing manager updates, reducing redundant update
+cycles without changing client-side dependency waits. Human-turn completion to
+the final AI acknowledgement fell from 8.36 seconds to 6.83-6.98 seconds in
+repeat runs, a 16-18% improvement without skipping AI decisions. All 128 GSE
+tests passed in 218.43 seconds, followed by eight AI, save/load, multiplayer,
+and reconnect runtime scenarios in 127.37 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

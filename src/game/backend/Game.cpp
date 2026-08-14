@@ -2342,13 +2342,18 @@ void Game::SetTurnStatus( const backend::turn::turn_status_t status ) {
 }
 
 void Game::ProcessEvents() {
-	std::vector< pending_event_t > events;
-	{
-		std::lock_guard guard( m_pending_events_mutex );
-		events = m_pending_events;
-		m_pending_events.clear();
-	}
-	if ( !events.empty() ) {
+	constexpr size_t MAX_EVENT_BATCHES_PER_ITERATION = 64;
+	// Drain host-authored child events before manager updates; clients still yield for response dependencies.
+	for ( size_t batch = 0 ; batch < MAX_EVENT_BATCHES_PER_ITERATION ; batch++ ) {
+		std::vector< pending_event_t > events;
+		{
+			std::lock_guard guard( m_pending_events_mutex );
+			events = m_pending_events;
+			m_pending_events.clear();
+		}
+		if ( events.empty() ) {
+			return;
+		}
 		m_state->WithGSE( this, [ this, events ]( GSE_CALLABLE ) {
 			const std::string* errptr = nullptr;
 			for ( size_t event_index = 0 ; event_index < events.size() ; event_index++ ) {
@@ -2636,6 +2641,9 @@ void Game::ProcessEvents() {
 #endif
 			}
 		});
+		if ( !m_state->IsMaster() ) {
+			return;
+		}
 	}
 }
 

@@ -659,6 +659,32 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( AI_TURN_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-turn-profile" )
+		FILE( MAKE_DIRECTORY "${AI_TURN_PROFILE_DIR}" )
+		ADD_TEST( NAME ai_turn_profile COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${AI_TURN_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_ai_turn_profile"
+			--quickstart
+			--quickstart-ai "6"
+			--quickstart-mapsize "88x44"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1280x720"
+			--verbose
+		)
+		SET_TESTS_PROPERTIES( ai_turn_profile PROPERTIES
+			FAIL_REGULAR_EXPRESSION "AI_TURN_PROFILE_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "AI_TURN_PROFILE_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 90
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( AI_ECONOMY_SOAK_PROFILE_DIR "${TEST_PROFILE_DIR}/ai-economy-soak" )
 		FILE( MAKE_DIRECTORY "${AI_ECONOMY_SOAK_PROFILE_DIR}" )
 		ADD_TEST( NAME ai_economy_soak COMMAND
