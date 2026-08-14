@@ -1088,6 +1088,7 @@ return (game) => {
 		game.set('f_base_process_growth', process_growth);
 		game.set('f_base_process_psych', process_psych);
 		game.set('f_base_get_police', (base) => { return get_police_state(game, base); });
+		game.set('f_base_is_rioting', (base) => { return is_rioting(game, base); });
 		game.set('f_base_get_psych', (base) => { return get_psych_state(game, base); });
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);

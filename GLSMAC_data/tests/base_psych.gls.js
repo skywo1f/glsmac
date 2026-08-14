@@ -96,6 +96,7 @@ test.assert(state.drones == 1);
 test.assert(state.specialists == 1);
 test.assert(state.psych == 2);
 test.assert(state.is_rioting == true);
+test.assert(values.f_base_is_rioting(base));
 test.assert(values.f_base_get_pending_production(base) == 0);
 
 psych_energy = 10;
@@ -105,6 +106,7 @@ test.assert(state.talents == 3);
 test.assert(state.workers == 3);
 test.assert(state.drones == 0);
 test.assert(state.is_rioting == false);
+test.assert(!values.f_base_is_rioting(base));
 test.assert(values.f_base_get_pending_production(base) == 8);
 
 psych_energy = 0;
@@ -146,6 +148,7 @@ values.f_project_get_effects = (target_base) => {
 };
 state = values.f_base_get_psych(base);
 test.assert(state.is_rioting == false);
+test.assert(!values.f_base_is_rioting(base));
 test.assert(values.f_base_get_pending_production(base) == 8);
 values.f_project_get_effects = #undefined;
 

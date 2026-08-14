@@ -199,7 +199,9 @@ return {
 		const base = data.base;
 		const production = base.get_production();
 		const queue = base.get_production_queue();
-		const pending = this.p.game.get('f_base_get_pending_production')(base);
+		const pending = #is_defined(data.pending_production)
+			? data.pending_production
+			: this.p.game.get('f_base_get_pending_production')(base);
 		finish_bottom_phase('bottom_state');
 		const definitions = this.get_catalog(base);
 		finish_bottom_phase('bottom_catalog');

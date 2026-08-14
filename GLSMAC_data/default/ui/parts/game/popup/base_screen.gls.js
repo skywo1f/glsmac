@@ -131,6 +131,10 @@ return {
 
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
+		const pending_growth = intake.NUTRIENTS - consumption.NUTRIENTS;
+		const pending_production = game.get('f_base_is_rioting')(base)
+			? 0
+			: #max(intake.MINERALS - consumption.MINERALS, 0);
 		let supported_units = #is_defined(base.get_supported_units)
 			? base.get_supported_units()
 			: [];
@@ -156,7 +160,7 @@ return {
 			columns: game.get('map_growth_base'),
 			capacity: game.get('f_base_get_nutrients_for_growth')(game, base),
 			filled: base.get('accumulated_nutrients'),
-			pending: game.get('f_base_get_pending_growth')(base),
+			pending: pending_growth,
 		});
 		finish_base_phase('nutrients');
 
@@ -227,6 +231,7 @@ return {
 		this.sections.bottom_bar.set({
 			base: base,
 			support: support,
+			pending_production: pending_production,
 		});
 		finish_base_phase('bottom_bar');
 	},
@@ -246,6 +251,17 @@ return {
 		const height = #floor(#to_float(total_height) / #to_float(rows));
 		const capacity = #is_defined(capacity_in) ? capacity_in : rows * columns;
 		const has_cell_cache = #is_defined(cell_cache);
+		if (has_cell_cache && #is_defined(cell_cache.rendered)) {
+			const rendered = cell_cache.rendered;
+			if (
+				rendered.total_width == total_width && rendered.total_height == total_height &&
+				rendered.columns == columns && rendered.rows == rows &&
+				rendered.filled == filled && rendered.pending == pending &&
+				rendered.capacity == capacity && rendered.cell_baseclass == cell_baseclass
+			) {
+				return;
+			}
+		}
 		const get_cell_class = (index) => {
 			let suffix = 'empty';
 			if (index < filled) {
@@ -360,6 +376,18 @@ return {
 			progress_in = #ceil(#to_float(capacity - filled) / #to_float(pending));
 		}
 		label_el.text = f_label(progress_in);
+		if (has_cell_cache) {
+			cell_cache.rendered = {
+				total_width: total_width,
+				total_height: total_height,
+				columns: columns,
+				rows: rows,
+				filled: filled,
+				pending: pending,
+				capacity: capacity,
+				cell_baseclass: cell_baseclass,
+			};
+		}
 	},
 
 };

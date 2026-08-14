@@ -28,6 +28,11 @@ base_screen.p = {
 	},
 };
 const label = {text: ''};
+let label_calls = 0;
+const format_label = (turns) => {
+	label_calls++;
+	return #to_string(turns);
+};
 const cache = {
 	cells: [],
 	classes: [],
@@ -41,7 +46,7 @@ const cache = {
 
 base_screen.set_cells(
 	100, 40, 5, 2, 3, 2, cells, 'test-cell', label,
-	(turns) => { return #to_string(turns); },
+	format_label,
 	10, cache
 );
 test.assert(clear_count == 1);
@@ -53,10 +58,20 @@ test.assert(cache.classes[0] == 'test-cell-full');
 test.assert(cache.classes[3] == 'test-cell-pending');
 test.assert(cache.width == 19);
 test.assert(cache.height == 19);
+test.assert(label_calls == 1);
+
+base_screen.set_cells(
+	100, 40, 5, 2, 3, 2, cells, 'test-cell', label,
+	format_label,
+	10, cache
+);
+test.assert(clear_count == 1);
+test.assert(#sizeof(created_cells) == 10);
+test.assert(label_calls == 1);
 
 base_screen.set_cells(
 	100, 40, 5, 2, 4, 1, cells, 'test-cell', label,
-	(turns) => { return #to_string(turns); },
+	format_label,
 	10, cache
 );
 test.assert(clear_count == 1);
@@ -73,7 +88,7 @@ test.assert(cache.classes[9] == 'test-cell-empty');
 
 base_screen.set_cells(
 	100, 40, 5, 2, 1, 0, cells, 'test-cell', label,
-	(turns) => { return #to_string(turns); },
+	format_label,
 	10, cache
 );
 test.assert(clear_count == 1);
@@ -83,7 +98,7 @@ test.assert(cache.cells[1].class == 'test-cell-empty');
 
 base_screen.set_cells(
 	100, 40, 5, 2, 4, 1, cells, 'test-cell', label,
-	(turns) => { return #to_string(turns); },
+	format_label,
 	10, cache
 );
 test.assert(clear_count == 1);
@@ -94,7 +109,7 @@ test.assert(cache.cells[4].class == 'test-cell-pending');
 
 base_screen.set_cells(
 	100, 40, 5, 1, 1, 0, cells, 'test-cell', label,
-	(turns) => { return #to_string(turns); },
+	format_label,
 	5, cache
 );
 test.assert(clear_count == 2);
