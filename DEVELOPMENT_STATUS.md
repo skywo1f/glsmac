@@ -1370,5 +1370,15 @@ from 0.5-1.3 seconds to 3-5 ms after initialization, all three live Hurry
 transactions completed in about 0.19 seconds, and the complete scenario fell
 from 14.7 seconds to 9.9 seconds.
 
+Sound loading now converts WAV assets to the mixer's mono 22.05 kHz signed
+16-bit format instead of copying mismatched samples verbatim. This covers the
+five base-game effects that use mono 44.1 kHz or stereo 22.05 kHz data, reports
+asset failures to scripts, and has an installed-asset runtime gate for all five
+outliers. Gameplay wind ambience was raised from 0.12 to 0.35 because its source
+level made it roughly fourteen times quieter than the opening-menu ambience.
+The focused asset and native repeat-playback tests passed, and a sound-enabled
+Windows run initialized the real SDL audio device, loaded the ambience, and
+shut the mixer down cleanly.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

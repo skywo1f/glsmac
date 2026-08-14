@@ -3,6 +3,9 @@
 
 #include "SDL2.h"
 
+#include <limits>
+
+#include "audio/sdl2/SDL2.h"
 #include "util/FS.h"
 #include "types/Sound.h"
 
@@ -35,24 +38,84 @@ types::Sound* SDL2::LoadSoundImpl( const std::string& filename ) {
 		// the specs, length and buffer of our wav are filled
 		ret = SDL_LoadWAV( filename.c_str(), &wav_spec, &wav_buffer, &wav_length );
 		if ( !ret ) {
+			Log( "Could not load sound \"" + filename + "\": " + SDL_GetError() );
 			return nullptr;
+		}
+
+		SDL_AudioCVT converter = {};
+		if ( SDL_BuildAudioCVT(
+			&converter,
+			wav_spec.format,
+			wav_spec.channels,
+			wav_spec.freq,
+			AUDIO_FORMAT,
+			AUDIO_CHANNELS,
+			AUDIO_FREQUENCY
+		) < 0 ) {
+			Log( "Could not prepare sound conversion for \"" + filename + "\": " + SDL_GetError() );
+			SDL_FreeWAV( wav_buffer );
+			return nullptr;
+		}
+
+		Uint8* playback_buffer = wav_buffer;
+		Uint32 playback_length = wav_length;
+		if ( converter.needed ) {
+			if (
+				wav_length > static_cast< Uint32 >( std::numeric_limits< int >::max() ) ||
+				converter.len_mult <= 0 ||
+				static_cast< size_t >( wav_length ) >
+					std::numeric_limits< size_t >::max() / static_cast< size_t >( converter.len_mult )
+			) {
+				Log( "Sound is too large to convert: \"" + filename + "\"" );
+				SDL_FreeWAV( wav_buffer );
+				return nullptr;
+			}
+			converter.len = static_cast< int >( wav_length );
+			converter.buf = static_cast< Uint8* >(
+				SDL_malloc( static_cast< size_t >( converter.len ) * converter.len_mult )
+			);
+			if ( !converter.buf ) {
+				Log( "Could not allocate converted sound buffer for \"" + filename + "\"" );
+				SDL_FreeWAV( wav_buffer );
+				return nullptr;
+			}
+			memcpy( converter.buf, wav_buffer, wav_length );
+			if ( SDL_ConvertAudio( &converter ) < 0 ) {
+				Log( "Could not convert sound \"" + filename + "\": " + SDL_GetError() );
+				SDL_free( converter.buf );
+				SDL_FreeWAV( wav_buffer );
+				return nullptr;
+			}
+			playback_buffer = converter.buf;
+			playback_length = static_cast< Uint32 >( converter.len_cvt );
 		}
 
 		NEWV( sound, types::Sound );
 		sound->m_name = filename;
 
-		sound->m_buffer_size = wav_length;
+		sound->m_buffer_size = playback_length;
 		sound->m_buffer = (unsigned char*)malloc( sound->m_buffer_size );
-		memcpy( ptr( sound->m_buffer, 0, wav_length ), wav_buffer, wav_length );
+		if ( !sound->m_buffer ) {
+			DELETE( sound );
+			if ( converter.needed ) {
+				SDL_free( converter.buf );
+			}
+			SDL_FreeWAV( wav_buffer );
+			return nullptr;
+		}
+		memcpy( ptr( sound->m_buffer, 0, playback_length ), playback_buffer, playback_length );
 
-		sound->m_spec.channels = wav_spec.channels;
-		sound->m_spec.format = wav_spec.format;
-		sound->m_spec.freq = wav_spec.freq;
-		sound->m_spec.padding = wav_spec.padding;
-		sound->m_spec.samples = wav_spec.samples;
-		sound->m_spec.silence = wav_spec.silence;
-		sound->m_spec.size = wav_spec.size;
+		sound->m_spec.channels = AUDIO_CHANNELS;
+		sound->m_spec.format = AUDIO_FORMAT;
+		sound->m_spec.freq = AUDIO_FREQUENCY;
+		sound->m_spec.padding = 0;
+		sound->m_spec.samples = AUDIO_SAMPLES;
+		sound->m_spec.silence = 0;
+		sound->m_spec.size = playback_length;
 
+		if ( converter.needed ) {
+			SDL_free( converter.buf );
+		}
 		SDL_FreeWAV( wav_buffer );
 
 		m_sounds[ filename ] = sound;

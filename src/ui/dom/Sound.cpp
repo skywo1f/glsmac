@@ -40,6 +40,9 @@ Sound::Sound( DOM_ARGS )
 		[ this ]( GSE_CALLABLE, gse::Value* const v ) {
 			const auto& value = ( (gse::value::String*)v )->value;
 			auto* sound = g_engine->GetSoundLoader()->LoadCustomSound( value );
+			if ( !sound ) {
+				GSE_ERROR( gse::EC.LOADER_ERROR, "Could not load sound: " + value );
+			}
 			SetSound( sound );
 			if ( m_autoplay ) {
 				Play();

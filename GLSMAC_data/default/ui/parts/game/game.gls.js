@@ -73,7 +73,7 @@ return (m) => {
 				sound: 'wind e4.wav',
 				autoplay: true,
 				repeat: true,
-				volume: 0.12,
+				volume: 0.35,
 			});
 			finish_ui_phase('root');
 
