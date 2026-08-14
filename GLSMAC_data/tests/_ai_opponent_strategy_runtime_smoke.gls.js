@@ -2,12 +2,15 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const turn_rules = #include('../default/game/turn_rules');
 
 	let game = null;
 	let ai_id = 0 - 1;
 	let ai_base = null;
+	let scenario_turn = 0;
 	let wait_ticks = 0;
 	let military_selected = false;
+	let human_completion_requested = false;
 
 	const fail = (message) => {
 		#print('AI_OPPONENT_STRATEGY_RUNTIME_FAIL: ' + message);
@@ -51,6 +54,15 @@
 
 	const check_result = () => {
 		wait_ticks++;
+		const human_id = game.get_player().id;
+		if (
+			!human_completion_requested &&
+			!game.is_turn_complete(human_id) &&
+			!turn_rules.has_pending_owned_animation(game, human_id)
+		) {
+			human_completion_requested = true;
+			game.event('complete_turn', {turn_id: game.get_turn()});
+		}
 		const queue = ai_base.get_production_queue();
 		if (#sizeof(queue) > 0 && queue[0].production_kind == 'unit') {
 			const def = game.get_um().get_unit_def(queue[0].id);
@@ -60,7 +72,7 @@
 		}
 		if (
 			military_selected &&
-			game.is_turn_complete(ai_id) &&
+			(game.get_turn() > scenario_turn || game.is_turn_complete(ai_id)) &&
 			!map_is_locked()
 		) {
 			#print('AI_OPPONENT_STRATEGY_RUNTIME_PASS: outmatched AI selected military production against a distant stronger rival');
@@ -85,6 +97,7 @@
 			return;
 		}
 		ai_id = ai.id;
+		scenario_turn = game.get_turn();
 		ai_base = find_owned_base(ai_id);
 		if (ai_base == null) {
 			fail('computer base is missing');

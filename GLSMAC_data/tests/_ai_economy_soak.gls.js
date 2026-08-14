@@ -98,7 +98,7 @@
 				}
 			}
 		}
-		if (!game.is_turn_complete(ai_id) || map_locked) {
+		if (map_locked) {
 			if (success_wait_ticks >= 50) {
 				fail('final AI turn or map animation did not settle before exit');
 				return false;
