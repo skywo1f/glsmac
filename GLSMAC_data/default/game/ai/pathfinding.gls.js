@@ -4,7 +4,7 @@ const get_tile_key = (tile) => {
 	return #to_string(tile.x) + '_' + #to_string(tile.y);
 };
 
-const find_path_step = (tm, unit, destination, can_enter) => {
+const find_path_step = (tm, unit, destination, can_enter, max_distance) => {
 	const source = unit.get_tile();
 	const source_x = source.x;
 	const source_y = source.y;
@@ -13,6 +13,7 @@ const find_path_step = (tm, unit, destination, can_enter) => {
 	let queue_y = [source_y];
 	let queue_first_x = [0 - 1];
 	let queue_first_y = [0 - 1];
+	let queue_distance = [0];
 	const source_key = get_tile_key(source);
 	visited[source_key] = true;
 
@@ -21,7 +22,11 @@ const find_path_step = (tm, unit, destination, can_enter) => {
 		const current = tm.get_tile(queue_x[index], queue_y[index]);
 		const first_x = queue_first_x[index];
 		const first_y = queue_first_y[index];
+		const distance = queue_distance[index];
 		index++;
+		if (#is_defined(max_distance) && distance >= max_distance) {
+			continue;
+		}
 
 		for (candidate of current.get_surrounding_tiles()) {
 			const key = get_tile_key(candidate);
@@ -40,12 +45,24 @@ const find_path_step = (tm, unit, destination, can_enter) => {
 			queue_y :+candidate_y;
 			queue_first_x :+candidate_first_x;
 			queue_first_y :+candidate_first_y;
+			queue_distance :+(distance + 1);
 		}
 	}
 	return null;
 };
 
-const find_best_reachable = (tm, unit, can_enter, score, max_distance) => {
+const find_best_reachable = (
+	tm,
+	unit,
+	can_enter,
+	score,
+	max_distance,
+	expected_target_count,
+	stop_after_best_distance
+) => {
+	if (#is_defined(expected_target_count) && expected_target_count <= 0) {
+		return null;
+	}
 	const source = unit.get_tile();
 	let visited = {};
 	let queue_x = [source.x];
@@ -61,15 +78,25 @@ const find_best_reachable = (tm, unit, can_enter, score, max_distance) => {
 	let best_distance = 0;
 	let best_first_x = 0 - 1;
 	let best_first_y = 0 - 1;
+	let scored_target_count = 0;
 	let index = 0;
 	while (index < #sizeof(queue_x) && index < MAX_SEARCHED_TILES) {
+		const distance = queue_distance[index];
+		if (
+			#is_defined(stop_after_best_distance) && stop_after_best_distance &&
+			best != null && distance > best_distance
+		) {
+			break;
+		}
 		const current = tm.get_tile(queue_x[index], queue_y[index]);
 		const first_x = queue_first_x[index];
 		const first_y = queue_first_y[index];
-		const distance = queue_distance[index];
 		index++;
 
 		const current_score = score(current, distance);
+		if (current_score != null) {
+			scored_target_count++;
+		}
 		if (
 			current_score != null &&
 			(
@@ -92,6 +119,12 @@ const find_best_reachable = (tm, unit, can_enter, score, max_distance) => {
 			best_distance = distance;
 			best_first_x = first_x;
 			best_first_y = first_y;
+		}
+		if (
+			#is_defined(expected_target_count) &&
+			scored_target_count >= expected_target_count
+		) {
+			break;
 		}
 		if (#is_defined(max_distance) && distance >= max_distance) {
 			continue;

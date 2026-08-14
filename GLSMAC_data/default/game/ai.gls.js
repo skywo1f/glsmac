@@ -3,6 +3,8 @@ const TURN_COMPLETION_POLL_DELAY = 50;
 const TURN_COMPLETION_RETRY_CHECKS = 20;
 const AI_TURN_START_DELAY = 100;
 const COLONY_SEARCH_MAX_DISTANCE = 12;
+const COMBAT_DETOUR_MAX_DISTANCE = 12;
+const FORMER_SEARCH_MAX_DISTANCE = 16;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
 const airdrops = #include('ai/airdrops');
@@ -1731,7 +1733,22 @@ const move_former = (game, player, unit, all_bases) => {
 	}
 	const tm = game.get_tm();
 	let strategic_targets = {};
+	let strategic_target_count = 0;
 	const consider_target = (candidate, pending_growth, prioritize_nutrients, is_worked) => {
+		if (candidate.is_locked()) {
+			return;
+		}
+		if (
+			(unit.is_land && candidate.is_water) ||
+			(unit.is_water && candidate.is_land && candidate.get_base() == null)
+		) {
+			return;
+		}
+		for (other of candidate.get_units()) {
+			if (other.owner != unit.owner) {
+				return;
+			}
+		}
 		if (has_other_former(candidate, unit)) {
 			return;
 		}
@@ -1743,10 +1760,11 @@ const move_former = (game, player, unit, all_bases) => {
 		const worked = is_worked || candidate.has('working_pop');
 		const score = terraforming.get_target_score(candidate, player, pending_growth, 0, worked);
 		if (!#is_defined(strategic_targets[key]) || score > strategic_targets[key].score) {
+			if (!#is_defined(strategic_targets[key])) {
+				strategic_target_count++;
+			}
 			strategic_targets[key] = {
 				order: order,
-				pending_growth: pending_growth,
-				is_worked: worked,
 				score: score,
 			};
 		}
@@ -1772,14 +1790,8 @@ const move_former = (game, player, unit, all_bases) => {
 			return null;
 		}
 		const target = strategic_targets[key];
-		return terraforming.get_target_score(
-			candidate,
-			player,
-			target.pending_growth,
-			distance,
-			target.is_worked
-		);
-	});
+		return target.score - distance * 100;
+	}, FORMER_SEARCH_MAX_DISTANCE, strategic_target_count);
 	if (destination != null) {
 		const key = #to_string(destination.target.x) + '_' + #to_string(destination.target.y);
 		const target = strategic_targets[key];
@@ -1850,10 +1862,18 @@ const move_probe = (game, player, unit, all_bases) => {
 	return false;
 };
 
-const move_combat = (game, player, unit, all_bases, all_units, reinforcement_assignments) => {
+const move_combat = (
+	game,
+	player,
+	unit,
+	all_bases,
+	strategic_bases,
+	strategic_units,
+	reinforcement_assignments,
+	known_unity_pods,
+	combat_profile
+) => {
 	const tile = unit.get_tile();
-	const strategic_bases = filter_hostile_bases(game, player, all_bases);
-	const strategic_units = filter_hostile_units(game, player, all_units);
 	if (tile.is_locked()) {
 		return 0;
 	}
@@ -1881,9 +1901,13 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			repair_step == null ||
 			game.get_tm().get_distance(repair_step, destination) >= current_distance
 		) {
-			repair_step = pathfinding.find_path_step(game.get_tm(), unit, destination, (source, candidate) => {
-				return can_enter(unit, candidate, source);
-			});
+			repair_step = pathfinding.find_path_step(
+				game.get_tm(),
+				unit,
+				destination,
+				(source, candidate) => { return can_enter(unit, candidate, source); },
+				COMBAT_DETOUR_MAX_DISTANCE
+			);
 		}
 		if (repair_step != null && can_enter(unit, repair_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: repair_step});
@@ -1923,11 +1947,16 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			return 1000;
 		}
 	}
+	const pod_started = combat_profile == null ? 0 : #monotonic_ms();
 	const pod_destination = unity_pods.choose_destination(
 		game,
 		unit,
-		(source, candidate) => { return can_enter(unit, candidate, source); }
+		(source, candidate) => { return can_enter(unit, candidate, source); },
+		known_unity_pods
 	);
+	if (combat_profile != null) {
+		combat_profile.pod_ms = combat_profile.pod_ms + #monotonic_ms() - pod_started;
+	}
 	if (
 		pod_destination != null && pod_destination.step != null &&
 		can_enter(unit, pod_destination.step)
@@ -2001,9 +2030,13 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 			reinforcement_step == null ||
 			game.get_tm().get_distance(reinforcement_step, destination) >= current_distance
 		) {
-			reinforcement_step = pathfinding.find_path_step(game.get_tm(), unit, destination, (source, candidate) => {
-				return can_enter(unit, candidate, source);
-			});
+			reinforcement_step = pathfinding.find_path_step(
+				game.get_tm(),
+				unit,
+				destination,
+				(source, candidate) => { return can_enter(unit, candidate, source); },
+				COMBAT_DETOUR_MAX_DISTANCE
+			);
 		}
 		if (reinforcement_step != null && can_enter(unit, reinforcement_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: reinforcement_step});
@@ -2048,9 +2081,13 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 		enemy_base != null &&
 		(target == null || game.get_tm().get_distance(target, enemy_base.get_tile()) >= enemy_distance)
 	) {
-		const path_step = pathfinding.find_path_step(game.get_tm(), unit, enemy_base.get_tile(), (source, candidate) => {
-			return can_enter(unit, candidate, source);
-		});
+		const path_step = pathfinding.find_path_step(
+			game.get_tm(),
+			unit,
+			enemy_base.get_tile(),
+			(source, candidate) => { return can_enter(unit, candidate, source); },
+			COMBAT_DETOUR_MAX_DISTANCE
+		);
 		if (path_step != null && can_enter(unit, path_step)) {
 			game.event_as(player.id, 'move_unit', {unit: unit, tile: path_step});
 			return 100;
@@ -2113,6 +2150,7 @@ const play_turn = (game, player, done) => {
 	let probe_ms = 0;
 	let former_ms = 0;
 	let combat_ms = 0;
+	let combat_profile = is_profiling ? {pod_ms: 0, known_pod_max: 0} : null;
 	let completion_check_ms = 0;
 	let action_phase_started = 0;
 	const finish_action_phase = (phase) => {
@@ -2168,6 +2206,8 @@ const play_turn = (game, player, done) => {
 			probe_ms: probe_ms,
 			former_ms: former_ms,
 			combat_ms: combat_ms,
+			combat_pod_ms: combat_profile == null ? 0 : combat_profile.pod_ms,
+			combat_known_pod_max: combat_profile == null ? 0 : combat_profile.known_pod_max,
 			completion_check_ms: completion_check_ms,
 			completion_requests: completion_requests,
 			completion_ack_ms: completion_requested_at == 0
@@ -2339,6 +2379,15 @@ const play_turn = (game, player, done) => {
 		}
 		finish_action_phase('formers');
 		if (!action_started && !waiting_for_action) {
+			const strategic_bases = filter_hostile_bases(game, player, all_bases);
+			const strategic_units = filter_hostile_units(game, player, all_units);
+			const known_unity_pods = unity_pods.get_known_pods(player);
+			if (
+				combat_profile != null && known_unity_pods != null &&
+				#sizeof(known_unity_pods) > combat_profile.known_pod_max
+			) {
+				combat_profile.known_pod_max = #sizeof(known_unity_pods);
+			}
 			for (unit of current_units) {
 				if (
 					!action_state.can_attempt_action(unit, action_attempts) ||
@@ -2352,8 +2401,11 @@ const play_turn = (game, player, done) => {
 						player,
 						unit,
 						all_bases,
-						all_units,
-						reinforcement_assignments
+						strategic_bases,
+						strategic_units,
+						reinforcement_assignments,
+						known_unity_pods,
+						combat_profile
 					);
 					if (combat_delay > 0) {
 						action_started = true;

@@ -1299,5 +1299,24 @@ seconds with all six opponents sustaining defense, growth, research,
 production, solvency, and a terraforming, expansion, or infrastructure plan.
 All 128 GSE tests passed in 220.61 seconds before the soak rerun.
 
+Late-turn Former planning now catalogs each strategic tile once, reuses its
+zero-distance resource score, ignores terrain-incompatible, locked, occupied,
+or already-assigned targets, and stops after either every reachable target is
+scored or a bounded 16-step local search is exhausted. The same 30-turn soak
+reduced average Former planning from 63.9 ms to 13.3 ms and the worst observed
+spike from 2,305 ms to 300 ms while retaining successful growth and
+terraforming. The final seeded run passed in 344.67 seconds. Focused
+pathfinding, terraforming, expansion, reinforcement, and conquest scenarios
+also passed.
+
+Combat planning now shares its filtered strategic base and unit lists across
+units in an action cycle. Unity-pod searches return immediately when the player
+knows of no pods and stop after the complete nearest winning distance layer
+when pods exist; profiling confirmed this phase at 0-1 ms in the economy soak.
+Fallback combat detours are bounded to 12 steps while ordinary direct movement
+remains unchanged. Overall combat planning still averaged about 205 ms and
+peaked at 1,137 ms, so the next performance pass must profile reinforcement,
+assault scoring, and unreachable-base routing rather than further pod work.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

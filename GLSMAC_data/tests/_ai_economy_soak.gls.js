@@ -309,6 +309,8 @@
 				' colony_ms=' + #to_string(sample.colony_ms) +
 				' former_ms=' + #to_string(sample.former_ms) +
 				' combat_ms=' + #to_string(sample.combat_ms) +
+				' combat_pod_ms=' + #to_string(sample.combat_pod_ms) +
+				' known_pods=' + #to_string(sample.combat_known_pod_max) +
 				' reason=' + sample.reason
 			);
 		});
