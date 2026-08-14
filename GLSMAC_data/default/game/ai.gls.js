@@ -1914,7 +1914,7 @@ const move_combat = (
 			repair_step == null ||
 			game.get_tm().get_distance(repair_step, destination) >= current_distance
 		) {
-			repair_step = pathfinding.find_path_step(
+			repair_step = pathfinding.find_progress_step(
 				game.get_tm(),
 				unit,
 				destination,
@@ -2051,7 +2051,7 @@ const move_combat = (
 			reinforcement_step == null ||
 			game.get_tm().get_distance(reinforcement_step, destination) >= current_distance
 		) {
-			reinforcement_step = pathfinding.find_path_step(
+			reinforcement_step = pathfinding.find_progress_step(
 				game.get_tm(),
 				unit,
 				destination,
@@ -2111,7 +2111,7 @@ const move_combat = (
 		enemy_base != null &&
 		(target == null || game.get_tm().get_distance(target, enemy_base.get_tile()) >= enemy_distance)
 	) {
-		const path_step = pathfinding.find_path_step(
+		const path_step = pathfinding.find_progress_step(
 			game.get_tm(),
 			unit,
 			enemy_base.get_tile(),

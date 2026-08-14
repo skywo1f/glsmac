@@ -45,11 +45,13 @@ const tm = {
 		}
 		return null;
 	},
+	get_distance: (first, second) => { return #abs(first.x - second.x); },
 };
 
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter) == detour_a);
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter, 1) == null);
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter, 2) == detour_a);
+test.assert(pathfinding.find_progress_step(tm, unit, destination, can_enter, 1) == detour_a);
 const destination_score = (tile, distance) => {
 	return tile == destination ? 100 - distance : null;
 };
@@ -120,3 +122,56 @@ best = pathfinding.find_best_reachable(
 );
 test.assert(best.target == detour_a && best.distance == 1);
 test.assert(!farther_layer_scored);
+
+const progress_source = make_tile(10, true);
+const sidestep = make_tile(11, true);
+const dead_end = make_tile(12, true);
+const advance = make_tile(13, true);
+const progress_destination = make_tile(14, true);
+progress_source.progress_distance = 4;
+sidestep.progress_distance = 4;
+dead_end.progress_distance = 5;
+advance.progress_distance = 3;
+progress_destination.progress_distance = 0;
+progress_source.set_neighbours([sidestep, dead_end]);
+sidestep.set_neighbours([progress_source, advance]);
+dead_end.set_neighbours([progress_source]);
+advance.set_neighbours([sidestep, progress_destination]);
+progress_destination.set_neighbours([advance]);
+const progress_tiles = [
+	progress_source,
+	sidestep,
+	dead_end,
+	advance,
+	progress_destination,
+];
+const progress_tm = {
+	get_tile: (x, y) => {
+		for (tile of progress_tiles) {
+			if (tile.x == x && tile.y == y) {
+				return tile;
+			}
+		}
+		return null;
+	},
+	get_distance: (first, second) => { return first.progress_distance; },
+};
+const progress_unit = {get_tile: () => { return progress_source; }};
+test.assert(
+	pathfinding.find_progress_step(
+		progress_tm,
+		progress_unit,
+		progress_destination,
+		can_enter,
+		1
+	) == null
+);
+test.assert(
+	pathfinding.find_progress_step(
+		progress_tm,
+		progress_unit,
+		progress_destination,
+		can_enter,
+		2
+	) == sidestep
+);
