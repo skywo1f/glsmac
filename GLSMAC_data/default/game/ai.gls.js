@@ -1954,25 +1954,77 @@ const move_combat = (game, player, unit, all_bases, all_units, reinforcement_ass
 };
 
 const play_turn = (game, player, done) => {
+	const profile_callback = game.get('f_ai_profile');
+	const is_profiling = #typeof(profile_callback) == 'Callable';
+	const profile_started = is_profiling ? #monotonic_ms() : 0;
+	let phase_started = profile_started;
 	const bases = owned_bases(game, player);
 	const units = owned_units(game, player);
+	const ownership_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	const turn_id = game.get_turn();
 	const metrics = get_strategy_metrics(game, player, bases, units);
+	const strategy_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	update_diplomacy(game, player);
+	const diplomacy_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	update_social_engineering(game, player, metrics);
+	const social_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	nerve_stapling.manage(game, player, bases);
+	const nerve_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	economic_victory.update(game, player);
+	const economic_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	phase_started = is_profiling ? #monotonic_ms() : 0;
 	queue_production(game, player, bases, units, metrics);
+	const production_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
+	const setup_ms = is_profiling ? #monotonic_ms() - profile_started : 0;
 
 	let steps = 0;
 	let completion_ready_checks = 0;
 	let action_attempts = {};
 	let reinforcement_assignments = {};
+	let actions_started = 0;
+	let action_wait_checks = 0;
+	let animation_wait_checks = 0;
+	let completion_requested_at = 0;
+	let profile_finished = false;
+	const finish_profile = (reason) => {
+		if (!is_profiling || profile_finished) {
+			return;
+		}
+		profile_finished = true;
+		profile_callback({
+			player_id: player.id,
+			faction_id: player.get_faction().id,
+			reason: reason,
+			ownership_ms: ownership_ms,
+			strategy_ms: strategy_ms,
+			diplomacy_ms: diplomacy_ms,
+			social_ms: social_ms,
+			nerve_ms: nerve_ms,
+			economic_ms: economic_ms,
+			production_ms: production_ms,
+			setup_ms: setup_ms,
+			action_ms: #monotonic_ms() - profile_started - setup_ms,
+			total_ms: #monotonic_ms() - profile_started,
+			steps: steps,
+			actions_started: actions_started,
+			action_wait_checks: action_wait_checks,
+			animation_wait_checks: animation_wait_checks,
+			completion_ack_ms: completion_requested_at == 0
+				? 0
+				: #monotonic_ms() - completion_requested_at,
+		});
+	};
 	const play_next_action = () => {
 		if (
 			!game.is_master() || game.is_game_over() || game.get_turn() != turn_id ||
 			game.is_turn_complete(player.id)
 		) {
+			finish_profile(game.is_turn_complete(player.id) ? 'complete' : 'aborted');
 			done();
 			return;
 		}
@@ -2120,11 +2172,14 @@ const play_turn = (game, player, done) => {
 		}
 		steps++;
 		if (action_started && steps < 1000) {
+			actions_started++;
 			completion_ready_checks = 0;
 			#async(action_delay, play_next_action);
 			return;
 		}
 		if ((waiting_for_animation || waiting_for_action) && steps < 1000) {
+			if (waiting_for_action) { action_wait_checks++; }
+			if (waiting_for_animation) { animation_wait_checks++; }
 			completion_ready_checks = 0;
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
@@ -2135,10 +2190,12 @@ const play_turn = (game, player, done) => {
 			return;
 		}
 		completion_ready_checks++;
-		if (completion_ready_checks < 2) {
+		const required_completion_checks = actions_started == 0 ? 1 : 2;
+		if (completion_ready_checks < required_completion_checks) {
 			#async(MOVEMENT_ACTION_DELAY, play_next_action);
 			return;
 		}
+		completion_requested_at = is_profiling ? #monotonic_ms() : 0;
 		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
 		#async(MOVEMENT_ACTION_DELAY, play_next_action);
 	};

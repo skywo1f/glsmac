@@ -1086,5 +1086,19 @@ checks. The latter remained near its established 22-second baseline, so this
 checkpoint reduces base-screen refresh work but does not claim an AI-turn speed
 improvement.
 
+The follow-up performance pass added an opt-in monotonic script clock plus AI,
+startup, and UI phase callbacks, then used them to replace speculation with
+measured bottlenecks. AI factions that performed no unit action now finish
+after one clean readiness check; factions that acted retain the prior two-check
+animation and event guard. Noncritical popups are initialized on first use,
+while diplomacy, the Planetary Council, and the base screen remain eager for
+automatic events and responsive city access. Warm startup-to-UI improved from
+about 7.4 seconds to 6.2 seconds, and the deterministic seven-faction startup
+and first-AI-turn scenario improved from roughly 22-23 seconds to about 19-20
+seconds. Planetary Council buttons now resolve the live local player when
+clicked instead of depending on stale popup state. Eight focused script tests,
+the installed-asset Council runtime, and the small-map frontend runtime passed;
+the optimized startup runtime also passed repeatedly.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

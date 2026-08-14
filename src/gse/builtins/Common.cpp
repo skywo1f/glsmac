@@ -11,6 +11,8 @@
 #include "gse/value/Undefined.h"
 #include "gse/value/Object.h"
 
+#include <chrono>
+
 namespace gse {
 namespace builtins {
 
@@ -103,6 +105,14 @@ void Common::AddToContext( gc::Space* const gc_space, context::Context* ctx, Exe
 			default:
 				GSE_ERROR( EC.OPERATION_NOT_SUPPORTED, "Cloning of type " + v->GetTypeString() + " is not supported" );
 		}
+	} ), ep );
+
+	ctx->CreateBuiltin( "monotonic_ms", NATIVE_CALL() {
+		N_EXPECT_ARGS( 0 );
+		const auto elapsed = std::chrono::duration_cast< std::chrono::milliseconds >(
+			std::chrono::steady_clock::now().time_since_epoch()
+		).count();
+		return VALUE( value::Int,, elapsed );
 	} ), ep );
 
 	ctx->CreateBuiltin( "undefined", VALUE( value::Undefined ), ep );

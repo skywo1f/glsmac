@@ -38,7 +38,7 @@ return {
 			});
 			this.vote_first_button.on('click', (e) => {
 				const session = p.game.get('f_council_get_session')();
-				if (this.player != null && session != null) {
+				if (session != null) {
 					this.cast_vote(session.candidate_a_id);
 				}
 				return true;
@@ -49,7 +49,7 @@ return {
 			});
 			this.vote_second_button.on('click', (e) => {
 				const session = p.game.get('f_council_get_session')();
-				if (this.player != null && session != null) {
+				if (session != null) {
 					this.cast_vote(session.candidate_b_id);
 				}
 				return true;
@@ -59,9 +59,7 @@ return {
 				class: 'game-popup-button', text: 'Abstain', top: 174,
 			});
 			this.abstain_button.on('click', (e) => {
-				if (this.player != null) {
-					this.cast_vote(-1);
-				}
+				this.cast_vote(-1);
 				return true;
 			});
 
@@ -69,9 +67,10 @@ return {
 				class: 'game-popup-button', text: 'Accede to Supreme Leader', top: 122,
 			});
 			this.accede_button.on('click', (e) => {
-				if (this.player != null) {
+				const player = p.game.get_player();
+				if (player != null) {
 					p.game.event('respond_supreme_leader', {
-						player: this.player, defy: false,
+						player: player, defy: false,
 					});
 				}
 				return true;
@@ -81,9 +80,10 @@ return {
 				class: 'game-popup-button', text: 'Defy the Council', top: 148,
 			});
 			this.defy_button.on('click', (e) => {
-				if (this.player != null) {
+				const player = p.game.get_player();
+				if (player != null) {
 					p.game.event('respond_supreme_leader', {
-						player: this.player, defy: true,
+						player: player, defy: true,
 					});
 				}
 				return true;
@@ -109,12 +109,10 @@ return {
 				class: 'game-popup-button', text: '', top: 174,
 			});
 			this.trade_button.on('click', (e) => {
-				if (this.player != null) {
-					const has_trade_pact = p.game.get('f_council_has_global_trade_pact')();
-					this.call_council(
-						has_trade_pact ? 'repeal_trade_pact' : 'trade_pact'
-					);
-				}
+				const has_trade_pact = p.game.get('f_council_has_global_trade_pact')();
+				this.call_council(
+					has_trade_pact ? 'repeal_trade_pact' : 'trade_pact'
+				);
 				return true;
 			});
 
@@ -130,12 +128,10 @@ return {
 				class: 'game-popup-button', text: '', top: 226,
 			});
 			this.charter_button.on('click', (e) => {
-				if (this.player != null) {
-					const repealed = p.game.get('f_council_is_un_charter_repealed')();
-					this.call_council(
-						repealed ? 'reinstate_un_charter' : 'repeal_un_charter'
-					);
-				}
+				const repealed = p.game.get('f_council_is_un_charter_repealed')();
+				this.call_council(
+					repealed ? 'reinstate_un_charter' : 'repeal_un_charter'
+				);
 				return true;
 			});
 
@@ -180,9 +176,10 @@ return {
 	},
 
 	cast_vote: (vote_id) => {
-		if (this.player == null) { return; }
+		const player = this.p.game.get_player();
+		if (player == null) { return; }
 		const error = this.p.game.get('f_council_validate_vote')(
-			this.player,
+			player,
 			vote_id
 		);
 		if (#is_defined(error)) {
@@ -194,15 +191,16 @@ return {
 		this.abstain_button.hide();
 		this.detail_text.text = 'Submitting Council vote...';
 		this.p.game.event('cast_council_vote', {
-			player: this.player,
+			player: player,
 			vote_id: vote_id,
 		});
 	},
 
 	call_council: (proposal) => {
-		if (this.player == null) { return; }
+		const player = this.p.game.get_player();
+		if (player == null) { return; }
 		const error = this.p.game.get('f_council_validate_call')(
-			this.player,
+			player,
 			proposal
 		);
 		if (#is_defined(error)) {
@@ -218,7 +216,7 @@ return {
 		this.polar_button.hide();
 		this.detail_text.text = 'Convening the Planetary Council...';
 		this.p.game.event('call_planetary_council', {
-			player: this.player,
+			player: player,
 			proposal: proposal,
 		});
 	},

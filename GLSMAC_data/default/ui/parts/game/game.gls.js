@@ -52,6 +52,20 @@ return (m) => {
 		});
 
 		game.on('start_ui', (e) => {
+			const ui_profile_callback = game.get('f_ui_profile');
+			const is_ui_profiling = #typeof(ui_profile_callback) == 'Callable';
+			const ui_profile_started = is_ui_profiling ? #monotonic_ms() : 0;
+			let ui_phase_started = ui_profile_started;
+			const finish_ui_phase = (phase) => {
+				if (!is_ui_profiling) { return; }
+				const now = #monotonic_ms();
+				ui_profile_callback({
+					phase: phase,
+					elapsed_ms: now - ui_phase_started,
+					total_ms: now - ui_profile_started,
+				});
+				ui_phase_started = now;
+			};
 
 			m.root.clear();
 			m.root.sound({
@@ -61,6 +75,7 @@ return (m) => {
 				repeat: true,
 				volume: 0.12,
 			});
+			finish_ui_phase('root');
 
 			p = {
 				game: game,
@@ -89,11 +104,14 @@ return (m) => {
 					});
 				},
 			};
+			finish_ui_phase('state');
 			for (m of modules) {
 				p.modules[m] = #include(m + '/' + m);
 			}
+			finish_ui_phase('includes');
 			for (m of modules) {
 				p.modules[m].init(p);
+				finish_ui_phase('init_' + m);
 			}
 
 			m.root.on('keydown', (e) => {
@@ -141,6 +159,7 @@ return (m) => {
 				}
 			}
 			// TODO
+			finish_ui_phase('finalize');
 
 		});
 

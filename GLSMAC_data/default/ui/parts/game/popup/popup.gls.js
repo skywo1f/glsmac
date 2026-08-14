@@ -21,6 +21,11 @@ return {
 		'nerve_stapling',
 		'base_screen',
 	],
+	eager_popups: [
+		'planetary_council',
+		'diplomacy',
+		'base_screen',
+	],
 
 	no_sliding: false, // disable sliding until more optimizations
 
@@ -29,6 +34,30 @@ return {
 
 	calculate_sliding_speed: (top) => {
 		this.sliding_speed = (this.viewport_size.height - top) / (this.sliding_time / this.sliding_interval);
+	},
+
+	ensure_initialized: (popup) => {
+		const popup_def = this.popup_defs[popup];
+		if (!#is_defined(popup_def)) {
+			throw Error('Unknown popup: ' + popup);
+		}
+		let data = this.popups[popup];
+		if (data == null) {
+			const popup_profile_started = #typeof(this.popup_profile_callback) == 'Callable'
+				? #monotonic_ms()
+				: 0;
+			data = popup_def.init(this.popup_params);
+			data.id = popup;
+			this.popups[popup] = data;
+			if (#typeof(this.popup_profile_callback) == 'Callable') {
+				this.popup_profile_callback({
+					phase: 'popup_' + popup,
+					elapsed_ms: #monotonic_ms() - popup_profile_started,
+					total_ms: #monotonic_ms() - popup_profile_started,
+				});
+			}
+		}
+		return data;
 	},
 
 	init: (p) => {
@@ -127,7 +156,9 @@ return {
 				this.clear();
 			}
 			for (data of this.popups) {
-				this.resize(data);
+				if (data != null) {
+					this.resize(data);
+				}
 			}
 			if (this.popup != null) {
 				this.calculate_sliding_speed(this.popup.el.top);
@@ -232,10 +263,14 @@ return {
 			},
 		};
 
+		this.popup_params = pp;
+		this.popup_profile_callback = p.game.get('f_ui_profile');
 		for (popup of this.available_popups) {
 			this.popup_defs[popup] = #include(popup);
-			this.popups[popup] = this.popup_defs[popup].init(pp);
-			this.popups[popup].id = popup;
+			this.popups[popup] = null;
+		}
+		for (popup of this.eager_popups) {
+			this.ensure_initialized(popup);
 		}
 
 	},
@@ -317,10 +352,8 @@ return {
 	},
 
 	set: (popup, data) => {
+		this.ensure_initialized(popup);
 		const def = this.popup_defs[popup];
-		if (!#is_defined(def)) {
-			throw Error('Unknown popup: ' + popup);
-		}
 		if (#is_defined(def.set)) {
 			def.set(data);
 		}
@@ -337,11 +370,8 @@ return {
 			}
 			this.clear();
 		}
-		this.popup = this.popups[popup];
+		this.popup = this.ensure_initialized(popup);
 		this.popup_def = this.popup_defs[popup];
-		if (!#is_defined(this.popup) || !#is_defined(this.popup_def)) {
-			throw Error('Unknown popup: ' + popup);
-		}
 		if (#is_defined(cb)) {
 			this.popup_cb = cb;
 		} else {

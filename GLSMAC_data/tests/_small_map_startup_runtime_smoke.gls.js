@@ -1,5 +1,6 @@
 #main((glsmac) => {
 
+	const runtime_started = #monotonic_ms();
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
 
@@ -18,6 +19,68 @@
 
 	glsmac.on('configure_game', (e) => {
 		game = e.game;
+		#print(
+			'STARTUP_PROFILE: configure_game_ms=' +
+			#to_string(#monotonic_ms() - runtime_started)
+		);
+		game.on('create_world', (event) => {
+			#print(
+				'STARTUP_PROFILE: create_world_begin_ms=' +
+				#to_string(#monotonic_ms() - runtime_started)
+			);
+		});
+		game.on('start', (event) => {
+			#print(
+				'STARTUP_PROFILE: start_begin_ms=' +
+				#to_string(#monotonic_ms() - runtime_started)
+			);
+		});
+		game.on('configure', (event) => {
+			#print(
+				'STARTUP_PROFILE: configure_complete_ms=' +
+				#to_string(#monotonic_ms() - runtime_started)
+			);
+			game.on('create_world', (world_event) => {
+				#print(
+					'STARTUP_PROFILE: create_world_complete_ms=' +
+					#to_string(#monotonic_ms() - runtime_started)
+				);
+			});
+			game.on('start', (start_event) => {
+				#print(
+					'STARTUP_PROFILE: start_callbacks_complete_ms=' +
+					#to_string(#monotonic_ms() - runtime_started)
+				);
+			});
+		});
+		game.set('f_ai_profile', (sample) => {
+			#print(
+				'AI_PROFILE: faction=' + sample.faction_id +
+				' total_ms=' + #to_string(sample.total_ms) +
+				' setup_ms=' + #to_string(sample.setup_ms) +
+				' ownership_ms=' + #to_string(sample.ownership_ms) +
+				' strategy_ms=' + #to_string(sample.strategy_ms) +
+				' diplomacy_ms=' + #to_string(sample.diplomacy_ms) +
+				' social_ms=' + #to_string(sample.social_ms) +
+				' nerve_ms=' + #to_string(sample.nerve_ms) +
+				' economic_ms=' + #to_string(sample.economic_ms) +
+				' production_ms=' + #to_string(sample.production_ms) +
+				' action_ms=' + #to_string(sample.action_ms) +
+				' steps=' + #to_string(sample.steps) +
+				' actions=' + #to_string(sample.actions_started) +
+				' action_waits=' + #to_string(sample.action_wait_checks) +
+				' animation_waits=' + #to_string(sample.animation_wait_checks) +
+				' completion_ack_ms=' + #to_string(sample.completion_ack_ms) +
+				' reason=' + sample.reason
+			);
+		});
+		game.set('f_ui_profile', (sample) => {
+			#print(
+				'UI_PROFILE: phase=' + sample.phase +
+				' elapsed_ms=' + #to_string(sample.elapsed_ms) +
+				' total_ms=' + #to_string(sample.total_ms)
+			);
+		});
 
 		game.on('start_ui', (event) => {
 			if (exit_scheduled) {
@@ -66,7 +129,10 @@
 				}
 			}
 
-			#print('SMALL_MAP_STARTUP_RUNTIME_READY');
+			#print(
+				'SMALL_MAP_STARTUP_RUNTIME_READY: startup_ms=' +
+				#to_string(#monotonic_ms() - runtime_started)
+			);
 			#async(3000, () => {
 				if (!exit_scheduled && !game.is_turn_complete(player.id)) {
 					game.event('complete_turn', {});
