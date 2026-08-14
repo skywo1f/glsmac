@@ -1,4 +1,9 @@
+const game_rules = #include('../game_rules');
+
 const update = (game, player) => {
+	if (!game_rules.get(game, 'allow_economic_victory')) {
+		return;
+	}
 	const get_state = game.get('f_economic_victory_get_state');
 	const get_cost = game.get('f_economic_victory_get_cost');
 	const get_headquarters = game.get('f_economic_victory_get_headquarters');

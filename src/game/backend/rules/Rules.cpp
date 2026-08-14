@@ -1,6 +1,8 @@
 #include "Rules.h"
 
 #include "gse/value/Array.h"
+#include "gse/value/Bool.h"
+#include "gse/value/Ptr.h"
 
 namespace game {
 namespace backend {
@@ -19,7 +21,23 @@ void Rules::Initialize() {
 
 WRAPIMPL_DYNAMIC_GETTERS( Rules )
 			WRAPIMPL_GET_CUSTOM( "difficulty_levels", Array, WrapDifficultyLevels( gc_space ) )
+			WRAPIMPL_GET_PTR( "allow_transcendence_victory", allow_transcendence_victory )
+			WRAPIMPL_GET_PTR( "allow_conquest_victory", allow_conquest_victory )
+			WRAPIMPL_GET_PTR( "allow_diplomatic_victory", allow_diplomatic_victory )
+			WRAPIMPL_GET_PTR( "allow_economic_victory", allow_economic_victory )
+			WRAPIMPL_GET_PTR( "tech_stagnation", tech_stagnation )
+			WRAPIMPL_GET_PTR( "spoils_of_war", spoils_of_war )
+			WRAPIMPL_GET_PTR( "unity_survey", unity_survey )
+			WRAPIMPL_GET_PTR( "random_events", random_events )
 WRAPIMPL_DYNAMIC_SETTERS( Rules )
+	WRAPIMPL_SET_PTR( "allow_transcendence_victory", Bool, allow_transcendence_victory )
+	WRAPIMPL_SET_PTR( "allow_conquest_victory", Bool, allow_conquest_victory )
+	WRAPIMPL_SET_PTR( "allow_diplomatic_victory", Bool, allow_diplomatic_victory )
+	WRAPIMPL_SET_PTR( "allow_economic_victory", Bool, allow_economic_victory )
+	WRAPIMPL_SET_PTR( "tech_stagnation", Bool, tech_stagnation )
+	WRAPIMPL_SET_PTR( "spoils_of_war", Bool, spoils_of_war )
+	WRAPIMPL_SET_PTR( "unity_survey", Bool, unity_survey )
+	WRAPIMPL_SET_PTR( "random_events", Bool, random_events )
 WRAPIMPL_DYNAMIC_ON_SET( Rules )
 WRAPIMPL_DYNAMIC_END()
 
@@ -33,13 +51,47 @@ const types::Buffer Rules::Serialize() const {
 		buf.WriteString( it.second.Serialize().ToString() );
 	}*/
 
+	buf.WriteInt( 1 );
+	buf.WriteBool( allow_transcendence_victory );
+	buf.WriteBool( allow_conquest_victory );
+	buf.WriteBool( allow_diplomatic_victory );
+	buf.WriteBool( allow_economic_victory );
+	buf.WriteBool( tech_stagnation );
+	buf.WriteBool( spoils_of_war );
+	buf.WriteBool( unity_survey );
+	buf.WriteBool( random_events );
+
 	return buf;
 }
 
 void Rules::Deserialize( types::Buffer buf ) {
+	if ( buf.GetRemaining() == 0 ) {
+		Initialize();
+		return;
+	}
+	const auto version = buf.ReadInt();
+	if ( version != 1 ) {
+		THROW( "unsupported serialized rules version" );
+	}
+	const auto serialized_allow_transcendence_victory = buf.ReadBool();
+	const auto serialized_allow_conquest_victory = buf.ReadBool();
+	const auto serialized_allow_diplomatic_victory = buf.ReadBool();
+	const auto serialized_allow_economic_victory = buf.ReadBool();
+	const auto serialized_tech_stagnation = buf.ReadBool();
+	const auto serialized_spoils_of_war = buf.ReadBool();
+	const auto serialized_unity_survey = buf.ReadBool();
+	const auto serialized_random_events = buf.ReadBool();
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data in serialized rules" );
 	}
+	allow_transcendence_victory = serialized_allow_transcendence_victory;
+	allow_conquest_victory = serialized_allow_conquest_victory;
+	allow_diplomatic_victory = serialized_allow_diplomatic_victory;
+	allow_economic_victory = serialized_allow_economic_victory;
+	tech_stagnation = serialized_tech_stagnation;
+	spoils_of_war = serialized_spoils_of_war;
+	unity_survey = serialized_unity_survey;
+	random_events = serialized_random_events;
 	Initialize();
 }
 

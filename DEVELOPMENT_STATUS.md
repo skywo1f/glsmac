@@ -18,6 +18,11 @@ scenarios, for:
 
 - game setup, turn progression, research, economy, base growth, worker
   assignment, production queues, support, and persistent social engineering;
+- synchronized Standard/Current/Customize rule selection for conquest,
+  diplomatic, economic, and transcendence victories plus tech stagnation,
+  spoils of war, Unity survey, and random events; the authoritative settings
+  persist through setup serialization and each option is enforced by its
+  corresponding gameplay system;
 - opt-in, persistent per-base governors with Explore, Discover, Build, and
   Conquer priorities; governors rebalance workers to prevent riots, preserve
   existing player production orders, select legal production only for empty
@@ -1338,6 +1343,20 @@ assault sample from 850 ms to 573 ms, and the worst complete combat phase from
 is actually scored also reduced average target selection from 34.0 ms to 26.8
 ms. All six factions again passed the 30-turn campaign, which completed in
 251.80 seconds.
+
+Base-game custom rules now expose eight synchronized setup toggles covering all
+four victory paths, technology stagnation, conquest technology spoils, Unity
+survey map knowledge, and random events. Focused rule-effect tests, offline
+save/load, and host/client synchronization passed; legacy empty rule buffers
+retain the Standard defaults. The rendered fog layer now composites after
+terrain details, resource sprites, bases, and units, with fully opaque
+unexplored tiles so off-screen resources cannot leak through. The standard
+seven-faction startup remained free of a Council session through the first
+completed turn in 14.76 seconds. The installed-asset base-screen runtime passed
+in 14.67 seconds while hurrying live unit, facility, and Secret Project
+production and rejecting duplicate payments. One earlier save/load matrix run
+timed out during snapshot completion, while the immediate focused rerun passed
+in 18.32 seconds; that intermittent completion outlier remains a soak risk.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

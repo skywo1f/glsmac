@@ -1,7 +1,11 @@
 const rules = #include('../council_rules');
+const game_rules = #include('../game_rules');
 
 return {
 	validate: (e) => {
+		if (!game_rules.get(e.game, 'allow_diplomatic_victory')) {
+			return 'Diplomatic victory is disabled by the game rules';
+		}
 		if (e.caller != 0) {
 			return 'Only the game master can resolve Supreme Leader defiance';
 		}

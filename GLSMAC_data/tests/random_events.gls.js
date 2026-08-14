@@ -10,6 +10,7 @@ let random_values = [0, 14];
 let random_index = 0;
 let game_context = null;
 let is_master = true;
+let random_events_enabled = true;
 
 const owner = {
 	id: 1,
@@ -60,6 +61,9 @@ const tm = {
 };
 
 const game = {
+	get_settings: () => {
+		return {global: {rules: {random_events: random_events_enabled}}};
+	},
 	random: {
 		get_int: (minimum, maximum) => {
 			const result = random_values[random_index];
@@ -92,6 +96,11 @@ configure_random_events(game);
 callbacks.start({});
 test.assert(values.f_random_events_find_mount_planet_center(tm) == mount_peak);
 test.assert(values.f_random_events_select_major_eruption() == bases[0]);
+random_events_enabled = false;
+random_index = 0;
+test.assert(values.f_random_events_select_major_eruption() == null);
+test.assert(random_index == 0);
+random_events_enabled = true;
 
 random_values = [0, 14];
 random_index = 0;

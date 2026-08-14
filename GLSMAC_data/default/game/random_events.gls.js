@@ -1,3 +1,5 @@
+const game_rules = #include('game_rules');
+
 const MAJOR_ERUPTION_EVENT = 14;
 const RANDOM_EVENT_COUNT = 22;
 const MAJOR_ERUPTION_YEAR = 2175;
@@ -42,6 +44,9 @@ const get_player_bases = (bases, player_id) => {
 };
 
 const select_major_eruption = (game) => {
+	if (!game_rules.get(game, 'random_events')) {
+		return null;
+	}
 	if (game.get_year() < MAJOR_ERUPTION_YEAR) {
 		return null;
 	}

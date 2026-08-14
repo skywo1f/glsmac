@@ -1,3 +1,5 @@
+const game_rules = #include('../game_rules');
+
 const unready_players = (players) => {
 	for (player of players) {
 		player.set_ready(false);
@@ -42,6 +44,12 @@ const validate_percentage = (name, value) => {
 	}
 };
 
+const validate_rule = (value) => {
+	if (#typeof(value) != 'Bool') {
+		return 'Game rule setting must be true or false';
+	}
+};
+
 return {
 
 	validate: (e) => {
@@ -59,6 +67,13 @@ return {
 				return 'Each game settings change must contain a name and value';
 			}
 			let error = #undefined;
+			if (game_rules.is_rule(c[0])) {
+				error = validate_rule(c[1]);
+				if (#is_defined(error)) {
+					return error;
+				}
+				continue;
+			}
 			switch (c[0]) {
 				case 'planet_size': {
 					error = validate_planet_size(c[1]);
@@ -94,7 +109,8 @@ return {
 		let old_settings = [];
 		let old_ui_settings = [];
 		let ready_states = [];
-		let settings = e.game.get_settings().global.map;
+		const global_settings = e.game.get_settings().global;
+		let settings = global_settings.map;
 		let changes = [];
 		let captured_settings = {};
 		let captured_ui_settings = {};
@@ -102,6 +118,9 @@ return {
 			ready_states :+[player.id, player.is_ready()];
 		}
 		for (c of e.data.changes) {
+			const target_settings = game_rules.is_rule(c[0])
+				? global_settings.rules
+				: settings;
 			if (!#is_defined(captured_ui_settings[c[0]])) {
 				if (c[0] == 'planet_size') {
 					old_ui_settings :+[
@@ -109,7 +128,7 @@ return {
 						#to_string(settings.size_x) + 'x' + #to_string(settings.size_y),
 					];
 				} else {
-					old_ui_settings :+[c[0], settings[c[0]]];
+					old_ui_settings :+[c[0], target_settings[c[0]]];
 				}
 				captured_ui_settings[c[0]] = true;
 			}
@@ -118,17 +137,20 @@ return {
 				changes :+['size_x', #to_int(xy[0])];
 				changes :+['size_y', #to_int(xy[1])];
 			} else {
-				changes :+c;
+				changes :+[c[0], c[1], game_rules.is_rule(c[0])];
 			}
 		}
 		for (c of changes) {
-			const oldv = settings[c[0]];
+			const target_settings = #sizeof(c) > 2 && c[2]
+				? global_settings.rules
+				: settings;
+			const oldv = target_settings[c[0]];
 			if (#is_defined(oldv)) {
 				if (!#is_defined(captured_settings[c[0]])) {
 					old_settings :+[c[0], oldv];
 					captured_settings[c[0]] = true;
 				}
-				settings[c[0]] = c[1]; // TODO: ro/rw permissions on settings in all places
+				target_settings[c[0]] = c[1]; // TODO: ro/rw permissions on settings in all places
 			}
 		}
 
@@ -145,9 +167,13 @@ return {
 	},
 
 	rollback: (e) => {
-		let settings = e.game.get_settings().global.map;
+		const global_settings = e.game.get_settings().global;
+		let settings = global_settings.map;
 		for (c of e.applied.old_settings) {
-			settings[c[0]] = c[1];
+			const target_settings = game_rules.is_rule(c[0])
+				? global_settings.rules
+				: settings;
+			target_settings[c[0]] = c[1];
 		}
 
 		for (state of e.applied.ready_states) {

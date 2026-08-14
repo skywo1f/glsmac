@@ -21,6 +21,15 @@ CLASS2( Rules, types::Serializable, gse::Wrappable )
 		{ 2, "Transcend", },
 	} }; // TODO: fix and wrap DifficultyLevel class, for now just hardcode and map name to difficulty
 
+	bool allow_transcendence_victory = true;
+	bool allow_conquest_victory = true;
+	bool allow_diplomatic_victory = true;
+	bool allow_economic_victory = true;
+	bool tech_stagnation = false;
+	bool spoils_of_war = true;
+	bool unity_survey = false;
+	bool random_events = true;
+
 	virtual const std::string& GetDefaultDifficultyLevel() const = 0;
 	const int GetDefaultDifficultyLevelV() const;
 

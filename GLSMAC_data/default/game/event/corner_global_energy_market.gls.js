@@ -1,8 +1,12 @@
 const rules = #include('../economic_victory_rules');
+const game_rules = #include('../game_rules');
 
 return {
 
 	validate: (e) => {
+		if (!game_rules.get(e.game, 'allow_economic_victory')) {
+			return 'Economic victory is disabled by the game rules';
+		}
 		if (
 			#typeof(e.data.player) != 'Object' ||
 			#typeof(e.data.player.has_technology) != 'Callable' ||

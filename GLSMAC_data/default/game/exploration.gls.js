@@ -1,4 +1,5 @@
 const visibility_rules = #include('visibility_rules');
+const game_rules = #include('game_rules');
 
 const tile_key = (tile) => {
 	return #to_string(tile.x) + '_' + #to_string(tile.y);
@@ -36,6 +37,16 @@ const get_unexplored_tiles = (player, tiles) => {
 		if (!#is_defined(seen[key]) && !player.has_explored(tile)) {
 			seen[key] = true;
 			result :+tile;
+		}
+	}
+	return result;
+};
+
+const get_all_tiles = (tm) => {
+	let result = [];
+	for (let y = 0; y < tm.get_map_height(); y++) {
+		for (let x = y % 2; x < tm.get_map_width(); x += 2) {
+			result :+tm.get_tile(x, y);
 		}
 	}
 	return result;
@@ -206,7 +217,14 @@ return (game) => {
 				queue_sensor_at_tile(game, event.tile);
 			}
 		});
-		scan_entities(game);
+		if (game.is_master() && game_rules.get(game, 'unity_survey')) {
+			const all_tiles = get_all_tiles(game.get_tm());
+			for (player of game.get_players()) {
+				queue_reveal(game, player, all_tiles);
+			}
+		} else {
+			scan_entities(game);
+		}
 		game.on('turn', (e) => {
 			const turn_profile = game.get('f_turn_profile');
 			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;

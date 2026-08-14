@@ -7,6 +7,7 @@
 	let game = null;
 	let ui_started = false;
 	let exit_scheduled = false;
+	let initial_council_verified = false;
 
 	const fail = (message) => {
 		if (exit_scheduled) {
@@ -15,6 +16,21 @@
 		exit_scheduled = true;
 		#print('SMALL_MAP_STARTUP_RUNTIME_FAIL: ' + message);
 		glsmac.exit();
+	};
+
+	const verify_no_early_council = (phase) => {
+		const session = game.get('f_council_get_session')();
+		if (session != null) {
+			fail('Planetary Council convened during ' + phase);
+			return false;
+		}
+		for (player of game.get_players()) {
+			if (player.get_council_state().proposal != '') {
+				fail('Planetary Council state became active during ' + phase);
+				return false;
+			}
+		}
+		return true;
 	};
 
 	glsmac.on('configure_game', (e) => {
@@ -144,6 +160,10 @@
 				fail('seven-player starting roster or human base is invalid');
 				return;
 			}
+			if (!verify_no_early_council('initial mission year')) {
+				return;
+			}
+			initial_council_verified = true;
 			for (crossfire_id of [
 				'CONSCIOUSNESS', 'PIRATES', 'DRONES', 'ANGELS',
 				'PLANETCULT', 'CARETAKERS', 'USURPERS'
@@ -167,6 +187,9 @@
 
 		game.on('turn', (event) => {
 			if (!ui_started || exit_scheduled || event.year - 2100 < 2) {
+				return;
+			}
+			if (!initial_council_verified || !verify_no_early_council('first completed turn')) {
 				return;
 			}
 			exit_scheduled = true;

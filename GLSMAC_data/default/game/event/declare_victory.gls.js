@@ -1,4 +1,11 @@
 const victory_rules = #include('../victory_rules');
+const game_rules = #include('../game_rules');
+
+const get_rule_key = (type) => {
+	if (type == 'conquest') { return 'allow_conquest_victory'; }
+	if (type == 'transcendence') { return 'allow_transcendence_victory'; }
+	return 'allow_economic_victory';
+};
 
 return {
 
@@ -20,6 +27,9 @@ return {
 		}
 		if (#typeof(e.data.winner_id) != 'Int' || e.data.winner_id < 0) {
 			return 'Victory winner ID is invalid';
+		}
+		if (!game_rules.get(e.game, get_rule_key(e.data.type))) {
+			return 'This victory condition is disabled by the game rules';
 		}
 		if (#typeof(e.game.is_master) == 'Callable' && !e.game.is_master()) {
 			return;

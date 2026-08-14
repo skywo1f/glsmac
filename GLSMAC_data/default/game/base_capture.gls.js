@@ -1,5 +1,6 @@
 const project_acquisition = #include('./project_acquisition');
 const economic_victory = #include('./economic_victory_rules');
+const game_rules = #include('./game_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
@@ -44,6 +45,52 @@ const get_energy_credits = (player) => {
 		return player.get_energy_credits();
 	}
 	return #typeof(player.energy_credits) == 'Int' ? player.energy_credits : 0;
+};
+
+const apply_spoils_of_war = (game, winner, loser) => {
+	if (
+		!game_rules.get(game, 'spoils_of_war') ||
+		#typeof(winner.has_technology) != 'Callable' ||
+		#typeof(loser.get_research_state) != 'Callable' ||
+		#typeof(winner.get_research_state) != 'Callable' ||
+		#typeof(winner.set_research_state) != 'Callable' ||
+		#typeof(game.get) != 'Callable'
+	) {
+		return #undefined;
+	}
+	const grant = game.get('f_diplomacy_grant_technology');
+	if (#typeof(grant) != 'Callable') {
+		return #undefined;
+	}
+	let technology = '';
+	for (id of loser.get_research_state().technologies) {
+		if (!winner.has_technology(id)) {
+			technology = id;
+			break;
+		}
+	}
+	if (technology == '') {
+		return #undefined;
+	}
+	const state = winner.get_research_state();
+	if (!grant(winner, technology)) {
+		return #undefined;
+	}
+	game.trigger('research_updated', {player: winner});
+	const definition = game.get('f_technology_get_definition')(technology);
+	game.message(
+		winner.get_faction().name + ' captured research data for ' +
+		(definition == null ? technology : definition.name) + '.'
+	);
+	return {player: winner, state: state};
+};
+
+const rollback_spoils_of_war = (game, snapshot) => {
+	if (!#is_defined(snapshot)) {
+		return;
+	}
+	snapshot.player.set_research_state(snapshot.state);
+	game.trigger('research_updated', {player: snapshot.player});
 };
 
 const get_headquarters_destination = (game, lost_base, owner) => {
@@ -260,6 +307,7 @@ const capture_base = (game, base, new_owner) => {
 		base.set(FORMER_OWNER_KEY, old_owner.id);
 	}
 	base.set_owner(new_owner);
+	const spoils_of_war = apply_spoils_of_war(game, new_owner, old_owner);
 	if (headquarters_evacuation != null) {
 		game.message(
 			old_owner.get_faction().name + ' has safely evacuated its Headquarters to ' +
@@ -311,6 +359,7 @@ const capture_base = (game, base, new_owner) => {
 		headquarters_evacuation: headquarters_evacuation,
 		empath_guild_infiltration: empath_guild_infiltration,
 		economic_victory_capture: economic_victory_capture,
+		spoils_of_war: spoils_of_war,
 	};
 	if (#typeof(headquarters_evacuation_offer) == 'Callable') {
 		headquarters_evacuation_candidate.new_owner = new_owner;
@@ -340,6 +389,9 @@ const restore_base = (game, base, snapshot) => {
 	}
 	if (#is_defined(snapshot.empath_guild_infiltration)) {
 		project_acquisition.rollback_empath_guild(snapshot.empath_guild_infiltration);
+	}
+	if (#is_defined(snapshot.spoils_of_war)) {
+		rollback_spoils_of_war(game, snapshot.spoils_of_war);
 	}
 	if (base.get_owner().id != snapshot.old_owner.id) {
 		base.set_owner(snapshot.old_owner);
@@ -398,6 +450,8 @@ return {
 	get_headquarters_destination: get_headquarters_destination,
 	rehome_units: rehome_units,
 	restore_units: restore_units,
+	apply_spoils_of_war: apply_spoils_of_war,
+	rollback_spoils_of_war: rollback_spoils_of_war,
 	capture_base: capture_base,
 	restore_base: restore_base,
 };

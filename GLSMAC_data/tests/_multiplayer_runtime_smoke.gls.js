@@ -150,7 +150,7 @@
 			return null;
 		};
 
-		const get_research_state_error = (player, expect_progress) => {
+		const get_research_state_error = (player, expect_progress, expect_spoils) => {
 			const starting_technologies = player.get_faction().get_starting_technologies();
 			let starts_with_ecology = false;
 			for (id of starting_technologies) {
@@ -159,7 +159,26 @@
 				}
 			}
 			const state = player.get_research_state();
-			if (state.technologies != starting_technologies) {
+			let expected_technologies = [];
+			for (id of starting_technologies) {
+				expected_technologies :+id;
+			}
+			if (
+				#is_defined(expect_spoils) && expect_spoils &&
+				game.get_settings().global.rules.spoils_of_war
+			) {
+				let known = {};
+				for (id of starting_technologies) {
+					known[id] = true;
+				}
+				for (id of game.get_player(0).get_faction().get_starting_technologies()) {
+					if (!#is_defined(known[id])) {
+						expected_technologies :+id;
+						break;
+					}
+				}
+			}
+			if (state.technologies != expected_technologies) {
 				return 'faction starting technologies are invalid';
 			}
 			let target_is_available = false;
@@ -2029,7 +2048,11 @@
 						}
 					}
 					else {
-						const research_error = get_research_state_error(player, true);
+						const research_error = get_research_state_error(
+							player,
+							true,
+							player.id == get_client_player_id()
+						);
 						if (#is_defined(research_error)) {
 							#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': ' + research_error);
 							glsmac.exit();
@@ -2038,6 +2061,7 @@
 					}
 				}
 				#print('MULTIPLAYER_SMOKE_RESEARCH_SYNC_PASS_' + role);
+				#print('MULTIPLAYER_SMOKE_SPOILS_SYNC_PASS_' + role);
 				const client_player_id = get_client_player_id();
 				const client_base = find_base_for_player(client_player_id);
 				const captured_base = find_base_by_name(combat_base_name);

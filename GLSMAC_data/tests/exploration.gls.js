@@ -7,6 +7,8 @@ let events = [];
 let triggers = [];
 let players = [];
 let units = [];
+let unity_survey = false;
+let survey_tiles = [];
 const um = {
 	get_units: () => { return units; },
 };
@@ -14,6 +16,9 @@ const bm = {
 	get_bases: () => { return []; },
 };
 const game = {
+	get_settings: () => {
+		return {global: {rules: {unity_survey: unity_survey}}};
+	},
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
 	get: (name) => { return values[name]; },
@@ -24,6 +29,16 @@ const game = {
 	get_bm: () => { return bm; },
 	get_player: (id) => { return players[id]; },
 	get_players: () => { return players; },
+	get_tm: () => {
+		return {
+			get_map_width: () => { return 8; },
+			get_map_height: () => { return 1; },
+			get_tile: (x, y) => {
+				const index = #floor(#to_float(x) / 2.0);
+				return survey_tiles[index];
+			},
+		};
+	},
 };
 
 const center = {x: 2, y: 2, neighbours: []};
@@ -38,6 +53,7 @@ center.neighbours = [west, east];
 west.neighbours = [];
 east.neighbours = [far];
 far.neighbours = [];
+survey_tiles = [center, west, east, far];
 
 const make_player = (id) => {
 	let explored = {};
@@ -75,6 +91,14 @@ const beta = make_player(1);
 players = [alpha, beta];
 define_exploration(game);
 callbacks.start({});
+
+unity_survey = true;
+callbacks.start({});
+test.assert(#sizeof(events) == 2);
+test.assert(events[0].name == 'reveal_map_tiles' && #sizeof(events[0].data.tiles) == 4);
+test.assert(events[1].name == 'reveal_map_tiles' && #sizeof(events[1].data.tiles) == 4);
+unity_survey = false;
+events = [];
 
 const embarked_radar = {
 	owner: 0,

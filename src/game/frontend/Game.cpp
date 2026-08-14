@@ -1448,7 +1448,7 @@ void Game::InitializeFog() {
 	for ( size_t y = 0 ; y < m_map_data.height ; y++ ) {
 		for ( size_t x = y & 1 ; x < m_map_data.width ; x += 2 ) {
 			const auto& coords = m_tm->GetTile( x, y )->GetRenderData().selection_coords;
-			const types::Color::color_t unexplored_tint = { 1.0f, 1.0f, 1.0f, 0.96f };
+			const types::Color::color_t unexplored_tint = { 1.0f, 1.0f, 1.0f, 1.0f };
 			const auto center = mesh->AddVertex( coords.center, { 0.5f, 0.5f }, unexplored_tint );
 			const auto left = mesh->AddVertex( coords.left, { 0.0f, 1.0f }, unexplored_tint );
 			const auto top = mesh->AddVertex( coords.top, { 0.0f, 0.0f }, unexplored_tint );
@@ -1470,6 +1470,8 @@ void Game::InitializeFog() {
 		scene::actor::Actor::RF_IGNORE_DEPTH
 	);
 	NEW( m_actors.fog, scene::actor::Instanced, fog_actor );
+	// Fog must be composited after every world actor, including resource sprites.
+	m_actors.fog->SetZIndex( 0.9f );
 	m_actors.fog->AddInstance( {} );
 	m_world_scene->AddActor( m_actors.fog );
 	m_fog_states.assign( tile_count, FS_UNEXPLORED );
@@ -1895,7 +1897,7 @@ void Game::RefreshMapVisibility() {
 			fog_mesh_changed = true;
 			const float alpha = fog_state == FS_VISIBLE
 				? 0.0f
-				: ( fog_state == FS_EXPLORED ? 0.48f : 0.96f );
+				: ( fog_state == FS_EXPLORED ? 0.48f : 1.0f );
 			for ( size_t i = 0 ; i < 5 ; i++ ) {
 				fog_mesh->SetVertexTint(
 					static_cast< types::mesh::index_t >( fog_index * 5 + i ),

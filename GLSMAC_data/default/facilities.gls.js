@@ -1,4 +1,5 @@
 const manifest = #include('content/base_facilities');
+const game_rules = #include('game/game_rules');
 
 const effects = {
 	Headquarters: {energy_bonus: 1},
@@ -171,6 +172,12 @@ return {
 
 	define: (game) => {
 		for (facility of facilities) {
+			if (
+				facility.id == 'TheAscentToTranscendence' &&
+				!game_rules.get(game, 'allow_transcendence_victory')
+			) {
+				continue;
+			}
 			game.event('define_base_facility', facility);
 		}
 	},

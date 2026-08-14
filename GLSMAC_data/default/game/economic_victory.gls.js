@@ -1,4 +1,5 @@
 const rules = #include('economic_victory_rules');
+const game_rules = #include('game_rules');
 
 return (game) => {
 	game.on('start', (e) => {
@@ -6,7 +7,8 @@ return (game) => {
 		const check_victory = () => {
 			if (
 				!game.is_master() || game.is_game_over() || victory_request_pending ||
-				game.get_turn() == 0
+				game.get_turn() == 0 ||
+				!game_rules.get(game, 'allow_economic_victory')
 			) {
 				return;
 			}

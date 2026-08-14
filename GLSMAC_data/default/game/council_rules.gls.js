@@ -1,3 +1,5 @@
+const game_rules = #include('game_rules');
+
 const MINIMUM_SESSION_INTERVAL = 20;
 const VOTE_PENDING = -2;
 const VOTE_ABSTAIN = -1;
@@ -484,6 +486,9 @@ const validate_call = (game, player, proposal) => {
 		return 'The Planetary Council may only meet once every 20 turns';
 	}
 	if (proposal == 'supreme') {
+		if (!game_rules.get(game, 'allow_diplomatic_victory')) {
+			return 'Diplomatic victory is disabled by the game rules';
+		}
 		if (!player.has_technology('MindMachineInterface')) {
 			return 'Mind/Machine Interface is required to propose Supreme Leader';
 		}

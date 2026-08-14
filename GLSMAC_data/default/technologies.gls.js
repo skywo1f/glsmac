@@ -1,4 +1,5 @@
 const catalog = #include('content/base_technologies');
+const game_rules = #include('game/game_rules');
 const definitions = catalog.definitions;
 const technology_order = catalog.order;
 const LABS_ALLOCATION = 0.4;
@@ -138,7 +139,13 @@ const get_player_labs = (game, player) => {
 			labs += get_base_labs(base, game).total;
 		}
 	}
-	return labs;
+	return apply_research_rate(game, labs);
+};
+
+const apply_research_rate = (game, labs) => {
+	return labs > 0 && game_rules.get(game, 'tech_stagnation')
+		? #max(1, #floor(#to_float(labs) / 2.0))
+		: labs;
 };
 
 return {
@@ -152,6 +159,7 @@ return {
 	get_base_labs_value: get_base_labs_value,
 	get_base_labs: get_base_labs,
 	get_player_labs: get_player_labs,
+	apply_research_rate: apply_research_rate,
 
 	configure: (game) => {
 		game.on('start', (e) => {
