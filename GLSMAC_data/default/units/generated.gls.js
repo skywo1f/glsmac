@@ -1,6 +1,7 @@
 const manifest = #include('../content/base_units');
 const technologies = #include('../content/base_technologies');
 const design_rules = #include('design_rules');
+const sprite_render = #include('sprite_render');
 
 const add_technology_closure = (known, technology_id) => {
 	if (technology_id == '' || #is_defined(known[technology_id])) {
@@ -132,30 +133,6 @@ const get_role_abilities = (known, role) => {
 	return result;
 };
 
-const get_render = (chassis, role) => {
-	let x = role == 'assault' || role == 'former' ? 206 : 2;
-	let y = 156;
-	if (chassis.triad == 'land' && chassis.speed > 1) {
-		x = 104;
-	} else if (chassis.triad == 'sea') {
-		x = 2;
-		y = 310;
-	} else if (chassis.triad == 'air') {
-		x = 2;
-		y = 541;
-	}
-	return {
-		type: 'sprite',
-		file: 'units.pcx',
-		x: x,
-		y: y,
-		w: 100,
-		h: 75,
-		cx: x + 51,
-		cy: y + 51,
-	};
-};
-
 const make_definition = (
 	technology_id,
 	chassis,
@@ -235,7 +212,7 @@ const make_definition = (
 			operational_range: chassis.range,
 			is_missile: chassis.missile,
 			cargo_capacity: cargo_capacity,
-			render: get_render(chassis, role),
+			render: sprite_render.get(chassis.id, armor.id, weapon.id),
 		},
 	};
 };

@@ -1,4 +1,5 @@
 const generated = #include('generated');
+const sprite_render = #include('sprite_render');
 
 const moralesets = [
 	{
@@ -80,8 +81,6 @@ const conventional_unit = (
 	mineral_cost,
 	offense,
 	defense,
-	sprite_x,
-	sprite_y,
 	can_found_base,
 	can_terraform,
 	required_technology,
@@ -114,13 +113,7 @@ const conventional_unit = (
 			operational_range: 0,
 			is_missile: false,
 			cargo_capacity: 0,
-			render: {
-				type: 'sprite',
-				file: 'units.pcx',
-				x: sprite_x, y: sprite_y,
-				w: 100, h: 75,
-				cx: sprite_x + 51, cy: sprite_y + 51,
-			},
+			render: sprite_render.get(chassis, armor, weapon),
 		},
 	};
 };
@@ -131,8 +124,6 @@ const special_unit = (
 	mineral_cost,
 	offense,
 	defense,
-	sprite_x,
-	sprite_y,
 	movement_type,
 	movement_per_turn,
 	operational_range,
@@ -166,30 +157,24 @@ const special_unit = (
 			operational_range: operational_range,
 			is_missile: false,
 			cargo_capacity: cargo_capacity,
-			render: {
-				type: 'sprite',
-				file: 'units.pcx',
-				x: sprite_x, y: sprite_y,
-				w: 100, h: 75,
-				cx: sprite_x + 51, cy: sprite_y + 51,
-			},
+			render: sprite_render.get(chassis, armor, weapon),
 		},
 	};
 };
 
 const predefined_units = [
 	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
-	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, 2, 156, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
-	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, 2, 2, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
-	conventional_unit('Former', 'Former', 20, 0, 1, 206, 156, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),
-	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, 104, 156, false, false, 'DoctrineMobility', 2, 'Speeder', 'HandWeapons', 'NoArmor'),
-	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, 206, 156, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
-	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, 2, 156, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
-	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, 104, 156, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
-	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, 2, 156, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
-	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 104, 156, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
-	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 2, 541, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
-	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 2, 310, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
+	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
+	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
+	conventional_unit('Former', 'Former', 20, 0, 1, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),
+	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, false, false, 'DoctrineMobility', 2, 'Speeder', 'HandWeapons', 'NoArmor'),
+	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
+	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
+	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
+	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
+	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
+	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
 	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0, ''),
 	native_lifeform('MindWorms', 'Mind Worms', 50, 'land', 1, 233, [], 0, 'CentauriEmpathy'),
 	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4, 'CentauriMeditation'),

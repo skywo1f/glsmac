@@ -1,5 +1,6 @@
 const manifest = #include('../content/base_units');
 const cost_rules = #include('../units/design_rules');
+const sprite_render = #include('../units/sprite_render');
 
 const SUPPORTED_ABILITIES = {
 	SuperFormer: true,
@@ -232,24 +233,6 @@ const get_error = (player, selection) => {
 	return #undefined;
 };
 
-const get_render = (chassis, weapon) => {
-	let x = weapon.id == 'TerraformingUnit' ? 206 : 2;
-	let y = 156;
-	if (chassis.triad == 'land' && chassis.speed > 1) {
-		x = 104;
-	} else if (chassis.triad == 'sea') {
-		x = 2;
-		y = 310;
-	} else if (chassis.triad == 'air') {
-		x = 2;
-		y = 541;
-	}
-	return {
-		type: 'sprite', file: 'units.pcx', x: x, y: y, w: 100, h: 75,
-		cx: x + 51, cy: y + 51,
-	};
-};
-
 const get_name = (components, abilities) => {
 	const chassis = components.chassis;
 	const weapon = components.weapon;
@@ -362,7 +345,11 @@ const get_definition = (player, selection, name) => {
 				components.reactor
 			),
 			owner_player_id: player.id,
-			render: get_render(components.chassis, components.weapon),
+			render: sprite_render.get(
+				components.chassis.id,
+				components.armor.id,
+				components.weapon.id
+			),
 		},
 	};
 };

@@ -37,16 +37,20 @@ const colony = get_unit('ColonyPod');
 const former = get_unit('Former');
 test.assert(
 	scout.data.render.file == 'units.pcx' &&
-	scout.data.render.x == 2 && scout.data.render.y == 156
+	scout.data.render.x == 2 && scout.data.render.y == 2
 );
 test.assert(
 	colony.data.render.file == 'units.pcx' &&
-	colony.data.render.x == 2 && colony.data.render.y == 2
+	colony.data.render.x == 410 && colony.data.render.y == 2
 );
 test.assert(
 	former.data.render.file == 'units.pcx' &&
-	former.data.render.x == 206 && former.data.render.y == 156
+	former.data.render.x == 206 && former.data.render.y == 2
 );
+const recon = get_unit('ReconRover');
+const probe = get_unit('ProbeTeam');
+test.assert(recon.data.render.x == 2 && recon.data.render.y == 79);
+test.assert(probe.data.render.x == 614 && probe.data.render.y == 79);
 
 const unity_rover = get_unit('UnityRover');
 const unity_chopper = get_unit('UnityScoutChopper');
