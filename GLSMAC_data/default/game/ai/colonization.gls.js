@@ -14,30 +14,32 @@ const get_nearest_base_distance = (tm, tile, bases) => {
 	return result;
 };
 
-const is_valid_site = (tm, tile, owner_id, bases, is_water) => {
+const get_site_distance = (tm, tile, owner_id, bases, is_water) => {
 	const target_is_water = #is_defined(is_water) ? is_water : false;
 	if (
 		tile.is_locked() || tile.is_water != target_is_water ||
 		tile.get_base() != null
 	) {
-		return false;
-	}
-	if (get_nearest_base_distance(tm, tile, bases) < MIN_BASE_DISTANCE) {
-		return false;
+		return null;
 	}
 	for (unit of tile.get_units()) {
 		if (unit.owner != owner_id) {
-			return false;
+			return null;
 		}
 	}
-	return true;
+	const distance = get_nearest_base_distance(tm, tile, bases);
+	return distance < MIN_BASE_DISTANCE ? null : distance;
+};
+
+const is_valid_site = (tm, tile, owner_id, bases, is_water) => {
+	return get_site_distance(tm, tile, owner_id, bases, is_water) != null;
 };
 
 const get_site_score = (tm, tile, player, bases, is_water) => {
-	if (!is_valid_site(tm, tile, player.id, bases, is_water)) {
+	const distance = get_site_distance(tm, tile, player.id, bases, is_water);
+	if (distance == null) {
 		return null;
 	}
-	const distance = get_nearest_base_distance(tm, tile, bases);
 	let score = #min(distance, IDEAL_BASE_DISTANCE) * 100;
 	score += get_resource_value(tile.get_resources(player)) * 4;
 	for (nearby of tile.get_surrounding_tiles()) {

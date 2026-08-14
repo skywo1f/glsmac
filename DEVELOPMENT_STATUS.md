@@ -1148,5 +1148,22 @@ into a cross-thread use-after-free. The focused GSE native suite passed, and an
 intentional invalid event now exits with its original diagnostic instead of a
 segmentation fault.
 
+The economy soak now runs all six opponents on the standard 88-by-44 small map
+and records per-faction research, production, growth, stability, defense,
+treasury, terraforming, expansion, and action-phase timings. AI turn completion
+retries its idempotent authoritative request once per second until acknowledged,
+closing a reproduced turn-four stall in which later factions waited forever
+behind one lost completion. Distant units can begin their next authoritative
+action while an unrelated animation remains locally locked, without overlapping
+pending events or nearby tile locks. Colony Pods search a bounded 12-step region
+around their current position and calculate nearest-base distance once per site
+instead of rescoring the entire map with duplicate base scans. Morgan's measured
+colony-planning phase fell to 3-4 ms, and the complete six-faction campaign
+passed in 482.32 seconds versus the preceding 626.12-second run, about 23%
+faster. Every faction sustained growth, research, production, solvency,
+garrisons, stability, and a viable terraforming, expansion, or infrastructure
+plan. Focused scheduler, colonization, pathfinding, conquest, expansion, and sea
+colony runtimes also passed.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

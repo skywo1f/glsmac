@@ -1,5 +1,7 @@
 const MOVEMENT_ACTION_DELAY = 200;
 const TURN_COMPLETION_POLL_DELAY = 200;
+const TURN_COMPLETION_RETRY_CHECKS = 5;
+const COLONY_SEARCH_MAX_DISTANCE = 12;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
 const airdrops = #include('ai/airdrops');
@@ -1444,7 +1446,7 @@ const move_colony = (game, player, unit, all_bases) => {
 			distance,
 			unit.is_water
 		);
-	});
+	}, COLONY_SEARCH_MAX_DISTANCE);
 	if (destination == null) {
 		return false;
 	}
@@ -1996,6 +1998,8 @@ const play_turn = (game, player, done) => {
 	let action_wait_checks = 0;
 	let animation_wait_checks = 0;
 	let completion_requested = false;
+	let completion_poll_checks = 0;
+	let completion_requests = 0;
 	let completion_requested_at = 0;
 	let profile_finished = false;
 	let action_state_ms = 0;
@@ -2062,6 +2066,7 @@ const play_turn = (game, player, done) => {
 			former_ms: former_ms,
 			combat_ms: combat_ms,
 			completion_check_ms: completion_check_ms,
+			completion_requests: completion_requests,
 			completion_ack_ms: completion_requested_at == 0
 				? 0
 				: #monotonic_ms() - completion_requested_at,
@@ -2078,6 +2083,12 @@ const play_turn = (game, player, done) => {
 			return;
 		}
 		if (completion_requested) {
+			completion_poll_checks++;
+			if (completion_poll_checks >= TURN_COMPLETION_RETRY_CHECKS) {
+				completion_poll_checks = 0;
+				completion_requests++;
+				game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
+			}
 			#async(TURN_COMPLETION_POLL_DELAY, play_next_action);
 			return;
 		}
@@ -2095,7 +2106,7 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('state');
-		if (!waiting_for_action && !waiting_for_animation) {
+		if (!waiting_for_action) {
 			const orbital_target = orbitals.choose_target(game, player);
 			if (orbital_target != null) {
 				game.event_as(player.id, 'attack_orbital', {
@@ -2107,11 +2118,14 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('orbitals');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			const choose_upgrade = game.get('f_unit_upgrade_choose_ai_target');
 			if (#is_defined(choose_upgrade)) {
 				for (unit of current_units) {
-					if (!action_state.can_attempt_action(unit, action_attempts)) {
+					if (
+						!action_state.can_attempt_action(unit, action_attempts) ||
+						action_state.has_nearby_animation(unit)
+					) {
 						continue;
 					}
 					const target = choose_upgrade(player, unit);
@@ -2129,9 +2143,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('upgrades');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				if (unit.get_def().weapon == 'AlienArtifact') {
@@ -2144,9 +2161,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('artifacts');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				if (supply_rules.is_supply_transport(unit)) {
@@ -2159,9 +2179,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('supply');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				const def = unit.get_def();
@@ -2175,9 +2198,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('colonies');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				if (unit.get_def().weapon == 'ProbeTeam') {
@@ -2190,9 +2216,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('probes');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				const def = unit.get_def();
@@ -2206,9 +2235,12 @@ const play_turn = (game, player, done) => {
 			}
 		}
 		finish_action_phase('formers');
-		if (!action_started && !waiting_for_action && !waiting_for_animation) {
+		if (!action_started && !waiting_for_action) {
 			for (unit of current_units) {
-				if (!action_state.can_attempt_action(unit, action_attempts)) {
+				if (
+					!action_state.can_attempt_action(unit, action_attempts) ||
+					action_state.has_nearby_animation(unit)
+				) {
 					continue;
 				}
 				if (unit.get_def().offense > 0) {
@@ -2260,6 +2292,7 @@ const play_turn = (game, player, done) => {
 			return;
 		}
 		completion_requested = true;
+		completion_requests = 1;
 		completion_requested_at = is_profiling ? #monotonic_ms() : 0;
 		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
 		#async(TURN_COMPLETION_POLL_DELAY, play_next_action);

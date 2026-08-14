@@ -9,6 +9,7 @@
 	let runtime_complete = false;
 	let exit_scheduled = false;
 	let start_runtime = null;
+	let configure_runtime = null;
 
 	const fail = (message) => {
 		#print('SEA_COLONY_RUNTIME_FAIL: ' + message);
@@ -46,6 +47,14 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.register_event('sea_colony_runtime_setup', {
+			validate: (event) => {},
+			apply: (event) => {
+				configure_runtime(0 - 1);
+				return {};
+			},
+			rollback: (event) => {},
+		});
 
 		game.on('start_ui', (e) => {
 			ui_started = true;
@@ -70,6 +79,7 @@
 				progress: 0,
 			});
 
+			configure_runtime = (catalog_waits) => {
 			let sea_colony_def = null;
 			let naval_def = null;
 			let sea_former_def = null;
@@ -96,7 +106,15 @@
 				}
 			}
 			if (sea_colony_def == null || naval_def == null || sea_former_def == null) {
-				fail('generated sea colony, naval, or sea Former definition is missing');
+				if (catalog_waits >= 100) {
+					fail('generated sea colony, naval, or sea Former definition is missing');
+					return;
+				}
+				#async(50, () => { configure_runtime(catalog_waits + 1); });
+				return;
+			}
+			if (catalog_waits >= 0) {
+				game.event('sea_colony_runtime_setup', {});
 				return;
 			}
 
@@ -274,6 +292,9 @@
 				}, 0);
 			};
 			start_if_ready();
+			};
+			game.trigger('research_updated', {player: player});
+			#async(0, () => { configure_runtime(0); });
 		});
 	});
 

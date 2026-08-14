@@ -667,8 +667,8 @@ IF ( BUILD_TESTING )
 			--smacpath "${GLSMAC_SMAC_PATH}"
 			--mainscript "../tests/_ai_economy_soak"
 			--quickstart
-			--quickstart-ai "1"
-			--quickstart-mapsize "20x10"
+			--quickstart-ai "6"
+			--quickstart-mapsize "88x44"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound
@@ -681,7 +681,7 @@ IF ( BUILD_TESTING )
 			PASS_REGULAR_EXPRESSION "AI_ECONOMY_SOAK_PASS"
 			LABELS runtime_long
 			RUN_SERIAL TRUE
-			TIMEOUT 600
+			TIMEOUT 840
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
