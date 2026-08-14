@@ -9,6 +9,7 @@
 	let defender_id = 0;
 	let setup_complete = false;
 	let wait_ticks = 0;
+	let victory_event = null;
 
 	const fail = (message) => {
 		#print('AI_CONQUEST_RUNTIME_FAIL: ' + message);
@@ -58,6 +59,8 @@
 			if (
 				victory.type != 'conquest' ||
 				victory.winner != ai_id ||
+				victory_event == null || victory_event.type != 'conquest' ||
+				victory_event.winner.id != ai_id || victory_event.turn != victory.turn ||
 				captured_base.get_owner().id != ai_id ||
 				game.get_um().has_unit(defender_id) ||
 				!surviving_unit_rehomed ||
@@ -80,6 +83,7 @@
 
 	glsmac.on('configure_game', (e) => {
 		game = e.game;
+		game.on('victory_declared', (e) => { victory_event = e; });
 		game.on('configure', (e) => {
 			game.on('start', (e) => {
 				game.set('f_social_get_new_base_minerals', (player) => { return 0; });

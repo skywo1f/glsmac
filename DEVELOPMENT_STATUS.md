@@ -333,7 +333,9 @@ scenarios, for:
   and Charter-aware AI policy, backward-compatible saves, and reconnect
   restoration;
 - land and sea colonization, terraforming, conventional and psi combat, and
-  conquest, economic, diplomatic, and transcendence victory;
+  conquest, economic, diplomatic, and transcendence victory; all four terminal
+  outcomes present a player-facing result screen with the winning faction,
+  Mission Year, Continue, and Return to Main Menu controls;
 - air-unit range and refueling, naval and air combat access, transports and
   cargo, field repair, facility repair, and unit morale; Amphibious Pods permit
   transport assaults and sea-base crossings, while Air Superiority provides
@@ -455,7 +457,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 159 registered cases, including isolated
+The Release CTest matrix contains 160 registered cases, including isolated
 native/script GSE tests and asset-backed runtime scenarios. Script isolation
 keeps allocator lifetime bounded and reports the exact script that fails.
 
@@ -1203,6 +1205,15 @@ compatible. The focused UI test exercised all six save commands plus empty and
 occupied load choices, and the installed-asset runtime wrote both formats,
 restarted from manual slot 1, advanced and overwrote it, then restored it twice
 with identical random state in 20.99 seconds.
+
+Terminal victories now emit one authoritative `victory_declared` notification
+containing the public winner, victory type, and turn. An eager game-complete
+popup reports whether the local faction won, identifies a rival by faction,
+names all four supported victory types, and permits either final-map inspection
+or a return to the main menu. Completed games restored from a save open the
+same popup even though their original notification predates UI startup. The
+focused screen test passed in 1.19 seconds, and the installed-asset AI conquest
+scenario passed in 6.72 seconds after matching the event to the terminal state.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

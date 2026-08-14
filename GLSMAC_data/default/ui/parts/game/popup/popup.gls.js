@@ -3,6 +3,7 @@ return {
 	available_popups: [
 		'turn_confirmation',
 		'please_dont_go',
+		'victory',
 		'social_engineering',
 		'planetary_council',
 		'economic_victory',
@@ -22,6 +23,7 @@ return {
 		'base_screen',
 	],
 	eager_popups: [
+		'victory',
 		'planetary_council',
 		'diplomacy',
 		'base_screen',

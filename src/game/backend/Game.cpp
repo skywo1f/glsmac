@@ -1886,6 +1886,24 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	}
 
 	m_victory_state = { type, winner_slot, m_current_turn.GetId() };
+	const auto type_name = GetVictoryTypeString( type );
+	auto* const winner_player = winner.GetPlayer();
+	m_state->TriggerObject(
+		this, "victory_declared", ARGS_F( type_name, winner_player, this ) {
+			{
+				"type",
+				VALUE( gse::value::String,, type_name ),
+			},
+			{
+				"winner",
+				winner_player->Wrap( GSE_CALL ),
+			},
+			{
+				"turn",
+				VALUE( gse::value::Int,, m_current_turn.GetId() ),
+			},
+		}; }
+	);
 }
 
 const std::string Game::GetVictoryTypeString( const victory_type_t type ) {

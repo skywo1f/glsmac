@@ -158,6 +158,9 @@ return (m) => {
 					p.modules.popup.show('planetary_council');
 				}
 			}
+			if (game.is_game_over() && !p.modules.popup.is_shown()) {
+				p.modules.popup.show('victory');
+			}
 			const ui_ready_callback = game.get('f_ui_ready');
 			if (#typeof(ui_ready_callback) == 'Callable') {
 				ui_ready_callback(p);
