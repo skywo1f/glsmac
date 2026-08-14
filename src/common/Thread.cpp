@@ -182,22 +182,26 @@ void Thread::Run() {
 		}
 
 		m_state = STATE_STOPPING;
-		while ( started_modules > 0 ) {
-			try {
-				m_modules[ --started_modules ]->Stop();
-			}
-			catch ( const std::exception& e ) {
-				Log( "Exception while stopping thread " + m_thread_name + ": " + e.what() );
-			}
-			catch ( ... ) {
-				Log( "Non-standard exception while stopping thread " + m_thread_name );
+		if ( g_engine ) {
+			g_engine->ShutDown( EXIT_FAILURE );
+			// Other workers can still reference these modules while Engine performs
+			// its ordered stop. Keep them alive on the fatal path; process teardown
+			// will reclaim them after the original exception has been reported.
+		}
+		else {
+			while ( started_modules > 0 ) {
+				try {
+					m_modules[ --started_modules ]->Stop();
+				}
+				catch ( const std::exception& e ) {
+					Log( "Exception while stopping thread " + m_thread_name + ": " + e.what() );
+				}
+				catch ( ... ) {
+					Log( "Non-standard exception while stopping thread " + m_thread_name );
+				}
 			}
 		}
 		m_state = STATE_INACTIVE;
-
-		if ( g_engine ) {
-			g_engine->ShutDown( EXIT_FAILURE );
-		}
 	}
 }
 

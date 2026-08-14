@@ -1133,5 +1133,20 @@ for and completes a unit, covering the UI refresh path involved in the reported
 manual-play crash. That runtime check and the duplicate-click button test both
 passed; a real mouse-driven retry remains part of the next playtest.
 
+The live base-screen Hurry button now resolves its base from the current
+authoritative projection when it is clicked. Previously, a player/economy
+projection could leave the popup holding a stale base wrapper: the button showed
+the correct price and entered its pending state, but its event never applied.
+The installed-asset frontend runtime now opens and refreshes the actual base
+screen, switches to a hurryable unit, funds the player through an authoritative
+test event, clicks the real button twice, and verifies one payment, completed
+minerals, an open popup, and the resulting live refresh. It passed in 11.19
+seconds, with the Hurry transaction and refresh completing in about 0.8 seconds.
+Fatal worker exceptions also retain their modules until Engine finishes its
+ordered worker shutdown, preventing the original script error from cascading
+into a cross-thread use-after-free. The focused GSE native suite passed, and an
+intentional invalid event now exits with its original diagnostic instead of a
+segmentation fault.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

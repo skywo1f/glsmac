@@ -38,6 +38,7 @@ const base = {
 };
 const game = {
 	get_player: () => { return player; },
+	get_bm: () => { return {get_bases: () => { return [base]; }}; },
 	is_turn_complete: (player_id) => { return false; },
 	get: (name) => {
 		test.assert(name == 'f_economy_get_hurry_cost');
