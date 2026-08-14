@@ -5,9 +5,13 @@ return {
 		this.p = p;
 		this.cell_cache = {
 			cells: [],
+			classes: [],
+			variants: [],
 			columns: 0,
 			rows: 0,
 			capacity: 0,
+			width: 0,
+			height: 0,
 		};
 
 		this.frame = p.body.panel({

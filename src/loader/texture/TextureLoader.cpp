@@ -2,10 +2,10 @@
 
 #include <algorithm>
 
-#include "types/texture/Texture.h"
-#include "types/texture/LazyTexture.h"
 #include "engine/Engine.h"
 #include "resource/ResourceManager.h"
+#include "types/texture/LazyTexture.h"
+#include "types/texture/Texture.h"
 
 namespace loader {
 namespace texture {
@@ -36,117 +36,83 @@ static const auto s_tc_darkpurple = types::Color::RGB( 100, 16, 156 );
 static const auto s_tc_aqua = types::Color::RGB( 24, 184, 228 );
 static const auto s_tc_facborder = types::Color::RGB( 77, 156, 176 );
 static const std::unordered_map< resource::resource_t, TextureLoader::transparent_colors_t > s_tcs = {
-	{
-		resource::PCX_TEXTURE,
-		{
-			types::Color::RGB( 125, 0, 128 ),
-		}
-	},
-	{
-		resource::PCX_INTERFACE,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_MOON1,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_MOON2,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_MOON3,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_ICONS,
-		{
-			s_tc_purple,
-		}
-	},
-	{
-		resource::PCX_NEWICONS,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_ALIENCIT,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_CONSOLE_X,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_CONSOLE2_A,
-		{
-			s_tc_darkpurple,
-		}
-	},
-	{
-		resource::PCX_CONSOLE_X2_A,
-		{
-			s_tc_pink,
-		}
-	},
-	{
-		resource::PCX_JACKAL,
-		{
-			s_tc_darkpurple,
-		}
-	},
-	{
-		resource::PCX_TER1,
-		{
-			s_tc_purple,
-			s_tc_darkpurple, // tile markings
-			s_tc_aqua, // borders
-		}
-	},
-	{
-		resource::PCX_UNITS,
-		{
-			s_tc_purple,
-			s_tc_darkpurple, // tile markings
-			s_tc_aqua, // borders
-		}
-	},
-	{
-		resource::PCX_FLAGS,
-		{
-			types::Color::RGB( 124, 124, 124 ),
-			s_tc_aqua, // borders
-		}
-	},
-	{
-		resource::PCX_XI,
-		{
-			types::Color::RGB( 0, 67, 255 ),
-			types::Color::RGB( 155, 27, 231 ), // label
-			types::Color::RGB( 27, 187, 231 ), // borders
-		}
-	},
-	{
-		resource::PCX_XF,
-		{
-			types::Color::RGB( 0, 0, 0 ),
-			types::Color::RGB( 155, 27, 231 ), // tile
-			types::Color::RGB( 27, 187, 231 ), // borders
-		}
-	},
+	{ resource::PCX_TEXTURE,
+	  {
+		  types::Color::RGB( 125, 0, 128 ),
+	  } },
+	{ resource::PCX_INTERFACE,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_MOON1,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_MOON2,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_MOON3,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_ICONS,
+	  {
+		  s_tc_purple,
+	  } },
+	{ resource::PCX_NEWICONS,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_ALIENCIT,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_CONSOLE_X,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_CONSOLE2_A,
+	  {
+		  s_tc_darkpurple,
+	  } },
+	{ resource::PCX_CONSOLE_X2_A,
+	  {
+		  s_tc_pink,
+	  } },
+	{ resource::PCX_JACKAL,
+	  {
+		  s_tc_darkpurple,
+	  } },
+	{ resource::PCX_TER1,
+	  {
+		  s_tc_purple,
+		  s_tc_darkpurple,// tile markings
+		  s_tc_aqua,      // borders
+	  } },
+	{ resource::PCX_UNITS,
+	  {
+		  s_tc_purple,
+		  s_tc_darkpurple,// tile markings
+		  s_tc_aqua,      // borders
+	  } },
+	{ resource::PCX_FLAGS,
+	  {
+		  types::Color::RGB( 124, 124, 124 ),
+		  s_tc_aqua,// borders
+	  } },
+	{ resource::PCX_XI,
+	  {
+		  types::Color::RGB( 0, 67, 255 ),
+		  types::Color::RGB( 155, 27, 231 ),// label
+		  types::Color::RGB( 27, 187, 231 ),// borders
+	  } },
+	{ resource::PCX_XF,
+	  {
+		  types::Color::RGB( 0, 0, 0 ),
+		  types::Color::RGB( 155, 27, 231 ),// tile
+		  types::Color::RGB( 27, 187, 231 ),// borders
+	  } },
 	{
 		resource::PCX_GAIANS,
 		{
@@ -252,6 +218,9 @@ TextureLoader::~TextureLoader() {
 	for ( const auto& it : m_color_textures ) {
 		DELETE( it.second );
 	}
+	for ( const auto& it : m_filtered_textures ) {
+		DELETE( it.second );
+	}
 	for ( const auto& it : m_lazy_textures ) {
 		DELETE( it.second );
 	}
@@ -337,5 +306,18 @@ types::texture::Texture* TextureLoader::GetColorTexture( const types::Color& col
 	return texture;
 }
 
+types::texture::Texture* TextureLoader::GetCachedFilteredTexture( const std::string& specification ) const {
+	const auto it = m_filtered_textures.find( specification );
+	return it == m_filtered_textures.end()
+		? nullptr
+		: it->second;
 }
+
+void TextureLoader::CacheFilteredTexture( const std::string& specification, types::texture::Texture* const texture ) {
+	ASSERT( texture, "filtered texture is null" );
+	const auto result = m_filtered_textures.insert( { specification, texture } );
+	ASSERT( result.second || result.first->second == texture, "filtered texture cache collision" );
 }
+
+}
+}// namespace loader::texture

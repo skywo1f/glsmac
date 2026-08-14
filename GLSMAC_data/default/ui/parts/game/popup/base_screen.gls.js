@@ -240,21 +240,53 @@ return {
 		const height = #floor(#to_float(total_height) / #to_float(rows));
 		const capacity = #is_defined(capacity_in) ? capacity_in : rows * columns;
 		const has_cell_cache = #is_defined(cell_cache);
-		const can_reuse_cells =
+		const get_cell_class = (index) => {
+			let suffix = 'empty';
+			if (index < filled) {
+				if (pending < 0 && index >= filled + pending) {
+					suffix = 'deficit';
+				} else {
+					suffix = 'full';
+				}
+			} else if (index < filled + pending) {
+				suffix = 'pending';
+			}
+			return cell_baseclass + '-' + suffix;
+		};
+		let can_reuse_cells =
 			has_cell_cache &&
 			cell_cache.columns == columns &&
 			cell_cache.rows == rows &&
 			cell_cache.capacity == capacity &&
-			#sizeof(cell_cache.cells) == capacity;
+			#sizeof(cell_cache.cells) == capacity &&
+			#is_defined(cell_cache.classes) &&
+			#sizeof(cell_cache.classes) == capacity &&
+			#is_defined(cell_cache.variants) &&
+			#sizeof(cell_cache.variants) == capacity;
 
-		this.p.ui.class(cell_baseclass).set({
-			width: width - 1,
-			height: height - 1,
-		});
+		const cell_width = width - 1;
+		const cell_height = height - 1;
+		const cell_geometry_changed =
+			!has_cell_cache ||
+			!#is_defined(cell_cache.width) ||
+			cell_cache.width != cell_width ||
+			cell_cache.height != cell_height;
+		if (cell_geometry_changed) {
+			this.p.ui.class(cell_baseclass).set({
+				width: cell_width,
+				height: cell_height,
+			});
+			if (has_cell_cache) {
+				cell_cache.width = cell_width;
+				cell_cache.height = cell_height;
+			}
+		}
 		if (!can_reuse_cells) {
 			cells_el.clear();
 			if (has_cell_cache) {
 				cell_cache.cells = [];
+				cell_cache.classes = [];
+				cell_cache.variants = [];
 				cell_cache.columns = columns;
 				cell_cache.rows = rows;
 				cell_cache.capacity = capacity;
@@ -266,25 +298,34 @@ return {
 		let top = (total_height - (rows * height)) / 2;
 
 		let i = 0;
-		let cls = '';
-
 		for (let y = 0; y < rows; y++) {
 			for (let x = 0; x < columns; x++) {
-				if (i < filled) {
-					if (pending < 0 && i >= filled + pending) {
-						cls = 'deficit';
-					} else {
-						cls = 'full';
-					}
-				} else if (i < filled + pending) {
-					cls = 'pending';
-				} else {
-					cls = 'empty';
-				}
 				if (i < capacity) {
-					const cell_class = cell_baseclass + '-' + cls;
+					const cell_class = get_cell_class(i);
 					if (can_reuse_cells) {
-						cell_cache.cells[i].class = cell_class;
+						if (cell_cache.classes[i] != cell_class) {
+							const variants = cell_cache.variants[i];
+							let next_cell = null;
+							for (let variant_index = 0; variant_index < #sizeof(variants.classes); variant_index++) {
+								if (variants.classes[variant_index] == cell_class) {
+									next_cell = variants.cells[variant_index];
+								}
+							}
+							cell_cache.cells[i].hide();
+							if (next_cell == null) {
+								next_cell = cells_el.panel({
+									class: cell_class,
+									left: left + 1,
+									top: top + 1,
+								});
+								variants.classes :+cell_class;
+								variants.cells :+next_cell;
+							} else {
+								next_cell.show();
+							}
+							cell_cache.cells[i] = next_cell;
+							cell_cache.classes[i] = cell_class;
+						}
 					} else {
 						const cell = cells_el.panel({
 							class: cell_class,
@@ -293,6 +334,11 @@ return {
 						});
 						if (has_cell_cache) {
 							cell_cache.cells :+cell;
+							cell_cache.classes :+cell_class;
+							cell_cache.variants :+{
+								classes: [cell_class],
+								cells: [cell],
+							};
 						}
 					}
 				}

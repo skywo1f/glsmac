@@ -1,16 +1,16 @@
 #include "Surface.h"
 
-#include "types/mesh/Rectangle.h"
-#include "scene/actor/Mesh.h"
-#include "ui/geometry/Rectangle.h"
 #include "engine/Engine.h"
-#include "loader/texture/TextureLoader.h"
 #include "graphics/Graphics.h"
-#include "types/texture/Texture.h"
-#include "util/String.h"
-#include "types/texture/Filter.h"
-#include "ui/UI.h"
 #include "gse/value/Float.h"
+#include "loader/texture/TextureLoader.h"
+#include "scene/actor/Mesh.h"
+#include "types/mesh/Rectangle.h"
+#include "types/texture/Filter.h"
+#include "types/texture/Texture.h"
+#include "ui/UI.h"
+#include "ui/geometry/Rectangle.h"
+#include "util/String.h"
 
 namespace ui {
 namespace dom {
@@ -32,8 +32,7 @@ Surface::Surface( DOM_ARGS_T )
 		},
 		[ this ]( GSE_CALLABLE ) {
 			m_actor->SetAlpha( 1.0f );
-		}
-	);
+		} );
 
 	Property(
 		GSE_CALL, "background", gse::VT_STRING, nullptr, PF_NONE,
@@ -44,139 +43,140 @@ Surface::Surface( DOM_ARGS_T )
 			}
 			bool is_tiled = true;
 			types::Color color = {};
+			ClearTexture();
 			if ( TryParseColor( GSE_CALL, str, color ) ) {
-				CreateTexture();
-				m_background.texture->Resize( 1, 1 );
-				m_background.texture->SetPixel( 0, 0, color );
+				m_background.texture = g_engine->GetTextureLoader()->GetColorTexture( color );
 				is_tiled = false;
 			}
 			else {
-				// texture format examples:
-				//   texture.pcx
-				//   texture.pcx:filter1(arg1,arg2,...):filter2():...
-				const auto params = util::String::Split( str, ':' );
-				ASSERT( !params.empty(), "texture params empty" );
-				auto* texture = g_engine->GetTextureLoader()->TryLoadCustomTexture( params.front() );
-				if ( !texture ) {
-					GSE_ERROR( gse::EC.LOADER_ERROR, "Could not load texture: " + params.front() );
+				auto* const texture_loader = g_engine->GetTextureLoader();
+				auto* const cached_texture = texture_loader->GetCachedFilteredTexture( str );
+				if ( cached_texture ) {
+					m_background.texture = cached_texture;
+					is_tiled = str.find( ":stretch" ) == std::string::npos;
 				}
-				types::texture::Filter filter( texture );
-				std::vector< std::string > args = {};
-				for ( auto it = params.begin() + 1 ; it != params.end() ; it++ ) {
-					const auto brackets_begin = it->find( '(' );
-					args = {};
-					std::string f;
-					if ( brackets_begin != std::string::npos ) {
-						const auto brackets_end = it->rfind( ')' );
-						if ( brackets_end == std::string::npos || brackets_end <= brackets_begin ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Texture filter syntax error (unclosed bracket): " + *it );
+				else {
+					// texture format examples:
+					//   texture.pcx
+					//   texture.pcx:filter1(arg1,arg2,...):filter2():...
+					const auto params = util::String::Split( str, ':' );
+					ASSERT( !params.empty(), "texture params empty" );
+					auto* texture = texture_loader->TryLoadCustomTexture( params.front() );
+					if ( !texture ) {
+						GSE_ERROR( gse::EC.LOADER_ERROR, "Could not load texture: " + params.front() );
+					}
+					types::texture::Filter filter( texture );
+					std::vector< std::string > args = {};
+					for ( auto it = params.begin() + 1; it != params.end(); it++ ) {
+						const auto brackets_begin = it->find( '(' );
+						args = {};
+						std::string f;
+						if ( brackets_begin != std::string::npos ) {
+							const auto brackets_end = it->rfind( ')' );
+							if ( brackets_end == std::string::npos || brackets_end <= brackets_begin ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Texture filter syntax error (unclosed bracket): " + *it );
+							}
+							args = util::String::Split( it->substr( brackets_begin + 1, brackets_end - brackets_begin - 1 ), ',' );
+							f = it->substr( 0, brackets_begin );
 						}
-						args = util::String::Split( it->substr( brackets_begin + 1, brackets_end - brackets_begin - 1 ), ',' );
-						f = it->substr( 0, brackets_begin );
-					}
-					else {
-						f = *it;
-					}
+						else {
+							f = *it;
+						}
 
-					const auto f_expect_args_fromto = [ &ctx, &si, &ep, &f, &args, &it ]( const uint8_t args_min, const uint8_t args_max ) {
-						if ( args.size() < args_min || args.size() > args_max ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Texture filter '" + f + "' expects " + ( args_min == args_max
-								? std::to_string( args_min )
-								: std::to_string( args_min ) + " to " + std::to_string( args_max )
-							) + " parameters, got " + std::to_string( args.size() ) + ": " + *it );
-						}
-					};
-					const auto f_expect_args = [ & f_expect_args_fromto ]( const uint8_t args ) {
-						return f_expect_args_fromto( args, args );
-					};
+						const auto f_expect_args_fromto = [ &ctx, &si, &ep, &f, &args, &it ]( const uint8_t args_min, const uint8_t args_max ) {
+							if ( args.size() < args_min || args.size() > args_max ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Texture filter '" + f + "' expects " + ( args_min == args_max ? std::to_string( args_min ) : std::to_string( args_min ) + " to " + std::to_string( args_max ) ) + " parameters, got " + std::to_string( args.size() ) + ": " + *it );
+							}
+						};
+						const auto f_expect_args = [ &f_expect_args_fromto ]( const uint8_t args ) {
+							return f_expect_args_fromto( args, args );
+						};
 
-					if ( f == "stretch" ) {
-						f_expect_args( 0 );
-						is_tiled = false;
+						if ( f == "stretch" ) {
+							f_expect_args( 0 );
+							is_tiled = false;
+						}
+						else if ( f == "tint" ) {
+							f_expect_args( 2 );
+							float intensity;
+							ParseColor( GSE_CALL, args.at( 0 ), color );
+							if ( !util::String::ParseFloat( args.at( 1 ), intensity ) ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid tint parameters (expected float, got " + args.at( 1 ) + "): " + *it );
+							}
+							if ( intensity < 0.0f || intensity > 1.0f ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid tint parameters (intensity must be between 0.0 and 1.0):" + *it );
+							}
+							filter.Tint( color, intensity );
+						}
+						else if ( f == "crop" ) {
+							f_expect_args( 4 );
+							long int x1, y1, x2, y2;
+							if (
+								!util::String::ParseInt( args.at( 0 ), x1 ) || !util::String::ParseInt( args.at( 1 ), y1 ) || !util::String::ParseInt( args.at( 2 ), x2 ) || !util::String::ParseInt( args.at( 3 ), y2 ) ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (expected x1,y1,x2,y2, got " + args.at( 0 ) + "," + args.at( 1 ) + "," + args.at( 2 ) + "," + args.at( 3 ) + "): " + *it );
+							}
+							if ( x1 < 0 ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x1 must be positive): " + *it );
+							}
+							if ( y1 < 0 ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y1 must be positive): " + *it );
+							}
+							if ( x2 < x1 ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x2 can't be less than x1): " + *it );
+							}
+							if ( y2 < y1 ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y1 can't be less than y1): " + *it );
+							}
+							if ( x2 >= filter.GetWidth() ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x2 must be less than texture width (" + std::to_string( filter.GetWidth() ) + ")): " + *it );
+							}
+							if ( y2 >= filter.GetHeight() ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y2 must be less than texture height (" + std::to_string( filter.GetHeight() ) + ")): " + *it );
+							}
+							filter.Crop( x1, y1, x2, y2 );
+						}
+						else if ( f == "rotate" ) {
+							f_expect_args( 0 );
+							filter.Rotate();
+						}
+						else if ( f == "flipv" ) {
+							f_expect_args( 0 );
+							filter.FlipV();
+						}
+						else if ( f == "fliph" ) {
+							f_expect_args( 0 );
+							filter.FlipH();
+						}
+						else if ( f == "contrast" ) {
+							f_expect_args( 1 );
+							float value;
+							if ( !util::String::ParseFloat( args.at( 0 ), value ) ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid contrast value (expected float, got " + args.at( 0 ) + "): " + *it );
+							}
+							if ( value < 0.0f || value > 10.0f ) {
+								GSE_ERROR( gse::EC.UI_ERROR, "Invalid contrast value (must be between 0.0 and 10.0):" + *it );
+							}
+							filter.Contrast( value );
+						}
+						else {
+							GSE_ERROR( gse::EC.UI_ERROR, "Unknown texture filter: " + f );
+						}
 					}
-					else if ( f == "tint" ) {
-						f_expect_args( 2 );
-						float intensity;
-						ParseColor( GSE_CALL, args.at( 0 ), color );
-						if ( !util::String::ParseFloat( args.at( 1 ), intensity ) ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid tint parameters (expected float, got " + args.at( 1 ) + "): " + *it );
-						}
-						if ( intensity < 0.0f || intensity > 1.0f ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid tint parameters (intensity must be between 0.0 and 1.0):" + *it );
-						}
-						filter.Tint( color, intensity );
-					}
-					else if ( f == "crop" ) {
-						f_expect_args( 4 );
-						long int x1, y1, x2, y2;
-						if (
-							!util::String::ParseInt( args.at( 0 ), x1 ) ||
-								!util::String::ParseInt( args.at( 1 ), y1 ) ||
-								!util::String::ParseInt( args.at( 2 ), x2 ) ||
-								!util::String::ParseInt( args.at( 3 ), y2 )
-							) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (expected x1,y1,x2,y2, got " + args.at( 0 ) + "," + args.at( 1 ) + "," + args.at( 2 ) + "," + args.at( 3 ) + "): " + *it );
-						}
-						if ( x1 < 0 ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x1 must be positive): " + *it );
-						}
-						if ( y1 < 0 ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y1 must be positive): " + *it );
-						}
-						if ( x2 < x1 ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x2 can't be less than x1): " + *it );
-						}
-						if ( y2 < y1 ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y1 can't be less than y1): " + *it );
-						}
-						if ( x2 >= filter.GetWidth() ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (x2 must be less than texture width (" + std::to_string( filter.GetWidth() ) + ")): " + *it );
-						}
-						if ( y2 >= filter.GetHeight() ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid crop parameters (y2 must be less than texture height (" + std::to_string( filter.GetHeight() ) + ")): " + *it );
-						}
-						filter.Crop( x1, y1, x2, y2 );
-					}
-					else if ( f == "rotate" ) {
-						f_expect_args( 0 );
-						filter.Rotate();
-					}
-					else if ( f == "flipv" ) {
-						f_expect_args( 0 );
-						filter.FlipV();
-					}
-					else if ( f == "fliph" ) {
-						f_expect_args( 0 );
-						filter.FlipH();
-					}
-					else if ( f == "contrast" ) {
-						f_expect_args( 1 );
-						float value;
-						if ( !util::String::ParseFloat( args.at( 0 ), value ) ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid contrast value (expected float, got " + args.at( 0 ) + "): " + *it );
-						}
-						if ( value < 0.0f || value > 10.0f ) {
-							GSE_ERROR( gse::EC.UI_ERROR, "Invalid contrast value (must be between 0.0 and 10.0):" + *it );
-						}
-						filter.Contrast( value );
-					}
-					else {
-						GSE_ERROR( gse::EC.UI_ERROR, "Unknown texture filter: " + f );
+					const auto result = filter.GetTexture();
+					m_background.texture = result.texture;
+					m_background.is_texture_owned = result.is_owned;
+					if ( result.is_owned ) {
+						m_background.texture->FullUpdate();
+						texture_loader->CacheFilteredTexture( str, m_background.texture );
+						m_background.is_texture_owned = false;
 					}
 				}
-				const auto result = filter.GetTexture();
-				m_background.texture = result.texture;
-				m_background.is_texture_owned = result.is_owned;
 			}
-			m_background.texture->FullUpdate(); // TODO: optimize?
 			m_actor->SetTexture( m_background.texture );
 			if ( is_tiled ) {
 				m_geometry->AsRectangle()->SetTiled(
-					{
-						m_background.texture->GetWidth(),
-						m_background.texture->GetHeight()
-					}
-				);
+					{ m_background.texture->GetWidth(),
+					  m_background.texture->GetHeight() } );
 			}
 			else {
 				m_geometry->AsRectangle()->SetStretched();
@@ -184,9 +184,7 @@ Surface::Surface( DOM_ARGS_T )
 		},
 		[ this ]( GSE_CALLABLE ) {
 			ClearTexture();
-		}
-	);
-
+		} );
 }
 
 Surface::~Surface() {
@@ -223,4 +221,4 @@ types::texture::Texture* Surface::GetOwnedTexturePtr() {
 }
 
 }
-}
+}// namespace ui::dom

@@ -7,9 +7,13 @@ return {
 		this.p = p;
 		this.cell_cache = {
 			cells: [],
+			classes: [],
+			variants: [],
 			columns: 0,
 			rows: 0,
 			capacity: 0,
+			width: 0,
+			height: 0,
 		};
 
 		this.frame = p.body.panel({
@@ -72,7 +76,8 @@ return {
 			'base-screen-bottombar-production-cell',
 			this.production_label,
 			(progress_in) => {
-				return #to_string(progress_in) + ' TURNS';
+				const turns = #is_defined(data.turns) ? data.turns : progress_in;
+				return #to_string(turns) + ' TURNS';
 			},
 			#undefined,
 			this.cell_cache,

@@ -1358,5 +1358,17 @@ production and rejecting duplicate payments. One earlier save/load matrix run
 timed out during snapshot completion, while the immediate focused rerun passed
 in 18.32 seconds; that intermittent completion outlier remains a soak risk.
 
+Base-screen meters now retain their cells and visual variants, skip unchanged
+geometry and class work, and use a fixed 30-segment production display whose
+turn estimate still comes from exact mineral totals. Energy Bank and Weather
+Paradigm production therefore no longer create 80 and 200 live controls.
+UI surfaces also share identical filtered PCX crops and solid-color textures
+through the texture loader instead of independently filtering and scheduling a
+GPU upload for every panel. In the same installed-asset frontend gate, first
+base-screen construction fell from 684 ms to 229 ms, production changes fell
+from 0.5-1.3 seconds to 3-5 ms after initialization, all three live Hurry
+transactions completed in about 0.19 seconds, and the complete scenario fell
+from 14.7 seconds to 9.9 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

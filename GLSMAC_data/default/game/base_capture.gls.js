@@ -77,9 +77,15 @@ const apply_spoils_of_war = (game, winner, loser) => {
 		return #undefined;
 	}
 	game.trigger('research_updated', {player: winner});
-	const definition = game.get('f_technology_get_definition')(technology);
+	const get_definition = game.get('f_technology_get_definition');
+	const definition = #typeof(get_definition) == 'Callable'
+		? get_definition(technology)
+		: null;
+	const winner_name = #typeof(winner.get_faction) == 'Callable'
+		? winner.get_faction().name
+		: winner.name;
 	game.message(
-		winner.get_faction().name + ' captured research data for ' +
+		winner_name + ' captured research data for ' +
 		(definition == null ? technology : definition.name) + '.'
 	);
 	return {player: winner, state: state};

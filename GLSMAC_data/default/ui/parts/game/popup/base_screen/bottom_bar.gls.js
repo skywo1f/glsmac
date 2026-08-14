@@ -211,6 +211,32 @@ return {
 				base,
 				production
 			);
+			const accumulated_minerals = #min(
+				base.get_accumulated_minerals(),
+				production_cost
+			);
+			const meter_capacity = 30;
+			const meter_filled = production_cost > 0
+				? #floor(
+					#to_float(accumulated_minerals * meter_capacity) /
+					#to_float(production_cost)
+				)
+				: 0;
+			const meter_pending = pending > 0 && production_cost > 0
+				? #max(
+					#ceil(
+						#to_float(pending * meter_capacity) /
+						#to_float(production_cost)
+					),
+					1
+				)
+				: 0;
+			const production_turns = pending > 0
+				? #ceil(
+					#to_float(production_cost - accumulated_minerals) /
+					#to_float(pending)
+				)
+				: 0;
 			const is_mineral_conversion =
 				#is_defined(production.mineral_to_energy_divisor) &&
 				production.mineral_to_energy_divisor > 0;
@@ -222,12 +248,13 @@ return {
 				: 0;
 			this.parts.production.set({
 				name: production.name,
-				rows: #max(#ceil(#to_float(production_cost) / 10.0), 1),
+				rows: 3,
 				columns: 10,
 				filled: is_mineral_conversion
 					? 0
-					: #min(base.get_accumulated_minerals(), production_cost),
-				pending: is_mineral_conversion ? 0 : pending,
+					: meter_filled,
+				pending: is_mineral_conversion ? 0 : meter_pending,
+				turns: production_turns,
 				conversion_label: is_mineral_conversion
 					? #to_string(stockpile_energy) + ' EC / TURN'
 					: #undefined,
@@ -235,10 +262,11 @@ return {
 		} else {
 			this.parts.production.set({
 				name: 'NOTHING',
-				rows: 1,
+				rows: 3,
 				columns: 10,
 				filled: 0,
 				pending: 0,
+				turns: 0,
 			});
 		}
 		finish_bottom_phase('bottom_production');
