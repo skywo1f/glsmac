@@ -124,9 +124,21 @@ const get_effective_facilities = (game, base) => {
 
 const get_base_damage = (game, base) => {
 	const owner = base.get_owner();
+	let worked_tile_keys = null;
+	if (#typeof(base.get_worked_tiles) == 'Callable') {
+		worked_tile_keys = {};
+		for (worked_tile of base.get_worked_tiles()) {
+			const worked_key = #to_string(worked_tile.x) + '_' + #to_string(worked_tile.y);
+			worked_tile_keys[worked_key] = true;
+		}
+	}
 	let base_terraforming_raw = 0;
 	for (tile of base.get_workable_tiles()) {
-		const base_tile_multiplier = base.is_tile_worked(tile) ? 2 : 1;
+		const tile_key = #to_string(tile.x) + '_' + #to_string(tile.y);
+		const tile_is_worked = worked_tile_keys == null
+			? base.is_tile_worked(tile)
+			: #is_defined(worked_tile_keys[tile_key]);
+		const base_tile_multiplier = tile_is_worked ? 2 : 1;
 		for (improvement_id of ECOLOGICAL_IMPROVEMENTS) {
 			if (tile.terraforming[improvement_id]) {
 				base_terraforming_raw += base_tile_multiplier;

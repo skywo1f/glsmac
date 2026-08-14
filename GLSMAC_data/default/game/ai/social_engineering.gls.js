@@ -33,6 +33,10 @@ const choices_equal = (left, right) => {
 
 const choose = (player, categories, get_available, get_ratings, priorities) => {
 	const current = player.get_social_engineering();
+	let available_by_category = {};
+	for (category of categories) {
+		available_by_category[category.id] = get_available(player, category.id);
+	}
 	let selected = {
 		politics: current.politics,
 		economics: current.economics,
@@ -45,7 +49,7 @@ const choose = (player, categories, get_available, get_ratings, priorities) => {
 			let best_id = selected[category.id];
 			let best_score = 0;
 			let has_best = false;
-			for (choice of get_available(player, category.id)) {
+			for (choice of available_by_category[category.id]) {
 				let candidate = {
 					politics: selected.politics,
 					economics: selected.economics,

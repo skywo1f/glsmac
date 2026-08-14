@@ -1273,5 +1273,31 @@ intermittent completion-acknowledgement outliers remain. All 128 GSE tests passe
 in 220.38 seconds, followed by seven installed-asset startup, frontend,
 diplomacy, Council, victory, AI, and multiplayer checks in 79.06 seconds.
 
+The next AI performance pass removed repeated early-turn analysis without
+simplifying strategic choices. Charter-ineligible population-one bases skip
+nerve-stapling psych analysis, social engineering resolves each category's
+available models once per decision, base allocation reuses the intake and
+consumption already collected for strategy, player economy reuses those exact
+allocations, and production planning reuses the same-turn garrison metrics.
+Measured nerve-stapling work fell from roughly 32-35 ms to 0-2 ms per faction,
+the duplicate player-economy phase from 24-32 ms to 1-2 ms, allocation psych
+work from 27-38 ms to 8-13 ms, and production planning from 97-107 ms to
+64-74 ms. Complete turn-one AI setup is now typically 142-187 ms per opponent,
+about 30-40% below the preceding 230-295 ms range, while warm startup remained
+4.904 seconds and the live base-screen/Hurry gate passed in 9.66 seconds.
+Ecology also snapshots worked tiles once per base instead of querying every
+workable tile individually; this removes repeated native calls on developed
+bases but does not claim a measurable turn-one improvement.
+
+The first 30-turn economy soak exposed an emergency-defense scoring error:
+movement speed let a 40-mineral Sea Lurk narrowly outrank a 10-mineral Scout
+Patrol as a coastal land base's replacement garrison. Removing movement from
+the stay-at-base emergency score made the cheaper defender win while preserving
+ordinary mobile-combat scoring. The original soak failed after 443.92 seconds
+with the Hive capital exposed; the identical seeded rerun passed in 440.29
+seconds with all six opponents sustaining defense, growth, research,
+production, solvency, and a terraforming, expansion, or infrastructure plan.
+All 128 GSE tests passed in 220.61 seconds before the soak rerun.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

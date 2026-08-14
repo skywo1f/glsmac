@@ -623,6 +623,9 @@ const update_diplomacy = (game, player) => {
 };
 
 const get_strategy_metrics = (game, player, bases, units) => {
+	const is_profiling = #typeof(game.get('f_ai_profile')) == 'Callable';
+	const profile_started = is_profiling ? #monotonic_ms() : 0;
+	let profile_phase_started = profile_started;
 	let former_count = 0;
 	let land_former_count = 0;
 	let sea_former_count = 0;
@@ -657,28 +660,45 @@ const get_strategy_metrics = (game, player, bases, units) => {
 			probe_count++;
 		}
 	}
+	const profile_units_ms = is_profiling ? #monotonic_ms() - profile_phase_started : 0;
+	profile_phase_started = is_profiling ? #monotonic_ms() : 0;
 
 	const tm = game.get_tm();
 	const players = game.get_players();
 	const all_units = game.get_um().get_units();
 	const all_bases = game.get_bm().get_bases();
+	const profile_lists_ms = is_profiling ? #monotonic_ms() - profile_phase_started : 0;
+	profile_phase_started = is_profiling ? #monotonic_ms() : 0;
 	const combat_power = get_combat_power_metrics(player, players, all_units);
+	const profile_combat_power_ms = is_profiling ? #monotonic_ms() - profile_phase_started : 0;
 	let underdefended_bases = 0;
 	let growth_stalled_bases = 0;
 	let unstable_bases = 0;
 	let base_labs = 0;
 	let sea_base_count = 0;
 	let base_metrics = {};
+	let base_allocations = {};
+	let profile_base_garrison_ms = 0;
+	let profile_base_yields_ms = 0;
+	let profile_base_psych_ms = 0;
 	for (base of bases) {
 		if (base.get_tile().is_water) {
 			sea_base_count++;
 		}
-		if (
-			combat.get_garrison_count(base, player.id) <
-			combat.get_required_garrison(tm, base, player.id, all_units, game)
-		) {
+		profile_phase_started = is_profiling ? #monotonic_ms() : 0;
+		const garrison_count = combat.get_garrison_count(base, player.id);
+		const required_garrison = combat.get_required_garrison(
+			tm,
+			base,
+			player.id,
+			all_units,
+			game
+		);
+		if (garrison_count < required_garrison) {
 			underdefended_bases++;
 		}
+		profile_base_garrison_ms += is_profiling ? #monotonic_ms() - profile_phase_started : 0;
+		profile_phase_started = is_profiling ? #monotonic_ms() : 0;
 		const intake = base.get_intake();
 		const consumption = base.get_consumption();
 		const population_limit = game.get('f_base_get_population_limit')(base);
@@ -689,7 +709,15 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		) {
 			growth_stalled_bases++;
 		}
-		const allocation = game.get('f_economy_get_base_allocation')(game, base);
+		profile_base_yields_ms += is_profiling ? #monotonic_ms() - profile_phase_started : 0;
+		profile_phase_started = is_profiling ? #monotonic_ms() : 0;
+		const allocation = game.get('f_economy_get_base_allocation')(
+			game,
+			base,
+			intake,
+			consumption
+		);
+		base_allocations['b' + #to_string(base.id)] = allocation;
 		const psych = allocation.psych.value + allocation.psych.bonus;
 		const stable_worker_count = game.get('f_base_get_stable_worker_count')(base, psych);
 		if (stable_worker_count < base.get_size()) {
@@ -697,6 +725,8 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		}
 		base_labs += allocation.labs.total;
 		base_metrics['b' + #to_string(base.id)] = {
+			garrison_count: garrison_count,
+			required_garrison: required_garrison,
 			intake: intake,
 			consumption: consumption,
 			psych: psych,
@@ -704,7 +734,21 @@ const get_strategy_metrics = (game, player, bases, units) => {
 			population_limit: population_limit,
 			labs: allocation.labs.total,
 		};
+		profile_base_psych_ms += is_profiling ? #monotonic_ms() - profile_phase_started : 0;
 	}
+	profile_phase_started = is_profiling ? #monotonic_ms() : 0;
+	const get_player_economy_from_allocations =
+		game.get('f_economy_get_player_from_allocations');
+	const energy_income = #is_defined(get_player_economy_from_allocations)
+		? get_player_economy_from_allocations(game, player, base_allocations)
+		: game.get('f_economy_get_player')(game, player);
+	const profile_energy_ms = is_profiling ? #monotonic_ms() - profile_phase_started : 0;
+	const profile_accounted_ms = profile_units_ms + profile_lists_ms + profile_combat_power_ms +
+		profile_base_garrison_ms + profile_base_yields_ms + profile_base_psych_ms +
+		profile_energy_ms;
+	const profile_other_ms = is_profiling
+		? #monotonic_ms() - profile_started - profile_accounted_ms
+		: 0;
 	return {
 		base_count: #sizeof(bases),
 		desired_base_count: strategy.get_desired_base_count(
@@ -726,13 +770,23 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		growth_stalled_bases: growth_stalled_bases,
 		unstable_bases: unstable_bases,
 		base_labs: base_labs,
-		energy_income: game.get('f_economy_get_player')(game, player),
+		energy_income: energy_income,
 		own_combat_power: combat_power.own,
 		strongest_rival_power: combat_power.strongest_rival,
 		players: players,
 		all_units: all_units,
 		all_bases: all_bases,
 		base_metrics: base_metrics,
+		strategy_profile: {
+			units_ms: profile_units_ms,
+			lists_ms: profile_lists_ms,
+			combat_power_ms: profile_combat_power_ms,
+			base_garrison_ms: profile_base_garrison_ms,
+			base_yields_ms: profile_base_yields_ms,
+			base_psych_ms: profile_base_psych_ms,
+			energy_ms: profile_energy_ms,
+			other_ms: profile_other_ms,
+		},
 	};
 };
 
@@ -1153,7 +1207,7 @@ const queue_production = (
 		const base_commerce = #is_defined(commerce_ledger[commerce_key])
 			? commerce_ledger[commerce_key].total
 			: 0;
-		const garrison_count = combat.get_garrison_count(base, player.id);
+		const garrison_count = base_metric.garrison_count;
 		const support_cost_resolver = game.get('f_social_get_support_cost');
 		const free_support_resolver = game.get('f_social_get_free_support');
 		const social_support_cost = #is_defined(support_cost_resolver)
@@ -1165,13 +1219,7 @@ const queue_production = (
 				supported_units += unit_abilities.get_support_cost(unit) * social_support_cost;
 			}
 		}
-		const required_garrison = combat.get_required_garrison(
-			tm,
-			base,
-			player.id,
-			all_units,
-			game
-		);
+		const required_garrison = base_metric.required_garrison;
 		const psych = base_metric.psych;
 		const intake = base_metric.intake;
 		const consumption = base_metric.consumption;
@@ -2098,6 +2146,7 @@ const play_turn = (game, player, done) => {
 			reason: reason,
 			ownership_ms: ownership_ms,
 			strategy_ms: strategy_ms,
+			strategy_profile: metrics.strategy_profile,
 			diplomacy_ms: diplomacy_ms,
 			social_ms: social_ms,
 			nerve_ms: nerve_ms,

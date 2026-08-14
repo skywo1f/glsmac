@@ -57,8 +57,9 @@ const get_headquarters_distance = (game, base, headquarters_by_owner) => {
 	return distance;
 };
 
-const get_base_energy = (game, base, facilities, headquarters_by_owner) => {
-	const gross = #max(base.get_intake().ENERGY, 0);
+const get_base_energy = (game, base, facilities, headquarters_by_owner, intake) => {
+	const base_intake = #is_defined(intake) ? intake : base.get_intake();
+	const gross = #max(base_intake.ENERGY, 0);
 	const efficiency = get_efficiency_rating(game, base, facilities);
 	const distance = get_headquarters_distance(game, base, headquarters_by_owner);
 	const denominator = 64 - ((4 - efficiency) * 8);
@@ -98,17 +99,17 @@ const get_base_economy_multiplier = (game, base, facilities, project_effects) =>
 	);
 };
 
-const get_base_allocation = (game, base) => {
-	const consumption = base.get_consumption();
+const get_base_allocation = (game, base, intake, consumption) => {
+	const base_consumption = #is_defined(consumption) ? consumption : base.get_consumption();
 	const facilities = get_effective_facilities(game, base);
 	const project_effects = get_project_effects(game, base);
-	const energy = get_base_energy(game, base, facilities);
-	const total_energy = energy.net - consumption.ENERGY;
+	const energy = get_base_energy(game, base, facilities, #undefined, intake);
+	const total_energy = energy.net - base_consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs = game.get('f_technology_get_base_labs')(
 		base,
 		energy,
-		consumption,
+		base_consumption,
 		facilities
 	);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
@@ -395,6 +396,23 @@ const get_player_economy = (game, player) => {
 	return result;
 };
 
+const get_player_economy_from_allocations = (game, player, allocations) => {
+	let result = get_player_commerce(game, player);
+	for (base of game.get_bm().get_bases()) {
+		if (base.get_owner().id != player.id) {
+			continue;
+		}
+		const allocation = allocations['b' + #to_string(base.id)];
+		if (!#is_defined(allocation)) {
+			result += get_base_economy(game, base);
+		} else {
+			result += allocation.economy.value + allocation.economy.bonus;
+		}
+		result += get_base_stockpile_energy(game, base);
+	}
+	return result;
+};
+
 const get_liquidation_candidate = (game, player) => {
 	let result = null;
 	for (base of game.get_bm().get_bases()) {
@@ -434,6 +452,7 @@ return (game) => {
 			return get_commerce_technology(game, player);
 		});
 		game.set('f_economy_get_player', get_player_economy);
+		game.set('f_economy_get_player_from_allocations', get_player_economy_from_allocations);
 		game.set('f_economy_get_hurry_cost', (base) => { return get_hurry_cost(game, base); });
 		game.set('f_economy_get_liquidation_candidate', get_liquidation_candidate);
 		game.on('turn', (e) => {

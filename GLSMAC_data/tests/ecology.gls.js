@@ -174,10 +174,15 @@ const runtime_tile = {
 	features: {monolith: false, xenofungus: false},
 	get_base: () => { return null; },
 };
+let runtime_is_tile_worked_calls = 0;
 const runtime_base = {
 	get_owner: () => { return runtime_owner; },
 	get_workable_tiles: () => { return [runtime_tile]; },
-	is_tile_worked: (tile) => { return false; },
+	get_worked_tiles: () => { return []; },
+	is_tile_worked: (tile) => {
+		runtime_is_tile_worked_calls++;
+		return false;
+	},
 	get_facilities: () => { return []; },
 	get_intake: () => { return {MINERALS: 100}; },
 };
@@ -210,6 +215,7 @@ values.f_ecology_rollback_facility_completion(clean_completion);
 test.assert(runtime_clean_mineral_facilities == 0);
 
 callbacks.turn({});
+test.assert(runtime_is_tile_worked_calls == 0);
 test.assert(#sizeof(submitted_events) == 1);
 test.assert(submitted_events[0].name == 'fungal_bloom');
 test.assert(submitted_events[0].data.base == runtime_base);

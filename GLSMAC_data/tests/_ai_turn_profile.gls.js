@@ -37,6 +37,17 @@
 				'AI_TURN_PROFILE_SAMPLE: faction=' + sample.faction_id +
 				' total_ms=' + #to_string(sample.total_ms) +
 				' setup_ms=' + #to_string(sample.setup_ms) +
+				' strategy_ms=' + #to_string(sample.strategy_ms) +
+				' strategy_units_ms=' + #to_string(sample.strategy_profile.units_ms) +
+				' strategy_lists_ms=' + #to_string(sample.strategy_profile.lists_ms) +
+				' strategy_power_ms=' + #to_string(sample.strategy_profile.combat_power_ms) +
+				' strategy_garrison_ms=' + #to_string(sample.strategy_profile.base_garrison_ms) +
+				' strategy_yields_ms=' + #to_string(sample.strategy_profile.base_yields_ms) +
+				' strategy_psych_ms=' + #to_string(sample.strategy_profile.base_psych_ms) +
+				' strategy_energy_ms=' + #to_string(sample.strategy_profile.energy_ms) +
+				' strategy_other_ms=' + #to_string(sample.strategy_profile.other_ms) +
+				' social_ms=' + #to_string(sample.social_ms) +
+				' nerve_ms=' + #to_string(sample.nerve_ms) +
 				' action_ms=' + #to_string(sample.action_ms) +
 				' production_ms=' + #to_string(sample.production_ms) +
 				' colony_ms=' + #to_string(sample.colony_ms) +

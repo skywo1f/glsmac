@@ -28,6 +28,18 @@ const can_accept_former_owner_grievance = (game, player, base) => {
 };
 
 const should_staple = (game, player, base) => {
+	const charter_active = game.get('f_nerve_stapling_is_un_charter_active')();
+	if (charter_active) {
+		const difficulty = #is_defined(DIFFICULTY_RANKS[player.difficulty_level])
+			? DIFFICULTY_RANKS[player.difficulty_level]
+			: DIFFICULTY_RANKS.Transcend;
+		if (
+			difficulty < DIFFICULTY_RANKS.Librarian || base.get_size() < 4 ||
+			player.get_sanction_turns() > 0
+		) {
+			return false;
+		}
+	}
 	const error = game.get('f_nerve_stapling_get_error')(base, player.id);
 	if (#is_defined(error) || game.get('f_nerve_stapling_get_turns')(base) > 0) {
 		return false;
@@ -44,15 +56,10 @@ const should_staple = (game, player, base) => {
 	if (psych.drones <= 0 || psych.drones <= psych.talents) {
 		return false;
 	}
-	const charter_active = game.get('f_nerve_stapling_is_un_charter_active')();
 	if (!charter_active) {
 		return psych.is_rioting || psych.drones > psych.talents + 1;
 	}
-	const difficulty = #is_defined(DIFFICULTY_RANKS[player.difficulty_level])
-		? DIFFICULTY_RANKS[player.difficulty_level]
-		: DIFFICULTY_RANKS.Transcend;
-	return difficulty >= DIFFICULTY_RANKS.Librarian && psych.is_rioting &&
-		base.get_size() >= 4 && player.get_sanction_turns() == 0;
+	return psych.is_rioting;
 };
 
 const manage = (game, player, bases) => {

@@ -8,6 +8,7 @@ let psych = {drones: 3, talents: 0, is_rioting: true};
 let emitted = [];
 let sanction_turns = 0;
 let grievance = {wants_revenge: false};
+let psych_calls = 0;
 
 const player = {
 	id: 1,
@@ -32,7 +33,10 @@ const values = {
 	f_nerve_stapling_get_turns: (target) => { return turns; },
 	f_nerve_stapling_get_attempts: (target) => { return attempts; },
 	f_nerve_stapling_is_un_charter_active: () => { return charter_active; },
-	f_base_get_psych: (target) => { return psych; },
+	f_base_get_psych: (target) => {
+		psych_calls++;
+		return psych;
+	},
 };
 const game = {
 	get: (name) => { return values[name]; },
@@ -64,6 +68,11 @@ test.assert(nerve_stapling.should_staple(game, player, base));
 base_values.former_owner_id = #undefined;
 
 charter_active = true;
+size = 1;
+psych_calls = 0;
+test.assert(!nerve_stapling.should_staple(game, player, base));
+test.assert(psych_calls == 0);
+size = 8;
 test.assert(nerve_stapling.should_staple(game, player, base));
 sanction_turns = 2;
 test.assert(!nerve_stapling.should_staple(game, player, base));

@@ -224,7 +224,7 @@ const score_unit = (def, context) => {
 		const reactor_power = get_reactor_power(def);
 		return EMERGENCY_GARRISON_SCORE + def.defense * reactor_power * 1000 +
 			def.offense * reactor_power * 100 +
-			#round(def.movement_per_turn * 10.0) + get_unit_ability_score(def, context) -
+			get_unit_ability_score(def, context) -
 			get_mineral_cost(def, context) -
 			get_unit_support_penalty(def, context);
 	}

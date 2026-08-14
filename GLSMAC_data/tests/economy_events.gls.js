@@ -27,6 +27,8 @@ other_player = {
 };
 let positive_economy_multiplier = 0.0;
 let positive_psych_multiplier = 0.0;
+let positive_intake_calls = 0;
+let positive_consumption_calls = 0;
 let stockpiling_energy = false;
 let stockpile_minerals = 7;
 const stockpile_energy = {
@@ -39,8 +41,14 @@ const positive_base = {
 	id: 1,
 	get_owner: () => { return player; },
 	get_tile: () => { return positive_tile; },
-	get_intake: () => { return {ENERGY: 10, MINERALS: 7}; },
-	get_consumption: () => { return {ENERGY: 0, MINERALS: 0}; },
+	get_intake: () => {
+		positive_intake_calls++;
+		return {ENERGY: 10, MINERALS: 7};
+	},
+	get_consumption: () => {
+		positive_consumption_calls++;
+		return {ENERGY: 0, MINERALS: 0};
+	},
 	get_production: () => { return stockpiling_energy ? stockpile_energy : #undefined; },
 	has_facility: (id) => { return id == 'Headquarters'; },
 	get_facilities: () => { return [{
@@ -117,6 +125,22 @@ test.assert(deficit_allocation.psych.value == 0);
 const positive_allocation = values.f_economy_get_base_allocation(game, positive_base);
 test.assert(positive_allocation.psych.value == 2);
 test.assert(positive_allocation.psych.bonus == 4);
+positive_intake_calls = 0;
+positive_consumption_calls = 0;
+const reused_allocation = values.f_economy_get_base_allocation(
+	game,
+	positive_base,
+	{ENERGY: 10, MINERALS: 7},
+	{ENERGY: 0, MINERALS: 0}
+);
+test.assert(reused_allocation == positive_allocation);
+test.assert(positive_intake_calls == 0);
+test.assert(positive_consumption_calls == 0);
+const player_allocations = {b1: positive_allocation, b2: deficit_allocation};
+test.assert(values.f_economy_get_player_from_allocations(game, player, player_allocations) == 1);
+stockpiling_energy = true;
+test.assert(values.f_economy_get_player_from_allocations(game, player, player_allocations) == 4);
+stockpiling_energy = false;
 test.assert(values.f_economy_get_base_psych(game, positive_base) == 6);
 positive_psych_multiplier = 0.5;
 test.assert(values.f_economy_get_base_psych(game, positive_base) == 7);

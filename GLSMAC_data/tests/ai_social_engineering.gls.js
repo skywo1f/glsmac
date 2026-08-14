@@ -24,11 +24,16 @@ const player = {
 	has_technology: (id) => { return #is_defined(technologies[id]); },
 };
 
+let available_calls = 0;
 const choose = (priorities) => {
+	available_calls = 0;
 	return ai_social.choose(
 		player,
 		values.f_social_get_categories(),
-		values.f_social_get_available_choices,
+		(player, category) => {
+			available_calls++;
+			return values.f_social_get_available_choices(player, category);
+		},
 		values.f_social_get_ratings_for_choices,
 		priorities
 	);
@@ -39,6 +44,7 @@ let selected = choose({
 	expansion: 0, terraforming: 0,
 });
 test.assert(ai_social.choices_equal(selected, choices));
+test.assert(available_calls == 4);
 
 technologies.EthicalCalculus = true;
 selected = choose({
@@ -50,6 +56,7 @@ test.assert(selected.economics == 'Simple');
 test.assert(selected.values == 'Survival');
 test.assert(selected.future_society == 'None');
 test.assert(!ai_social.choices_equal(selected, choices));
+test.assert(available_calls == 4);
 
 const military_score = ai_social.score_ratings({
 	economy: 0, effic: 0, support: 2, talent: 0, morale: 2,

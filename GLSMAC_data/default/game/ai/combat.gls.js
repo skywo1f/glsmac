@@ -70,12 +70,13 @@ const can_threaten_tile = (unit, tile) => {
 
 const get_required_garrison = (tm, base, player_id, units, game) => {
 	let result = 1;
+	const tile = base.get_tile();
 	for (unit of units) {
 		if (
 			unit.owner != player_id &&
 			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit)) &&
-			can_threaten_tile(unit, base.get_tile()) &&
-			tm.get_distance(base.get_tile(), unit.get_tile()) <= THREAT_DISTANCE
+			can_threaten_tile(unit, tile) &&
+			tm.get_distance(tile, unit.get_tile()) <= THREAT_DISTANCE
 		) {
 			result++;
 			if (result >= MAX_GARRISON) {
