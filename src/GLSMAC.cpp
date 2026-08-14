@@ -351,22 +351,49 @@ WRAPIMPL_BEGIN( GLSMAC )
 			"has_quicksave",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				return VALUE( gse::value::Bool, , util::FS::FileExists( GetQuicksavePath() ) );
+				return VALUE( gse::value::Bool, , util::FS::FileExists( GetSavePath( 0 ) ) );
+			} )
+		},
+		{
+			"has_save_game",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( slot, 0, Int );
+				if ( slot < 1 || slot > MANUAL_SAVE_SLOT_COUNT ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Save slot must be between 1 and " + std::to_string( MANUAL_SAVE_SLOT_COUNT ) );
+				}
+				return VALUE( gse::value::Bool, , util::FS::FileExists( GetSavePath( slot ) ) );
 			} )
 		},
 		{
 			"save_game",
 			NATIVE_CALL( this ) {
-				N_EXPECT_ARGS( 0 );
-				SaveGame( GSE_CALL );
+				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
+				size_t save_slot = 0;
+				if ( !arguments.empty() ) {
+					N_GETVALUE( slot, 0, Int );
+					if ( slot < 1 || slot > MANUAL_SAVE_SLOT_COUNT ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Save slot must be between 1 and " + std::to_string( MANUAL_SAVE_SLOT_COUNT ) );
+					}
+					save_slot = slot;
+				}
+				SaveGame( GSE_CALL, save_slot );
 				return VALUE( gse::value::Undefined );
 			} )
 		},
 		{
 			"load_game",
 			NATIVE_CALL( this ) {
-				N_EXPECT_ARGS( 0 );
-				LoadGame( GSE_CALL );
+				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
+				size_t save_slot = 0;
+				if ( !arguments.empty() ) {
+					N_GETVALUE( slot, 0, Int );
+					if ( slot < 1 || slot > MANUAL_SAVE_SLOT_COUNT ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, "Save slot must be between 1 and " + std::to_string( MANUAL_SAVE_SLOT_COUNT ) );
+					}
+					save_slot = slot;
+				}
+				LoadGame( GSE_CALL, save_slot );
 				return VALUE( gse::value::Undefined );
 			} )
 		},
@@ -749,18 +776,21 @@ game::backend::Player* GLSMAC::AddAIPlayerSlot() {
 	return player;
 }
 
-const std::string GLSMAC::GetQuicksavePath() const {
+const std::string GLSMAC::GetSavePath( const size_t slot ) const {
+	ASSERT( slot <= MANUAL_SAVE_SLOT_COUNT, "invalid save slot" );
 	return util::FS::GeneratePath({
 		g_engine->GetConfig()->GetPrefix() + "saves",
-		"quicksave.glsmac",
+		slot == 0
+			? "quicksave.glsmac"
+			: "save" + std::to_string( slot ) + ".glsmac",
 	});
 }
 
-void GLSMAC::SaveGame( GSE_CALLABLE ) {
+void GLSMAC::SaveGame( GSE_CALLABLE, const size_t slot ) {
 	if ( !m_is_game_running || !m_game ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game is not running" );
 	}
-	const auto path = GetQuicksavePath();
+	const auto path = GetSavePath( slot );
 	util::FS::CreateDirectoryIfNotExists( util::FS::GetDirName( path ) );
 	auto* const game = g_engine->GetGame();
 	const auto mt_id = game->MT_SaveGame( path );
@@ -775,7 +805,7 @@ void GLSMAC::SaveGame( GSE_CALLABLE ) {
 	game->MT_DestroyResponse( response );
 }
 
-void GLSMAC::LoadGame( GSE_CALLABLE ) {
+void GLSMAC::LoadGame( GSE_CALLABLE, const size_t slot ) {
 	if ( !m_state ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
 	}
@@ -786,9 +816,14 @@ void GLSMAC::LoadGame( GSE_CALLABLE ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game setup is already populated" );
 	}
 
-	const auto path = GetQuicksavePath();
+	const auto path = GetSavePath( slot );
 	if ( !util::FS::FileExists( path ) ) {
-		GSE_ERROR( gse::EC.GAME_ERROR, "No quicksave exists" );
+		GSE_ERROR(
+			gse::EC.GAME_ERROR,
+			slot == 0
+				? "No quicksave exists"
+				: "No saved game exists in slot " + std::to_string( slot )
+		);
 	}
 
 	try {
@@ -850,7 +885,11 @@ void GLSMAC::LoadGame( GSE_CALLABLE ) {
 		StartGame( GSE_CALL );
 	}
 	catch ( const std::exception& e ) {
-		GSE_ERROR( gse::EC.GAME_ERROR, "Failed to load quicksave: " + (std::string)e.what() );
+		GSE_ERROR(
+			gse::EC.GAME_ERROR,
+			( slot == 0 ? "Failed to load quicksave: " : "Failed to load saved game: " ) +
+				(std::string)e.what()
+		);
 	}
 }
 

@@ -55,14 +55,19 @@ def main():
     parser.add_argument("--timeout", type=int, default=120)
     args = parser.parse_args()
 
-    save_path = args.output_dir / "saves" / "quicksave.glsmac"
+    quicksave_path = args.output_dir / "saves" / "quicksave.glsmac"
+    save_path = args.output_dir / "saves" / "save1.glsmac"
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    if quicksave_path.exists():
+        quicksave_path.unlink()
     if save_path.exists():
         save_path.unlink()
 
     run_phase(args, "SAVE_LOAD_RUNTIME_SAVE_PASS")
     if not save_path.is_file() or save_path.stat().st_size == 0:
-        raise RuntimeError("save phase did not produce a non-empty quicksave")
+        raise RuntimeError("save phase did not produce a non-empty manual save")
+    if not quicksave_path.is_file() or quicksave_path.stat().st_size == 0:
+        raise RuntimeError("save phase did not preserve quicksave compatibility")
 
     run_phase(args, "SAVE_LOAD_RUNTIME_RESUME_PASS")
     first_load = run_phase(args, "SAVE_LOAD_RUNTIME_LOAD_PASS")

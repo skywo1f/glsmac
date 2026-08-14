@@ -6,7 +6,7 @@
 	const energy_stamp = 4321;
 	const nutrient_stamp = 37;
 	const mineral_stamp = 23;
-	let loading_quicksave = false;
+	let loading_save = false;
 	let mutation_requested = false;
 	let resume_turn_requested = false;
 	let resume_save_requested = false;
@@ -101,7 +101,7 @@
 
 		game.on('turn', (e) => {
 			const turn_id = e.year - 2100;
-			if (!loading_quicksave || turn_id != 2 || resume_save_requested || exit_scheduled) {
+			if (!loading_save || turn_id != 2 || resume_save_requested || exit_scheduled) {
 				return;
 			}
 			resume_save_requested = true;
@@ -112,7 +112,7 @@
 					return;
 				}
 				try {
-					glsmac.save_game();
+					glsmac.save_game(1);
 				} catch {
 					: (save_error) => {
 						fail(save_error.message);
@@ -128,7 +128,7 @@
 			if (exit_scheduled) {
 				return;
 			}
-			if (loading_quicksave) {
+			if (loading_save) {
 				const expected_turn = game.get_turn();
 				const error = expected_turn == 1
 					? verify_state(1, energy_stamp, nutrient_stamp, mineral_stamp)
@@ -177,6 +177,7 @@
 					let save_failed = false;
 					try {
 						glsmac.save_game();
+						glsmac.save_game(1);
 					} catch {
 						: (e) => {
 							save_failed = true;
@@ -188,6 +189,10 @@
 					}
 					if (!glsmac.has_quicksave()) {
 						fail('quicksave file was not created');
+						return false;
+					}
+					if (!glsmac.has_save_game(1)) {
+						fail('manual save file was not created');
 						return false;
 					}
 					#print('SAVE_LOAD_RUNTIME_SAVE_PASS');
@@ -205,12 +210,12 @@
 	});
 
 	glsmac.on('mainmenu_show', (e) => {
-		loading_quicksave = glsmac.has_quicksave();
+		loading_save = glsmac.has_save_game(1);
 		try {
 			glsmac.init();
 			e.settings.local.game_mode = 'single';
-			if (loading_quicksave) {
-				glsmac.load_game();
+			if (loading_save) {
+				glsmac.load_game(1);
 			}
 			else {
 				e.settings.global.map.size_x = 20;

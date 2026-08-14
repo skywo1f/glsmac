@@ -20,8 +20,8 @@ scenarios, for:
   assignment, production queues, support, and persistent social engineering;
 - versioned offline single-player quicksave/load with authoritative map,
   roster, faction, unit, base, animation, turn, victory, and random-state
-  restoration; the current UI provides one rolling quicksave slot and does not
-  claim compatibility with original SMAC saves;
+  restoration; the current UI provides one rolling quicksave plus five manual
+  save slots and does not claim compatibility with original SMAC saves;
 - all 16 original social models, original-faction rating modifiers and immunity,
   technology gating, the complete difficulty-scaled upheaval cost table, atomic
   energy accounting, cost-aware human selection UI, and strategy-weighted AI
@@ -1194,6 +1194,15 @@ passed in 24.96 seconds after verifying the historical base on the first resumed
 turn callback. That reconnect gate also replaced stale turn-one assumptions for
 technology-gated Needlejet and Supply Crawler definitions, legal zero-lab
 research starts, and post-turn fixture stamps.
+
+Offline single-player saving now provides five validated manual slots alongside
+the existing quicksave. The in-game GAME menu writes any slot through the same
+versioned authoritative snapshot path, and the main menu reports empty slots
+before attempting a load. Existing no-argument quicksave calls remain
+compatible. The focused UI test exercised all six save commands plus empty and
+occupied load choices, and the installed-asset runtime wrote both formats,
+restarted from manual slot 1, advanced and overwrote it, then restored it twice
+with identical random state in 20.99 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

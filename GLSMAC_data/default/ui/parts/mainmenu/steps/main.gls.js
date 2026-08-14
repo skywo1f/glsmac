@@ -21,21 +21,8 @@ return (i) => {
 			['Scenario', () => {
 				i.steps.notimpl(i);
 			}],
-			['Load Quicksave', () => {
-				if (!i.glsmac.has_quicksave()) {
-					i.popup.error('No quicksave exists yet.');
-					return;
-				}
-				try {
-					i.glsmac.init();
-					i.settings.local.game_mode = 'single';
-					i.glsmac.load_game();
-				} catch {
-					: (e) => {
-						i.glsmac.deinit();
-						i.popup.error(e.message);
-					}
-				}
+			['Load Game', () => {
+				i.steps.load_game(i);
 			}],
 			['Multiplayer', () => {
 				i.glsmac.init();

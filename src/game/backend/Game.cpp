@@ -1557,10 +1557,10 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 					THROW( "Game is not running" );
 				}
 				if ( !m_state->IsMaster() || m_state->m_connection ) {
-					THROW( "Quicksave currently supports offline games only" );
+					THROW( "Saving currently supports offline games only" );
 				}
 				if ( !m_player || m_player->GetRole() != Player::PR_SINGLE ) {
-					THROW( "Quicksave requires a single-player commander" );
+					THROW( "Saving requires a single-player commander" );
 				}
 
 				types::Buffer buf;

@@ -142,6 +142,7 @@ return (m) => {
 		for (step of [
 			'notimpl',
 			'main',
+			'load_game',
 			'start_game',
 			'select_mapsize',
 			'customize_ocean_coverage',
