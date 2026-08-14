@@ -394,6 +394,10 @@ scenarios, for:
   climate state instead. This
   prevents hidden-base fungal blooms, major volcanic eruptions, and future
   terrain-changing private events from silently diverging the client map.
+  Withheld sea-level events also queue a reference-free public announcement
+  after the terrain projection, so every participant receives the global
+  message and `sea_level_changed` refresh without exposing hidden casualty or
+  base details.
   Sea-level casualty rolls carry tracked base references so clients without
   full access cannot infer hidden base IDs or casualty data from the event
   payload before receiving their filtered projections. Planet Buster outcome
@@ -1164,6 +1168,19 @@ faster. Every faction sustained growth, research, production, solvency,
 garrisons, stability, and a viable terraforming, expansion, or infrastructure
 plan. Focused scheduler, colonization, pathfinding, conquest, expansion, and sea
 colony runtimes also passed.
+
+The multiplayer information-boundary audit now exercises a real global
+sea-level change while the client lacks private access to a host base. The
+destructive event remains withheld because its casualty resolution references
+every affected base; an ordered, reference-free announcement delivers the
+public message and refresh only after the projected terrain and sea level are
+current. The host/client runtime verified exactly one notification on both
+sides, synchronized sea level, and continued redaction of the foreign base in
+22.03 seconds. Extending this phase exposed and fixed three fixture assumptions:
+research targets now follow the actual technology graph for every faction,
+zero-labs starts are legal, and live player-privacy checks complete after a
+post-snapshot readiness handshake but before intentional infiltration grants
+full intelligence. The focused sea-level script test passed in 1.23 seconds.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

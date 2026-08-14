@@ -232,10 +232,6 @@ return {
 			0
 		);
 
-		const direction = e.data.amount > 0 ? 'rose' : 'fell';
-		e.game.message(
-			'Sea levels ' + direction + ' by ' + #to_string(#abs(e.data.amount)) + ' metres.'
-		);
 		for (base of applied.bases) {
 			if (base.destroyed) {
 				e.game.message(base.name + ' was submerged and lost.');
@@ -251,10 +247,12 @@ return {
 				#to_string(#sizeof(applied.units)) + ' units were lost to changing coastlines.'
 			);
 		}
-		e.game.trigger('sea_level_changed', {
-			amount: e.data.amount,
-			level: e.game.tm.get_sea_level(),
-		});
+		if (#typeof(e.game.is_master) != 'Callable' || e.game.is_master()) {
+			e.game.event('announce_sea_level_change', {
+				amount: e.data.amount,
+				level: e.game.tm.get_sea_level(),
+			});
+		}
 		return applied;
 	},
 

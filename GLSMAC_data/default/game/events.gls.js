@@ -27,6 +27,7 @@ return (game) => {
 		'terraform_tile',
 		'cancel_terraform',
 		'change_sea_level',
+		'announce_sea_level_change',
 		'define_base_pop',
 		'define_base_facility',
 		'spawn_base',

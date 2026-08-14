@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const technologies = #include('../default/technologies');
 
 	let lobby_timer_started = false;
 	let map_size_requested = false;
@@ -39,12 +40,19 @@
 	let client_base_snapshot_probe_complete = false;
 	let client_base_infiltration_probe_complete = false;
 	let client_player_privacy_probe_complete = false;
+	let client_player_privacy_acknowledged = false;
+	let client_turn_one_ready = false;
 	let client_player_update_callback_seen = false;
 	let client_council_projection_refresh = false;
 	let client_live_visibility_probe_complete = false;
 	let mixed_unit_privacy_acknowledged = false;
 	let private_map_projection_phase = 0;
 	let private_map_probe = null;
+	let sea_level_notification_seen = false;
+	let sea_level_message_count = 0;
+	let client_sea_level_probe_complete = false;
+	let client_sea_level_acknowledged = false;
+	let sea_level_change_requested = false;
 	let terraform_site_coords = null;
 	const terraform_order = 'forest';
 	const combat_base_name = 'Multiplayer Capture Probe';
@@ -154,24 +162,40 @@
 			if (state.technologies != starting_technologies) {
 				return 'faction starting technologies are invalid';
 			}
+			let target_is_available = false;
+			for (available_id of technologies.get_available_targets(state.technologies)) {
+				if (available_id == state.target) {
+					target_is_available = true;
+					break;
+				}
+			}
 			if (starts_with_ecology) {
 				if (
 					!player.has_technology('CentauriEcology') ||
-					state.target != 'Biogenetics' ||
-					(expect_progress ? state.progress <= 0 : state.progress != 0)
+					!target_is_available ||
+					(expect_progress ? state.progress < 0 : state.progress != 0)
 				) {
 					return 'starting Centauri Ecology progression is invalid';
 				}
 				return #undefined;
 			}
 			const base = find_base_for_player(player.id);
+			const has_ecology = player.has_technology('CentauriEcology');
+			const can_produce_former = base != null && base.can_set_production('unit', 'Former');
 			if (
-				player.has_technology('CentauriEcology') ||
-				state.target != 'Biogenetics' ||
-				(expect_progress ? state.progress <= 0 : state.progress != 0) ||
-				(base != null && base.can_set_production('unit', 'Former'))
+				has_ecology ||
+				!target_is_available ||
+				(expect_progress ? state.progress < 0 : state.progress != 0) ||
+				can_produce_former
 			) {
-				return 'Centauri Ecology progress or Former production gate is invalid';
+				return
+					'Centauri Ecology progress or Former production gate is invalid (' +
+					'faction=' + player.get_faction().id +
+					', target=' + state.target +
+					', available=' + #to_string(target_is_available) +
+					', progress=' + #to_string(state.progress) +
+					', ecology=' + #to_string(has_ecology) +
+					', former=' + #to_string(can_produce_former) + ')';
 			}
 			return #undefined;
 		};
@@ -214,6 +238,35 @@
 				return;
 			}
 			client_council_projection_refresh = true;
+		});
+		game.on('message', (event) => {
+			if (event.text == 'Sea levels rose by 1 metres.') {
+				sea_level_message_count++;
+			}
+		});
+		game.on('sea_level_changed', (event) => {
+			if (
+				sea_level_notification_seen || sea_level_message_count != 1 ||
+				event.amount != 1 || event.level != 1 ||
+				game.get_tm().get_sea_level() != event.level
+			) {
+				#print('MULTIPLAYER_SMOKE_FAIL_' + role + ': sea-level notification state is invalid');
+				glsmac.exit();
+				return;
+			}
+			sea_level_notification_seen = true;
+			if (!game.is_master()) {
+				for (base of game.get_bm().get_bases()) {
+					if (base.get_owner().id == 0 && !base.is_redacted) {
+						#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: sea-level projection revealed private base state');
+						glsmac.exit();
+						return;
+					}
+				}
+				client_sea_level_probe_complete = true;
+				#print('MULTIPLAYER_SMOKE_SEA_LEVEL_PROJECTION_PASS_CLIENT');
+				game.event('multiplayer_smoke_sea_level_seen', {});
+			}
 		});
 
 		const find_founding_site_coords = () => {
@@ -704,6 +757,38 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_player_privacy_seen', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can acknowledge projected player privacy';
+				}
+			},
+			apply: (e) => {
+				const previous = client_player_privacy_acknowledged;
+				client_player_privacy_acknowledged = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				client_player_privacy_acknowledged = e.applied.previous;
+			},
+		});
+
+		game.register_event('multiplayer_smoke_turn_one_ready', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can signal turn-one projection readiness';
+				}
+			},
+			apply: (e) => {
+				const previous = client_turn_one_ready;
+				client_turn_one_ready = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				client_turn_one_ready = e.applied.previous;
+			},
+		});
+
 		game.register_event('multiplayer_smoke_base_snapshot_probe', {
 			validate: (e) => {
 				if (e.caller != 0) {
@@ -982,6 +1067,22 @@
 			},
 		});
 
+		game.register_event('multiplayer_smoke_sea_level_seen', {
+			validate: (e) => {
+				if (e.caller != get_client_player_id()) {
+					return 'Only the client can acknowledge projected sea-level state';
+				}
+			},
+			apply: (e) => {
+				const previous = client_sea_level_acknowledged;
+				client_sea_level_acknowledged = true;
+				return {previous: previous};
+			},
+			rollback: (e) => {
+				client_sea_level_acknowledged = e.applied.previous;
+			},
+		});
+
 		game.register_event('multiplayer_smoke_relocate_hidden_unit', {
 			unit_visibility: 'private',
 			validate: (e) => {
@@ -1249,15 +1350,22 @@
 			let wait_ticks = 0;
 			#async(100, () => {
 				wait_ticks++;
-				if (private_map_projection_phase == 1) {
+				if (private_map_projection_phase == 1 && !sea_level_change_requested) {
+					sea_level_change_requested = true;
 					#print('MULTIPLAYER_SMOKE_PRIVATE_MAP_PROJECTION_PASS_HOST');
+					game.event('change_sea_level', {amount: 1});
+				}
+				if (sea_level_notification_seen && client_sea_level_acknowledged) {
+					#print('MULTIPLAYER_SMOKE_SEA_LEVEL_PROJECTION_PASS_HOST');
 					continue_host_turn_one();
 					return false;
 				}
 				if (wait_ticks >= 300) {
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_HOST: private map projection probe timed out at phase ' +
-						#to_string(private_map_projection_phase)
+						#to_string(private_map_projection_phase) + ', sea=' +
+						#to_string(sea_level_notification_seen) + '/' +
+						#to_string(client_sea_level_acknowledged)
 					);
 					glsmac.exit();
 					return false;
@@ -1281,6 +1389,46 @@
 				}
 				if (wait_ticks >= 100) {
 					#print('MULTIPLAYER_SMOKE_FAIL_HOST: mixed unit privacy probe timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const wait_for_host_player_privacy_probe = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (client_player_privacy_acknowledged) {
+					start_host_mixed_unit_privacy_probe();
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: player privacy acknowledgement timed out');
+					glsmac.exit();
+					return false;
+				}
+				return true;
+			});
+		};
+
+		const wait_for_client_turn_one_ready = () => {
+			let wait_ticks = 0;
+			#async(100, () => {
+				wait_ticks++;
+				if (client_turn_one_ready) {
+					game.event('multiplayer_smoke_player_privacy_update', {});
+					if (!prepare_client_movement_probe()) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: movement probe could not be prepared');
+						glsmac.exit();
+						return false;
+					}
+					wait_for_host_player_privacy_probe();
+					return false;
+				}
+				if (wait_ticks >= 100) {
+					#print('MULTIPLAYER_SMOKE_FAIL_HOST: client turn-one readiness timed out');
 					glsmac.exit();
 					return false;
 				}
@@ -1458,6 +1606,7 @@
 					}
 					client_player_privacy_probe_complete = true;
 					#print('MULTIPLAYER_SMOKE_PLAYER_PRIVACY_PASS_CLIENT');
+					game.event('multiplayer_smoke_player_privacy_seen', {});
 					return false;
 				}
 				if (wait_ticks >= 100) {
@@ -1826,15 +1975,10 @@
 				}
 				#print('MULTIPLAYER_SMOKE_RESEARCH_INITIAL_PASS_' + role);
 				if (game.is_master()) {
-					game.event('multiplayer_smoke_player_privacy_update', {});
-					if (!prepare_client_movement_probe()) {
-						#print('MULTIPLAYER_SMOKE_FAIL_HOST: movement probe could not be prepared');
-						glsmac.exit();
-						return;
-					}
-					start_host_mixed_unit_privacy_probe();
+					wait_for_client_turn_one_ready();
 				}
 				else {
+					game.event('multiplayer_smoke_turn_one_ready', {});
 					wait_for_player_privacy_update();
 					start_client_mixed_unit_privacy_probe();
 					start_client_private_map_projection_probe();
@@ -1849,7 +1993,8 @@
 							client_base_infiltration_probe_complete &&
 							client_player_privacy_probe_complete &&
 							client_terraform_probe_complete &&
-							client_live_visibility_probe_complete
+							client_live_visibility_probe_complete &&
+							client_sea_level_probe_complete
 						) {
 							if (!client_event_probe_complete) {
 								client_event_probe_complete = true;
@@ -1948,6 +2093,8 @@
 					(!game.is_master() && !client_base_snapshot_probe_complete) ||
 					(!game.is_master() && !client_base_infiltration_probe_complete) ||
 					(!game.is_master() && !client_player_privacy_probe_complete) ||
+					(!game.is_master() && !client_sea_level_probe_complete) ||
+					!sea_level_notification_seen || sea_level_message_count != 1 ||
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||

@@ -1,4 +1,5 @@
 const change_sea_level = #include('../default/game/event/change_sea_level');
+const announce_sea_level_change = #include('../default/game/event/announce_sea_level_change');
 
 const key = (prefix, id) => { return prefix + #to_string(id); };
 
@@ -13,6 +14,7 @@ const make_world = () => {
 	let tiles = [];
 	let sea_level = 0;
 	let terrain_restores = 0;
+	let queued_events = [];
 
 	const players = [
 		{id: 0, name: 'Host'},
@@ -139,6 +141,8 @@ const make_world = () => {
 			return 2;
 		}},
 		get_player: get_player,
+		is_master: () => { return true; },
+		event: (name, data) => { queued_events :+{name: name, data: data}; },
 		message: (message) => { messages :+message; },
 		trigger: (name, data) => { triggers :+{name: name, data: data}; },
 	};
@@ -265,6 +269,7 @@ const make_world = () => {
 		},
 		get_messages: () => { return messages; },
 		get_triggers: () => { return triggers; },
+		get_queued_events: () => { return queued_events; },
 		get_terrain_restores: () => { return terrain_restores; },
 	};
 };
@@ -306,8 +311,31 @@ test.assert(
 );
 test.assert(#sizeof(event.applied.units) == 3);
 test.assert(#sizeof(event.applied.bases) == 3);
+test.assert(#sizeof(world.get_messages()) == 4);
+test.assert(#sizeof(world.get_triggers()) == 0);
+test.assert(#sizeof(world.get_queued_events()) == 1);
+const queued_events = world.get_queued_events();
+const announcement = queued_events[0];
+test.assert(announcement.name == 'announce_sea_level_change');
+let announcement_event = {
+	caller: 1,
+	data: announcement.data,
+	game: world.game,
+};
+test.assert(
+	announce_sea_level_change.validate(announcement_event) ==
+	'Only the host can announce a sea-level change'
+);
+announcement_event.caller = 0;
+test.assert(!#is_defined(announce_sea_level_change.validate(announcement_event)));
+announce_sea_level_change.apply(announcement_event);
 test.assert(#sizeof(world.get_messages()) == 5);
 test.assert(#sizeof(world.get_triggers()) == 1);
+const triggers = world.get_triggers();
+test.assert(triggers[0] == {
+	name: 'sea_level_changed',
+	data: {amount: 100, level: 100},
+});
 
 change_sea_level.rollback(event);
 test.assert(world.game.tm.get_sea_level() == 0);
