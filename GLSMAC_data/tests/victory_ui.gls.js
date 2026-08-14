@@ -35,7 +35,10 @@ victory_popup.init({
 	glsmac: {reset: () => {}},
 	modules: {
 		popup: {
-			show: (name) => { shown_popup = name; },
+			show: (name) => {
+				shown_popup = name;
+				victory_popup.on_show();
+			},
 		},
 	},
 	create: (title, width, height, build) => {

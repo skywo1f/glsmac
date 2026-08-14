@@ -85,8 +85,7 @@
 				}
 				return null;
 			};
-			const base_screen_started = #monotonic_ms();
-			game.select_base(human_base);
+			let base_screen_started = 0;
 			let base_screen_wait_ticks = 0;
 			let first_base_screen_set_ms = 0;
 			let first_base_screen_observed_ms = 0;
@@ -105,6 +104,19 @@
 				if (live_base == null) {
 					fail('human starting base disappeared during the UI scenario');
 					return false;
+				}
+				if (base_screen_started == 0) {
+					if (ui_state == null) {
+						if (base_screen_wait_ticks >= 100) {
+							fail('UI did not finish initializing before base-screen test');
+							return false;
+						}
+						return true;
+					}
+					base_screen_wait_ticks = 0;
+					base_screen_started = #monotonic_ms();
+					game.select_base(live_base);
+					return true;
 				}
 				if (base_screen_completions == 0) {
 					if (base_screen_wait_ticks >= 100) {

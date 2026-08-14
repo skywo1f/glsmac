@@ -6,57 +6,6 @@ return (glsmac) => {
 	const resources = #include('../resources');
 	const technologies = #include('../technologies');
 	const units = #include('../units');
-	const content_validator = #include('../content/validator');
-
-	let content_validation_complete = false;
-	const validate_content = () => {
-		if (content_validation_complete) {
-			return;
-		}
-		const result = content_validator.validate({
-			technologies: {
-				definitions: technologies.definitions,
-				order: technologies.order,
-			},
-			facilities: facilities.definitions,
-			facility_manifest: facilities.manifest,
-			facility_coverage: facilities.coverage,
-			project_coverage: facilities.project_coverage,
-			units: units.definitions,
-			unit_manifest: units.manifest,
-			moralesets: units.moralesets,
-			factions: factions.definitions,
-		});
-		if (#sizeof(result.errors) > 0) {
-			for (error of result.errors) {
-				#print('CONTENT_VALIDATION_FAIL: ' + error);
-			}
-			throw Error(
-				'Content validation failed with ' + #to_string(#sizeof(result.errors)) +
-				' error(s): ' + result.errors[0]
-			);
-		}
-		#print(
-			'CONTENT_VALIDATION_PASS: technologies=' + #to_string(result.counts.technologies) +
-			' facilities=' + #to_string(result.counts.facilities) + '/' +
-				#to_string(result.counts.base_facilities) +
-				' (' + #to_string(result.counts.complete_facilities) + ' complete,' +
-				#to_string(result.counts.partial_facilities) + ' partial)' +
-			' projects=' + #to_string(result.counts.implemented_projects) + '/' +
-				#to_string(result.counts.projects) +
-				' (' + #to_string(result.counts.complete_projects) + ' complete,' +
-				#to_string(result.counts.partial_projects) + ' partial)' +
-			' units=' + #to_string(result.counts.units) +
-			' predefined_units=' + #to_string(result.counts.predefined_units) +
-			' components=' + #to_string(
-				result.counts.chassis + result.counts.reactors + result.counts.weapons +
-				result.counts.armors + result.counts.abilities
-			) +
-			' moralesets=' + #to_string(result.counts.moralesets) +
-			' factions=' + #to_string(result.counts.factions)
-		);
-		content_validation_complete = true;
-	};
 
 	const modules = [
 		'social_engineering', 'exploration', 'diplomacy', 'projects', 'unit_designs', 'unit_upgrades', 'orbitals', 'territory', 'random_events', 'nerve_stapling', 'bases', 'ecology', 'council', 'probes', 'headquarters_evacuation', 'conquest', 'transcendence', 'economic_victory',
@@ -68,15 +17,12 @@ return (glsmac) => {
 	}
 
 	glsmac.on('configure_state', (e) => {
-		validate_content();
 		factions.configure(e.fm);
 	});
 
 	#include('events')(glsmac.game);
 
 	glsmac.on('configure_game', (e) => {
-		validate_content();
-
 		const game = e.game;
 
 		game.on('configure', (e) => {

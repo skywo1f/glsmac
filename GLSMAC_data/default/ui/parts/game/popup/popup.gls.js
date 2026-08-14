@@ -23,9 +23,6 @@ return {
 		'base_screen',
 	],
 	eager_popups: [
-		'victory',
-		'planetary_council',
-		'diplomacy',
 		'base_screen',
 	],
 
@@ -60,6 +57,14 @@ return {
 			}
 		}
 		return data;
+	},
+	start_observing: () => {
+		for (popup of this.available_popups) {
+			const observe = this.popup_defs[popup].observe;
+			if (#typeof(observe) == 'Callable') {
+				observe(this.popup_params);
+			}
+		}
 	},
 
 	init: (p) => {
@@ -170,6 +175,7 @@ return {
 		const pp = {
 
 			game: p.game,
+			glsmac: p.glsmac,
 			ui: p.ui,
 			modules: p.modules,
 
@@ -271,6 +277,7 @@ return {
 			this.popup_defs[popup] = #include(popup);
 			this.popups[popup] = null;
 		}
+		this.start_observing();
 		for (popup of this.eager_popups) {
 			this.ensure_initialized(popup);
 		}
@@ -290,7 +297,7 @@ return {
 		if (!#is_defined(data)) {
 			throw Error('Unknown popup: ' + popup);
 		}
-		if (data != this.popup) {
+		if (data == null || data != this.popup) {
 			return;
 		}
 

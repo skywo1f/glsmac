@@ -1,5 +1,33 @@
 return {
+	observe: (p) => {
+		if (#is_defined(this.observing) && this.observing) {
+			return;
+		}
+		this.observing = true;
+		this.p = p;
+		this.player = null;
+		p.game.on('council_updated', (e) => {
+			const player = p.game.get_player();
+			if (player == null) {
+				return;
+			}
+			if (this.player != null) {
+				this.refresh();
+			}
+			const state = player.get_council_state();
+			if (
+				(
+					(state.proposal != '' && state.vote_id == -2) ||
+					(#is_defined(state.supreme_response) && state.supreme_response == 1)
+				) && !p.modules.popup.is_shown()
+			) {
+				p.modules.popup.show('planetary_council');
+			}
+		});
+	},
+
 	init: (p) => {
+		this.observe(p);
 		this.p = p;
 		this.player = null;
 		this.status_text = null;
@@ -159,19 +187,6 @@ return {
 			});
 		});
 
-		p.game.on('council_updated', (e) => {
-			if (this.player == null) { this.player = p.game.get_player(); }
-			this.refresh();
-			const state = this.player.get_council_state();
-			if (
-				(
-					(state.proposal != '' && state.vote_id == -2) ||
-					(#is_defined(state.supreme_response) && state.supreme_response == 1)
-				) && !p.modules.popup.is_shown()
-			) {
-				p.modules.popup.show('planetary_council');
-			}
-		});
 		return result;
 	},
 

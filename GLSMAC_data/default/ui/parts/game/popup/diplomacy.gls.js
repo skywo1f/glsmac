@@ -103,65 +103,14 @@ const get_trade_action = (player, target, terms, countering) => {
 
 return {
 	get_trade_action: get_trade_action,
-
-	init: (p) => {
+	observe: (p) => {
+		if (#is_defined(this.observing) && this.observing) {
+			return;
+		}
+		this.observing = true;
 		this.p = p;
 		this.player = null;
-		this.target = null;
-		this.opponent_select = null;
-		this.relation_text = null;
-		this.offer_text = null;
-		this.trade_text = null;
-		this.trade_error = null;
-		this.offer_treaty = null;
-		this.offer_pact = null;
-		this.declare_vendetta = null;
-		this.use_excuse = null;
-		this.overlook_excuse = null;
-		this.accept_offer = null;
-		this.reject_offer = null;
-		this.accept_surrender = null;
-		this.reject_surrender = null;
-		this.offer_technology_label = null;
-		this.offer_technology = null;
-		this.offer_contact_label = null;
-		this.offer_contact = null;
-		this.offer_base_label = null;
-		this.offer_base = null;
-		this.offer_energy_label = null;
-		this.offer_energy = null;
-		this.offer_map = null;
-		this.request_technology_label = null;
-		this.request_technology = null;
-		this.request_contact_label = null;
-		this.request_contact = null;
-		this.request_base_label = null;
-		this.request_base = null;
-		this.request_energy_label = null;
-		this.request_energy = null;
-		this.request_map = null;
-		this.propose_trade_button = null;
-		this.issue_ultimatum_button = null;
-		this.accept_trade = null;
-		this.counter_trade = null;
-		this.reject_trade = null;
-		this.military_target_label = null;
-		this.military_target = null;
-		this.request_military_support = null;
-		this.countering_trade = false;
 		this.pending_popup = false;
-		this.loan_text = null;
-		this.loan_error = null;
-		this.loan_principal_label = null;
-		this.loan_principal = null;
-		this.loan_payment_label = null;
-		this.loan_payment = null;
-		this.loan_turns_label = null;
-		this.loan_turns = null;
-		this.offer_loan_button = null;
-		this.request_loan_button = null;
-		this.accept_loan = null;
-		this.reject_loan = null;
 
 		for (event_name of [
 			'player_update',
@@ -228,6 +177,67 @@ return {
 				}
 			});
 		}
+	},
+
+	init: (p) => {
+		this.observe(p);
+		this.p = p;
+		this.player = null;
+		this.target = null;
+		this.opponent_select = null;
+		this.relation_text = null;
+		this.offer_text = null;
+		this.trade_text = null;
+		this.trade_error = null;
+		this.offer_treaty = null;
+		this.offer_pact = null;
+		this.declare_vendetta = null;
+		this.use_excuse = null;
+		this.overlook_excuse = null;
+		this.accept_offer = null;
+		this.reject_offer = null;
+		this.accept_surrender = null;
+		this.reject_surrender = null;
+		this.offer_technology_label = null;
+		this.offer_technology = null;
+		this.offer_contact_label = null;
+		this.offer_contact = null;
+		this.offer_base_label = null;
+		this.offer_base = null;
+		this.offer_energy_label = null;
+		this.offer_energy = null;
+		this.offer_map = null;
+		this.request_technology_label = null;
+		this.request_technology = null;
+		this.request_contact_label = null;
+		this.request_contact = null;
+		this.request_base_label = null;
+		this.request_base = null;
+		this.request_energy_label = null;
+		this.request_energy = null;
+		this.request_map = null;
+		this.propose_trade_button = null;
+		this.issue_ultimatum_button = null;
+		this.accept_trade = null;
+		this.counter_trade = null;
+		this.reject_trade = null;
+		this.military_target_label = null;
+		this.military_target = null;
+		this.request_military_support = null;
+		this.countering_trade = false;
+		this.pending_popup = false;
+		this.loan_text = null;
+		this.loan_error = null;
+		this.loan_principal_label = null;
+		this.loan_principal = null;
+		this.loan_payment_label = null;
+		this.loan_payment = null;
+		this.loan_turns_label = null;
+		this.loan_turns = null;
+		this.offer_loan_button = null;
+		this.request_loan_button = null;
+		this.accept_loan = null;
+		this.reject_loan = null;
 
 		return p.create('DIPLOMACY', 600, 800, (body, cb) => {
 			body.text({class: 'game-popup-text', text: 'Faction:', left: 10, top: 10});

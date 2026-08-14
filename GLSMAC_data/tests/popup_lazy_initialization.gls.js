@@ -5,6 +5,7 @@ let set_value = 0;
 let show_count = 0;
 let menu_close_count = 0;
 let sound_count = 0;
+let observe_count = 0;
 const element = {
 	top: 10,
 	show: () => { show_count++; },
@@ -30,6 +31,17 @@ popup.menu = {close_all: () => { menu_close_count++; }};
 popup.sound_up = {play: () => { sound_count++; }};
 popup.viewport_size = {height: 100};
 popup.no_sliding = true;
+
+popup.available_popups = ['lazy'];
+popup.popup_defs.lazy.observe = (params) => {
+	observe_count++;
+	test.assert(params.value == 1);
+};
+popup.start_observing();
+test.assert(observe_count == 1);
+
+popup.hide('lazy');
+test.assert(init_count == 0);
 
 const first = popup.ensure_initialized('lazy');
 const second = popup.ensure_initialized('lazy');

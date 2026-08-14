@@ -1,6 +1,17 @@
 return {
+	observe: (p) => {
+		if (#is_defined(this.observing) && this.observing) {
+			return;
+		}
+		this.observing = true;
+		this.p = p;
+		p.game.on('victory_declared', (e) => {
+			p.modules.popup.show('victory');
+		});
+	},
 
 	init: (p) => {
+		this.observe(p);
 		this.p = p;
 		this.status_text = null;
 		this.detail_text = null;
@@ -29,10 +40,6 @@ return {
 			});
 		});
 
-		p.game.on('victory_declared', (e) => {
-			this.refresh();
-			p.modules.popup.show('victory');
-		});
 		return result;
 	},
 

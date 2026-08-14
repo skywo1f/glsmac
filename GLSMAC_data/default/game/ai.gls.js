@@ -1,6 +1,7 @@
 const MOVEMENT_ACTION_DELAY = 100;
 const TURN_COMPLETION_POLL_DELAY = 50;
 const TURN_COMPLETION_RETRY_CHECKS = 20;
+const AI_TURN_START_DELAY = 100;
 const COLONY_SEARCH_MAX_DISTANCE = 12;
 const action_state = #include('ai/action_state');
 const turn_rules = #include('./turn_rules');
@@ -2414,7 +2415,7 @@ return (game) => {
 		game.on('start_ui', (e) => {
 			ui_started = true;
 			#async(0, manage_human_governors);
-			#async(500, play_ai_players);
+			#async(AI_TURN_START_DELAY, play_ai_players);
 		});
 		game.on('base_governor_changed', (e) => {
 			if (e.enabled) {
@@ -2424,7 +2425,7 @@ return (game) => {
 		game.on('turn', (e) => {
 			manage_human_governors();
 			if (ui_started) {
-				#async(500, play_ai_players);
+				#async(AI_TURN_START_DELAY, play_ai_players);
 			}
 		});
 	});

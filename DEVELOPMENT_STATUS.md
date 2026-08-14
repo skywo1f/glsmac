@@ -1255,5 +1255,23 @@ logs isolated by profile. Consecutive-launch rotation passed, as did the native
 suite, a six-opponent AI turn, and the real host/client runtime; the latter
 completed in 21.96 seconds with independent nonempty logs for both peers.
 
+Startup now constructs only the frequently used base screen eagerly. Lightweight
+observers preserve automatic diplomacy, Planetary Council, and victory popups,
+while their visual trees are created on first use; hiding a popup that has not
+yet been initialized is also a safe no-op. The normal game path no longer repeats
+the complete content-integrity scan on every launch because the same catalogs
+remain covered by six dedicated schema, dependency, manifest, facility, unit,
+and completeness tests. In the deterministic standard-small-map profile,
+startup-to-ready fell from 5.81 seconds to 4.93 seconds and UI construction fell
+from 1.33 seconds to 0.77 seconds. A corrected post-UI-ready frontend gate
+measured the preloaded base screen opening in 547 ms and retained the live Hurry
+transaction. Popup contexts now carry the application controller required by
+the victory screen's Return to Main Menu action. The AI scheduler also removes
+400 ms of fixed pre-turn delay while retaining its existing action and
+completion guards; normal six-opponent profiles were 6.52-6.54 seconds, although
+intermittent completion-acknowledgement outliers remain. All 128 GSE tests passed
+in 220.38 seconds, followed by seven installed-asset startup, frontend,
+diplomacy, Council, victory, AI, and multiplayer checks in 79.06 seconds.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
