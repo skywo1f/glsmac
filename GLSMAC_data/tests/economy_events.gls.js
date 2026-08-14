@@ -29,6 +29,8 @@ let positive_economy_multiplier = 0.0;
 let positive_psych_multiplier = 0.0;
 let positive_intake_calls = 0;
 let positive_consumption_calls = 0;
+let use_turn_resource_snapshots = false;
+let cleared_turn_resource_snapshots = 0;
 let stockpiling_energy = false;
 let stockpile_minerals = 7;
 const stockpile_energy = {
@@ -92,6 +94,15 @@ let values = {
 			? stockpile_minerals
 			: #max(base.get_intake().MINERALS - base.get_consumption().MINERALS, 0);
 	},
+	f_base_get_turn_resource_snapshot: (base) => {
+		if (!use_turn_resource_snapshots) {
+			return null;
+		}
+		return base == positive_base
+			? {intake: {ENERGY: 10, MINERALS: 7}, consumption: {ENERGY: 0, MINERALS: 0}}
+			: {intake: {ENERGY: 2, MINERALS: 0}, consumption: {ENERGY: 5, MINERALS: 0}};
+	},
+	f_base_clear_turn_resource_snapshots: () => { cleared_turn_resource_snapshots++; },
 };
 let events = [];
 let economy_bases = [positive_base, deficit_base];
@@ -136,6 +147,13 @@ const reused_allocation = values.f_economy_get_base_allocation(
 test.assert(reused_allocation == positive_allocation);
 test.assert(positive_intake_calls == 0);
 test.assert(positive_consumption_calls == 0);
+positive_intake_calls = 0;
+positive_consumption_calls = 0;
+use_turn_resource_snapshots = true;
+test.assert(values.f_economy_get_player(game, player) == 1);
+test.assert(positive_intake_calls == 0);
+test.assert(positive_consumption_calls == 0);
+use_turn_resource_snapshots = false;
 const player_allocations = {b1: positive_allocation, b2: deficit_allocation};
 test.assert(values.f_economy_get_player_from_allocations(game, player, player_allocations) == 1);
 stockpiling_energy = true;
@@ -218,14 +236,18 @@ hurry_minerals = 40;
 test.assert(values.f_economy_get_hurry_cost(hurry_base) == 0);
 
 callbacks.turn({});
+test.assert(cleared_turn_resource_snapshots == 0);
 test.assert(#sizeof(events) == 2);
 test.assert(events[0].name == 'settle_player_economy');
 test.assert(events[1].name == 'settle_player_economy');
+test.assert(events[0].data.clear_resource_snapshots == false);
+test.assert(events[1].data.clear_resource_snapshots == true);
 for (let settlement_index = 0; settlement_index < 2; settlement_index++) {
 	const settlement = {caller: 0, game: game, data: events[settlement_index].data};
 	test.assert(!#is_defined(settle_player_economy.validate(settlement)));
 	settle_player_economy.apply(settlement);
 }
+test.assert(cleared_turn_resource_snapshots == 1);
 test.assert(#sizeof(events) == 4);
 test.assert(events[2].name == 'process_player_economy');
 test.assert(events[2].data.player == player);
@@ -319,6 +341,7 @@ const poor_base = {
 	add_facility: (id) => { poor_has_node = true; },
 };
 let poor_callbacks = {};
+let poor_snapshot_clears = 0;
 let poor_values = {
 	f_technology_get_base_labs: (base) => {
 		return {allocation: 0.4, value: 0, bonus: 0, total: 0};
@@ -328,6 +351,7 @@ let poor_values = {
 	f_social_get_commerce_bonus: (owner) => { return 0; },
 	f_technology_get_definition: (id) => { return null; },
 	f_technology_get_total_commerce_bonus: () => { return 6; },
+	f_base_clear_turn_resource_snapshots: () => { poor_snapshot_clears++; },
 };
 let poor_events = [];
 let poor_game = null;
@@ -375,10 +399,13 @@ while (poor_event_index < #sizeof(poor_events)) {
 test.assert(!poor_has_node);
 test.assert(#sizeof(poor_events) == 4);
 test.assert(poor_events[0].name == 'settle_player_economy');
+test.assert(poor_events[0].data.clear_resource_snapshots == true);
 test.assert(poor_events[1].name == 'liquidate_base_facility');
 test.assert(poor_events[2].name == 'settle_player_economy');
+test.assert(poor_events[2].data.clear_resource_snapshots == true);
 test.assert(poor_events[3].name == 'process_player_economy');
 test.assert(poor_events[3].data.energy_credits == 0);
+test.assert(poor_snapshot_clears == 1);
 
 poor_has_node = true;
 let liquidation = {

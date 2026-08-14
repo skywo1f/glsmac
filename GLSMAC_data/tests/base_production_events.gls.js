@@ -571,9 +571,12 @@ const competing_base = {
 };
 
 let turn_complete = false;
+let refreshed_base_resources = 0;
+let refreshed_all_resources = 0;
 let game = null;
 game = {
 	trigger: (name, data) => {},
+	is_master: () => { return true; },
 	get_bm: () => {
 		return {
 			get_bases: () => { return [base, competing_base]; },
@@ -585,8 +588,21 @@ game = {
 		return turn_complete;
 	},
 	get: (key) => {
-		if (key == 'f_base_get_effective_facilities' || key == 'f_project_get_effects') {
+		if (
+			key == 'f_base_get_effective_facilities' ||
+			key == 'f_project_get_effects' ||
+			key == 'f_base_get_turn_resource_snapshot'
+		) {
 			return #undefined;
+		}
+		if (key == 'f_base_refresh_turn_resource_snapshot') {
+			return (target_base) => {
+				test.assert(target_base == base);
+				refreshed_base_resources++;
+			};
+		}
+		if (key == 'f_base_refresh_turn_resource_snapshots') {
+			return () => { refreshed_all_resources++; };
 		}
 		if (key == 'f_social_get_unit_training_morale_bonus') {
 			return (player, bonus) => {
@@ -877,17 +893,20 @@ production_queue = [sky_hydroponics, sky_hydroponics];
 test.assert(queue_is_valid(production_queue));
 accumulated_minerals = 115;
 orbital_counts = {};
+refreshed_all_resources = 0;
 event.applied = process_base_production.apply(event);
 test.assert(accumulated_minerals == 2);
 test.assert(get_queue_state() == ['facility:SkyHydroponicsLab']);
 test.assert(owner.get_orbital_facility_count('SkyHydroponicsLab') == 1);
 test.assert(!has_facility('SkyHydroponicsLab'));
+test.assert(refreshed_all_resources == 1);
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 115);
 test.assert(get_queue_state() == [
 	'facility:SkyHydroponicsLab', 'facility:SkyHydroponicsLab',
 ]);
 test.assert(owner.get_orbital_facility_count('SkyHydroponicsLab') == 0);
+test.assert(refreshed_all_resources == 2);
 
 production_queue = [mind_worms];
 built_facilities = [
@@ -1190,6 +1209,7 @@ base_pops = [commons_worker_a, commons_worker_b, commons_worker_c, commons_drone
 built_facilities = [];
 accumulated_minerals = 35;
 processed_psych = [];
+refreshed_base_resources = 0;
 event.applied = process_base_production.apply(event);
 test.assert(has_facility('RecreationCommons'));
 test.assert(processed_psych == [4]);
@@ -1197,12 +1217,14 @@ test.assert(base_pops[0].get_type() == 'TALENT');
 test.assert(base_pops[1].get_type() == 'WORKER');
 test.assert(base_pops[2].get_type() == 'WORKER');
 test.assert(base_pops[3].get_type() == 'WORKER');
+test.assert(refreshed_base_resources == 1);
 process_base_production.rollback(event);
 test.assert(!has_facility('RecreationCommons'));
 test.assert(base_pops[0].get_type() == 'WORKER');
 test.assert(base_pops[1].get_type() == 'WORKER');
 test.assert(base_pops[2].get_type() == 'WORKER');
 test.assert(base_pops[3].get_type() == 'DRONE');
+test.assert(refreshed_base_resources == 2);
 
 production_queue = [headquarters];
 built_facilities = [];

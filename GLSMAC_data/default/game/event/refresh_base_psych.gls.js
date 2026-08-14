@@ -16,6 +16,10 @@ return {
 			e.game.get('f_base_rebalance_workers')(base, stable_workers);
 		}
 		e.game.get('f_base_process_psych')(e.game, base, psych);
+		const refresh_snapshot = e.game.get('f_base_refresh_turn_resource_snapshot');
+		if (#is_defined(refresh_snapshot)) {
+			refresh_snapshot(base);
+		}
 	},
 
 	rollback: (e) => {

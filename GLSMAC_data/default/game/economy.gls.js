@@ -11,6 +11,11 @@ const get_project_effects = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : {};
 };
 
+const get_turn_resource_snapshot = (game, base) => {
+	const resolver = game.get('f_base_get_turn_resource_snapshot');
+	return #is_defined(resolver) ? resolver(base) : null;
+};
+
 const get_efficiency_rating = (game, base, facilities) => {
 	const resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
@@ -146,16 +151,18 @@ const get_base_allocation = (game, base, intake, consumption) => {
 	};
 };
 
-const get_base_economy = (game, base) => {
-	const consumption = base.get_consumption();
+const get_base_economy = (game, base, intake, consumption) => {
+	const base_consumption = #is_defined(consumption)
+		? consumption
+		: base.get_consumption();
 	const facilities = get_effective_facilities(game, base);
 	const project_effects = get_project_effects(game, base);
-	const energy = get_base_energy(game, base, facilities);
-	const total_energy = energy.net - consumption.ENERGY;
+	const energy = get_base_energy(game, base, facilities, #undefined, intake);
+	const total_energy = energy.net - base_consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs_resolver = game.get('f_technology_get_base_labs_value');
 	const labs = #is_defined(labs_resolver)
-		? labs_resolver(base, energy, consumption)
+		? labs_resolver(base, energy, base_consumption)
 		: #round(#to_float(energy_surplus) * LABS_ALLOCATION);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
 	const value = total_energy - labs - psych;
@@ -173,10 +180,22 @@ const get_base_economy = (game, base) => {
 const rank_bases = (game, bases) => {
 	let ranked = [];
 	for (base of bases) {
+		const snapshot = get_turn_resource_snapshot(game, base);
 		ranked :+{
 			base: base,
-			energy: get_base_energy(game, base).net,
-			economy: get_base_economy(game, base),
+			energy: get_base_energy(
+				game,
+				base,
+				#undefined,
+				#undefined,
+				snapshot == null ? #undefined : snapshot.intake
+			).net,
+			economy: get_base_economy(
+				game,
+				base,
+				snapshot == null ? #undefined : snapshot.intake,
+				snapshot == null ? #undefined : snapshot.consumption
+			),
 		};
 		let index = #sizeof(ranked) - 1;
 		while (index > 0) {
@@ -342,7 +361,7 @@ const get_base_psych = (game, base, headquarters_by_owner, intake, consumption) 
 	return psych + psych_bonus;
 };
 
-const get_base_stockpile_energy = (game, base) => {
+const get_base_stockpile_energy = (game, base, intake, consumption) => {
 	if (!#is_defined(base.get_production)) {
 		return 0;
 	}
@@ -356,7 +375,11 @@ const get_base_stockpile_energy = (game, base) => {
 		return 0;
 	}
 	return #floor(
-		#to_float(#max(game.get('f_base_get_pending_production')(base), 0)) /
+		#to_float(#max(game.get('f_base_get_pending_production')(
+			base,
+			intake,
+			consumption
+		), 0)) /
 		#to_float(production.mineral_to_energy_divisor)
 	);
 };
@@ -393,7 +416,11 @@ const get_player_economy = (game, player) => {
 	let result = get_player_commerce(game, player);
 	for (base of game.get_bm().get_bases()) {
 		if (base.get_owner().id == player.id) {
-			result += get_base_economy(game, base) + get_base_stockpile_energy(game, base);
+			const snapshot = get_turn_resource_snapshot(game, base);
+			const intake = snapshot == null ? #undefined : snapshot.intake;
+			const consumption = snapshot == null ? #undefined : snapshot.consumption;
+			result += get_base_economy(game, base, intake, consumption) +
+				get_base_stockpile_energy(game, base, intake, consumption);
 		}
 	}
 	return result;
@@ -406,12 +433,15 @@ const get_player_economy_from_allocations = (game, player, allocations) => {
 			continue;
 		}
 		const allocation = allocations['b' + #to_string(base.id)];
+		const snapshot = get_turn_resource_snapshot(game, base);
+		const intake = snapshot == null ? #undefined : snapshot.intake;
+		const consumption = snapshot == null ? #undefined : snapshot.consumption;
 		if (!#is_defined(allocation)) {
-			result += get_base_economy(game, base);
+			result += get_base_economy(game, base, intake, consumption);
 		} else {
 			result += allocation.economy.value + allocation.economy.bonus;
 		}
-		result += get_base_stockpile_energy(game, base);
+		result += get_base_stockpile_energy(game, base, intake, consumption);
 	}
 	return result;
 };
@@ -466,19 +496,28 @@ return (game) => {
 			}
 			const turn_profile = game.get('f_turn_profile');
 			const turn_profile_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
-			for (player of game.get_players()) {
+			const players = game.get_players();
+			for (let player_index = 0; player_index < #sizeof(players); player_index++) {
+				const player = players[player_index];
 				game.event('settle_player_economy', {
 					player: player,
 					liquidation_count: 0,
+					clear_resource_snapshots: player_index == #sizeof(players) - 1,
 				});
 			}
-			for (player of game.get_players()) {
+			for (player of players) {
 				if (player.get_sanction_turns() > 0) {
 					game.event('process_diplomatic_sanctions', {player: player});
 				}
 			}
 			if (#typeof(turn_profile) == 'Callable') {
 				turn_profile({phase: 'economy', elapsed_ms: #monotonic_ms() - turn_profile_started});
+			}
+			if (#sizeof(players) == 0) {
+				const clear_snapshots = game.get('f_base_clear_turn_resource_snapshots');
+				if (#is_defined(clear_snapshots)) {
+					clear_snapshots();
+				}
 			}
 		});
 	});

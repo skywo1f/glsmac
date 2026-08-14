@@ -24,6 +24,10 @@ return {
 
 		// remove population
 		base.destroy_pop(pop);
+		const refresh_snapshot = e.game.get('f_base_refresh_turn_resource_snapshot');
+		if (#is_defined(refresh_snapshot)) {
+			refresh_snapshot(base);
+		}
 
 		return {
 			base: base,
@@ -42,6 +46,10 @@ return {
 			e.game.get('f_base_pop_work_tile')(base, pop, e.applied.old_worked_tile);
 		}
 		base.set('accumulated_nutrients', e.applied.old_nutrients);
+		const refresh_snapshot = e.game.get('f_base_refresh_turn_resource_snapshot');
+		if (#is_defined(refresh_snapshot)) {
+			refresh_snapshot(base);
+		}
 	},
 
 };

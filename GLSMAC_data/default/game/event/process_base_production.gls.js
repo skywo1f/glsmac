@@ -133,9 +133,18 @@ return {
 		let prototype_state = #undefined;
 		let orbital_launch = #undefined;
 		let ecology_facility_completion = #undefined;
+		let resource_refresh_scope = '';
 
 		if (#is_defined(production)) {
-			const pending_minerals = e.game.get('f_base_get_pending_production')(base);
+			const snapshot_resolver = e.game.get('f_base_get_turn_resource_snapshot');
+			const snapshot = #is_defined(snapshot_resolver)
+				? snapshot_resolver(base)
+				: null;
+			const pending_minerals = e.game.get('f_base_get_pending_production')(
+				base,
+				snapshot == null ? #undefined : snapshot.intake,
+				snapshot == null ? #undefined : snapshot.consumption
+			);
 			const is_mineral_conversion =
 				production.production_kind == 'facility' &&
 				#is_defined(production.mineral_to_energy_divisor) &&
@@ -227,9 +236,13 @@ return {
 								base,
 								production
 							);
+							resource_refresh_scope = 'all';
 						} else {
 							base.add_facility(production.id);
 							completed_facility = production.id;
+							resource_refresh_scope = production.production_kind == 'project'
+								? 'all'
+								: 'base';
 							const apply_ecology_completion = e.game.get(
 								'f_ecology_apply_facility_completion'
 							);
@@ -249,6 +262,7 @@ return {
 							base.unset(linked_key);
 						}
 						if (production.id == 'Headquarters') {
+							resource_refresh_scope = 'all';
 							previous_headquarters = relocate_headquarters(e.game, base);
 							economic_victory_relocation = relocate_economic_victory(
 								e.game,
@@ -280,6 +294,9 @@ return {
 			base.set_accumulated_minerals(updated_minerals);
 		}
 		if (#sizeof(consumed_pops) > 0 || #is_defined(completed_facility)) {
+			if (resource_refresh_scope == '') {
+				resource_refresh_scope = 'base';
+			}
 			for (pop of base.get_pops()) {
 				pop_type_snapshots :+{
 					pop: pop,
@@ -288,6 +305,18 @@ return {
 			}
 			const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
 			e.game.get('f_base_process_psych')(e.game, base, psych);
+		}
+		if (e.game.is_master() && resource_refresh_scope != '') {
+			const refresh_snapshot = resource_refresh_scope == 'all'
+				? e.game.get('f_base_refresh_turn_resource_snapshots')
+				: e.game.get('f_base_refresh_turn_resource_snapshot');
+			if (#is_defined(refresh_snapshot)) {
+				if (resource_refresh_scope == 'all') {
+					refresh_snapshot();
+				} else {
+					refresh_snapshot(base);
+				}
+			}
 		}
 		if (completed_facility == 'ThePlanetaryDatalinks') {
 			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
@@ -311,6 +340,7 @@ return {
 			prototype_state: prototype_state,
 			orbital_launch: orbital_launch,
 			ecology_facility_completion: ecology_facility_completion,
+			resource_refresh_scope: resource_refresh_scope,
 		};
 	},
 
@@ -376,6 +406,18 @@ return {
 		}
 		e.data.base.set_production_queue(e.applied.old_queue);
 		e.data.base.set_accumulated_minerals(e.applied.old_minerals);
+		if (#is_defined(e.applied.resource_refresh_scope) && e.applied.resource_refresh_scope != '') {
+			const refresh_snapshot = e.applied.resource_refresh_scope == 'all'
+				? e.game.get('f_base_refresh_turn_resource_snapshots')
+				: e.game.get('f_base_refresh_turn_resource_snapshot');
+			if (#is_defined(refresh_snapshot)) {
+				if (e.applied.resource_refresh_scope == 'all') {
+					refresh_snapshot();
+				} else {
+					refresh_snapshot(e.data.base);
+				}
+			}
+		}
 	},
 
 };

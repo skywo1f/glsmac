@@ -74,6 +74,8 @@ let accumulated_nutrients = 20;
 let base_size = 1;
 let intake_nutrients = 2;
 let consumption_nutrients = 2;
+let intake_calls = 0;
+let consumption_calls = 0;
 let unworked_tiles = [mineral_tile, nutrient_tile, occupied_tile, center_tile];
 let worked_tiles = [];
 let pops = [];
@@ -81,8 +83,14 @@ let facilities = [];
 const base = {
 	get_owner: () => { return owner; },
 	get_size: () => { return base_size; },
-	get_intake: () => { return {NUTRIENTS: intake_nutrients, MINERALS: 1, ENERGY: 1}; },
-	get_consumption: () => { return {NUTRIENTS: consumption_nutrients, MINERALS: 0, ENERGY: 0}; },
+	get_intake: () => {
+		intake_calls++;
+		return {NUTRIENTS: intake_nutrients, MINERALS: 1, ENERGY: 1};
+	},
+	get_consumption: () => {
+		consumption_calls++;
+		return {NUTRIENTS: consumption_nutrients, MINERALS: 0, ENERGY: 0};
+	},
 	get_unworked_tiles: () => { return unworked_tiles; },
 	get_workable_tiles: () => { return unworked_tiles; },
 	get_worked_tiles: () => { return worked_tiles; },
@@ -100,6 +108,20 @@ const base = {
 
 const find_tiles = values.f_base_find_best_or_worst_tiles;
 const get_assignable_tiles = values.f_base_get_assignable_worker_tiles;
+accumulated_nutrients = 0;
+intake_calls = 0;
+consumption_calls = 0;
+values.f_base_process_growth(
+	game,
+	base,
+	0,
+	{NUTRIENTS: 2, MINERALS: 1, ENERGY: 1},
+	{NUTRIENTS: 2, MINERALS: 0, ENERGY: 0}
+);
+test.assert(intake_calls == 0);
+test.assert(consumption_calls == 0);
+test.assert(events == []);
+accumulated_nutrients = 20;
 test.assert(get_assignable_tiles(base) == [mineral_tile, nutrient_tile]);
 const own_pop = {id: 1};
 mineral_tile.set_working_pop(own_pop);

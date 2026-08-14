@@ -19,6 +19,31 @@ const get_turn_resource_snapshot = (base) => {
 		: null;
 };
 
+const refresh_turn_resource_snapshot = (base) => {
+	if (!#is_defined(globals.turn_resource_snapshots)) {
+		return null;
+	}
+	const snapshot = {
+		intake: base.get_intake(),
+		consumption: base.get_consumption(),
+	};
+	globals.turn_resource_snapshots['b' + #to_string(base.id)] = snapshot;
+	return snapshot;
+};
+
+const refresh_turn_resource_snapshots = (bm) => {
+	if (!#is_defined(globals.turn_resource_snapshots)) {
+		return;
+	}
+	for (base of bm.get_bases()) {
+		refresh_turn_resource_snapshot(base);
+	}
+};
+
+const clear_turn_resource_snapshots = () => {
+	globals.turn_resource_snapshots = #undefined;
+};
+
 const get_social_ratings = (game, player) => {
 	const resolver = #is_defined(game.get) ? game.get('f_social_get_ratings') : #undefined;
 	return #is_defined(resolver) ? resolver(player) : {
@@ -386,10 +411,12 @@ const get_nutrients_for_growth = (game, base) => {
 	return #ceil(#to_float(base_cost * cost_scale) / 10.0);
 };
 
-const get_pending_growth = (base) => {
-	const intake = base.get_intake();
-	const consumption = base.get_consumption();
-	return intake.NUTRIENTS - consumption.NUTRIENTS;
+const get_pending_growth = (base, intake, consumption) => {
+	const current_intake = #is_defined(intake) ? intake : base.get_intake();
+	const current_consumption = #is_defined(consumption)
+		? consumption
+		: base.get_consumption();
+	return current_intake.NUTRIENTS - current_consumption.NUTRIENTS;
 };
 
 const reset_nutrients = (game, base) => {
@@ -733,15 +760,28 @@ const rebalance_automated_workers = (game, base, allocated_psych) => {
 	return false;
 };
 
-const process_growth = (game, base, allocated_psych) => {
+const process_growth = (game, base, allocated_psych, intake, consumption) => {
 	const workers_changed = rebalance_automated_workers(game, base, allocated_psych);
+	let current_intake = intake;
+	let current_consumption = consumption;
+	if (workers_changed || !#is_defined(current_intake) || !#is_defined(current_consumption)) {
+		const refreshed = workers_changed ? refresh_turn_resource_snapshot(base) : null;
+		if (refreshed != null) {
+			current_intake = refreshed.intake;
+			current_consumption = refreshed.consumption;
+		} else {
+			current_intake = base.get_intake();
+			current_consumption = base.get_consumption();
+		}
+	}
+	const pending_growth = get_pending_growth(base, current_intake, current_consumption);
 	let grow = false;
 
 	let accumulated = base.get('accumulated_nutrients');
 	if (!#is_defined(accumulated)) {
 		accumulated = 0;
 	}
-	accumulated += get_pending_growth(base);
+	accumulated += pending_growth;
 	if (accumulated < 0) {
 		if (base.get_size() <= 1) {
 			base.set('accumulated_nutrients', 0);
@@ -777,7 +817,7 @@ const process_growth = (game, base, allocated_psych) => {
 		const growth_rating = get_social_ratings(game, base.get_owner()).growth;
 		if (
 			accumulated >= get_nutrients_for_growth(game, base) ||
-			(growth_rating >= 6 && get_pending_growth(base) > 0)
+			(growth_rating >= 6 && pending_growth > 0)
 		) {
 			grow = true; // growth from nutrients
 		}
@@ -852,13 +892,15 @@ const pop_work_tile = (base, pop, tile) => {
 	base.work_pop_tile(pop, tile);
 };
 
-const get_pending_production = (game, base) => {
+const get_pending_production = (game, base, intake, consumption) => {
 	if (is_rioting(game, base)) {
 		return 0;
 	}
-	const intake = base.get_intake();
-	const consumption = base.get_consumption();
-	return #max(intake.MINERALS - consumption.MINERALS, 0);
+	const current_intake = #is_defined(intake) ? intake : base.get_intake();
+	const current_consumption = #is_defined(consumption)
+		? consumption
+		: base.get_consumption();
+	return #max(current_intake.MINERALS - current_consumption.MINERALS, 0);
 };
 
 const pop_unwork = (base, pop, new_type) => {
@@ -1077,9 +1119,17 @@ return (game) => {
 		// TODO: prettier way to do this? needs to be callable from events
 		game.set('f_base_get_pending_growth', get_pending_growth);
 		game.set('f_base_get_turn_resource_snapshot', get_turn_resource_snapshot);
+		game.set('f_base_refresh_turn_resource_snapshot', refresh_turn_resource_snapshot);
+		game.set(
+			'f_base_refresh_turn_resource_snapshots',
+			() => { return refresh_turn_resource_snapshots(bm); }
+		);
+		game.set('f_base_clear_turn_resource_snapshots', clear_turn_resource_snapshots);
 		game.set('f_base_get_nutrients_for_growth', get_nutrients_for_growth);
 		game.set('f_base_get_population_limit', (base) => { return get_population_limit(game, base); });
-		game.set('f_base_get_pending_production', (base) => { return get_pending_production(game, base); });
+		game.set('f_base_get_pending_production', (base, intake, consumption) => {
+			return get_pending_production(game, base, intake, consumption);
+		});
 		game.set(
 			'f_base_get_production_cost',
 			(base, production) => { return get_production_cost(game, base, production); }
@@ -1128,13 +1178,7 @@ return (game) => {
 						game.event('process_nerve_stapling', {base: base});
 					}
 					const turn_base_phase_started = #typeof(turn_profile) == 'Callable' ? #monotonic_ms() : 0;
-					const resource_snapshot = {
-						intake: base.get_intake(),
-						consumption: base.get_consumption(),
-					};
-					globals.turn_resource_snapshots[
-						'b' + #to_string(base.id)
-					] = resource_snapshot;
+					const resource_snapshot = refresh_turn_resource_snapshot(base);
 					const psych = game.get('f_economy_get_base_psych')(
 						game,
 						base,

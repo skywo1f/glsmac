@@ -24,6 +24,10 @@ return {
 		base.remove_facility(e.data.facility_id);
 		const psych = e.game.get('f_economy_get_base_psych')(e.game, base);
 		e.game.get('f_base_process_psych')(e.game, base, psych);
+		const refresh_snapshot = e.game.get('f_base_refresh_turn_resource_snapshot');
+		if (#is_defined(refresh_snapshot)) {
+			refresh_snapshot(base);
+		}
 		return {
 			facility_id: e.data.facility_id,
 			pop_type_snapshots: pop_type_snapshots,
@@ -34,6 +38,10 @@ return {
 		e.data.base.add_facility(e.applied.facility_id);
 		for (snapshot of e.applied.pop_type_snapshots) {
 			snapshot.pop.set_type(snapshot.type);
+		}
+		const refresh_snapshot = e.game.get('f_base_refresh_turn_resource_snapshot');
+		if (#is_defined(refresh_snapshot)) {
+			refresh_snapshot(e.data.base);
 		}
 	},
 };

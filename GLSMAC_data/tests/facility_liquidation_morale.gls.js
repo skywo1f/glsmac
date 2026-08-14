@@ -35,6 +35,7 @@ const base = {
 };
 
 let processed_psych = 0 - 1;
+let resource_refreshes = 0;
 let game = null;
 game = {
 	get_bm: () => {
@@ -76,6 +77,12 @@ game = {
 				}
 			};
 		}
+		if (key == 'f_base_refresh_turn_resource_snapshot') {
+			return (target_base) => {
+				test.assert(target_base == base);
+				resource_refreshes++;
+			};
+		}
 		throw Error('Unexpected game callback: ' + key);
 	},
 };
@@ -89,7 +96,9 @@ test.assert(!#is_defined(liquidate.validate(event)));
 event.applied = liquidate.apply(event);
 test.assert(!has_commons && processed_psych == 0);
 test.assert([talent.get_type(), worker_b.get_type(), worker_c.get_type(), worker_d.get_type()] == ['WORKER', 'WORKER', 'WORKER', 'DRONE']);
+test.assert(resource_refreshes == 1);
 
 liquidate.rollback(event);
 test.assert(has_commons);
 test.assert([talent.get_type(), worker_b.get_type(), worker_c.get_type(), worker_d.get_type()] == ['TALENT', 'WORKER', 'WORKER', 'WORKER']);
+test.assert(resource_refreshes == 2);

@@ -10,10 +10,16 @@ return {
 	},
 
 	apply: (e) => {
+		const snapshot_resolver = e.game.get('f_base_get_turn_resource_snapshot');
+		const snapshot = #is_defined(snapshot_resolver)
+			? snapshot_resolver(e.data.base)
+			: null;
 		const psych_changed = e.game.get('f_base_process_growth')(
 			e.game,
 			e.data.base,
-			e.data.psych
+			e.data.psych,
+			snapshot == null ? #undefined : snapshot.intake,
+			snapshot == null ? #undefined : snapshot.consumption
 		);
 		if (e.game.is_master() && psych_changed) {
 			e.game.event('refresh_base_psych', {

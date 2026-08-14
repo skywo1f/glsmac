@@ -14,6 +14,12 @@ return {
 		) {
 			return 'Facility liquidation count is invalid';
 		}
+		if (
+			#is_defined(e.data.clear_resource_snapshots) &&
+			#typeof(e.data.clear_resource_snapshots) != 'Bool'
+		) {
+			return 'Resource snapshot cleanup flag must be a boolean';
+		}
 	},
 
 	apply: (e) => {
@@ -35,6 +41,7 @@ return {
 				e.game.event('settle_player_economy', {
 					player: player,
 					liquidation_count: e.data.liquidation_count + 1,
+					clear_resource_snapshots: e.data.clear_resource_snapshots,
 				});
 				return;
 			}
@@ -47,6 +54,12 @@ return {
 			player: player,
 			energy_credits: updated,
 		});
+		if (#is_defined(e.data.clear_resource_snapshots) && e.data.clear_resource_snapshots) {
+			const clear_snapshots = e.game.get('f_base_clear_turn_resource_snapshots');
+			if (#is_defined(clear_snapshots)) {
+				clear_snapshots();
+			}
+		}
 	},
 
 	rollback: (e) => {
