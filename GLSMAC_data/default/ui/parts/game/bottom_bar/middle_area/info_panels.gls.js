@@ -49,8 +49,14 @@ return {
 				return;
 			}
 			this.research_name.text = technology.name;
+			const cost_resolver = this.game.get('f_technology_get_research_cost');
+			const cost = #is_defined(state.cost) && state.cost > 0
+				? state.cost
+				: (#typeof(cost_resolver) == 'Callable'
+					? cost_resolver(player)
+					: technology.cost);
 			this.research_progress.text =
-				#to_string(state.progress) + ' / ' + #to_string(technology.cost) + ' Labs';
+				#to_string(state.progress) + ' / ' + #to_string(cost) + ' Labs';
 		} else if (player.has_technology('CentauriEcology')) {
 			this.research_name.text = 'Centauri Ecology';
 			this.research_progress.text = 'Discovered';

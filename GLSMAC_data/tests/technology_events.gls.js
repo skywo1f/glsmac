@@ -140,6 +140,85 @@ test.assert(#sizeof(every_technology) == 77);
 test.assert(technologies.get_available_targets(every_technology) == []);
 test.assert(technologies.get_next_target(every_technology) == '');
 
+const calculate_research_cost = (
+	known,
+	difficulty,
+	research_rating,
+	turn,
+	stagnation,
+	width,
+	height,
+	rival_known
+) => {
+	const cost_player = {
+		id: 1,
+		type: 'human',
+		difficulty_level: difficulty,
+		get_faction: () => {
+			return {get_starting_technologies: () => { return []; }};
+		},
+		get_research_state: () => {
+			return {technologies: known, target: 'Biogenetics', progress: 0, cost: 0};
+		},
+	};
+	const cost_rival = {
+		id: 2,
+		get_research_state: () => {
+			return {technologies: rival_known, target: '', progress: 0, cost: 0};
+		},
+	};
+	const cost_game = {
+		get_players: () => { return [cost_player, cost_rival]; },
+		get_turn: () => { return turn; },
+		get_tm: () => {
+			return {
+				get_map_width: () => { return width; },
+				get_map_height: () => { return height; },
+			};
+		},
+		get_settings: () => {
+			return {
+				global: {
+					difficulty_level: 'Librarian',
+					rules: {tech_stagnation: stagnation},
+				},
+			};
+		},
+		get: (key) => {
+			test.assert(key == 'f_social_get_ratings');
+			return (player) => { return {research: research_rating}; };
+		},
+	};
+	return technologies.calculate_research_cost(cost_game, cost_player, known);
+};
+
+test.assert(calculate_research_cost([], 'Citizen', 0, 0, false, 112, 56, []) == 13);
+test.assert(calculate_research_cost([], 'Citizen', 0 - 2, 0, false, 112, 56, []) == 26);
+test.assert(
+	calculate_research_cost(every_technology[0::9], 'Librarian', 0, 40, false, 112, 56, [])
+	== 250
+);
+test.assert(
+	calculate_research_cost(
+		every_technology[0::9],
+		'Librarian',
+		0,
+		40,
+		false,
+		112,
+		56,
+		every_technology[0::19]
+	) == 230
+);
+test.assert(
+	calculate_research_cost(every_technology[0::9], 'Librarian', 0, 40, false, 68, 34, [])
+	== 151
+);
+test.assert(
+	calculate_research_cost(every_technology[0::9], 'Librarian', 0, 40, true, 112, 56, [])
+	== 405
+);
+
 const base = {
 	get_intake: () => { return {ENERGY: 6}; },
 	get_consumption: () => { return {ENERGY: 1}; },
@@ -239,16 +318,19 @@ test.assert(technologies.get_initial_state(make_initial_player([])) == {
 	technologies: [],
 	target: 'Biogenetics',
 	progress: 0,
+	cost: 30,
 });
 test.assert(technologies.get_initial_state(make_initial_player(['Biogenetics'])) == {
 	technologies: ['Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 0,
+	cost: 50,
 });
 test.assert(technologies.get_initial_state(make_initial_player(every_technology)) == {
 	technologies: every_technology,
 	target: '',
 	progress: 0,
+	cost: 0,
 });
 
 const clone_state = (state) => {
@@ -256,13 +338,23 @@ const clone_state = (state) => {
 	for (id of state.technologies) {
 		known :+id;
 	}
-	return {technologies: known, target: state.target, progress: state.progress};
+	return {
+		technologies: known,
+		target: state.target,
+		progress: state.progress,
+		cost: state.cost,
+	};
 };
 
-let research_state = {technologies: [], target: '', progress: 0};
+let research_state = {technologies: [], target: '', progress: 0, cost: 0};
 const player = {
 	id: 1,
 	name: 'Researcher',
+	type: 'human',
+	difficulty_level: 'Citizen',
+	get_faction: () => {
+		return {get_starting_technologies: () => { return []; }};
+	},
 	get_research_state: () => { return clone_state(research_state); },
 	set_research_state: (state) => { research_state = clone_state(state); },
 	has_technology: (id) => {
@@ -275,6 +367,9 @@ const player = {
 let rival_technologies = [];
 const rival = {
 	id: 2,
+	get_research_state: () => {
+		return {technologies: rival_technologies, target: '', progress: 0, cost: 0};
+	},
 	has_technology: (id) => {
 		for (known of rival_technologies) {
 			if (known == id) { return true; }
@@ -288,8 +383,21 @@ let datalinks_queues = 0;
 let map_reveals = 0;
 let map_rollbacks = 0;
 const map_tiles = [{x: 0, y: 0}, {x: 2, y: 0}];
-const game = {
+let game = {};
+game = {
 	get_players: () => { return [player, rival]; },
+	get_turn: () => { return 0; },
+	get_tm: () => {
+		return {get_map_width: () => { return 112; }, get_map_height: () => { return 56; }};
+	},
+	get_settings: () => {
+		return {
+			global: {
+				difficulty_level: 'Citizen',
+				rules: {tech_stagnation: false},
+			},
+		};
+	},
 	trigger: (name, data) => {
 		triggers :+name;
 		test.assert(data.player == player);
@@ -304,6 +412,17 @@ const game = {
 		}
 		if (key == 'f_technology_get_definition') {
 			return technologies.get_definition;
+		}
+		if (key == 'f_technology_get_research_cost') {
+			return (player) => { return technologies.get_research_cost(game, player); };
+		}
+		if (key == 'f_technology_get_state_cost') {
+			return (player, known, target, previous) => {
+				return technologies.get_state_cost(game, player, known, target, previous);
+			};
+		}
+		if (key == 'f_social_get_ratings') {
+			return (player) => { return {research: 0}; };
 		}
 		if (key == 'f_project_queue_planetary_datalinks') {
 			return () => { datalinks_queues++; };
@@ -328,12 +447,16 @@ const game = {
 	},
 };
 
+research_state = {technologies: [], target: 'Biogenetics', progress: 29, cost: 0};
+test.assert(technologies.get_research_cost(game, player) == 30);
+research_state = {technologies: [], target: '', progress: 0, cost: 0};
+
 let event = {
 	caller: 0,
 	game: game,
 	data: {
 		player: player,
-		state: {technologies: [], target: 'Biogenetics', progress: 0},
+		state: {technologies: [], target: 'Biogenetics', progress: 0, cost: 30},
 	},
 };
 test.assert(!#is_defined(initialize_research.validate(event)));
@@ -344,10 +467,10 @@ event.applied = initialize_research.apply(event);
 test.assert(research_state == event.data.state);
 test.assert(triggers == ['research_updated']);
 initialize_research.rollback(event);
-test.assert(research_state == {technologies: [], target: '', progress: 0});
+test.assert(research_state == {technologies: [], target: '', progress: 0, cost: 0});
 test.assert(triggers == ['research_updated', 'research_updated']);
 
-research_state = {technologies: [], target: 'Biogenetics', progress: 3};
+research_state = {technologies: [], target: 'Biogenetics', progress: 3, cost: 30};
 event = {
 	caller: 0,
 	game: game,
@@ -372,10 +495,14 @@ research_state.progress = 3;
 event.applied = process_research.apply(event);
 test.assert(!event.applied.completed);
 test.assert(datalinks_queues == 0);
-test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 7});
+test.assert(research_state == {
+	technologies: [], target: 'Biogenetics', progress: 7, cost: 30,
+});
 test.assert(messages == []);
 process_research.rollback(event);
-test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 3});
+test.assert(research_state == {
+	technologies: [], target: 'Biogenetics', progress: 3, cost: 30,
+});
 
 research_state.progress = 29;
 event.data.labs = 1;
@@ -387,29 +514,32 @@ test.assert(research_state == {
 	technologies: ['Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 0,
+	cost: 13,
 });
 test.assert(messages == ['Researcher has discovered Biogenetics.']);
 process_research.rollback(event);
-test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 29});
+test.assert(research_state == {
+	technologies: [], target: 'Biogenetics', progress: 29, cost: 30,
+});
 
 messages = [];
-research_state = {technologies: [], target: 'Biogenetics', progress: 29};
+research_state = {technologies: [], target: 'Biogenetics', progress: 29, cost: 30};
 event.data.labs = 51;
 event.applied = process_research.apply(event);
 test.assert(event.applied.completed);
-test.assert(event.applied.completed_count == 2);
+test.assert(event.applied.completed_count == 1);
 test.assert(datalinks_queues == 2);
 test.assert(research_state == {
-	technologies: ['Biogenetics', 'IndustrialBase'],
-	target: 'InformationNetworks',
+	technologies: ['Biogenetics'],
+	target: 'IndustrialBase',
 	progress: 0,
+	cost: 13,
 });
-test.assert(messages == [
-	'Researcher has discovered Biogenetics.',
-	'Researcher has discovered Industrial Base.',
-]);
+test.assert(messages == ['Researcher has discovered Biogenetics.']);
 process_research.rollback(event);
-test.assert(research_state == {technologies: [], target: 'Biogenetics', progress: 29});
+test.assert(research_state == {
+	technologies: [], target: 'Biogenetics', progress: 29, cost: 30,
+});
 
 event.data.technology = {id: 'WrongTarget', name: 'Wrong Target', cost: 20};
 test.assert(#is_defined(process_research.validate(event)));
@@ -425,6 +555,7 @@ research_state = {
 	technologies: [],
 	target: secrets.id,
 	progress: secrets.cost - 1,
+	cost: secrets.cost,
 };
 event = {
 	caller: 0,
@@ -439,6 +570,7 @@ test.assert(research_state == {
 	technologies: ['SecretsOfAlphaCentauri', 'Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 0,
+	cost: 28,
 });
 test.assert(map_reveals == 1 && map_rollbacks == 0);
 test.assert(datalinks_queues == 2);
@@ -451,6 +583,7 @@ test.assert(research_state == {
 	technologies: [],
 	target: 'SecretsOfAlphaCentauri',
 	progress: secrets.cost - 1,
+	cost: secrets.cost,
 });
 test.assert(map_reveals == 1 && map_rollbacks == 1);
 
@@ -463,6 +596,7 @@ research_state = {
 	technologies: [],
 	target: secrets.id,
 	progress: secrets.cost - 1,
+	cost: secrets.cost,
 };
 event.applied = process_research.apply(event);
 test.assert(!#is_defined(event.applied.bonus_technologies));
@@ -470,6 +604,7 @@ test.assert(research_state == {
 	technologies: ['SecretsOfAlphaCentauri'],
 	target: 'Biogenetics',
 	progress: 0,
+	cost: 13,
 });
 test.assert(map_reveals == 1 && datalinks_queues == 1);
 test.assert(messages == ['Researcher has discovered Secrets of Alpha Centauri.']);
@@ -484,6 +619,7 @@ research_state = {
 	technologies: [],
 	target: secrets.id,
 	progress: 7,
+	cost: secrets.cost,
 };
 const free_acquisition = technology_acquisition.apply(game, player, 1);
 test.assert(free_acquisition.completed_ids == ['SecretsOfAlphaCentauri', 'Biogenetics']);
@@ -491,6 +627,7 @@ test.assert(research_state == {
 	technologies: ['SecretsOfAlphaCentauri', 'Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 7,
+	cost: 28,
 });
 test.assert(map_reveals == 1 && datalinks_queues == 1);
 technology_acquisition.rollback(game, free_acquisition);
@@ -498,5 +635,6 @@ test.assert(research_state == {
 	technologies: [],
 	target: 'SecretsOfAlphaCentauri',
 	progress: 7,
+	cost: secrets.cost,
 });
 test.assert(map_reveals == 1 && map_rollbacks == 1);

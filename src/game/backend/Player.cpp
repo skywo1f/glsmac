@@ -50,6 +50,7 @@ Player::Player( const Player* const other ) {
 	m_technologies = other->m_technologies;
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
+	m_research_cost = other->m_research_cost;
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_clean_mineral_facilities = other->m_clean_mineral_facilities;
@@ -199,18 +200,24 @@ int64_t Player::GetResearchProgress() const {
 	return m_research_progress;
 }
 
+int64_t Player::GetResearchCost() const {
+	return m_research_cost;
+}
+
 void Player::SetResearchState(
 	const technologies_t& technologies,
 	const std::string& target,
-	const int64_t progress
+	const int64_t progress,
+	const int64_t cost
 ) {
 	std::string error;
-	if ( !ValidateResearchState( technologies, target, progress, error ) ) {
+	if ( !ValidateResearchState( technologies, target, progress, cost, error ) ) {
 		THROW( error );
 	}
 	m_technologies = technologies;
 	m_research_target = target;
 	m_research_progress = progress;
+	m_research_cost = cost;
 }
 
 int64_t Player::GetEnergyCredits() const {
@@ -953,6 +960,7 @@ WRAPIMPL_BEGIN( Player )
 						{ "technologies", VALUE( gse::value::Array, , technologies ) },
 						{ "target", VALUE( gse::value::String, , m_research_target ) },
 						{ "progress", VALUE( gse::value::Int, , m_research_progress ) },
+						{ "cost", VALUE( gse::value::Int, , m_research_cost ) },
 					} );
 				} )
 			},
@@ -965,6 +973,14 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP( technology_values, state, "technologies", Array );
 					N_GETPROP( target, state, "target", String );
 					N_GETPROP( progress, state, "progress", Int );
+					N_GETPROP_OPT(
+						int64_t,
+						cost,
+						state,
+						"cost",
+						Int,
+						target == m_research_target ? m_research_cost : 0
+					);
 					technologies_t technologies = {};
 					for ( size_t i = 0 ; i < technology_values.size() ; i++ ) {
 						N_GETELEMENT( id, technology_values, i, String );
@@ -973,10 +989,10 @@ WRAPIMPL_BEGIN( Player )
 						}
 					}
 					std::string error;
-					if ( !ValidateResearchState( technologies, target, progress, error ) ) {
+					if ( !ValidateResearchState( technologies, target, progress, cost, error ) ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, error );
 					}
-					SetResearchState( technologies, target, progress );
+					SetResearchState( technologies, target, progress, cost );
 					return VALUE( gse::value::Undefined );
 				} )
 			},
@@ -2106,7 +2122,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 			buf.WriteString( id );
 		}
 	}
-	buf.WriteInt( is_redacted ? 6 : 5 );
+	buf.WriteInt( 7 );
 	buf.WriteBool( include_private_state && m_legacy_unrestricted_contact );
 	buf.WriteInt( visible_count( m_contacted_players ) );
 	for ( const auto player_id : m_contacted_players ) {
@@ -2200,6 +2216,10 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 	if ( is_redacted ) {
 		buf.WriteBool( true );
 	}
+	else {
+		buf.WriteBool( false );
+	}
+	buf.WriteInt( include_private_state ? m_research_cost : 0 );
 
 	return buf;
 }
@@ -2232,7 +2252,13 @@ void Player::Deserialize( types::Buffer buf ) {
 	const auto research_target = buf.ReadString();
 	const auto research_progress = buf.ReadInt();
 	std::string research_error;
-	if ( !ValidateResearchState( technologies, research_target, research_progress, research_error ) ) {
+	if ( !ValidateResearchState(
+		technologies,
+		research_target,
+		research_progress,
+		0,
+		research_error
+	) ) {
 		THROW( "invalid serialized player research state: " + research_error );
 	}
 	const auto energy_credits = buf.GetRemaining() > 0 ? buf.ReadInt() : 0;
@@ -2512,7 +2538,7 @@ void Player::Deserialize( types::Buffer buf ) {
 		if (
 			contact_version != 1 && contact_version != 2 &&
 			contact_version != 3 && contact_version != 4 && contact_version != 5 &&
-			contact_version != 6
+			contact_version != 6 && contact_version != 7
 		) {
 			THROW( "unsupported serialized player contact version" );
 		}
@@ -2653,6 +2679,16 @@ void Player::Deserialize( types::Buffer buf ) {
 		}
 	}
 	const bool is_redacted = contact_version >= 6 ? buf.ReadBool() : false;
+	const int64_t research_cost = contact_version >= 7 ? buf.ReadInt() : 0;
+	if ( !ValidateResearchState(
+		technologies,
+		research_target,
+		research_progress,
+		research_cost,
+		research_error
+	) ) {
+		THROW( "invalid serialized player research state: " + research_error );
+	}
 	for ( const auto& [ player_id, trade ] : diplomatic_trades ) {
 		Player validator( "trade validator", PR_NONE, nullptr, "" );
 		validator.SetDiplomaticTrade( player_id, trade );
@@ -2672,6 +2708,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_technologies = std::move( technologies );
 	m_research_target = research_target;
 	m_research_progress = research_progress;
+	m_research_cost = research_cost;
 	m_energy_credits = energy_credits;
 	m_ecological_damage_events = ecological_damage_events;
 	m_clean_mineral_facilities = clean_mineral_facilities;
@@ -2715,6 +2752,7 @@ bool Player::ValidateResearchState(
 	const technologies_t& technologies,
 	const std::string& target,
 	const int64_t progress,
+	const int64_t cost,
 	std::string& error
 ) {
 	if ( technologies.size() > MAX_TECHNOLOGIES ) {
@@ -2735,8 +2773,12 @@ bool Player::ValidateResearchState(
 		error = "Research progress is out of range";
 		return false;
 	}
-	if ( target.empty() && progress != 0 ) {
-		error = "Research progress requires a target";
+	if ( cost < 0 || cost > MAX_RESEARCH_COST ) {
+		error = "Research cost is out of range";
+		return false;
+	}
+	if ( target.empty() && ( progress != 0 || cost != 0 ) ) {
+		error = "Research progress and cost require a target";
 		return false;
 	}
 	return true;

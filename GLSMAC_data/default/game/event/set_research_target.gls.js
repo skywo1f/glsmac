@@ -1,13 +1,21 @@
-const clone_state = (state, target) => {
+const technology_acquisition = #include('../technology_acquisition');
+
+const clone_state = (state, target, cost) => {
 	let known = [];
 	for (id of state.technologies) {
 		known :+id;
 	}
-	return {
+	const result = {
 		technologies: known,
 		target: target,
 		progress: state.progress,
 	};
+	if (#is_defined(cost)) {
+		result.cost = cost;
+	} else if (#is_defined(state.cost)) {
+		result.cost = state.cost;
+	}
+	return result;
 };
 
 return {
@@ -44,7 +52,14 @@ return {
 
 	apply: (e) => {
 		const previous = e.data.player.get_research_state();
-		e.data.player.set_research_state(clone_state(previous, e.data.target));
+		const cost = technology_acquisition.get_state_cost(
+			e.game,
+			e.data.player,
+			previous.technologies,
+			e.data.target,
+			previous
+		);
+		e.data.player.set_research_state(clone_state(previous, e.data.target, cost));
 		e.game.trigger('research_updated', {player: e.data.player});
 		return clone_state(previous, previous.target);
 	},

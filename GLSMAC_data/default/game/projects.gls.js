@@ -315,6 +315,13 @@ return (game) => {
 					technologies: technologies,
 					target: target,
 					progress: progress,
+					cost: technology_acquisition.get_state_cost(
+						game,
+						player,
+						technologies,
+						target,
+						previous
+					),
 				});
 				const map_reveals = technology_effects.apply_map_reveals(
 					game,

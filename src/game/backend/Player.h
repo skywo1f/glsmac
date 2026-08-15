@@ -79,6 +79,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 
 	using technologies_t = std::set< std::string >;
 	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
+	static constexpr int64_t MAX_RESEARCH_COST = 99999999;
 	static constexpr size_t MAX_TECHNOLOGIES = 1024;
 	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
 	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
@@ -100,10 +101,12 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	bool HasTechnology( const std::string& id ) const;
 	const std::string& GetResearchTarget() const;
 	int64_t GetResearchProgress() const;
+	int64_t GetResearchCost() const;
 	void SetResearchState(
 		const technologies_t& technologies,
 		const std::string& target,
-		const int64_t progress
+		const int64_t progress,
+		const int64_t cost = 0
 	);
 	int64_t GetEnergyCredits() const;
 	void SetEnergyCredits( const int64_t energy_credits );
@@ -364,6 +367,7 @@ private:
 	technologies_t m_technologies = {};
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;
+	int64_t m_research_cost = 0;
 	int64_t m_energy_credits = 0;
 	int64_t m_ecological_damage_events = 0;
 	int64_t m_clean_mineral_facilities = 0;
@@ -400,6 +404,7 @@ private:
 		const technologies_t& technologies,
 		const std::string& target,
 		const int64_t progress,
+		const int64_t cost,
 		std::string& error
 	);
 	static bool ValidateSocialEngineering(

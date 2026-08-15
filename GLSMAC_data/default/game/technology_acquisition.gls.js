@@ -5,11 +5,37 @@ const clone_state = (state) => {
 	for (id of state.technologies) {
 		technologies :+id;
 	}
-	return {
+	const result = {
 		technologies: technologies,
 		target: state.target,
 		progress: state.progress,
 	};
+	if (#is_defined(state.cost)) {
+		result.cost = state.cost;
+	}
+	return result;
+};
+
+const get_state_cost = (game, player, known, target, previous) => {
+	if (target == '') {
+		return 0;
+	}
+	const resolver = game.get('f_technology_get_state_cost');
+	if (#typeof(resolver) == 'Callable') {
+		return resolver(player, known, target, previous);
+	}
+	if (
+		#is_defined(previous) && target == previous.target &&
+		#is_defined(previous.cost) && previous.cost > 0
+	) {
+		return previous.cost;
+	}
+	const get_definition = game.get('f_technology_get_definition');
+	if (#typeof(get_definition) != 'Callable') {
+		return 0;
+	}
+	const technology = get_definition(target);
+	return technology == null ? 0 : technology.cost;
 };
 
 const get_next_target = (game, player, known, target) => {
@@ -62,6 +88,7 @@ const apply = (game, player, count) => {
 		technologies: technologies,
 		target: target,
 		progress: progress,
+		cost: get_state_cost(game, player, technologies, target, previous),
 	});
 	const map_reveals = technology_effects.apply_map_reveals(game, player, completed_ids);
 	const specialist_updates = technology_effects.apply_specialist_updates(game, player);
@@ -90,6 +117,7 @@ const rollback = (game, applied) => {
 
 return {
 	can_grant: can_grant,
+	get_state_cost: get_state_cost,
 	apply: apply,
 	rollback: rollback,
 };

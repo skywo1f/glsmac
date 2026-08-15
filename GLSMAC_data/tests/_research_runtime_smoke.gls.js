@@ -138,7 +138,7 @@
 					player.get_faction().id != 'GAIANS' ||
 					state.technologies != ['CentauriEcology'] ||
 					state.target != 'Biogenetics' ||
-					state.progress != 0
+					state.progress != 0 || state.cost <= 0
 				) {
 					fail('initial Gaian research state is invalid');
 					return;
@@ -153,11 +153,11 @@
 					}
 				}
 
-				const biogenetics = game.get('f_technology_get_definition')('Biogenetics');
 				player.set_research_state({
 					technologies: ['CentauriEcology'],
 					target: 'Biogenetics',
-					progress: biogenetics.cost - 1,
+					progress: state.cost - 1,
+					cost: state.cost,
 				});
 				game.event('complete_turn', {});
 				return;
@@ -169,7 +169,7 @@
 					state.technologies != ['Biogenetics', 'CentauriEcology'] ||
 					state.target != 'IndustrialBase' ||
 					state.progress < 0 ||
-					state.progress >= game.get('f_technology_get_definition')('IndustrialBase').cost
+					state.cost <= 0 || state.progress >= state.cost
 				) {
 					if (turn_id == 2) {
 						validation_turn = 4;

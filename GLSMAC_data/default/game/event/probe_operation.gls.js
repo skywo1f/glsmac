@@ -1,5 +1,6 @@
 const base_capture = #include('../base_capture');
 const snapshots = #include('../entity_snapshots');
+const technology_acquisition = #include('../technology_acquisition');
 const technology_effects = #include('../technology_effects');
 const snapshot_unit = snapshots.snapshot_unit;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
@@ -696,6 +697,13 @@ return {
 					technologies: technologies,
 					target: target,
 					progress: progress,
+					cost: technology_acquisition.get_state_cost(
+						e.game,
+						actor,
+						technologies,
+						target,
+						applied.research
+					),
 				});
 				applied.technology_map_reveals = technology_effects.apply_map_reveals(
 					e.game,

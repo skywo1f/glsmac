@@ -326,7 +326,29 @@ void AddTests( task::gsetests::GSETests* task ) {
 				using game::backend::Player;
 
 				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
-				source.SetResearchState( { "CentauriEcology" }, "", 0 );
+				source.SetResearchState( { "CentauriEcology" }, "IndustrialBase", 6, 37 );
+				bool rejected_negative_research_cost = false;
+				try {
+					source.SetResearchState( { "CentauriEcology" }, "IndustrialBase", 6, -1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_research_cost = true;
+				}
+				GT_ASSERT(
+					rejected_negative_research_cost && source.GetResearchCost() == 37,
+					"negative cached research cost was accepted or partially mutated"
+				);
+				bool rejected_targetless_research_cost = false;
+				try {
+					source.SetResearchState( {}, "", 0, 1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_targetless_research_cost = true;
+				}
+				GT_ASSERT(
+					rejected_targetless_research_cost && source.GetResearchCost() == 37,
+					"targetless cached research cost was accepted or partially mutated"
+				);
 				source.SetEnergyCredits( 73 );
 				source.SetEcologicalDamageEvents( 4 );
 				source.SetCleanMineralFacilities( 3 );
@@ -443,6 +465,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					cloned.GetCleanMineralFacilities() == 3,
 					"player clean mineral facility count was not cloned"
 				);
+				GT_ASSERT(
+					cloned.GetResearchTarget() == "IndustrialBase" &&
+						cloned.GetResearchProgress() == 6 && cloned.GetResearchCost() == 37,
+					"player cached research state was not cloned"
+				);
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
 				GT_ASSERT( cloned.GetSanctionTurns() == 10, "player sanction duration was not cloned" );
 				GT_ASSERT(
@@ -551,8 +578,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				Player roundtrip( source.Serialize() );
 				GT_ASSERT( roundtrip.HasTechnology( "CentauriEcology" ), "known technology was not serialized" );
-				GT_ASSERT( roundtrip.GetResearchTarget().empty(), "completed research target was not serialized" );
-				GT_ASSERT( roundtrip.GetResearchProgress() == 0, "completed research progress was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchTarget() == "IndustrialBase", "research target was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchProgress() == 6, "research progress was not serialized" );
+				GT_ASSERT( roundtrip.GetResearchCost() == 37, "research cost was not serialized" );
 				GT_ASSERT( roundtrip.GetEnergyCredits() == 73, "player energy credits were not serialized" );
 				GT_ASSERT(
 					roundtrip.GetEcologicalDamageEvents() == 4,
@@ -609,7 +637,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( redacted.IsRedacted(), "foreign player projection was not marked redacted" );
 				GT_ASSERT(
 					redacted.GetTechnologies().empty() && redacted.GetResearchTarget().empty() &&
-					redacted.GetResearchProgress() == 0 && redacted.GetEnergyCredits() == 0,
+					redacted.GetResearchProgress() == 0 && redacted.GetResearchCost() == 0 &&
+						redacted.GetEnergyCredits() == 0,
 					"foreign player projection exposed research or energy"
 				);
 				const Player::social_engineering_t default_social_engineering =
@@ -654,6 +683,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 					redacted_roundtrip.IsRedacted() && redacted_roundtrip.GetEnergyCredits() == 0,
 					"redacted player became authoritative when reserialized"
 				);
+				GT_ASSERT(
+					redacted_roundtrip.GetResearchCost() == 0,
+					"redacted player exposed cached research cost when reserialized"
+				);
 				Player private_council_source( "Voter", Player::PR_SINGLE, nullptr, "Citizen" );
 				private_council_source.SetCouncilState({
 					false, 43, "trade_pact", 1, Player::COUNCIL_VOTE_YES,
@@ -680,12 +713,14 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					!infiltrated.IsRedacted() && infiltrated.GetEnergyCredits() == 73 &&
 					infiltrated.HasTechnology( "CentauriEcology" ) &&
+					infiltrated.GetResearchCost() == 37 &&
 					infiltrated.GetExploredTiles() == source.GetExploredTiles(),
 					"infiltrated player projection did not include private state"
 				);
 				Player self_view( source.Serialize( &source ) );
 				GT_ASSERT(
-					!self_view.IsRedacted() && self_view.GetEnergyCredits() == 73,
+					!self_view.IsRedacted() && self_view.GetEnergyCredits() == 73 &&
+						self_view.GetResearchCost() == 37,
 					"self player projection was redacted"
 				);
 				source.ClearDiplomaticTrade( 4 );
@@ -750,6 +785,15 @@ void AddTests( task::gsetests::GSETests* task ) {
 					player_extension.WriteBool( state.major_atrocity_victim );
 				}
 				const auto player_extension_size = player_extension.ToString().size();
+				types::Buffer research_cost_field;
+				research_cost_field.WriteInt( source.GetResearchCost() );
+				const auto current_player_extension_size =
+					player_extension_size + bool_field_size + research_cost_field.ToString().size();
+				auto legacy_player_data = source.Serialize().ToString();
+				legacy_player_data.resize(
+					legacy_player_data.size() - current_player_extension_size
+				);
+				legacy_player_data += player_extension.ToString();
 				types::Buffer clean_mineral_facilities_field;
 				clean_mineral_facilities_field.WriteInt( source.GetCleanMineralFacilities() );
 				const auto clean_mineral_facilities_field_size =
@@ -788,7 +832,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				}
 				const auto diplomatic_grievances_field_size =
 					diplomatic_grievances_field.ToString().size();
-				auto pre_diplomatic_grievances_data = source.Serialize().ToString();
+				auto pre_diplomatic_grievances_data = legacy_player_data;
 				pre_diplomatic_grievances_data.resize(
 					pre_diplomatic_grievances_data.size() - diplomatic_grievances_field_size
 				);
@@ -798,7 +842,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 						pre_diplomatic_grievances.GetDiplomaticGrievances().empty(),
 					"older player data did not default diplomatic grievances"
 				);
-				auto pre_diplomatic_excuses_data = source.Serialize().ToString();
+				auto pre_diplomatic_excuses_data = legacy_player_data;
 				pre_diplomatic_excuses_data.resize(
 					pre_diplomatic_excuses_data.size() - diplomatic_excuses_field_size -
 						diplomatic_grievances_field_size
@@ -884,7 +928,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_duplicate_diplomatic_grievance,
 					"duplicate serialized diplomatic grievance was accepted"
 				);
-				auto pre_submission_data = source.Serialize().ToString();
+				auto pre_submission_data = legacy_player_data;
 				pre_submission_data.resize(
 					pre_submission_data.size() - submission_state_fields_size -
 						mind_control_total_field_size - diplomatic_excuses_field_size -
@@ -897,7 +941,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 						pre_submission.GetMindControlTotal() == 0,
 					"older player data did not default diplomatic submission state"
 				);
-				auto pre_supreme_data = source.Serialize().ToString();
+				auto pre_supreme_data = legacy_player_data;
 				pre_supreme_data.resize(
 					pre_supreme_data.size() - submission_state_fields_size -
 						supreme_state_fields_size - mind_control_total_field_size -
@@ -912,7 +956,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					!pre_supreme.GetCouncilState().supreme_resolved,
 					"older player data did not default Supreme Leader state"
 				);
-				auto pre_expulsion_data = source.Serialize().ToString();
+				auto pre_expulsion_data = legacy_player_data;
 				pre_expulsion_data.resize(
 					pre_expulsion_data.size() - council_expulsion_field_size -
 						supreme_state_fields_size - submission_state_fields_size -
@@ -925,7 +969,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 					pre_expulsion.GetCleanMineralFacilities() == 3,
 					"older player data did not default Council expulsion state"
 				);
-				auto pre_clean_mineral_data = source.Serialize().ToString();
+				auto pre_clean_mineral_data = legacy_player_data;
 				pre_clean_mineral_data.resize(
 					pre_clean_mineral_data.size() - clean_mineral_facilities_field_size -
 						council_expulsion_field_size - supreme_state_fields_size -
@@ -949,7 +993,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 				version_one_extension.WriteInt( trade.offer_contact );
 				version_one_extension.WriteInt( trade.request_contact );
 				auto version_one_data = source.Serialize().ToString();
-				version_one_data.resize( version_one_data.size() - player_extension_size );
+				version_one_data.resize(
+					version_one_data.size() - current_player_extension_size
+				);
 				version_one_data += version_one_extension.ToString();
 				Player version_one( version_one_data );
 				GT_ASSERT(
@@ -959,6 +1005,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					version_one.GetCleanMineralFacilities() == 0,
 					"version-one player data did not default its clean mineral facility count"
+				);
+				GT_ASSERT(
+					version_one.GetResearchCost() == 0,
+					"version-one player data did not default its cached research cost"
 				);
 				GT_ASSERT(
 					version_one.GetDiplomaticTrade( 5 ) &&
@@ -989,7 +1039,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_two_extension.WriteInt( y );
 				}
 				auto version_two_data = source.Serialize().ToString();
-				version_two_data.resize( version_two_data.size() - player_extension_size );
+				version_two_data.resize(
+					version_two_data.size() - current_player_extension_size
+				);
 				version_two_data += version_two_extension.ToString();
 				Player version_two( version_two_data );
 				GT_ASSERT(
@@ -1024,7 +1076,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_three_extension.WriteInt( y );
 				}
 				auto version_three_data = source.Serialize().ToString();
-				version_three_data.resize( version_three_data.size() - player_extension_size );
+				version_three_data.resize(
+					version_three_data.size() - current_player_extension_size
+				);
 				version_three_data += version_three_extension.ToString();
 				Player version_three( version_three_data );
 				GT_ASSERT(
@@ -1058,7 +1112,9 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_four_extension.WriteInt( y );
 				}
 				auto version_four_data = source.Serialize().ToString();
-				version_four_data.resize( version_four_data.size() - player_extension_size );
+				version_four_data.resize(
+					version_four_data.size() - current_player_extension_size
+				);
 				version_four_data += version_four_extension.ToString();
 				Player version_four( version_four_data );
 				GT_ASSERT(
@@ -1069,7 +1125,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto pre_retirement_data = source.Serialize().ToString();
 				pre_retirement_data.resize(
-					pre_retirement_data.size() - player_extension_size - retired_designs_field_size
+					pre_retirement_data.size() - current_player_extension_size -
+						retired_designs_field_size
 				);
 				Player pre_retirement( pre_retirement_data );
 				GT_ASSERT(
@@ -1083,7 +1140,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto trade_only_council_data = source.Serialize().ToString();
 				trade_only_council_data.resize(
-					trade_only_council_data.size() - player_extension_size - retired_designs_field_size -
+					trade_only_council_data.size() - current_player_extension_size -
+						retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 2
 				);
@@ -1096,7 +1154,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				auto legacy_council_data = source.Serialize().ToString();
 				legacy_council_data.resize(
-					legacy_council_data.size() - player_extension_size - retired_designs_field_size -
+					legacy_council_data.size() - current_player_extension_size -
+						retired_designs_field_size -
 						obsolete_designs_field_size -
 						bool_field_size * 3
 				);

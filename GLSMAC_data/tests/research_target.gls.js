@@ -4,6 +4,7 @@ let state = {
 	technologies: ['Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 7,
+	cost: 30,
 };
 const clone_state = () => {
 	let known = [];
@@ -14,6 +15,7 @@ const clone_state = () => {
 		technologies: known,
 		target: state.target,
 		progress: state.progress,
+		cost: state.cost,
 	};
 };
 const player = {
@@ -25,8 +27,13 @@ let triggers = 0;
 const game = {
 	is_turn_complete: (id) => { return false; },
 	get: (key) => {
-		test.assert(key == 'f_technology_get_available_targets');
-		return (known) => { return ['IndustrialBase', 'CentauriEcology']; };
+		if (key == 'f_technology_get_available_targets') {
+			return (known) => { return ['IndustrialBase', 'CentauriEcology']; };
+		}
+		if (key == 'f_technology_get_state_cost') {
+			return (player, known, target, previous) => { return 42; };
+		}
+		throw Error('Unknown game value: ' + key);
 	},
 	trigger: (name, data) => {
 		test.assert(name == 'research_updated');
@@ -46,6 +53,7 @@ test.assert(state == {
 	technologies: ['Biogenetics'],
 	target: 'CentauriEcology',
 	progress: 7,
+	cost: 42,
 });
 test.assert(triggers == 1);
 event_def.rollback(event);
@@ -53,6 +61,7 @@ test.assert(state == {
 	technologies: ['Biogenetics'],
 	target: 'IndustrialBase',
 	progress: 7,
+	cost: 30,
 });
 test.assert(triggers == 2);
 

@@ -22,7 +22,7 @@ const rules_game = (changes) => {
 };
 
 test.assert(technologies.apply_research_rate(rules_game({}), 11) == 11);
-test.assert(technologies.apply_research_rate(rules_game({tech_stagnation: true}), 11) == 5);
+test.assert(technologies.apply_research_rate(rules_game({tech_stagnation: true}), 11) == 11);
 test.assert(technologies.apply_research_rate(rules_game({tech_stagnation: true}), 1) == 1);
 test.assert(technologies.apply_research_rate(rules_game({tech_stagnation: true}), 0) == 0);
 

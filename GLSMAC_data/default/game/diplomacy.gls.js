@@ -1,4 +1,5 @@
 const diplomatic_base_transfer = #include('./diplomatic_base_transfer');
+const technology_acquisition = #include('./technology_acquisition');
 const technology_effects = #include('./technology_effects');
 
 const is_player = (player) => {
@@ -667,6 +668,13 @@ const grant_technology = (game, player, id) => {
 		technologies: technologies,
 		target: target,
 		progress: progress,
+		cost: technology_acquisition.get_state_cost(
+			game,
+			player,
+			technologies,
+			target,
+			previous
+		),
 	});
 	const map_reveals = technology_effects.apply_map_reveals(game, player, [id]);
 	const specialist_updates = technology_effects.apply_specialist_updates(game, player);

@@ -1,6 +1,26 @@
 const technology_acquisition = #include('../technology_acquisition');
 const technology_effects = #include('../technology_effects');
 
+const get_research_cost = (game, player, state, technology) => {
+	if (#is_defined(state.cost) && state.cost > 0) {
+		return state.cost;
+	}
+	const resolver = game.get('f_technology_get_research_cost');
+	return #typeof(resolver) == 'Callable' ? resolver(player) : technology.cost;
+};
+
+const get_state_cost = (game, player, known, target, previous) => {
+	if (target == '') {
+		return 0;
+	}
+	const resolver = game.get('f_technology_get_state_cost');
+	if (#typeof(resolver) == 'Callable') {
+		return resolver(player, known, target, previous);
+	}
+	const technology = game.get('f_technology_get_definition')(target);
+	return technology == null ? 0 : technology.cost;
+};
+
 return {
 
 	validate: (e) => {
@@ -23,10 +43,16 @@ return {
 			return 'Technology cost must be a positive whole number';
 		}
 		const state = e.data.player.get_research_state();
+		const cost = get_research_cost(
+			e.game,
+			e.data.player,
+			state,
+			e.data.technology
+		);
 		if (state.target != e.data.technology.id) {
 			return 'Technology is not the player\'s current research target';
 		}
-		if (state.progress >= e.data.technology.cost) {
+		if (state.progress >= cost) {
 			return 'Research progress must remain below the technology cost';
 		}
 	},
@@ -40,11 +66,12 @@ return {
 		let target = previous.target;
 		let progress = previous.progress + e.data.labs;
 		let technology = e.data.technology;
+		const cost = get_research_cost(e.game, e.data.player, previous, technology);
 		let completed_names = [];
 		let completed_ids = [];
 		let free_technology_count = 0;
-		while (target != '' && progress >= technology.cost) {
-			progress -= technology.cost;
+		if (target != '' && progress >= cost) {
+			progress = 0;
 			if (
 				technology_effects.grants_first_discoverer_technology(
 					e.game,
@@ -58,20 +85,24 @@ return {
 			completed_names :+technology.name;
 			completed_ids :+technology.id;
 			target = e.game.get('f_technology_get_next_target')(technologies, e.data.player);
-			if (target != '') {
-				technology = e.game.get('f_technology_get_definition')(target);
-				if (technology == null) {
-					throw Error('Unknown research target: ' + target);
-				}
+			if (
+				target != '' &&
+				e.game.get('f_technology_get_definition')(target) == null
+			) {
+				throw Error('Unknown research target: ' + target);
 			}
-		}
-		if (target == '') {
-			progress = 0;
 		}
 		e.data.player.set_research_state({
 			technologies: technologies,
 			target: target,
 			progress: progress,
+			cost: get_state_cost(
+				e.game,
+				e.data.player,
+				technologies,
+				target,
+				previous
+			),
 		});
 		const map_reveals = technology_effects.apply_map_reveals(
 			e.game,
