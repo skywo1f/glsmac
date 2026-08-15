@@ -63,6 +63,14 @@ $thirdPartyDirectory = Join-Path $classicDirectory 'third-party'
 [System.IO.Directory]::CreateDirectory($thirdPartyDirectory) | Out-Null
 
 Copy-Item -LiteralPath $exe -Destination (Join-Path $packageRoot 'GLSMAC.exe')
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$dataSource = Join-Path $repositoryRoot 'GLSMAC_data\default'
+if (-not [System.IO.Directory]::Exists($dataSource)) {
+	throw "GLSMAC runtime data not found: $dataSource"
+}
+$dataDirectory = Join-Path $packageRoot 'GLSMAC_data'
+[System.IO.Directory]::CreateDirectory($dataDirectory) | Out-Null
+Copy-Item -LiteralPath $dataSource -Destination $dataDirectory -Recurse
 foreach ($file in @(
 	'GLSMACClassic.psm1',
 	'Launch-GLSMACClassic.ps1',
@@ -77,7 +85,6 @@ Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Play-GLSMAC-Classic.cmd') -Dest
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'Play-GLSMAC-Preview.cmd') -Destination $packageRoot
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'RESCUE_RELEASE.md') -Destination (Join-Path $packageRoot 'README.md')
 
-$repositoryRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 Copy-Item -LiteralPath (Join-Path $repositoryRoot 'LICENSE') -Destination (Join-Path $packageRoot 'GLSMAC_LICENSE.txt')
 
 $hashLines = Get-ChildItem -LiteralPath $packageRoot -Recurse -File |

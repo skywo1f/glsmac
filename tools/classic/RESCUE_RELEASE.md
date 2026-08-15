@@ -24,12 +24,12 @@ uses a package-local profile and asks for the original asset directory if one
 has not been configured. This path contains the new renderer, scripting system,
 network implementation, AI, and gameplay work.
 
-The Preview is still under development. Automated coverage is broad, but long
+The Preview is still under development. Automated coverage includes save/load,
+multiplayer reconnect, six-AI economy, and the major gameplay systems, but long
 campaign balance, adversarial multiplayer soak testing, remaining information
 boundaries, richer diplomacy, accessibility, and broad manual operating-system
-coverage are not yet release-complete. An intermittent running-game reconnect
-event-ordering failure remains an explicit blocker for calling the native engine
-a finished replacement.
+coverage are not yet release-complete. It should not yet be treated as a
+finished replacement for the original engine.
 
 ## Legal And Safety Notes
 
