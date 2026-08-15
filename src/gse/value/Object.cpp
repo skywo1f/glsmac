@@ -112,14 +112,16 @@ Value* const Object::GetRef( const object_key_t& key ) {
 	ASSERT( pass != 0, "cannot cache an object reference outside accumulation" );
 	if ( m_ref_cache_pass != pass ) {
 		m_ref_cache_pass = pass;
-		m_ref_cache.clear();
+		m_ref_cache = nullptr;
 	}
-	const auto existing = m_ref_cache.find( key );
-	if ( existing != m_ref_cache.end() ) {
-		return existing->second;
+	for ( auto* ref = m_ref_cache; ref; ref = ref->cache_next ) {
+		if ( ref->key == key ) {
+			return ref;
+		}
 	}
 	auto* const result = VALUEEXT( ObjectRef, m_gc_space, this, key );
-	m_ref_cache.emplace( key, result );
+	result->cache_next = m_ref_cache;
+	m_ref_cache = result;
 	return result;
 }
 

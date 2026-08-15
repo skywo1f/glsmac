@@ -19,6 +19,7 @@ public:
 
 	value::Object* object;
 	const std::string key;
+	ObjectRef* cache_next = nullptr;
 
 	void GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects ) override;
 
