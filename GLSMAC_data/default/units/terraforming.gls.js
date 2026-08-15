@@ -59,21 +59,20 @@ const orders = {
 		name: 'Condenser',
 		turns: 12,
 		required_technology: 'EcologicalEngineering',
-		advanced: true,
+		weather_paradigm_unlock: true,
 		changes: {forest: false, borehole: false, condenser: true},
 	},
 	mirror: {
 		name: 'Echelon Mirror',
 		turns: 12,
 		required_technology: 'EcologicalEngineering',
-		advanced: true,
 		changes: {forest: false, mine: false, solar: false, borehole: false, mirror: true},
 	},
 	borehole: {
 		name: 'Thermal Borehole',
 		turns: 24,
 		required_technology: 'EcologicalEngineering',
-		advanced: true,
+		weather_paradigm_unlock: true,
 		changes: {
 			forest: false,
 			farm: false,
@@ -89,7 +88,6 @@ const orders = {
 		name: 'Aquifer',
 		turns: 18,
 		required_technology: 'EcologicalEngineering',
-		advanced: true,
 		feature_changes: {river: true},
 	},
 	raise_land: {
@@ -97,7 +95,7 @@ const orders = {
 		sea_name: 'Raise Sea Floor',
 		turns: 12,
 		required_technology: 'EnvironmentalEconomics',
-		advanced: true,
+		weather_paradigm_unlock: true,
 		elevation_delta: 1000,
 	},
 	lower_land: {
@@ -105,14 +103,13 @@ const orders = {
 		sea_name: 'Lower Sea Floor',
 		turns: 12,
 		required_technology: 'EnvironmentalEconomics',
-		advanced: true,
+		weather_paradigm_unlock: true,
 		elevation_delta: -1000,
 	},
 	level_terrain: {
 		name: 'Level Terrain',
 		turns: 8,
 		required_technology: '',
-		advanced: true,
 		rockiness_delta: -1,
 	},
 	sensor: {
@@ -420,12 +417,15 @@ const get_unavailable_reason = (tile, player, type, project_effects) => {
 	) {
 		return 'This improvement cannot be built in a volcanic area';
 	}
-	const has_advanced_terraforming = #is_defined(project_effects) &&
+	const has_weather_paradigm = #is_defined(project_effects) &&
 		#is_defined(project_effects.advanced_terraforming) &&
 		project_effects.advanced_terraforming;
 	if (
 		!has_technology(player, order.required_technology) &&
-		(!#is_defined(order.advanced) || !order.advanced || !has_advanced_terraforming)
+		(
+			!#is_defined(order.weather_paradigm_unlock) ||
+			!order.weather_paradigm_unlock || !has_weather_paradigm
+		)
 	) {
 		return 'Required technology has not been discovered';
 	}
