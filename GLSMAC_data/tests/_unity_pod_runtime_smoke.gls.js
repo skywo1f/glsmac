@@ -112,6 +112,50 @@
 					throw Error('UNITY_POD_RUNTIME_FAIL: transient Former orders leaked into tile improvements');
 				}
 
+				let river_source = null;
+				for (
+					let river_y = 0;
+					river_y < tm.get_map_height() && river_source == null;
+					river_y++
+				) {
+					for (
+						let river_x = river_y % 2;
+						river_x < tm.get_map_width();
+						river_x += 2
+					) {
+						const river_candidate = tm.get_tile(river_x, river_y);
+						if (river_candidate.is_water || river_candidate.features.river) {
+							continue;
+						}
+						let has_exit = false;
+						for (nearby of river_candidate.get_surrounding_tiles()) {
+							if (nearby.is_water || nearby.features.river) {
+								has_exit = true;
+								break;
+							}
+						}
+						if (!has_exit) {
+							river_source = river_candidate;
+							break;
+						}
+					}
+				}
+				if (river_source == null) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: no inland Aquifer test tile is available');
+				}
+				const artificial_river = terraforming.create_aquifer_river(river_source);
+				if (#sizeof(artificial_river) < 2) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: Aquifer did not create a river course');
+				}
+				for (river_tile of artificial_river) {
+					if (!river_tile.features.river) {
+						throw Error('UNITY_POD_RUNTIME_FAIL: Aquifer river course was not applied');
+					}
+				}
+				for (river_tile of artificial_river) {
+					river_tile.update_features({river: false});
+				}
+
 				let land_candidates = [];
 				const add_ranked = (ranked, info) => {
 					if (#sizeof(ranked) < 6) {

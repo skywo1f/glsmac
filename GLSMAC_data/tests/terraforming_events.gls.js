@@ -313,6 +313,33 @@ test.assert(#is_defined(terraform_tile.validate(event)));
 tile.terraforming.borehole = false;
 known_technologies = {};
 
+const make_river_tile = (x, y, elevation, is_water) => {
+	let nearby = [];
+	let result = null;
+	result = {
+		x: x,
+		y: y,
+		elevation: elevation,
+		is_water: is_water,
+		features: {river: false},
+		get_surrounding_tiles: () => { return nearby; },
+		set_nearby: (value) => { nearby = value; },
+		update_features: (changes) => { result.features.river = changes.river; },
+	};
+	return result;
+};
+const river_source = make_river_tile(4, 4, 2000, false);
+const river_high = make_river_tile(6, 4, 1500, false);
+const river_low = make_river_tile(5, 5, 1000, false);
+const river_mouth = make_river_tile(7, 5, 0 - 1, true);
+river_source.set_nearby([river_high, river_low]);
+river_high.set_nearby([river_source]);
+river_low.set_nearby([river_source, river_mouth]);
+river_mouth.set_nearby([river_low]);
+test.assert(terraforming.create_aquifer_river(river_source) == [river_source, river_low]);
+test.assert(river_source.features.river && river_low.features.river);
+test.assert(!river_high.features.river && !river_mouth.features.river);
+
 event.data.type = 'level_terrain';
 tile.rockiness = 1;
 test.assert(#is_defined(terraform_tile.validate(event)));

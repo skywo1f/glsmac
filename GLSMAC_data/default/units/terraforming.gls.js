@@ -200,6 +200,8 @@ const DIFFICULTY_LEVELS = {
 	Transcend: 5,
 };
 
+const AQUIFER_RIVER_MAX_LENGTH = 16;
+
 const is_fungus_order = (type) => {
 	return type == 'remove_fungus' || type == 'plant_fungus';
 };
@@ -514,6 +516,60 @@ const get_elevation_domain_states = (tile) => {
 	return states;
 };
 
+const get_tile_key = (tile) => {
+	return 't' + #to_string(tile.x) + '_' + #to_string(tile.y);
+};
+
+const create_aquifer_river = (source) => {
+	let current = source;
+	let seen = {};
+	let result = [];
+	let length = 0;
+	while (length < AQUIFER_RIVER_MAX_LENGTH) {
+		const current_key = get_tile_key(current);
+		if (#is_defined(seen[current_key]) || current.is_water) {
+			break;
+		}
+		seen[current_key] = true;
+		if (current.features.river) {
+			break;
+		}
+		current.update_features({river: true});
+		result :+current;
+		length++;
+
+		let next = null;
+		let joins_water_or_river = false;
+		for (candidate of current.get_surrounding_tiles()) {
+			const candidate_key = get_tile_key(candidate);
+			if (#is_defined(seen[candidate_key])) {
+				continue;
+			}
+			if (candidate.is_water || candidate.features.river) {
+				joins_water_or_river = true;
+				break;
+			}
+			if (
+				next == null || candidate.elevation < next.elevation ||
+				(
+					candidate.elevation == next.elevation &&
+					(
+						candidate.y < next.y ||
+						(candidate.y == next.y && candidate.x < next.x)
+					)
+				)
+			) {
+				next = candidate;
+			}
+		}
+		if (joins_water_or_river || next == null) {
+			break;
+		}
+		current = next;
+	}
+	return result;
+};
+
 const get_domain_losses = (game, domain_states) => {
 	let units = [];
 	let seen = {};
@@ -679,7 +735,9 @@ const advance_order_result = (unit, game) => {
 	if (#is_defined(order.changes)) {
 		tile.update_terraforming(order.changes);
 	}
-	if (#is_defined(order.feature_changes)) {
+	if (type == 'aquifer') {
+		create_aquifer_river(tile);
+	} else if (#is_defined(order.feature_changes)) {
 		tile.update_features(order.feature_changes);
 	}
 	if (#is_defined(order.rockiness_delta)) {
@@ -719,6 +777,7 @@ return {
 	is_elevation_order: is_elevation_order,
 	get_elevation_change_cost: get_elevation_change_cost,
 	get_unavailable_reason: get_unavailable_reason,
+	create_aquifer_river: create_aquifer_river,
 	advance_order_result: advance_order_result,
 	advance_order: advance_order,
 };
