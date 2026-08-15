@@ -39,6 +39,7 @@ private:
 
 	// TODO: make it multithreaded
 	std::recursive_mutex m_execute_mutex;
+	Value* const ExecuteScopeInContext( context::Context* ctx, ExecutionPointer& ep, const program::Scope* scope );
 
 	class Function : public value::Callable {
 	public:
@@ -60,6 +61,7 @@ private:
 	};
 
 	Value* const EvaluateScope( context::Context* ctx, ExecutionPointer& ep, const program::Scope* scope, bool* returnflag = nullptr );
+	Value* const EvaluateScopeInContext( context::Context* ctx, ExecutionPointer& ep, const program::Scope* scope, bool* returnflag = nullptr );
 	Value* const EvaluateStatement( context::Context* ctx, ExecutionPointer& ep, const program::Statement* statement, bool* returnflag = nullptr );
 	Value* const EvaluateConditional( context::Context* ctx, ExecutionPointer& ep, const program::Conditional* conditional, bool is_nested, bool* returnflag = nullptr );
 	Value* const EvaluateExpression( context::Context* ctx, ExecutionPointer& ep, const program::Expression* expression, bool* returnflag = nullptr, const bool as_reference = false );

@@ -71,6 +71,12 @@ gse::Value* const Interpreter::Execute( context::Context* ctx, ExecutionPointer&
 	return EvaluateScope( ctx, ep, program->body );
 }
 
+gse::Value* const Interpreter::ExecuteScopeInContext( context::Context* ctx, ExecutionPointer& ep, const Scope* scope ) {
+	CHECKACCUM( m_gc_space );
+	std::lock_guard guard( m_execute_mutex );
+	return EvaluateScopeInContext( ctx, ep, scope );
+}
+
 gse::Value* const Interpreter::EvaluateScope( context::Context* ctx, ExecutionPointer& ep, const Scope* scope, bool* returnflag ) {
 	CHECKACCUM( m_gc_space );
 	gse::Value* result = nullptr;
@@ -78,30 +84,7 @@ gse::Value* const Interpreter::EvaluateScope( context::Context* ctx, ExecutionPo
 	ctx->ForkAndExecute(
 		m_gc_space, ctx, scope->m_si, ep, false,
 		[ this, &scope, &ep, &result, &returnflag ]( gse::context::ChildContext* const subctx ) {
-
-			for ( const auto& it : scope->body ) {
-				bool return_flag = false;
-				switch ( it->control_type ) {
-					case Control::CT_STATEMENT: {
-						result = EvaluateStatement( subctx, ep, (Statement*)it, &return_flag );
-						break;
-					}
-					case Control::CT_CONDITIONAL: {
-						result = EvaluateConditional( subctx, ep, (Conditional*)it, false, &return_flag );
-						break;
-					}
-					default:
-						THROW( "unexpected control type: " + it->Dump() );
-				}
-				if ( return_flag ) {
-					// got return statement
-					if ( returnflag ) {
-						*returnflag = true;
-					}
-					break;
-				}
-			}
-
+			result = EvaluateScopeInContext( subctx, ep, scope, returnflag );
 #if defined( DEBUG ) || defined( FASTDEBUG )
 			if ( m_are_scope_context_joins_enabled ) {
 				subctx->JoinContext();
@@ -110,6 +93,32 @@ gse::Value* const Interpreter::EvaluateScope( context::Context* ctx, ExecutionPo
 		}
 	);
 
+	return result;
+}
+
+gse::Value* const Interpreter::EvaluateScopeInContext( context::Context* ctx, ExecutionPointer& ep, const Scope* scope, bool* returnflag ) {
+	gse::Value* result = nullptr;
+	for ( const auto& it : scope->body ) {
+		bool return_flag = false;
+		switch ( it->control_type ) {
+			case Control::CT_STATEMENT: {
+				result = EvaluateStatement( ctx, ep, (Statement*)it, &return_flag );
+				break;
+			}
+			case Control::CT_CONDITIONAL: {
+				result = EvaluateConditional( ctx, ep, (Conditional*)it, false, &return_flag );
+				break;
+			}
+			default:
+				THROW( "unexpected control type: " + it->Dump() );
+		}
+		if ( return_flag ) {
+			if ( returnflag ) {
+				*returnflag = true;
+			}
+			break;
+		}
+	}
 	return result;
 }
 
@@ -1292,7 +1301,7 @@ gse::Value* Interpreter::Function::Run( GSE_CALLABLE, const function_arguments_t
 			}
 			ep.WithSI(
 				si, [ this, &result, &subctx, &ep ]() {
-					result = runner->Execute( subctx, ep, program );
+					result = runner->ExecuteScopeInContext( subctx, ep, program->body );
 				}
 			);
 		}
