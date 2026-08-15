@@ -21,6 +21,11 @@ test.assert(!strategy.can_expand_safely(2, 1, 2, 0));
 test.assert(strategy.can_expand_safely(2, 1, 3, 0));
 test.assert(!strategy.can_expand_safely(2, 0, 4, 1));
 
+test.assert(!strategy.can_prepare_colony(0, 2));
+test.assert(!strategy.can_prepare_colony(1, 0));
+test.assert(strategy.can_prepare_colony(1, 1));
+test.assert(strategy.can_prepare_colony(2, 0 - 1));
+
 test.assert(strategy.get_gap_priority(1, 1) == 0);
 test.assert(strategy.get_gap_priority(0, 1) == 75);
 test.assert(strategy.get_gap_priority(0, 2) == 100);

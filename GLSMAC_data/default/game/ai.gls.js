@@ -1303,7 +1303,10 @@ const queue_production = (
 			needs_population_capacity:
 				base.get_size() >= base_metric.population_limit,
 			base_size: base.get_size(),
-			can_expand: base.get_size() > 1,
+			can_expand: strategy.can_prepare_colony(
+				base.get_size(),
+				nutrient_surplus
+			),
 			can_start_project: can_start_project,
 			nutrient_surplus: nutrient_surplus,
 			mineral_surplus: mineral_surplus,

@@ -57,6 +57,10 @@ const can_expand_safely = (base_count, colony_count, combat_count, underdefended
 	);
 };
 
+const can_prepare_colony = (base_size, nutrient_surplus) => {
+	return base_size > 1 || (base_size == 1 && nutrient_surplus > 0);
+};
+
 const get_priorities = (context) => {
 	const bases = #max(context.base_count, 0);
 	const expansion = get_gap_priority(
@@ -128,6 +132,7 @@ const get_priorities = (context) => {
 return {
 	get_desired_base_count: get_desired_base_count,
 	can_expand_safely: can_expand_safely,
+	can_prepare_colony: can_prepare_colony,
 	get_gap_priority: get_gap_priority,
 	get_pressure_priority: get_pressure_priority,
 	get_rival_pressure_priority: get_rival_pressure_priority,
