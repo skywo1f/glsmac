@@ -227,8 +227,26 @@ const find_best_reachable = (
 	};
 };
 
+const find_best_reachable_preferred = (
+	tm,
+	unit,
+	can_enter,
+	preferred_enter,
+	score,
+	max_distance
+) => {
+	let result = find_best_reachable(tm, unit, (source, candidate) => {
+		return can_enter(source, candidate) && preferred_enter(source, candidate);
+	}, score, max_distance);
+	if (result == null) {
+		result = find_best_reachable(tm, unit, can_enter, score, max_distance);
+	}
+	return result;
+};
+
 return {
 	find_path_step: find_path_step,
 	find_progress_step: find_progress_step,
 	find_best_reachable: find_best_reachable,
+	find_best_reachable_preferred: find_best_reachable_preferred,
 };

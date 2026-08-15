@@ -1539,9 +1539,10 @@ const move_colony = (game, player, unit, all_bases, resource_values) => {
 		return false;
 	}
 	const tm = game.get_tm();
-	const destination = pathfinding.find_best_reachable(tm, unit, (source, candidate) => {
-		return can_enter(unit, candidate, source) &&
-			colonization.is_safe_transit_tile(candidate, player.id);
+	const destination = pathfinding.find_best_reachable_preferred(tm, unit, (source, candidate) => {
+		return can_enter(unit, candidate, source);
+	}, (source, candidate) => {
+		return colonization.is_safe_transit_tile(candidate, player.id);
 	}, (candidate, distance) => {
 		return colonization.get_destination_score(
 			tm,

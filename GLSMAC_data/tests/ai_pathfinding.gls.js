@@ -123,6 +123,19 @@ best = pathfinding.find_best_reachable(
 test.assert(best.target == detour_a && best.distance == 1);
 test.assert(!farther_layer_scored);
 
+const preferred_enter = (source_tile, tile) => { return tile != detour_a; };
+best = pathfinding.find_best_reachable_preferred(
+	tm,
+	unit,
+	can_enter,
+	preferred_enter,
+	destination_score,
+	3
+);
+test.assert(best.target == destination);
+test.assert(best.step == detour_a);
+test.assert(best.distance == 3);
+
 const progress_source = make_tile(10, true);
 const sidestep = make_tile(11, true);
 const dead_end = make_tile(12, true);
