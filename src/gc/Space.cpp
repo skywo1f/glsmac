@@ -292,6 +292,9 @@ const bool Space::Collect() {
 			std::to_string( removed_count ) + " removed"
 		);
 	}
+	m_has_collected = true;
+	m_last_retained_count = retained_count;
+	m_last_collection_time = std::chrono::steady_clock::now();
 #if defined( GLSMAC_TESTING )
 	if ( s_profile_gc && !removed_type_samples.empty() ) {
 		std::vector< std::pair< std::string, size_t > > ordered_samples(
@@ -314,6 +317,24 @@ const bool Space::Collect() {
 	}
 #endif
 	return removed_count > 0;
+}
+
+const bool Space::ShouldCollect() {
+	const auto now = std::chrono::steady_clock::now();
+	std::lock_guard guard( m_objects_mutex );
+	if ( !m_has_collected ) {
+		return m_objects.size() >= INITIAL_COLLECTION_OBJECTS ||
+			now - m_last_collection_time >= MAX_COLLECTION_INTERVAL;
+	}
+	if ( now - m_last_collection_time >= MAX_COLLECTION_INTERVAL ) {
+		return true;
+	}
+	const size_t growth_threshold = std::max(
+		MIN_COLLECTION_GROWTH,
+		m_last_retained_count / 4
+	);
+	return m_objects.size() >= m_last_retained_count &&
+		m_objects.size() - m_last_retained_count >= growth_threshold;
 }
 
 }

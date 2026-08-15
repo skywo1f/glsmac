@@ -66,6 +66,14 @@ private:
 	// objects that are already collectable
 	common::Mutex m_objects_mutex;
 	std::vector< Object* > m_objects = {};
+	static constexpr size_t INITIAL_COLLECTION_OBJECTS = 131072;
+	static constexpr size_t MIN_COLLECTION_GROWTH = 65536;
+	static constexpr std::chrono::seconds MAX_COLLECTION_INTERVAL =
+		std::chrono::seconds( 30 );
+	bool m_has_collected = false;
+	size_t m_last_retained_count = 0;
+	std::chrono::steady_clock::time_point m_last_collection_time =
+		std::chrono::steady_clock::now();
 
 	// thread-safety of collection logic, to make sure only one thread can run collection of this space at any given time
 	common::Mutex m_collect_mutex;
@@ -89,6 +97,7 @@ private:
 	friend class gse::runner::Interpreter;
 #endif
 	const bool Collect(); // true if anything was gced, false otherwise
+	const bool ShouldCollect();
 
 private:
 	friend class Object;

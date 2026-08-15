@@ -37,9 +37,40 @@ void AddGSETests( task::gsetests::GSETests* task ) {
 				}
 			);
 
-			g_engine->GetGC()->Iterate();
+			g_engine->GetGC()->CollectNow();
 			gse->RemoveRootObject( root );
+			g_engine->GetGC()->CollectNow();
+			GT_OK();
+		}
+	);
+
+	task->AddTest(
+		"garbage collection waits for meaningful heap growth",
+		GT() {
+			auto* const gc_space = gse->GetGCSpace();
+			g_engine->GetGC()->CollectNow();
+			bool destroyed = false;
+			class Tracked final : public gc::Object {
+			public:
+				Tracked( gc::Space* const gc_space, bool* const destroyed )
+					: gc::Object( gc_space )
+					, m_destroyed( destroyed ) {}
+				~Tracked() override {
+					*m_destroyed = true;
+				}
+			private:
+				bool* const m_destroyed;
+			};
+			gc_space->Accumulate(
+				gse,
+				[ &gc_space, &destroyed ]() {
+					new Tracked( gc_space, &destroyed );
+				}
+			);
 			g_engine->GetGC()->Iterate();
+			GT_ASSERT( !destroyed, "small heap growth triggered an immediate collection" );
+			g_engine->GetGC()->CollectNow();
+			GT_ASSERT( destroyed, "forced collection did not reclaim an unreachable object" );
 			GT_OK();
 		}
 	);

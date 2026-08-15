@@ -30,6 +30,7 @@ CLASS( GC, common::Module )
 	void Start() override;
 	void Stop() override;
 	void Iterate() override;
+	void CollectNow();
 
 #if defined( DEBUG ) || defined( FASTDEBUG )
 	static void DebugInit();

@@ -32,6 +32,15 @@ void GC::Iterate() {
 #endif
 	std::lock_guard guard( m_spaces_mutex );
 	for ( const auto& gc_space : m_spaces ) {
+		if ( gc_space->ShouldCollect() ) {
+			gc_space->Collect();
+		}
+	}
+}
+
+void GC::CollectNow() {
+	std::lock_guard guard( m_spaces_mutex );
+	for ( const auto& gc_space : m_spaces ) {
 		gc_space->Collect();
 	}
 }
