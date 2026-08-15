@@ -67,6 +67,7 @@
 			observed_session = #clone(state);
 			vote_click_pending = true;
 			let ui_ticks = 0;
+			let popup_ticks = 0;
 			#async(50, () => {
 				ui_ticks++;
 				if (finished) { return false; }
@@ -78,6 +79,10 @@
 						fail('live Planetary Council popup did not open for the pending vote');
 						return false;
 					}
+					return true;
+				}
+				popup_ticks++;
+				if (popup_ticks < 3) {
 					return true;
 				}
 				const council_popup = ui_state.modules.popup.popup_defs.planetary_council;

@@ -15,11 +15,15 @@ return {
 				this.refresh();
 			}
 			const state = player.get_council_state();
-			if (
+			const needs_council_popup =
 				(
 					(state.proposal != '' && state.vote_id == -2) ||
 					(#is_defined(state.supreme_response) && state.supreme_response == 1)
-				) && !p.modules.popup.is_shown()
+				);
+			const active_popup = p.modules.popup.popup;
+			if (
+				needs_council_popup &&
+				(active_popup == null || active_popup.id != 'planetary_council')
 			) {
 				p.modules.popup.show('planetary_council');
 			}
@@ -193,14 +197,8 @@ return {
 	cast_vote: (vote_id) => {
 		const player = this.p.game.get_player();
 		if (player == null) { return; }
-		const error = this.p.game.get('f_council_validate_vote')(
-			player,
-			vote_id
-		);
-		if (#is_defined(error)) {
-			this.detail_text.text = error;
-			return;
-		}
+		// The authoritative event validation runs on submit; a client-side
+		// projection can lag just long enough to make a visible button a no-op.
 		this.vote_first_button.hide();
 		this.vote_second_button.hide();
 		this.abstain_button.hide();
@@ -214,14 +212,8 @@ return {
 	call_council: (proposal) => {
 		const player = this.p.game.get_player();
 		if (player == null) { return; }
-		const error = this.p.game.get('f_council_validate_call')(
-			player,
-			proposal
-		);
-		if (#is_defined(error)) {
-			this.detail_text.text = error;
-			return;
-		}
+		// Submit to the authoritative event layer even if the local projection
+		// is briefly stale; refresh() controls whether these buttons are shown.
 		this.governor_button.hide();
 		this.supreme_button.hide();
 		this.trade_button.hide();

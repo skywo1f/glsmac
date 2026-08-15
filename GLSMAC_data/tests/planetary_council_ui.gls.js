@@ -76,12 +76,18 @@ popup.on_show();
 
 test.assert(#sizeof(buttons) == 13);
 test.assert(buttons[5].text == 'Convene Governor Election');
+functions.f_council_validate_call = (caller, proposal) => {
+	return 'stale local call validation';
+};
 test.assert(buttons[5].click());
 test.assert(#sizeof(game_events) == 1);
 test.assert(game_events[0].name == 'call_planetary_council');
 test.assert(game_events[0].player_id == player.id);
 test.assert(game_events[0].proposal == 'governor');
 
+functions.f_council_validate_vote = (caller, vote_id) => {
+	return 'stale local vote validation';
+};
 test.assert(buttons[0].click());
 test.assert(#sizeof(game_events) == 2);
 test.assert(game_events[1].name == 'cast_council_vote');
