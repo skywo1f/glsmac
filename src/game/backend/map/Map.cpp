@@ -1065,8 +1065,8 @@ std::string Map::GetTerraformingElevationError(
 			corners_in_water++;
 		}
 		const bool would_be_water = corners_in_water > 2;
-		if ( would_be_water != map_tile->is_water_tile ) {
-			return "This change would alter a coastline and requires an adjacent Former";
+		if ( would_be_water != map_tile->is_water_tile && map_tile->base ) {
+			return "Terrain cannot change the domain of a base";
 		}
 	}
 	return "";
@@ -1085,17 +1085,42 @@ std::string Map::ApplyTerraformingElevation(
 		THROW( "serialized terrain snapshot size is invalid" );
 	}
 
+	const auto all_tiles = GetAllTiles();
+	std::unordered_map< tile::Tile*, bool > previous_domains;
+	previous_domains.reserve( all_tiles.size() );
+	for ( auto* const map_tile : all_tiles ) {
+		previous_domains.insert( { map_tile, map_tile->is_water_tile } );
+	}
+
 	for ( auto* const vertex : center->elevation.corners ) {
 		*vertex += amount;
 	}
-	const auto all_tiles = GetAllTiles();
+	static constexpr tile::terraforming_t DOMAIN_CHANGE_TERRAFORMING =
+		tile::TERRAFORMING_ROAD |
+		tile::TERRAFORMING_MAG_TUBE |
+		tile::TERRAFORMING_FOREST |
+		tile::TERRAFORMING_FARM |
+		tile::TERRAFORMING_SOIL_ENRICHER |
+		tile::TERRAFORMING_SOLAR |
+		tile::TERRAFORMING_MINE |
+		tile::TERRAFORMING_CONDENSER |
+		tile::TERRAFORMING_MIRROR |
+		tile::TERRAFORMING_BOREHOLE |
+		tile::TERRAFORMING_SENSOR |
+		tile::TERRAFORMING_BUNKER |
+		tile::TERRAFORMING_AIRBASE;
+	tile_set_t changed_tiles = { center };
 	for ( auto* const map_tile : all_tiles ) {
 		map_tile->Update();
+		if ( map_tile->is_water_tile != previous_domains.at( map_tile ) ) {
+			map_tile->terraforming &= static_cast< tile::terraforming_t >( ~DOMAIN_CHANGE_TERRAFORMING );
+			changed_tiles.insert( map_tile );
+		}
 		map_tile->RefreshWrappers();
 	}
 
 	try {
-		RefreshTerrain( { center } );
+		RefreshTerrain( changed_tiles );
 	}
 	catch ( ... ) {
 		m_tiles->Restore( types::Buffer( snapshot ) );

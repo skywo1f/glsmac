@@ -134,19 +134,22 @@ const result = {
 				e.unit.health = e.unit.health + repair;
 			}
 			let is_still_terraforming = false;
+			let unit_survived_terraforming = true;
 			if (e.unit.terraforming != 'none') {
 				const terraforming_type = '' + e.unit.terraforming;
 				const terraforming_tile = e.unit.get_tile();
-				is_still_terraforming = terraforming.advance_order(e.unit);
-				if (!is_still_terraforming) {
-					game.trigger('terraforming_completed', {
-						unit: e.unit,
-						tile: terraforming_tile,
-						type: terraforming_type,
-					});
+				const terraforming_result = terraforming.advance_order_result(e.unit, game);
+				is_still_terraforming = terraforming_result.in_progress;
+				unit_survived_terraforming = terraforming_result.unit_survived;
+				if (terraforming_result.completed) {
+					let completed = {tile: terraforming_tile, type: terraforming_type};
+					if (unit_survived_terraforming) {
+						completed.unit = e.unit;
+					}
+					game.trigger('terraforming_completed', completed);
 				}
 			}
-			if (!def.is_immovable && !is_still_terraforming) {
+			if (!def.is_immovable && !is_still_terraforming && unit_survived_terraforming) {
 				e.unit.movement = get_movement(e.unit, def, project_effects);
 			}
 		});

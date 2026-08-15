@@ -2,6 +2,7 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const terraforming = #include('../default/units/terraforming');
 
 	let runtime_complete = false;
 	let ui_started = false;
@@ -22,7 +23,7 @@
 			exit_scheduled = true;
 			#print(
 				'UNITY_POD_RUNTIME_PASS: installed assets, Unity reward definitions, ' +
-				'live sea refresh, bonus mutation, native Former orders, elevation rollback, earthquake rollback, ' +
+				'live sea refresh, bonus mutation, native Former orders, coastline conversion, elevation rollback, earthquake rollback, ' +
 				'and movement resolution verified'
 			);
 			#async(500, () => { glsmac.exit(); });
@@ -109,6 +110,86 @@
 					#is_defined(source.terraforming.level_terrain)
 				) {
 					throw Error('UNITY_POD_RUNTIME_FAIL: transient Former orders leaked into tile improvements');
+				}
+
+				let land_candidates = [];
+				const add_ranked = (ranked, info) => {
+					if (#sizeof(ranked) < 6) {
+						ranked :+info;
+						return ranked;
+					}
+					let worst = 0;
+					for (let i = 1; i < #sizeof(ranked); i++) {
+						if (ranked[i].elevation > ranked[worst].elevation) {
+							worst = i;
+						}
+					}
+					if (info.elevation < ranked[worst].elevation) {
+						ranked[worst] = info;
+					}
+					return ranked;
+				};
+				for (let y = 0; y < tm.get_map_height(); y++) {
+					for (let x = 0; x < tm.get_map_width(); x++) {
+						if (x % 2 != y % 2) {
+							continue;
+						}
+						let candidate = tm.get_tile(x, y);
+						if (candidate.get_base() != null || #sizeof(candidate.get_units(true)) > 0) {
+							continue;
+						}
+						let borders_other_domain = false;
+						for (nearby of candidate.get_surrounding_tiles()) {
+							if (nearby.is_water != candidate.is_water) {
+								borders_other_domain = true;
+								break;
+							}
+						}
+						if (!borders_other_domain) {
+							continue;
+						}
+						if (!candidate.is_water) {
+							land_candidates = add_ranked(
+								land_candidates,
+								{x: x, y: y, elevation: candidate.elevation}
+							);
+						}
+					}
+				}
+				let coastline = null;
+				for (info of land_candidates) {
+					let candidate = tm.get_tile(info.x, info.y);
+					const error = candidate.get_elevation_change_error(0 - 1000);
+					if (error != '') {
+						continue;
+					}
+					const snapshot = candidate.apply_elevation_change(0 - 1000);
+					candidate = tm.get_tile(info.x, info.y);
+					if (candidate.is_water) {
+						coastline = {x: info.x, y: info.y};
+						tm.restore_terrain(snapshot);
+						break;
+					}
+					tm.restore_terrain(snapshot);
+				}
+				if (coastline == null) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: no safe shoreline land tile could be lowered');
+				}
+				const coastline_tile = tm.get_tile(coastline.x, coastline.y);
+				const coastline_former = e.game.get_um().spawn_unit({
+					def: 'Former',
+					owner: e.game.get_player(),
+					tile: coastline_tile,
+					morale: 2,
+					health: 1.0,
+				});
+				coastline_former.set_terraforming_order('lower_land', 1);
+				const coastline_result = terraforming.advance_order_result(coastline_former, e.game);
+				if (!coastline_result.completed || coastline_result.unit_survived) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: coastline conversion did not remove its stranded Former');
+				}
+				if (!tm.get_tile(coastline.x, coastline.y).is_water) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: Lower Land did not create ocean');
 				}
 
 				const old_bonus = get_bonus_name(source);

@@ -328,7 +328,123 @@ const get_unavailable_reason = (tile, player, type, project_effects) => {
 	return null;
 };
 
-const advance_order = (unit) => {
+const get_elevation_domain_states = (tile) => {
+	let states = [{x: tile.x, y: tile.y, prior_domain: tile.is_water ? 'water' : 'land'}];
+	let seen = {};
+	seen['t' + #to_string(tile.x) + '_' + #to_string(tile.y)] = true;
+	for (nearby of tile.get_surrounding_tiles()) {
+		const key = 't' + #to_string(nearby.x) + '_' + #to_string(nearby.y);
+		if (!#is_defined(seen[key])) {
+			seen[key] = true;
+			states :+{
+				x: nearby.x,
+				y: nearby.y,
+				prior_domain: nearby.is_water ? 'water' : 'land',
+			};
+		}
+	}
+	return states;
+};
+
+const get_domain_losses = (game, domain_states) => {
+	let units = [];
+	let seen = {};
+	let lost = {};
+	for (state of domain_states) {
+		const tile = game.get_tm().get_tile(state.x, state.y);
+		if (
+			(state.prior_domain == 'water' && tile.is_water) ||
+			(state.prior_domain == 'land' && !tile.is_water)
+		) {
+			continue;
+		}
+		for (candidate of tile.get_units(true)) {
+			const key = 'u' + #to_string(candidate.id);
+			if (!#is_defined(seen[key])) {
+				seen[key] = true;
+				units :+candidate;
+			}
+			if (
+				candidate.transport_id == 0 && (
+					(candidate.is_land && tile.is_water) ||
+					(candidate.is_water && !tile.is_water)
+				)
+			) {
+				lost[key] = true;
+			}
+		}
+	}
+
+	let added = true;
+	while (added) {
+		added = false;
+		for (candidate of units) {
+			const key = 'u' + #to_string(candidate.id);
+			const transport_key = 'u' + #to_string(candidate.transport_id);
+			if (
+				candidate.transport_id != 0 && !#is_defined(lost[key]) &&
+				#is_defined(lost[transport_key])
+			) {
+				lost[key] = true;
+				added = true;
+			}
+		}
+	}
+
+	let result = [];
+	for (candidate of units) {
+		if (#is_defined(lost['u' + #to_string(candidate.id)])) {
+			result :+candidate;
+		}
+	}
+	return result;
+};
+
+const despawn_domain_losses = (game, units) => {
+	if (#sizeof(units) == 0) {
+		return;
+	}
+	const um = game.get_um();
+	let owner_counts = {};
+	let owner_ids = {};
+	let cargo_units = [];
+	let top_level_units = [];
+	for (unit of units) {
+		const key = 'p' + #to_string(unit.owner);
+		owner_counts[key] = #is_defined(owner_counts[key]) ? owner_counts[key] + 1 : 1;
+		owner_ids[key] = #to_int(#to_string(unit.owner));
+		if (unit.transport_id != 0) {
+			cargo_units :+unit;
+		} else {
+			top_level_units :+unit;
+		}
+	}
+	for (unit of cargo_units) {
+		if (um.has_unit(unit.id)) {
+			um.despawn_unit(unit);
+		}
+	}
+	for (let i = #sizeof(top_level_units) - 1; i >= 0; i--) {
+		if (um.has_unit(top_level_units[i].id)) {
+			um.despawn_unit(top_level_units[i]);
+		}
+	}
+	const message_to_player = #is_defined(game.get)
+		? game.get('f_message_to_player')
+		: #undefined;
+	if (#is_defined(message_to_player)) {
+		for (key in owner_counts) {
+			const count = owner_counts[key];
+			message_to_player(
+				game.get_player(owner_ids[key]),
+				#to_string(count) + (count == 1 ? ' unit was' : ' units were') +
+					' lost to a terraformed coastline.'
+			);
+		}
+	}
+};
+
+const advance_order_result = (unit, game) => {
 	const type = unit.terraforming;
 	const order = get_order(type);
 	if (order == null) {
@@ -337,10 +453,27 @@ const advance_order = (unit) => {
 	if (unit.terraforming_turns_remaining > 1) {
 		unit.set_terraforming_order(type, unit.terraforming_turns_remaining - 1);
 		unit.movement = 0.0;
-		return true;
+		return {in_progress: true, completed: false, unit_survived: true};
 	}
 
 	const tile = unit.get_tile();
+	let domain_states = [];
+	if (#is_defined(order.elevation_delta)) {
+		const error = tile.get_elevation_change_error(order.elevation_delta);
+		if (error != '') {
+			unit.set_terraforming_order('none', 0);
+			const message_to_player = #is_defined(game) && #is_defined(game.get)
+				? game.get('f_message_to_player')
+				: #undefined;
+			if (#is_defined(message_to_player)) {
+				message_to_player(unit.get_owner(), get_order_name(type, tile.is_water) + ' was cancelled: ' + error);
+			}
+			return {in_progress: false, completed: false, unit_survived: true};
+		}
+		if (#is_defined(game)) {
+			domain_states = get_elevation_domain_states(tile);
+		}
+	}
 	if (#is_defined(order.changes)) {
 		tile.update_terraforming(order.changes);
 	}
@@ -354,7 +487,23 @@ const advance_order = (unit) => {
 		tile.apply_elevation_change(order.elevation_delta);
 	}
 	unit.set_terraforming_order('none', 0);
-	return false;
+	let unit_survived = true;
+	if (#is_defined(game) && #sizeof(domain_states) > 0) {
+		const unit_key = 'u' + #to_string(unit.id);
+		const losses = get_domain_losses(game, domain_states);
+		for (loss of losses) {
+			if ('u' + #to_string(loss.id) == unit_key) {
+				unit_survived = false;
+				break;
+			}
+		}
+		despawn_domain_losses(game, losses);
+	}
+	return {in_progress: false, completed: true, unit_survived: unit_survived};
+};
+
+const advance_order = (unit, game) => {
+	return advance_order_result(unit, game).in_progress;
 };
 
 return {
@@ -363,5 +512,6 @@ return {
 	get_order: get_order,
 	get_order_name: get_order_name,
 	get_unavailable_reason: get_unavailable_reason,
+	advance_order_result: advance_order_result,
 	advance_order: advance_order,
 };

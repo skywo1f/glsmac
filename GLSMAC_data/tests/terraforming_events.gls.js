@@ -26,6 +26,9 @@ const owner = {
 let tile = null;
 tile = {
 	is_water: false,
+	is_land: true,
+	x: 4,
+	y: 6,
 	features: {
 		monolith: false,
 		xenofungus: false,
@@ -107,6 +110,8 @@ unit = {
 	terraforming: 'none',
 	terraforming_turns_remaining: 0,
 	transport_id: 0,
+	is_land: true,
+	is_water: false,
 	get_def: () => {
 		return {
 			can_terraform: can_terraform,
@@ -450,6 +455,54 @@ unit.set_terraforming_order('lower_land', 1);
 test.assert(!terraforming.advance_order(unit));
 test.assert(tile.elevation == 0);
 test.assert(tile_state.elevation_updates == 2);
+
+tile_state.elevation_change_error = 'Terrain cannot change the domain of a base';
+unit.set_terraforming_order('raise_land', 1);
+let completion = terraforming.advance_order_result(unit);
+test.assert(!completion.in_progress);
+test.assert(!completion.completed);
+test.assert(completion.unit_survived);
+test.assert(unit.terraforming == 'none');
+test.assert(tile_state.elevation_updates == 2);
+tile_state.elevation_change_error = '';
+
+let unit_alive = true;
+tile_state.other_units = [unit];
+const apply_elevation_without_domain_change = tile.apply_elevation_change;
+tile.apply_elevation_change = (amount) => {
+	tile.elevation = tile.elevation + amount;
+	tile.is_water = true;
+	tile.is_land = false;
+	tile_state.elevation_updates = tile_state.elevation_updates + 1;
+	return 'terrain-snapshot';
+};
+unit.set_terraforming_order('lower_land', 1);
+completion = terraforming.advance_order_result(unit, {
+	get_tm: () => {
+		return {get_tile: (x, y) => {
+			test.assert(x == tile.x && y == tile.y);
+			return tile;
+		}};
+	},
+	get_um: () => {
+		return {
+			has_unit: (id) => { return id == unit.id && unit_alive; },
+			despawn_unit: (candidate) => {
+				test.assert(candidate.id == unit.id);
+				unit_alive = false;
+			},
+		};
+	},
+});
+test.assert(completion.completed);
+test.assert(!unit_alive);
+test.assert(!completion.unit_survived);
+test.assert(tile.is_water);
+test.assert(unit.terraforming == 'none');
+tile.apply_elevation_change = apply_elevation_without_domain_change;
+tile_state.other_units = [];
+tile.is_water = false;
+tile.is_land = true;
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;
