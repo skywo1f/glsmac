@@ -1598,6 +1598,9 @@ UNWRAPIMPL_PTR( Map )
 
 void Map::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
 	gse::GCWrappable::GetReachableObjects( reachable_objects );
+	if ( !m_tiles ) {
+		return;
+	}
 
 	GC_DEBUG_BEGIN( "tiles" );
 	for ( auto& t : *m_tiles->GetTilesPtr() ) {

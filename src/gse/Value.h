@@ -77,11 +77,20 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     const auto* obj = (_type*)wrapobj;
 #define WRAPIMPL_DESERIALIZE( _type ) gse::Value* const _type::DeserializeRef( GSE_CALLABLE, const Game* const game, types::Buffer* const buf ) {
 #define WRAPIMPL_BEGIN( _type ) \
-    WRAPIMPL_CLASS( _type ) \
-    gse::Value* const _type::Wrap( GSE_CALLABLE ) {
+	WRAPIMPL_CLASS( _type ) \
+	gse::Value* const _type::Wrap( GSE_CALLABLE ) { \
+		if ( auto* const cached_wrap = GetCachedWrap( gc_space ) ) { \
+			return cached_wrap; \
+		}
+#define WRAPIMPL_BEGIN_NOCACHE( _type ) \
+	WRAPIMPL_CLASS( _type ) \
+	gse::Value* const _type::Wrap( GSE_CALLABLE ) {
 #define WRAPIMPL_DYNAMIC_BEGIN( _type ) \
-    WRAPIMPL_CLASS( _type ) \
-    gse::Value* const _type::Wrap( GSE_CALLABLE ) {
+	WRAPIMPL_CLASS( _type ) \
+	gse::Value* const _type::Wrap( GSE_CALLABLE ) { \
+		if ( auto* const cached_wrap = GetCachedWrap( gc_space ) ) { \
+			return cached_wrap; \
+		}
 #define WRAPIMPL_DYNAMIC_GETTERS( _type ) \
     WRAPIMPL_DYNAMIC_BEGIN( _type ) \
     const gse::value::object_properties_t properties = {
@@ -173,11 +182,17 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     const auto& wrapped_parent_props = ( (gse::value::Object*)wrapped_parent )->value; \
     properties.insert( wrapped_parent_props.begin(), wrapped_parent_props.end() );
 #define WRAPIMPL_END_PTR() \
-    return VALUEEXT( gse::value::Object, GSE_CALL, properties, WRAP_CLASS, this ); \
+	return CacheWrap( \
+		gc_space, \
+		VALUEEXT( gse::value::Object, GSE_CALL, properties, WRAP_CLASS, this ) \
+	); \
 }
 #define WRAPIMPL_DYNAMIC_SETTERS( _type ) \
     }; \
-    return VALUEEXT( gse::value::Object, GSE_CALL, properties, WRAP_CLASS, this, &_type::WrapSet ); \
+	return CacheWrap( \
+		gc_space, \
+		VALUEEXT( gse::value::Object, GSE_CALL, properties, WRAP_CLASS, this, &_type::WrapSet ) \
+	); \
 } \
 void _type::WrapSet( gse::Wrappable* wrapobj, const std::string& key, gse::Value* const value, GSE_CALLABLE ) { \
     auto* obj = (_type*)wrapobj; \

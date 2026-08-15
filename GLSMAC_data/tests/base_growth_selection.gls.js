@@ -12,8 +12,8 @@ const game = {
 	},
 	get_tm: () => {
 		return {
-			get_map_width: () => { return 20; },
-			get_map_height: () => { return 10; },
+			get_map_width: () => { return 88; },
+			get_map_height: () => { return 44; },
 		};
 	},
 	event: (name, data) => {

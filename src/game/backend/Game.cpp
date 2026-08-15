@@ -2907,6 +2907,7 @@ void Game::CheckRW( GSE_CALLABLE ) const {
 	if ( !m_rw_counter ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Game state is read-only. Try using events?");
 	}
+	gc_space->InvalidateWrapperCache();
 }
 
 void Game::SetSlotNum( const size_t slotnum ) {

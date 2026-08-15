@@ -487,6 +487,42 @@ expansion_context.priorities = {
 };
 test.assert(production.choose(base, all_units, all_facilities, expansion_context).id == 'Colony');
 
+let expansion_before_command_context = context(false, false, true, false, 10);
+expansion_before_command_context.priorities = {
+	expansion: 100,
+	terraforming: 0,
+	military: 75,
+	growth: 0,
+	psych: 0,
+	development: 25,
+};
+test.assert(
+	production.choose(
+		base,
+		[colony],
+		[command_center],
+		expansion_before_command_context
+	).id == 'Colony'
+);
+expansion_before_command_context.priorities.military = 100;
+test.assert(
+	production.choose(
+		base,
+		[colony],
+		[command_center],
+		expansion_before_command_context
+	).id == 'Colony'
+);
+expansion_before_command_context.priorities.expansion = 75;
+test.assert(
+	production.choose(
+		base,
+		[colony],
+		[command_center],
+		expansion_before_command_context
+	).id == 'CommandCenter'
+);
+
 let terraforming_context = context(false, true, true, false, 10);
 terraforming_context.priorities = {
 	expansion: 25,

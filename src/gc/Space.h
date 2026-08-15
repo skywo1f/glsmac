@@ -40,6 +40,9 @@ CLASS( Space, common::Class )
 	void SetThreadId( const std::thread::id& thread_id );
 	void ProcessAccumulations(); // scripts will actually execute here
 	void StopCollecting();
+	const uint64_t GetAccumulationPass() const;
+	const uint64_t GetWrapperCacheGeneration() const;
+	void InvalidateWrapperCache();
 
 	void Remove( Object* object );
 
@@ -57,6 +60,8 @@ private:
 	// objects that have been accumulated but won't be collected until accumulator function finishes (that allows for temp values to move and assign where needed)
 	common::Mutex m_accumulation_mutex;
 	std::vector< Object* > m_accumulated_objects = {};
+	uint64_t m_accumulation_pass = 0;
+	std::atomic< uint64_t > m_wrapper_cache_generation = 1;
 
 	// objects that are already collectable
 	common::Mutex m_objects_mutex;

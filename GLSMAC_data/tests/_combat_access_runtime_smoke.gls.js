@@ -1,6 +1,9 @@
 #main((glsmac) => {
 
 	#include('../default/game/game')(glsmac);
+	#include('./_full_unit_catalog_runtime')(glsmac, [
+		'DoctrineInitiative', 'MindMachineInterface', 'HighEnergyChemistry',
+	]);
 	#include('../default/ui/ui')(glsmac);
 
 	const combat_rules = #include('../default/game/combat_rules');

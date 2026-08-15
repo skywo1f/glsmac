@@ -15,10 +15,10 @@ test.assert(desired(100, 80, 40, 7) == 17);
 
 test.assert(desired(0, 20, 10, 0) == 1);
 
-test.assert(!strategy.can_expand_safely(2, 0, 2, 0));
-test.assert(strategy.can_expand_safely(2, 0, 3, 0));
-test.assert(!strategy.can_expand_safely(2, 1, 3, 0));
-test.assert(strategy.can_expand_safely(2, 1, 4, 0));
+test.assert(!strategy.can_expand_safely(2, 0, 1, 0));
+test.assert(strategy.can_expand_safely(2, 0, 2, 0));
+test.assert(!strategy.can_expand_safely(2, 1, 2, 0));
+test.assert(strategy.can_expand_safely(2, 1, 3, 0));
 test.assert(!strategy.can_expand_safely(2, 0, 4, 1));
 
 test.assert(strategy.get_gap_priority(1, 1) == 0);

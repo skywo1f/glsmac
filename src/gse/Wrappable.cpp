@@ -47,6 +47,35 @@ void Wrappable::Unlink( value::Object* wrapobj ) {
 	m_wrapobjs.erase( wrapobj );
 }
 
+value::Object* const Wrappable::GetCachedWrap( gc::Space* const gc_space ) {
+	ASSERT( gc_space, "cannot cache a wrapper without a GC space" );
+	const auto pass = gc_space->GetAccumulationPass();
+	if ( pass == 0 ) {
+		return nullptr;
+	}
+	const auto generation = gc_space->GetWrapperCacheGeneration();
+	std::lock_guard guard( m_wrap_cache_mutex );
+	return m_wrap_cache_pass == pass && m_wrap_cache_generation == generation
+		? m_wrap_cache_object
+		: nullptr;
+}
+
+value::Object* const Wrappable::CacheWrap(
+	gc::Space* const gc_space,
+	value::Object* const wrapobj
+) {
+	ASSERT( gc_space, "cannot cache a wrapper without a GC space" );
+	ASSERT( wrapobj, "cannot cache a null wrapper" );
+	const auto pass = gc_space->GetAccumulationPass();
+	ASSERT( pass != 0, "cannot cache a wrapper outside accumulation" );
+	const auto generation = gc_space->GetWrapperCacheGeneration();
+	std::lock_guard guard( m_wrap_cache_mutex );
+	m_wrap_cache_pass = pass;
+	m_wrap_cache_generation = generation;
+	m_wrap_cache_object = wrapobj;
+	return wrapobj;
+}
+
 void Wrappable::Depend( Wrappable* other ) {
 	std::lock_guard guard( m_dependent_wrappables_mutex );
 	auto it = m_dependent_wrappables.find( other );

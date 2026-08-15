@@ -407,6 +407,11 @@ Config::Config( const std::string& path )
 			m_debug_flags |= DF_NO_GC;
 		}
 	);
+	m_manager->AddRule(
+		"profile-gc", "Sample collected object types for a bounded diagnostic run", AH( this ) {
+			m_debug_flags |= DF_PROFILE_GC;
+		}
+	);
 #endif
 
 #if defined( DEBUG ) || defined( FASTDEBUG ) || defined( GLSMAC_TESTING )

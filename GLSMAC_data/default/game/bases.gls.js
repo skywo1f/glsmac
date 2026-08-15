@@ -8,6 +8,7 @@ const CONTENT_CITIZENS = 3;
 const PSYCH_PER_IMPROVEMENT = 2;
 const DOCTOR_PSYCH = 2;
 const DEFAULT_POPULATION_LIMIT = 7;
+const NUTRIENT_COST_MULTIPLIER = 10;
 
 const get_turn_resource_snapshot = (base) => {
 	if (!#is_defined(globals.turn_resource_snapshots)) {
@@ -860,30 +861,9 @@ const process_growth = (game, base, allocated_psych, intake, consumption) => {
 };
 
 const calculate_growth_base = (game) => {
-	const tm = game.get_tm();
-	let w = tm.get_map_width();
-	let h = tm.get_map_height();
-
-	let map_size = w * h;
-
-	// rough approximations similar to SMAC's standard/small/tiny logic but using GLSMAC wider map ratio
-	// used for base growth calculations
-	let map_growth_base = 0;
-	if (map_size > 5500) {
-		map_growth_base = 15; // standard map
-	} else if (map_size > 4000) {
-		map_growth_base = 14; // between standard and small map, SMAC skips it but makes sense imo
-	} else if (map_size > 3000) {
-		map_growth_base = 13; // small map
-	} else if (map_size > 1800) {
-		map_growth_base = 12; // tiny map
-	} else if (map_size > 1000) {
-		map_growth_base = 11; // below tiny (SMAC doesn't have it but let's do)
-	} else {
-		map_growth_base = 10; // below tiny (SMAC doesn't have it but let's do)
-	}
-	globals.map_growth_base = map_growth_base;
-	game.set('map_growth_base', map_growth_base);
+	// alpha.txt defines this as a fundamental rule; map size does not alter it.
+	globals.map_growth_base = NUTRIENT_COST_MULTIPLIER;
+	game.set('map_growth_base', NUTRIENT_COST_MULTIPLIER);
 };
 
 const pop_work_tile = (base, pop, tile) => {

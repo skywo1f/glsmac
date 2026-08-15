@@ -7,6 +7,7 @@ const MIN_NONEMERGENCY_HURRY_MINERALS = 10;
 const BASIC_INFRASTRUCTURE_SCORE_BONUS = 60000;
 const EMERGENCY_GARRISON_SCORE = 1000000;
 const SEA_COLONY_SCORE_BONUS = 10000;
+const FULL_REPAIR_CAPABILITY_SCORE = 5000;
 
 const get_priority = (context, name, fallback) => {
 	return #is_defined(context.priorities) && #is_defined(context.priorities[name])
@@ -169,8 +170,12 @@ const score_unit = (def, context) => {
 			#is_defined(context.needs_sea_colony) && context.needs_sea_colony
 				? SEA_COLONY_SCORE_BONUS
 				: 0;
+		const expansion_weight =
+			#is_defined(context.needs_infrastructure) && context.needs_infrastructure
+				? 500
+				: 700;
 		return context.needs_colony && context.can_expand
-			? 45000 + get_priority(context, 'expansion', 50) * 500 +
+			? 45000 + get_priority(context, 'expansion', 50) * expansion_weight +
 				#max(context.nutrient_surplus, 0) * 250 + sea_colony_bonus -
 				get_mineral_cost(def, context) - get_unit_support_penalty(def, context)
 			: null;
@@ -330,7 +335,7 @@ const score_facility = (def, context) => {
 			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
 			def.native_lifecycle_bonus
 		) * morale_weight + defender_morale_minimum * morale_weight +
-		full_repair_capabilities * morale_weight * 2 +
+		full_repair_capabilities * FULL_REPAIR_CAPABILITY_SCORE +
 		(prototype_cost_waiver ? development_priority * 800 : 0);
 };
 

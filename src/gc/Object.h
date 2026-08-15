@@ -1,6 +1,8 @@
 #pragma once
 
 #include <cstdint>
+#include <mutex>
+#include <unordered_map>
 #include <unordered_set>
 #include "common/Mutex.h"
 #include <string>
@@ -55,7 +57,8 @@ protected:
 private:
 	static void BeginReachabilityPass();
 	uint64_t m_reachability_pass = 0;
-	std::unordered_set< Object* > m_persisted_objects = {};
+	mutable std::mutex m_persisted_objects_mutex;
+	std::unordered_map< Object*, size_t > m_persisted_objects = {};
 
 private:
 	friend class Space;

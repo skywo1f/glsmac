@@ -53,7 +53,7 @@ const get_desired_base_count = (turn, map_width, map_height, player_count) => {
 const can_expand_safely = (base_count, colony_count, combat_count, underdefended_bases) => {
 	return (
 		underdefended_bases <= 0 &&
-		combat_count > base_count + colony_count
+		combat_count >= base_count + colony_count
 	);
 };
 

@@ -1533,14 +1533,15 @@ const update_social_engineering = (game, player, metrics) => {
 	}
 };
 
-const move_colony = (game, player, unit, all_bases) => {
+const move_colony = (game, player, unit, all_bases, resource_values) => {
 	const tile = unit.get_tile();
 	if (tile.is_locked()) {
 		return false;
 	}
 	const tm = game.get_tm();
 	const destination = pathfinding.find_best_reachable(tm, unit, (source, candidate) => {
-		return can_enter(unit, candidate, source);
+		return can_enter(unit, candidate, source) &&
+			colonization.is_safe_transit_tile(candidate, player.id);
 	}, (candidate, distance) => {
 		return colonization.get_destination_score(
 			tm,
@@ -1548,7 +1549,8 @@ const move_colony = (game, player, unit, all_bases) => {
 			player,
 			all_bases,
 			distance,
-			unit.is_water
+			unit.is_water,
+			resource_values
 		);
 	}, COLONY_SEARCH_MAX_DISTANCE);
 	if (destination == null) {
@@ -2166,6 +2168,7 @@ const play_turn = (game, player, done) => {
 	let completion_ready_checks = 0;
 	let action_attempts = {};
 	let reinforcement_assignments = {};
+	let colony_resource_values = {};
 	let actions_started = 0;
 	let action_wait_checks = 0;
 	let animation_wait_checks = 0;
@@ -2391,7 +2394,13 @@ const play_turn = (game, player, done) => {
 				}
 				const def = unit.get_def();
 				if (def.can_found_base) {
-					action_started = move_colony(game, player, unit, all_bases);
+					action_started = move_colony(
+						game,
+						player,
+						unit,
+						all_bases,
+						colony_resource_values
+					);
 				}
 				if (action_started) {
 					action_state.record_action_attempt(unit, action_attempts);

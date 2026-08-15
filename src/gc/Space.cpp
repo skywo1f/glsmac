@@ -1,6 +1,10 @@
 #include "Space.h"
 
+#include <algorithm>
 #include <thread>
+#include <typeinfo>
+#include <unordered_map>
+#include <vector>
 
 #include "engine/Engine.h"
 #include "GC.h"
@@ -9,6 +13,10 @@
 #include "util/FinallyGuard.h"
 #include "graphics/Graphics.h"
 
+#if defined( GLSMAC_TESTING )
+#include "config/Config.h"
+#endif
+
 #if defined( DEBUG ) || defined( FASTDEBUG )
 
 #include "debug/MemoryWatcher.h"
@@ -16,6 +24,8 @@
 #endif
 
 namespace gc {
+
+static std::atomic< uint64_t > s_next_accumulation_pass = 1;
 
 Space::Space( Object* const root_object )
 	: m_root_object( root_object ) {
@@ -107,6 +117,18 @@ const bool Space::IsAccumulating() {
 	return m_accumulations.find( std::this_thread::get_id() ) != m_accumulations.end();
 }
 
+const uint64_t Space::GetAccumulationPass() const {
+	return m_accumulation_pass;
+}
+
+const uint64_t Space::GetWrapperCacheGeneration() const {
+	return m_wrapper_cache_generation.load();
+}
+
+void Space::InvalidateWrapperCache() {
+	m_wrapper_cache_generation.fetch_add( 1 );
+}
+
 void Space::SetThreadId( const std::thread::id& thread_id ) {
 	ASSERT( !m_thread_id.has_value(), "gc space thread id already set" );
 	m_thread_id = thread_id;
@@ -146,6 +168,10 @@ void Space::AccumulateImpl( const f_accum_t& f ) {
 	else { // top accumulate, need to do full logic
 		std::lock_guard guard2( m_accumulation_mutex );
 		std::lock_guard guard( m_collect_mutex ); // do not accumulate during collect or vice versa // TODO: optimize to reduce lock times
+		m_accumulation_pass = s_next_accumulation_pass.fetch_add( 1 );
+		if ( m_accumulation_pass == 0 ) {
+			m_accumulation_pass = s_next_accumulation_pass.fetch_add( 1 );
+		}
 		const auto& commit = [ this, &tid ]() {
 			{
 				std::lock_guard guard( m_accumulations_mutex );
@@ -185,6 +211,12 @@ const bool Space::Collect() {
 	std::lock_guard guard2( m_pending_accumulations_mutex );
 	std::lock_guard guard( m_collect_mutex ); // allow only one collection at same space at same time
 
+#if defined( GLSMAC_TESTING )
+	static const bool s_profile_gc = g_engine->GetConfig()->HasDebugFlag( config::Config::DF_PROFILE_GC );
+	static constexpr size_t PROFILE_SAMPLE_STRIDE = 1024;
+	std::unordered_map< std::string, size_t > removed_type_samples = {};
+#endif
+
 	ASSERT( m_reachable_objects_tmp.empty(), "reachable objects tmp not empty" );
 	Object::BeginReachabilityPass();
 
@@ -214,9 +246,18 @@ const bool Space::Collect() {
 			std::lock_guard guard2( m_objects_mutex );
 
 			g_engine->GetGraphics()->NoRender( // tmp: prevent race conditions with render thread
+#if defined( GLSMAC_TESTING )
+				[ this, &removed_count, &retained_count, &removed_type_samples ]() {
+#else
 				[ this, &removed_count, &retained_count ]() {
+#endif
 					for ( auto* const object : m_objects ) {
 						if ( !object->IsReachable() ) {
+#if defined( GLSMAC_TESTING )
+							if ( s_profile_gc && removed_count % PROFILE_SAMPLE_STRIDE == 0 ) {
+								removed_type_samples[ typeid( *object ).name() ]++;
+							}
+#endif
 #if defined( DEBUG ) || defined( FASTDEBUG )
 							GC_LOG( "Destroying unreachable object: " + util::String::ToHexString( (unsigned long long)object ) /* TODO + "[ " + object->ToString() + " ]"*/ );
 #endif
@@ -250,6 +291,27 @@ const bool Space::Collect() {
 			std::to_string( removed_count ) + " removed"
 		);
 	}
+#if defined( GLSMAC_TESTING )
+	if ( s_profile_gc && !removed_type_samples.empty() ) {
+		std::vector< std::pair< std::string, size_t > > ordered_samples(
+			removed_type_samples.begin(),
+			removed_type_samples.end()
+		);
+		std::sort(
+			ordered_samples.begin(),
+			ordered_samples.end(),
+			[]( const auto& a, const auto& b ) {
+				return a.second != b.second ? a.second > b.second : a.first < b.first;
+			}
+		);
+		std::string summary = "GC type samples (1/" + std::to_string( PROFILE_SAMPLE_STRIDE ) + "):";
+		const size_t limit = std::min< size_t >( ordered_samples.size(), 12 );
+		for ( size_t i = 0; i < limit; i++ ) {
+			summary += " " + ordered_samples[ i ].first + "=" + std::to_string( ordered_samples[ i ].second );
+		}
+		Log( summary );
+	}
+#endif
 	return removed_count > 0;
 }
 

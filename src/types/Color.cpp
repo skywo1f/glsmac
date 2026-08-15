@@ -178,7 +178,7 @@ const std::string Color::ToString() const {
 	return "{" + std::to_string( value.red ) + ":" + std::to_string( value.green ) + ":" + std::to_string( value.blue ) + ":" + std::to_string( value.alpha ) + "}";
 }
 
-WRAPIMPL_BEGIN( Color )
+WRAPIMPL_BEGIN_NOCACHE( Color )
 	WRAPIMPL_PROPS
 			{
 				"r",

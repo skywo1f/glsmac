@@ -6,6 +6,7 @@ const make_tile = (x, y, nutrients, minerals, energy) => {
 	let base = null;
 	let units = [];
 	let surrounding = [];
+	let resource_reads = 0;
 	return {
 		x: x,
 		y: y,
@@ -17,8 +18,10 @@ const make_tile = (x, y, nutrients, minerals, energy) => {
 		set_units: (value) => { units = value; },
 		get_resources: (player) => {
 			test.assert(player == owner);
+			resource_reads++;
 			return {NUTRIENTS: nutrients, MINERALS: minerals, ENERGY: energy};
 		},
+		get_resource_reads: () => { return resource_reads; },
 		get_surrounding_tiles: () => { return surrounding; },
 		set_surrounding_tiles: (value) => { surrounding = value; },
 	};
@@ -66,3 +69,22 @@ test.assert(colonization.get_site_score(tm, ocean, owner, [home], true) != null)
 test.assert(colonization.get_site_score(tm, rich, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));
 test.assert(colonization.get_site_score(tm, ideal, owner, [home]) > colonization.get_site_score(tm, poor, owner, [home]));
 test.assert(colonization.get_destination_score(tm, rich, owner, [home], 1) > colonization.get_destination_score(tm, rich, owner, [home], 2));
+
+let resource_values = {};
+colonization.get_site_score(tm, rich, owner, [home], false, resource_values);
+const rich_reads = rich.get_resource_reads();
+const neighbour_reads = rich_neighbour.get_resource_reads();
+colonization.get_site_score(tm, rich, owner, [home], false, resource_values);
+test.assert(rich.get_resource_reads() == rich_reads);
+test.assert(rich_neighbour.get_resource_reads() == neighbour_reads);
+
+const transit = make_tile(5, 0, 1, 1, 1);
+const threatened_by = make_tile(6, 0, 1, 1, 1);
+threatened_by.set_units([{owner: 2, is_land: true}]);
+transit.set_surrounding_tiles([threatened_by]);
+test.assert(!colonization.is_safe_transit_tile(transit, owner.id));
+transit.set_units([{
+	owner: owner.id,
+	get_def: () => { return {offense: 1}; },
+}]);
+test.assert(colonization.is_safe_transit_tile(transit, owner.id));

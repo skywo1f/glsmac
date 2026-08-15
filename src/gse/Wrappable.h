@@ -111,6 +111,14 @@ public:
 protected:
 	common::Mutex m_wrapobjs_mutex;
 	std::unordered_set< value::Object* > m_wrapobjs = {};
+	value::Object* const GetCachedWrap( gc::Space* const gc_space );
+	value::Object* const CacheWrap( gc::Space* const gc_space, value::Object* const wrapobj );
+
+private:
+	common::Mutex m_wrap_cache_mutex;
+	uint64_t m_wrap_cache_pass = 0;
+	uint64_t m_wrap_cache_generation = 0;
+	value::Object* m_wrap_cache_object = nullptr;
 
 protected:
 	struct callback_t {

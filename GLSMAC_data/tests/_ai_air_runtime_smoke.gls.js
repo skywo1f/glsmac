@@ -1,6 +1,7 @@
 #main((glsmac) => {
 
 	#include('../default/game/game')(glsmac);
+	#include('./_full_unit_catalog_runtime')(glsmac, ['DoctrineAirPower']);
 	#include('../default/ui/ui')(glsmac);
 
 	let game = null;

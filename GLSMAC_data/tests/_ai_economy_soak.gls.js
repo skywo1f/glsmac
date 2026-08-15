@@ -5,7 +5,7 @@
 	const turn_rules = #include('../default/game/turn_rules');
 
 	const MINIMUM_TURN = 20;
-	const FINAL_TURN = 30;
+	const FINAL_TURN = 50;
 	const EXPECTED_AI_COUNT = 6;
 	let game = null;
 	let ui_started = false;
@@ -110,7 +110,7 @@
 		}
 		#print(
 			'AI_ECONOMY_SOAK_PASS: all six AI factions sustained growth, research, ' +
-			'infrastructure, defense, production, and terraforming'
+			'expansion, infrastructure, defense, production, and terraforming'
 		);
 		#async(2000, () => { glsmac.exit(); });
 		return false;
@@ -120,6 +120,7 @@
 		const key = 'p' + #to_string(ai.id);
 		if (!#is_defined(ai_progress[key])) {
 			ai_progress[key] = {
+				max_base_count: 0,
 				max_base_size: 0,
 				saw_former: false,
 				saw_active_former: false,
@@ -184,6 +185,7 @@
 				}
 			}
 		}
+		progress.max_base_count = #max(progress.max_base_count, bases);
 		let formers = 0;
 		let colonies = 0;
 		let combat = 0;
@@ -248,6 +250,7 @@
 			' active_former_started=' + #to_string(snapshot.active_former_started) +
 			' improvement_completed=' + #to_string(snapshot.improvement_completed) +
 			' colonies=' + #to_string(snapshot.colonies) +
+			' queued_colonies=' + #to_string(snapshot.queued_colonies) +
 			' combat=' + #to_string(snapshot.combat) +
 			' garrisons=' + #to_string(snapshot.garrisoned_bases) +
 			' techs=' + #to_string(snapshot.technologies) +
@@ -264,6 +267,9 @@
 			progress.max_base_size < 2
 		) {
 			return 'did not sustain populated, growing bases';
+		}
+		if (snapshot.bases < 2 || progress.max_base_count < 2) {
+			return 'did not establish and retain a second base';
 		}
 		if (snapshot.garrisoned_bases < #max(1, snapshot.bases - 1)) {
 			return 'left too many bases without a garrison';
