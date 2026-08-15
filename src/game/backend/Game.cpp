@@ -9,6 +9,7 @@
 #include "types/mesh/Render.h"
 #include "types/mesh/Data.h"
 #include "util/FS.h"
+#include "util/FinallyGuard.h"
 #include "types/Buffer.h"
 #include "State.h"
 #include "game/backend/faction/Faction.h"
@@ -2273,9 +2274,13 @@ const types::Vec3 Game::GetTileRenderCoords( const map::tile::Tile* tile ) {
 }
 
 void Game::WithRW( const std::function< void() >& f ) {
+	auto* const gc_space = GetGCSpace();
 	m_rw_counter++;
+	util::FinallyGuard guard( [ this, gc_space ]() {
+		m_rw_counter--;
+		gc_space->InvalidateWrapperCache();
+	} );
 	f();
-	m_rw_counter--;
 }
 
 void Game::InitComplete( GSE_CALLABLE ) {
@@ -2619,7 +2624,9 @@ void Game::ProcessEvents() {
 							}
 						}
 						else {
-							process_now = true;
+							// Applying client events optimistically lets an older authoritative
+							// projection overwrite their state before a dependent event validates.
+							process_now = event->GetSource() != event::Event::ES_LOCAL;
 						}
 						gse::Value* rollback_data = nullptr;
 						if ( process_now ) {
