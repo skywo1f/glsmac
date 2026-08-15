@@ -416,6 +416,7 @@ missile_definition.reactor_power = 5;
 test.assert(#is_defined(planet_buster.validate(event)));
 missile_definition.reactor_power = 1;
 world.missile.movement = 0.0;
+test.assert(world.missile.movement == 0.0);
 test.assert(#is_defined(planet_buster.validate(event)));
 world.missile.movement = 1.0;
 event.data.tile = world.outside;

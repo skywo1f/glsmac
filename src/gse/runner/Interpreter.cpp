@@ -58,7 +58,16 @@ using namespace value;
 namespace runner {
 
 Interpreter::Interpreter( gc::Space* const gc_space )
-	: Runner( gc_space ) {}
+	: Runner( gc_space )
+	, m_true( VALUE( Bool, , true ) )
+	, m_false( VALUE( Bool, , false ) ) {
+	Persist( m_true );
+	Persist( m_false );
+}
+
+gse::Value* const Interpreter::GetBool( const bool value ) const {
+	return value ? m_true : m_false;
+}
 
 gse::Value* const Interpreter::Execute( context::Context* ctx, ExecutionPointer& ep, const Program* program ) {
 	CHECKACCUM( m_gc_space );
@@ -355,12 +364,21 @@ gse::Value* const Interpreter::EvaluateConditional( context::Context* ctx, Execu
 	}
 }
 
-gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, ExecutionPointer& ep, const Expression* expression, bool* returnflag ) {
+gse::Value* const Interpreter::EvaluateExpression(
+	context::Context* ctx,
+	ExecutionPointer& ep,
+	const Expression* expression,
+	bool* returnflag,
+	const bool as_reference
+) {
 	CHECKACCUM( m_gc_space );
 	auto* gc_space = m_gc_space;
 	if ( !expression->op ) {
 		ASSERT( !expression->b, "expression has second operand but no operator" );
 		ASSERT( expression->a, "expression is empty" );
+		if ( as_reference && expression->a->type == Operand::OT_EXPRESSION ) {
+			return EvaluateExpression( ctx, ep, (Expression*)expression->a, returnflag, true );
+		}
 		return EvaluateOperand( ctx, ep, expression->a );
 	}
 	const auto& operation_not_supported = [ expression, &ctx, &ep ]( const std::string& a, const std::string& b ) -> gse::Exception {
@@ -450,7 +468,7 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 				}
 				case Operand::OT_EXPRESSION: {
 					// property of object?
-					const auto target = EvaluateExpression( ctx, ep, (Expression*)expression->a );
+					const auto target = EvaluateExpression( ctx, ep, (Expression*)expression->a, nullptr, true );
 					// assign to reference
 					WriteByRef( ctx, expression->a->m_si, ep, target, result );
 					break;
@@ -462,12 +480,12 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 		}
 		case OT_NOT: {
 			ASSERT( !expression->a, "unary not may not have left operand" );
-			return VALUE( Bool, , !EvaluateBool( ctx, ep, expression->b ) );
+			return GetBool( !EvaluateBool( ctx, ep, expression->b ) );
 		}
 #define CMP_OP( _op ) { \
-        return VALUE( Bool,, \
-            *Deref( ctx, expression->a->m_si, ep, EvaluateOperand( ctx, ep, expression->a ) ) \
-                _op \
+		return GetBool( \
+			*Deref( ctx, expression->a->m_si, ep, EvaluateOperand( ctx, ep, expression->a ) ) \
+				_op \
             *Deref( ctx, expression->b->m_si, ep, EvaluateOperand( ctx, ep, expression->b ) ) \
             ); \
 }
@@ -479,8 +497,8 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 		case OT_GTE: CMP_OP( >= )
 #undef CMP_OP
 #define CMP_BOOL( _op ) { \
-        return VALUE( Bool,, \
-            EvaluateBool( ctx, ep, expression->a ) _op \
+		return GetBool( \
+			EvaluateBool( ctx, ep, expression->a ) _op \
                 EvaluateBool( ctx, ep, expression->b ) \
             ); \
 }
@@ -667,6 +685,15 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 			const auto& not_an_object = [ &ctx, expression, &ep, &childname ]( const std::string& what, const si_t& si ) -> gse::Exception {
 				return gse::Exception( EC.INVALID_DEREFERENCE, "Could not get ." + childname + " of non-object: " + what, ctx, expression->op->m_si, ep );
 			};
+			const auto& get_child = [ &childname, &as_reference ]( value::Object* const object ) -> gse::Value* {
+				if ( !as_reference && childname != "this" && childname != "parent" ) {
+					auto* const child = object->Get( childname );
+					if ( child->type == gse::VT_CALLABLE ) {
+						return child;
+					}
+				}
+				return object->GetRef( childname );
+			};
 			switch ( expression->a->type ) {
 				case Operand::OT_VARIABLE: {
 					const auto objv = ctx->GetVariable( ( (Variable*)expression->a )->name, expression->a->m_si, ep );
@@ -677,7 +704,7 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 					if ( obj->type != gse::VT_OBJECT ) {
 						throw not_an_object( obj->ToString(), expression->a->m_si );
 					}
-					return ( (value::Object*)obj )->GetRef( childname );
+					return get_child( (value::Object*)obj );
 				}
 				case Operand::OT_OBJECT:
 				case Operand::OT_CALL: {
@@ -691,7 +718,7 @@ gse::Value* const Interpreter::EvaluateExpression( context::Context* ctx, Execut
 					if ( obj->type != gse::VT_OBJECT ) {
 						throw not_an_object( obj->ToString(), expression->a->m_si );
 					}
-					return ( (value::Object*)obj )->GetRef( childname );
+					return get_child( (value::Object*)obj );
 				}
 				default: {
 					throw not_an_object( expression->a->ToString(), expression->a->m_si );

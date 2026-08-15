@@ -35,6 +35,9 @@ CLASS( Interpreter, Runner )
 	Value* const Execute( context::Context* ctx, ExecutionPointer& ep, const program::Program* program ) override;
 
 private:
+	Value* const GetBool( const bool value ) const;
+	Value* m_true = nullptr;
+	Value* m_false = nullptr;
 
 	// TODO: make it multithreaded
 	std::recursive_mutex m_execute_mutex;
@@ -61,7 +64,7 @@ private:
 	Value* const EvaluateScope( context::Context* ctx, ExecutionPointer& ep, const program::Scope* scope, bool* returnflag = nullptr );
 	Value* const EvaluateStatement( context::Context* ctx, ExecutionPointer& ep, const program::Statement* statement, bool* returnflag = nullptr );
 	Value* const EvaluateConditional( context::Context* ctx, ExecutionPointer& ep, const program::Conditional* conditional, bool is_nested, bool* returnflag = nullptr );
-	Value* const EvaluateExpression( context::Context* ctx, ExecutionPointer& ep, const program::Expression* expression, bool* returnflag = nullptr );
+	Value* const EvaluateExpression( context::Context* ctx, ExecutionPointer& ep, const program::Expression* expression, bool* returnflag = nullptr, const bool as_reference = false );
 	Value* const EvaluateOperand( context::Context* ctx, ExecutionPointer& ep, const program::Operand* operand );
 	Value* const EvaluateRange( context::Context* ctx, ExecutionPointer& ep, const program::Operand* operand, const bool only_index = false );
 	const bool EvaluateBool( context::Context* ctx, ExecutionPointer& ep, const program::Operand* operand );

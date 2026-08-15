@@ -724,6 +724,7 @@ IF ( BUILD_TESTING )
 			--headless
 			--windowed
 			--window-size "1280x720"
+			--profile-gc
 			--verbose
 		)
 		SET_TESTS_PROPERTIES( ai_turn_profile PROPERTIES
