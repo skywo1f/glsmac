@@ -1,5 +1,6 @@
 const technology_acquisition = #include('../technology_acquisition');
 const technology_effects = #include('../technology_effects');
+const REPEATABLE_TECHNOLOGY_ID = 'TranscendentThought';
 
 const get_research_cost = (game, player, state, technology) => {
 	if (#is_defined(state.cost) && state.cost > 0) {
@@ -59,6 +60,10 @@ return {
 
 	apply: (e) => {
 		const previous = e.data.player.get_research_state();
+		const previous_transcendent_thoughts =
+			#typeof(e.data.player.get_transcendent_thoughts) == 'Callable'
+				? e.data.player.get_transcendent_thoughts() : 0;
+		let transcendent_thoughts = previous_transcendent_thoughts;
 		let technologies = [];
 		for (id of previous.technologies) {
 			technologies :+id;
@@ -81,7 +86,14 @@ return {
 			) {
 				free_technology_count++;
 			}
-			technologies :+technology.id;
+			if (technology.id == REPEATABLE_TECHNOLOGY_ID) {
+				transcendent_thoughts++;
+				if (!e.data.player.has_technology(technology.id)) {
+					technologies :+technology.id;
+				}
+			} else {
+				technologies :+technology.id;
+			}
 			completed_names :+technology.name;
 			completed_ids :+technology.id;
 			target = e.game.get('f_technology_get_next_target')(technologies, e.data.player);
@@ -92,6 +104,9 @@ return {
 				throw Error('Unknown research target: ' + target);
 			}
 		}
+		if (#typeof(e.data.player.set_transcendent_thoughts) == 'Callable') {
+			e.data.player.set_transcendent_thoughts(transcendent_thoughts);
+		}
 		e.data.player.set_research_state({
 			technologies: technologies,
 			target: target,
@@ -101,7 +116,8 @@ return {
 				e.data.player,
 				technologies,
 				target,
-				previous
+				transcendent_thoughts != previous_transcendent_thoughts
+					? #undefined : previous
 			),
 		});
 		const map_reveals = technology_effects.apply_map_reveals(
@@ -145,6 +161,7 @@ return {
 		}
 		return {
 			state: previous,
+			transcendent_thoughts: previous_transcendent_thoughts,
 			completed: #sizeof(completed_names) > 0,
 			completed_count: #sizeof(completed_names),
 			bonus_technologies: bonus_technologies,
@@ -160,6 +177,9 @@ return {
 		technology_effects.rollback_specialist_updates(e.applied.specialist_updates);
 		technology_effects.rollback_map_reveals(e.game, e.applied.map_reveals);
 		e.data.player.set_research_state(e.applied.state);
+		if (#typeof(e.data.player.set_transcendent_thoughts) == 'Callable') {
+			e.data.player.set_transcendent_thoughts(e.applied.transcendent_thoughts);
+		}
 		e.game.trigger('research_updated', {
 			player: e.data.player,
 		});

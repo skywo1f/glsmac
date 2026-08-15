@@ -51,6 +51,7 @@ Player::Player( const Player* const other ) {
 	m_research_target = other->m_research_target;
 	m_research_progress = other->m_research_progress;
 	m_research_cost = other->m_research_cost;
+	m_transcendent_thoughts = other->m_transcendent_thoughts;
 	m_energy_credits = other->m_energy_credits;
 	m_ecological_damage_events = other->m_ecological_damage_events;
 	m_clean_mineral_facilities = other->m_clean_mineral_facilities;
@@ -202,6 +203,20 @@ int64_t Player::GetResearchProgress() const {
 
 int64_t Player::GetResearchCost() const {
 	return m_research_cost;
+}
+
+int64_t Player::GetTranscendentThoughts() const {
+	return m_transcendent_thoughts;
+}
+
+void Player::SetTranscendentThoughts( const int64_t transcendent_thoughts ) {
+	if (
+		transcendent_thoughts < 0 ||
+		transcendent_thoughts > MAX_TRANSCENDENT_THOUGHTS
+	) {
+		THROW( "player Transcendent Thought count is out of range" );
+	}
+	m_transcendent_thoughts = transcendent_thoughts;
 }
 
 void Player::SetResearchState(
@@ -1002,6 +1017,28 @@ WRAPIMPL_BEGIN( Player )
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return VALUE( gse::value::Bool, , HasTechnology( id ) );
+				} )
+			},
+			{
+				"get_transcendent_thoughts",
+				NATIVE_CALL( this ) {
+					N_EXPECT_ARGS( 0 );
+					return VALUE( gse::value::Int, , GetTranscendentThoughts() );
+				} )
+			},
+			{
+				"set_transcendent_thoughts",
+				NATIVE_CALL( this, game ) {
+					game->CheckRW( GSE_CALL );
+					N_EXPECT_ARGS( 1 );
+					N_GETVALUE( transcendent_thoughts, 0, Int );
+					try {
+						SetTranscendentThoughts( transcendent_thoughts );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+					}
+					return VALUE( gse::value::Undefined );
 				} )
 			},
 			{
@@ -2122,7 +2159,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 			buf.WriteString( id );
 		}
 	}
-	buf.WriteInt( 7 );
+	buf.WriteInt( 8 );
 	buf.WriteBool( include_private_state && m_legacy_unrestricted_contact );
 	buf.WriteInt( visible_count( m_contacted_players ) );
 	for ( const auto player_id : m_contacted_players ) {
@@ -2220,6 +2257,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 		buf.WriteBool( false );
 	}
 	buf.WriteInt( include_private_state ? m_research_cost : 0 );
+	buf.WriteInt( include_private_state ? m_transcendent_thoughts : 0 );
 
 	return buf;
 }
@@ -2538,7 +2576,7 @@ void Player::Deserialize( types::Buffer buf ) {
 		if (
 			contact_version != 1 && contact_version != 2 &&
 			contact_version != 3 && contact_version != 4 && contact_version != 5 &&
-			contact_version != 6 && contact_version != 7
+			contact_version != 6 && contact_version != 7 && contact_version != 8
 		) {
 			THROW( "unsupported serialized player contact version" );
 		}
@@ -2680,6 +2718,18 @@ void Player::Deserialize( types::Buffer buf ) {
 	}
 	const bool is_redacted = contact_version >= 6 ? buf.ReadBool() : false;
 	const int64_t research_cost = contact_version >= 7 ? buf.ReadInt() : 0;
+	const bool has_transcendent_thought =
+		technologies.find( "TranscendentThought" ) != technologies.end();
+	const int64_t transcendent_thoughts = contact_version >= 8
+		? buf.ReadInt()
+		: ( has_transcendent_thought ? 1 : 0 );
+	if (
+		transcendent_thoughts < 0 ||
+		transcendent_thoughts > MAX_TRANSCENDENT_THOUGHTS ||
+		( transcendent_thoughts > 0 ) != has_transcendent_thought
+	) {
+		THROW( "invalid serialized Transcendent Thought count" );
+	}
 	if ( !ValidateResearchState(
 		technologies,
 		research_target,
@@ -2709,6 +2759,7 @@ void Player::Deserialize( types::Buffer buf ) {
 	m_research_target = research_target;
 	m_research_progress = research_progress;
 	m_research_cost = research_cost;
+	m_transcendent_thoughts = transcendent_thoughts;
 	m_energy_credits = energy_credits;
 	m_ecological_damage_events = ecological_damage_events;
 	m_clean_mineral_facilities = clean_mineral_facilities;
@@ -2765,7 +2816,10 @@ bool Player::ValidateResearchState(
 			return false;
 		}
 	}
-	if ( !target.empty() && technologies.find( target ) != technologies.end() ) {
+	if (
+		!target.empty() && technologies.find( target ) != technologies.end() &&
+		target != "TranscendentThought"
+	) {
 		error = "Research target is already known";
 		return false;
 	}

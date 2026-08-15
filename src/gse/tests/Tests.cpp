@@ -326,7 +326,25 @@ void AddTests( task::gsetests::GSETests* task ) {
 				using game::backend::Player;
 
 				Player source( "Researcher", Player::PR_SINGLE, nullptr, "Citizen" );
-				source.SetResearchState( { "CentauriEcology" }, "IndustrialBase", 6, 37 );
+				source.SetResearchState(
+					{ "CentauriEcology", "TranscendentThought" },
+					"IndustrialBase",
+					6,
+					37
+				);
+				source.SetTranscendentThoughts( 3 );
+				bool rejected_negative_transcendent_thoughts = false;
+				try {
+					source.SetTranscendentThoughts( -1 );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_negative_transcendent_thoughts = true;
+				}
+				GT_ASSERT(
+					rejected_negative_transcendent_thoughts &&
+						source.GetTranscendentThoughts() == 3,
+					"negative Transcendent Thought count was accepted or partially mutated"
+				);
 				bool rejected_negative_research_cost = false;
 				try {
 					source.SetResearchState( { "CentauriEcology" }, "IndustrialBase", 6, -1 );
@@ -467,7 +485,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				);
 				GT_ASSERT(
 					cloned.GetResearchTarget() == "IndustrialBase" &&
-						cloned.GetResearchProgress() == 6 && cloned.GetResearchCost() == 37,
+						cloned.GetResearchProgress() == 6 && cloned.GetResearchCost() == 37 &&
+						cloned.GetTranscendentThoughts() == 3,
 					"player cached research state was not cloned"
 				);
 				GT_ASSERT( cloned.GetMajorAtrocities() == 2, "player major atrocity count was not cloned" );
@@ -581,6 +600,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( roundtrip.GetResearchTarget() == "IndustrialBase", "research target was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchProgress() == 6, "research progress was not serialized" );
 				GT_ASSERT( roundtrip.GetResearchCost() == 37, "research cost was not serialized" );
+				GT_ASSERT(
+					roundtrip.GetTranscendentThoughts() == 3,
+					"Transcendent Thought count was not serialized"
+				);
 				GT_ASSERT( roundtrip.GetEnergyCredits() == 73, "player energy credits were not serialized" );
 				GT_ASSERT(
 					roundtrip.GetEcologicalDamageEvents() == 4,
@@ -638,6 +661,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					redacted.GetTechnologies().empty() && redacted.GetResearchTarget().empty() &&
 					redacted.GetResearchProgress() == 0 && redacted.GetResearchCost() == 0 &&
+						redacted.GetTranscendentThoughts() == 0 &&
 						redacted.GetEnergyCredits() == 0,
 					"foreign player projection exposed research or energy"
 				);
@@ -787,8 +811,29 @@ void AddTests( task::gsetests::GSETests* task ) {
 				const auto player_extension_size = player_extension.ToString().size();
 				types::Buffer research_cost_field;
 				research_cost_field.WriteInt( source.GetResearchCost() );
+				types::Buffer transcendent_thoughts_field;
+				transcendent_thoughts_field.WriteInt( source.GetTranscendentThoughts() );
 				const auto current_player_extension_size =
-					player_extension_size + bool_field_size + research_cost_field.ToString().size();
+					player_extension_size + bool_field_size + research_cost_field.ToString().size() +
+						transcendent_thoughts_field.ToString().size();
+				bool rejected_serialized_transcendent_thoughts = false;
+				try {
+					auto invalid_data = source.Serialize().ToString();
+					invalid_data.resize(
+						invalid_data.size() - transcendent_thoughts_field.ToString().size()
+					);
+					types::Buffer invalid_count;
+					invalid_count.WriteInt( Player::MAX_TRANSCENDENT_THOUGHTS + 1 );
+					invalid_data += invalid_count.ToString();
+					Player invalid( invalid_data );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_serialized_transcendent_thoughts = true;
+				}
+				GT_ASSERT(
+					rejected_serialized_transcendent_thoughts,
+					"out-of-range serialized Transcendent Thought count was accepted"
+				);
 				auto legacy_player_data = source.Serialize().ToString();
 				legacy_player_data.resize(
 					legacy_player_data.size() - current_player_extension_size
@@ -1009,6 +1054,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					version_one.GetResearchCost() == 0,
 					"version-one player data did not default its cached research cost"
+				);
+				GT_ASSERT(
+					version_one.GetTranscendentThoughts() == 1,
+					"version-one player data did not infer its known Transcendent Thought"
 				);
 				GT_ASSERT(
 					version_one.GetDiplomaticTrade( 5 ) &&

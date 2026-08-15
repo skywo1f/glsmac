@@ -5,6 +5,7 @@ const technology_order = catalog.order;
 const LABS_ALLOCATION = 0.4;
 const STANDARD_MAP_AREA_ROOT = 56;
 const MAX_RESEARCH_COST = 99999999;
+const REPEATABLE_TECHNOLOGY_ID = 'TranscendentThought';
 const DIFFICULTY_LEVELS = {
 	Citizen: 0,
 	Specialist: 1,
@@ -44,7 +45,7 @@ const get_available_targets = (known) => {
 		known_ids[id] = true;
 	}
 	for (id of technology_order) {
-		if (#is_defined(known_ids[id])) {
+		if (#is_defined(known_ids[id]) && id != REPEATABLE_TECHNOLOGY_ID) {
 			continue;
 		}
 		let available = true;
@@ -68,6 +69,7 @@ const get_next_target = (known) => {
 
 const get_acquired_technology_count = (player, known) => {
 	let starting = {};
+	let has_repeatable = false;
 	if (#typeof(player.get_faction) == 'Callable') {
 		const faction = player.get_faction();
 		if (
@@ -81,9 +83,18 @@ const get_acquired_technology_count = (player, known) => {
 	}
 	let result = 0;
 	for (id of known) {
+		if (id == REPEATABLE_TECHNOLOGY_ID) {
+			has_repeatable = true;
+		}
 		if (!#is_defined(starting[id])) {
 			result++;
 		}
+	}
+	if (#typeof(player.get_transcendent_thoughts) == 'Callable') {
+		result += #max(
+			0,
+			player.get_transcendent_thoughts() - (has_repeatable ? 1 : 0)
+		);
 	}
 	return result;
 };

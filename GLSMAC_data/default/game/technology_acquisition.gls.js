@@ -1,4 +1,5 @@
 const technology_effects = #include('technology_effects');
+const REPEATABLE_TECHNOLOGY_ID = 'TranscendentThought';
 
 const clone_state = (state) => {
 	let technologies = [];
@@ -44,6 +45,15 @@ const get_next_target = (game, player, known, target) => {
 		: game.get('f_technology_get_next_target')(known, player);
 };
 
+const has_technology = (technologies, technology_id) => {
+	for (known of technologies) {
+		if (known == technology_id) {
+			return true;
+		}
+	}
+	return false;
+};
+
 const can_grant = (game, player) => {
 	const state = player.get_research_state();
 	return get_next_target(game, player, state.technologies, state.target) != '';
@@ -51,6 +61,10 @@ const can_grant = (game, player) => {
 
 const apply = (game, player, count) => {
 	const previous = clone_state(player.get_research_state());
+	const previous_transcendent_thoughts =
+		#typeof(player.get_transcendent_thoughts) == 'Callable'
+			? player.get_transcendent_thoughts() : 0;
+	let transcendent_thoughts = previous_transcendent_thoughts;
 	let technologies = [];
 	for (id of previous.technologies) {
 		technologies :+id;
@@ -73,7 +87,14 @@ const apply = (game, player, count) => {
 		if (technology_effects.grants_first_discoverer_technology(game, player, target)) {
 			remaining++;
 		}
-		technologies :+target;
+		if (target == REPEATABLE_TECHNOLOGY_ID) {
+			transcendent_thoughts++;
+			if (!has_technology(technologies, target)) {
+				technologies :+target;
+			}
+		} else {
+			technologies :+target;
+		}
 		completed_names :+definition.name;
 		completed_ids :+target;
 		target = game.get('f_technology_get_next_target')(technologies, player);
@@ -84,11 +105,21 @@ const apply = (game, player, count) => {
 	if (target == '') {
 		progress = 0;
 	}
+	if (#typeof(player.set_transcendent_thoughts) == 'Callable') {
+		player.set_transcendent_thoughts(transcendent_thoughts);
+	}
 	player.set_research_state({
 		technologies: technologies,
 		target: target,
 		progress: progress,
-		cost: get_state_cost(game, player, technologies, target, previous),
+		cost: get_state_cost(
+			game,
+			player,
+			technologies,
+			target,
+			transcendent_thoughts != previous_transcendent_thoughts
+				? #undefined : previous
+		),
 	});
 	const map_reveals = technology_effects.apply_map_reveals(game, player, completed_ids);
 	const specialist_updates = technology_effects.apply_specialist_updates(game, player);
@@ -103,6 +134,7 @@ const apply = (game, player, count) => {
 		completed_names: completed_names,
 		completed_ids: completed_ids,
 		completed_count: #sizeof(completed_names),
+		transcendent_thoughts: previous_transcendent_thoughts,
 		map_reveals: map_reveals,
 		specialist_updates: specialist_updates,
 	};
@@ -112,6 +144,9 @@ const rollback = (game, applied) => {
 	technology_effects.rollback_specialist_updates(applied.specialist_updates);
 	technology_effects.rollback_map_reveals(game, applied.map_reveals);
 	applied.player.set_research_state(applied.state);
+	if (#typeof(applied.player.set_transcendent_thoughts) == 'Callable') {
+		applied.player.set_transcendent_thoughts(applied.transcendent_thoughts);
+	}
 	game.trigger('research_updated', {player: applied.player});
 };
 

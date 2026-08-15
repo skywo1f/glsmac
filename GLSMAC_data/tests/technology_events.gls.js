@@ -137,8 +137,10 @@ for (id of technologies.order) {
 	every_technology :+id;
 }
 test.assert(#sizeof(every_technology) == 77);
-test.assert(technologies.get_available_targets(every_technology) == []);
-test.assert(technologies.get_next_target(every_technology) == '');
+test.assert(technologies.get_available_targets(every_technology) == [
+	'TranscendentThought',
+]);
+test.assert(technologies.get_next_target(every_technology) == 'TranscendentThought');
 
 const calculate_research_cost = (
 	known,
@@ -328,9 +330,9 @@ test.assert(technologies.get_initial_state(make_initial_player(['Biogenetics']))
 });
 test.assert(technologies.get_initial_state(make_initial_player(every_technology)) == {
 	technologies: every_technology,
-	target: '',
+	target: 'TranscendentThought',
 	progress: 0,
-	cost: 0,
+	cost: 170,
 });
 
 const clone_state = (state) => {
@@ -347,6 +349,7 @@ const clone_state = (state) => {
 };
 
 let research_state = {technologies: [], target: '', progress: 0, cost: 0};
+let transcendent_thoughts = 0;
 const player = {
 	id: 1,
 	name: 'Researcher',
@@ -357,6 +360,8 @@ const player = {
 	},
 	get_research_state: () => { return clone_state(research_state); },
 	set_research_state: (state) => { research_state = clone_state(state); },
+	get_transcendent_thoughts: () => { return transcendent_thoughts; },
+	set_transcendent_thoughts: (value) => { transcendent_thoughts = value; },
 	has_technology: (id) => {
 		for (known of research_state.technologies) {
 			if (known == id) { return true; }
@@ -638,3 +643,34 @@ test.assert(research_state == {
 	cost: secrets.cost,
 });
 test.assert(map_reveals == 1 && map_rollbacks == 1);
+
+const transcendent_thought = technologies.get_definition('TranscendentThought');
+research_state = {
+	technologies: every_technology,
+	target: 'TranscendentThought',
+	progress: 99,
+	cost: 100,
+};
+transcendent_thoughts = 1;
+messages = [];
+event = {
+	caller: 0,
+	game: game,
+	data: {player: player, technology: transcendent_thought, labs: 1},
+};
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed);
+test.assert(transcendent_thoughts == 2);
+test.assert(research_state.technologies == every_technology);
+test.assert(research_state.target == 'TranscendentThought');
+test.assert(research_state.progress == 0);
+test.assert(research_state.cost > 0);
+test.assert(messages == ['Researcher has discovered Transcendent Thought.']);
+process_research.rollback(event);
+test.assert(transcendent_thoughts == 1);
+test.assert(research_state == {
+	technologies: every_technology,
+	target: 'TranscendentThought',
+	progress: 99,
+	cost: 100,
+});

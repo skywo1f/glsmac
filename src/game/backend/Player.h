@@ -80,6 +80,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	using technologies_t = std::set< std::string >;
 	static constexpr int64_t MAX_RESEARCH_PROGRESS = 1000000;
 	static constexpr int64_t MAX_RESEARCH_COST = 99999999;
+	static constexpr int64_t MAX_TRANSCENDENT_THOUGHTS = 1000000;
 	static constexpr size_t MAX_TECHNOLOGIES = 1024;
 	static constexpr int64_t MAX_ENERGY_CREDITS = 1000000000;
 	static constexpr int64_t MAX_ECOLOGICAL_DAMAGE_EVENTS = 1000000;
@@ -102,6 +103,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 	const std::string& GetResearchTarget() const;
 	int64_t GetResearchProgress() const;
 	int64_t GetResearchCost() const;
+	int64_t GetTranscendentThoughts() const;
+	void SetTranscendentThoughts( const int64_t transcendent_thoughts );
 	void SetResearchState(
 		const technologies_t& technologies,
 		const std::string& target,
@@ -368,6 +371,7 @@ private:
 	std::string m_research_target = "";
 	int64_t m_research_progress = 0;
 	int64_t m_research_cost = 0;
+	int64_t m_transcendent_thoughts = 0;
 	int64_t m_energy_credits = 0;
 	int64_t m_ecological_damage_events = 0;
 	int64_t m_clean_mineral_facilities = 0;
