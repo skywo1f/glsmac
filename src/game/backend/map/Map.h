@@ -147,6 +147,11 @@ CLASS2( Map, types::Serializable, gse::GCWrappable )
 	void RefreshTile( tile::Tile* tile );
 	std::string ApplyCrater( tile::Tile* center, const size_t radius );
 	std::string ApplyEarthquake( tile::Tile* center, const size_t elevation_steps );
+	std::string GetTerraformingElevationError(
+		const tile::Tile* center,
+		const tile::elevation_t amount
+	) const;
+	std::string ApplyTerraformingElevation( tile::Tile* center, const tile::elevation_t amount );
 	std::string ApplyVolcano( tile::Tile* center );
 	std::string ApplyMajorEruption( tile::Tile* center );
 	void RestoreTerrain( const std::string& snapshot );

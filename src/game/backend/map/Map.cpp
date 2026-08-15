@@ -1027,6 +1027,86 @@ std::string Map::ApplyEarthquake( tile::Tile* center, const size_t elevation_ste
 	return snapshot;
 }
 
+std::string Map::GetTerraformingElevationError(
+	const tile::Tile* center,
+	const tile::elevation_t amount
+) const {
+	if ( !center || GetTile( center->coord.x, center->coord.y ) != center ) {
+		return "Terraforming target does not belong to the active map";
+	}
+	if ( amount != -1000 && amount != 1000 ) {
+		return "Terraforming elevation must change by exactly one level";
+	}
+
+	std::unordered_set< const tile::elevation_t* > changed_vertices;
+	for ( const auto* const vertex : center->elevation.corners ) {
+		const auto changed = *vertex + amount;
+		if ( changed < tile::ELEVATION_MIN || changed > tile::ELEVATION_MAX ) {
+			return amount > 0
+				? "Terrain cannot be raised any further"
+				: "Terrain cannot be lowered any further";
+		}
+		changed_vertices.insert( vertex );
+	}
+
+	for ( const auto* const map_tile : GetAllTiles() ) {
+		tile::elevation_t corner_sum = 0;
+		uint8_t corners_in_water = 0;
+		for ( const auto* const vertex : map_tile->elevation.corners ) {
+			const auto changed = *vertex + (
+				changed_vertices.find( vertex ) != changed_vertices.end() ? amount : 0
+			);
+			corner_sum += changed;
+			if ( changed < m_sea_level ) {
+				corners_in_water++;
+			}
+		}
+		if ( corner_sum / 4 < m_sea_level ) {
+			corners_in_water++;
+		}
+		const bool would_be_water = corners_in_water > 2;
+		if ( would_be_water != map_tile->is_water_tile ) {
+			return "This change would alter a coastline and requires an adjacent Former";
+		}
+	}
+	return "";
+}
+
+std::string Map::ApplyTerraformingElevation(
+	tile::Tile* center,
+	const tile::elevation_t amount
+) {
+	const auto error = GetTerraformingElevationError( center, amount );
+	if ( !error.empty() ) {
+		THROW( error );
+	}
+	const auto snapshot = m_tiles->Serialize().ToString();
+	if ( snapshot.empty() || snapshot.size() > MAX_TERRAIN_SNAPSHOT_SIZE ) {
+		THROW( "serialized terrain snapshot size is invalid" );
+	}
+
+	for ( auto* const vertex : center->elevation.corners ) {
+		*vertex += amount;
+	}
+	const auto all_tiles = GetAllTiles();
+	for ( auto* const map_tile : all_tiles ) {
+		map_tile->Update();
+		map_tile->RefreshWrappers();
+	}
+
+	try {
+		RefreshTerrain( { center } );
+	}
+	catch ( ... ) {
+		m_tiles->Restore( types::Buffer( snapshot ) );
+		for ( auto* const map_tile : all_tiles ) {
+			map_tile->RefreshWrappers();
+		}
+		throw;
+	}
+	return snapshot;
+}
+
 std::string Map::ApplyVolcano( tile::Tile* center ) {
 	ASSERT( center, "cannot create a volcano around a null tile" );
 	ASSERT( GetTile( center->coord.x, center->coord.y ) == center, "volcano center does not belong to map" );

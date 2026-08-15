@@ -557,6 +557,48 @@ WRAPIMPL_BEGIN( Tile )
 				return VALUE( gse::value::Array,, result );
 			} )
 		},
+		{
+			"get_elevation_change_error",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( amount, 0, Int );
+				if ( amount != -1000 && amount != 1000 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Elevation change must be exactly -1000 or 1000" );
+				}
+				return VALUE(
+					gse::value::String,
+					,
+					tiles->GetMap()->GetTerraformingElevationError(
+						this,
+						static_cast< elevation_t >( amount )
+					)
+				);
+			} )
+		},
+		{
+			"apply_elevation_change",
+			NATIVE_CALL( this ) {
+				tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( amount, 0, Int );
+				if ( amount != -1000 && amount != 1000 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Elevation change must be exactly -1000 or 1000" );
+				}
+				try {
+					return VALUE(
+						gse::value::String,
+						,
+						tiles->GetMap()->ApplyTerraformingElevation(
+							this,
+							static_cast< elevation_t >( amount )
+						)
+					);
+				}
+				catch ( const std::runtime_error& e ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, e.what() );
+				}
+			} )
+		},
 		{ "features", GetFeatures( GSE_CALL ) },
 		{ "landmarks", GetLandmarks( GSE_CALL ) },
 		{ "bonuses", GetBonuses( GSE_CALL ) },

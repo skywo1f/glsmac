@@ -27,6 +27,8 @@ const make_tile = (moisture, rockiness, nutrients, minerals, energy) => {
 			mirror: false,
 			borehole: false,
 			aquifer: false,
+			raise_land: false,
+			lower_land: false,
 			level_terrain: false,
 			sensor: false,
 			bunker: false,
@@ -36,6 +38,7 @@ const make_tile = (moisture, rockiness, nutrients, minerals, energy) => {
 		},
 		get_base: () => { return null; },
 		get_surrounding_tiles: () => { return []; },
+		get_elevation_change_error: (amount) => { return ''; },
 		get_resources: (player) => {
 			test.assert(player == owner);
 			return {NUTRIENTS: nutrients, MINERALS: minerals, ENERGY: energy};

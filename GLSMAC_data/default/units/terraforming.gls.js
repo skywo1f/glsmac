@@ -90,6 +90,22 @@ const orders = {
 		advanced: true,
 		feature_changes: {river: true},
 	},
+	raise_land: {
+		name: 'Raise Land',
+		sea_name: 'Raise Sea Floor',
+		turns: 12,
+		required_technology: 'EnvironmentalEconomics',
+		advanced: true,
+		elevation_delta: 1000,
+	},
+	lower_land: {
+		name: 'Lower Land',
+		sea_name: 'Lower Sea Floor',
+		turns: 12,
+		required_technology: 'EnvironmentalEconomics',
+		advanced: true,
+		elevation_delta: -1000,
+	},
 	level_terrain: {
 		name: 'Level Terrain',
 		turns: 8,
@@ -153,6 +169,8 @@ const order_ids = [
 	'mirror',
 	'borehole',
 	'aquifer',
+	'raise_land',
+	'lower_land',
 	'level_terrain',
 	'sensor',
 	'bunker',
@@ -167,6 +185,8 @@ const sea_order_ids = {
 	solar: true,
 	remove_fungus: true,
 	plant_fungus: true,
+	raise_land: true,
+	lower_land: true,
 };
 
 const get_order = (type) => {
@@ -299,6 +319,12 @@ const get_unavailable_reason = (tile, player, type, project_effects) => {
 	if (type == 'level_terrain' && tile.rockiness <= 1) {
 		return 'This square is already flat';
 	}
+	if (#is_defined(order.elevation_delta)) {
+		const error = tile.get_elevation_change_error(order.elevation_delta);
+		if (error != '') {
+			return error;
+		}
+	}
 	return null;
 };
 
@@ -323,6 +349,9 @@ const advance_order = (unit) => {
 	}
 	if (#is_defined(order.rockiness_delta)) {
 		tile.set_rockiness(tile.rockiness + order.rockiness_delta);
+	}
+	if (#is_defined(order.elevation_delta)) {
+		tile.apply_elevation_change(order.elevation_delta);
 	}
 	unit.set_terraforming_order('none', 0);
 	return false;

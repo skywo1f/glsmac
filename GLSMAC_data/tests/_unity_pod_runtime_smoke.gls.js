@@ -22,7 +22,8 @@
 			exit_scheduled = true;
 			#print(
 				'UNITY_POD_RUNTIME_PASS: installed assets, Unity reward definitions, ' +
-				'live sea refresh, bonus mutation, earthquake rollback, and movement resolution verified'
+				'live sea refresh, bonus mutation, former elevation rollback, earthquake rollback, ' +
+				'and movement resolution verified'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
@@ -90,6 +91,8 @@
 				const destination = e.data.destination;
 				const sea_tile = e.data.sea_tile;
 				const earthquake_tile = e.data.earthquake_tile;
+				const elevation_raise_tile = e.data.elevation_raise_tile;
+				const elevation_lower_tile = e.data.elevation_lower_tile;
 
 				const old_bonus = get_bonus_name(source);
 				source.set_bonus('minerals');
@@ -105,6 +108,29 @@
 				sea_tile.update_features({unity_pod: false});
 				if (sea_tile.features.unity_pod) {
 					throw Error('UNITY_POD_RUNTIME_FAIL: live sea tile did not remove a Unity Pod');
+				}
+
+				let live_raise_tile = tm.get_tile(elevation_raise_tile.x, elevation_raise_tile.y);
+				const old_raise_elevation = live_raise_tile.elevation + 0;
+				const raise_snapshot = live_raise_tile.apply_elevation_change(1000);
+				if (live_raise_tile.elevation != old_raise_elevation + 1000) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: former raise did not update live elevation');
+				}
+				tm.restore_terrain(raise_snapshot);
+				live_raise_tile = tm.get_tile(elevation_raise_tile.x, elevation_raise_tile.y);
+				if (live_raise_tile.elevation != old_raise_elevation) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: former raise snapshot did not restore terrain');
+				}
+				let live_lower_tile = tm.get_tile(elevation_lower_tile.x, elevation_lower_tile.y);
+				const old_lower_elevation = live_lower_tile.elevation + 0;
+				const lower_snapshot = live_lower_tile.apply_elevation_change(-1000);
+				if (live_lower_tile.elevation != old_lower_elevation - 1000) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: former lower did not update live elevation');
+				}
+				tm.restore_terrain(lower_snapshot);
+				live_lower_tile = tm.get_tile(elevation_lower_tile.x, elevation_lower_tile.y);
+				if (live_lower_tile.elevation != old_lower_elevation) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: former lower snapshot did not restore terrain');
 				}
 
 				const live_earthquake_tile = tm.get_tile(earthquake_tile.x, earthquake_tile.y);
@@ -181,12 +207,28 @@
 			let route = null;
 			let sea_tile = null;
 			let earthquake_tile = null;
+			let elevation_raise_tile = null;
+			let elevation_lower_tile = null;
 			for (let y = 0; y < tm.get_map_height(); y++) {
 				for (let x = 0; x < tm.get_map_width(); x++) {
 					if (x % 2 != y % 2) {
 						continue;
 					}
 					const tile = tm.get_tile(x, y);
+					if (#typeof(tile.get_elevation_change_error) == 'Callable') {
+						if (
+							elevation_raise_tile == null &&
+							tile.get_elevation_change_error(1000) == ''
+						) {
+							elevation_raise_tile = tile;
+						}
+						if (
+							elevation_lower_tile == null &&
+							tile.get_elevation_change_error(-1000) == ''
+						) {
+							elevation_lower_tile = tile;
+						}
+					}
 					if (
 						sea_tile == null && tile.is_water && tile.get_base() == null &&
 						#sizeof(tile.get_units(true)) == 0
@@ -221,12 +263,17 @@
 					}
 				}
 			}
-			if (route == null || sea_tile == null || earthquake_tile == null) {
-				fail('quickstart map lacks the required land route, sea tile, or inland earthquake tile');
+			if (
+				route == null || sea_tile == null || earthquake_tile == null ||
+				elevation_raise_tile == null || elevation_lower_tile == null
+			) {
+				fail('quickstart map lacks the required movement or terrain test tiles');
 				return;
 			}
 			if (
 				#typeof(route.source.set_bonus) != 'Callable' ||
+				#typeof(elevation_raise_tile.apply_elevation_change) != 'Callable' ||
+				#typeof(elevation_lower_tile.apply_elevation_change) != 'Callable' ||
 				#typeof(tm.apply_earthquake) != 'Callable' ||
 				#typeof(tm.restore_terrain) != 'Callable'
 			) {
@@ -251,6 +298,8 @@
 					destination: route.destination,
 					sea_tile: sea_tile,
 					earthquake_tile: earthquake_tile,
+					elevation_raise_tile: elevation_raise_tile,
+					elevation_lower_tile: elevation_lower_tile,
 				});
 				wait_for_pod_ready(route.destination, () => {
 					game.event('move_unit', {unit: explorer, tile: route.destination});

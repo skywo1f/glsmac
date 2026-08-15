@@ -11,6 +11,8 @@ let tile_state = {
 	updates: 0,
 	feature_updates: 0,
 	rockiness_updates: 0,
+	elevation_updates: 0,
+	elevation_change_error: '',
 };
 
 let known_technologies = {};
@@ -42,6 +44,8 @@ tile = {
 		mirror: false,
 		borehole: false,
 		aquifer: false,
+		raise_land: false,
+		lower_land: false,
 		level_terrain: false,
 		sensor: false,
 		bunker: false,
@@ -78,6 +82,15 @@ tile = {
 	set_rockiness: (value) => {
 		tile.rockiness = value;
 		tile_state.rockiness_updates = tile_state.rockiness_updates + 1;
+	},
+	get_elevation_change_error: (amount) => {
+		test.assert(amount == -1000 || amount == 1000);
+		return tile_state.elevation_change_error;
+	},
+	apply_elevation_change: (amount) => {
+		tile.elevation = tile.elevation + amount;
+		tile_state.elevation_updates = tile_state.elevation_updates + 1;
+		return 'terrain-snapshot';
 	},
 };
 
@@ -272,6 +285,27 @@ test.assert(#is_defined(terraform_tile.validate(event)));
 tile.rockiness = 3;
 test.assert(!#is_defined(terraform_tile.validate(event)));
 
+event.data.type = 'raise_land';
+test.assert(#is_defined(terraform_tile.validate(event)));
+advanced_terraforming = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+advanced_terraforming = false;
+known_technologies.EnvironmentalEconomics = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile_state.elevation_change_error = 'Terrain cannot be raised any further';
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile_state.elevation_change_error = '';
+event.data.type = 'lower_land';
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile.is_water = true;
+former_is_water = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+test.assert(terraforming.get_order_name('raise_land', true) == 'Raise Sea Floor');
+test.assert(terraforming.get_order_name('lower_land', true) == 'Lower Sea Floor');
+tile.is_water = false;
+former_is_water = false;
+known_technologies = {};
+
 event.data.type = 'remove_fungus';
 test.assert(#is_defined(terraform_tile.validate(event)));
 tile.features.xenofungus = true;
@@ -406,6 +440,16 @@ unit.set_terraforming_order('level_terrain', 1);
 test.assert(!terraforming.advance_order(unit));
 test.assert(tile.rockiness == 1);
 test.assert(tile_state.rockiness_updates == 2);
+
+tile.elevation = 0;
+unit.set_terraforming_order('raise_land', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.elevation == 1000);
+test.assert(tile_state.elevation_updates == 1);
+unit.set_terraforming_order('lower_land', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.elevation == 0);
+test.assert(tile_state.elevation_updates == 2);
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;
