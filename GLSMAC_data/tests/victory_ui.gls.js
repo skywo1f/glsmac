@@ -27,6 +27,11 @@ const body = {
 const game = {
 	get_victory_state: () => { return victory_state; },
 	get_player: (id) => { return #is_defined(id) ? players[id] : players[0]; },
+	get: (name) => {
+		return name == 'f_score_get_breakdown'
+			? (player) => { return {total: player.id == 0 ? 321 : 123}; }
+			: #undefined;
+	},
 	on: (name, callback) => { callbacks[name] = callback; },
 };
 
@@ -44,7 +49,7 @@ victory_popup.init({
 	create: (title, width, height, build) => {
 		test.assert(title == 'GAME COMPLETE');
 		test.assert(width == 520);
-		test.assert(height == 142);
+		test.assert(height == 168);
 		build(body, (result) => { closed++; });
 		return {};
 	},
@@ -53,6 +58,7 @@ victory_popup.init({
 victory_popup.on_show();
 test.assert(victory_popup.status_text.text == 'You have won the game.');
 test.assert(victory_popup.detail_text.text == 'Conquest Victory in M.Y. 2112.');
+test.assert(victory_popup.score_text.text == 'Alpha Centauri Score: 321');
 test.assert(#sizeof(buttons) == 2);
 test.assert(buttons[0].text == 'Continue Viewing Planet');
 test.assert(buttons[1].text == 'Return to Main Menu');
@@ -64,6 +70,7 @@ callbacks.victory_declared({type: 'economic', winner: players[1], turn: 42});
 test.assert(shown_popup == 'victory');
 test.assert(victory_popup.status_text.text == 'Gaia\'s Stepdaughters has won the game.');
 test.assert(victory_popup.detail_text.text == 'Economic Victory in M.Y. 2142.');
+test.assert(victory_popup.score_text.text == 'Alpha Centauri Score: 321');
 
 victory_state = {type: 'transcendence', winner: 0, turn: 130};
 victory_popup.refresh();
@@ -71,3 +78,8 @@ test.assert(victory_popup.detail_text.text == 'Transcendence Victory in M.Y. 223
 victory_state = {type: 'diplomatic', winner: 0, turn: 99};
 victory_popup.refresh();
 test.assert(victory_popup.detail_text.text == 'Diplomatic Victory in M.Y. 2199.');
+victory_state = {type: '', winner: -1, turn: 0};
+victory_popup.refresh();
+test.assert(victory_popup.status_text.text == 'No faction has won the game.');
+test.assert(victory_popup.detail_text.text == '');
+test.assert(victory_popup.score_text.text == '');

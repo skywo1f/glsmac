@@ -15,24 +15,28 @@ return {
 		this.p = p;
 		this.status_text = null;
 		this.detail_text = null;
+		this.score_text = null;
 
-		const result = p.create('GAME COMPLETE', 520, 142, (body, cb) => {
+		const result = p.create('GAME COMPLETE', 520, 168, (body, cb) => {
 			this.status_text = body.text({
 				class: 'game-popup-text', text: '', left: 10, right: 10, top: 18,
 			});
 			this.detail_text = body.text({
 				class: 'game-popup-text', text: '', left: 10, right: 10, top: 50,
 			});
+			this.score_text = body.text({
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 76,
+			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Continue Viewing Planet', top: 88,
+				class: 'game-popup-button', text: 'Continue Viewing Planet', top: 114,
 			}).on('click', (e) => {
 				cb(true);
 				return true;
 			});
 
 			body.button({
-				class: 'game-popup-button', text: 'Return to Main Menu', top: 114, is_ok: true,
+				class: 'game-popup-button', text: 'Return to Main Menu', top: 140, is_ok: true,
 			}).on('click', (e) => {
 				cb(true);
 				#async(0, () => { p.glsmac.reset(); });
@@ -48,6 +52,7 @@ return {
 		if (victory.type == '' || victory.winner < 0) {
 			this.status_text.text = 'No faction has won the game.';
 			this.detail_text.text = '';
+			this.score_text.text = '';
 			return;
 		}
 		const winner = this.p.game.get_player(victory.winner);
@@ -66,6 +71,11 @@ return {
 			: winner.get_faction().name + ' has won the game.';
 		this.detail_text.text = victory_name + ' in M.Y. ' +
 			#to_string(victory.turn + 2100) + '.';
+		const score_resolver = #typeof(this.p.game.get) == 'Callable'
+			? this.p.game.get('f_score_get_breakdown') : #undefined;
+		this.score_text.text = #typeof(score_resolver) == 'Callable'
+			? 'Alpha Centauri Score: ' + #to_string(score_resolver(local_player).total)
+			: '';
 	},
 
 	on_show: () => {
