@@ -23,7 +23,7 @@
 			exit_scheduled = true;
 			#print(
 				'UNITY_POD_RUNTIME_PASS: installed assets, Unity reward definitions, ' +
-				'live sea refresh, bonus mutation, native Former orders, coastline conversion, elevation rollback, earthquake rollback, ' +
+				'live sea refresh, bonus mutation, native Former orders, Aquifer courses, Condenser rainfall, coastline conversion, elevation rollback, earthquake rollback, ' +
 				'and movement resolution verified'
 			);
 			#async(500, () => { glsmac.exit(); });
@@ -154,6 +154,51 @@
 				}
 				for (river_tile of artificial_river) {
 					river_tile.update_features({river: false});
+				}
+
+				const get_effective_moisture = game.get('f_resource_get_effective_moisture');
+				if (#typeof(get_effective_moisture) != 'Callable') {
+					throw Error('UNITY_POD_RUNTIME_FAIL: effective rainfall resolver is unavailable');
+				}
+				let condenser_source = null;
+				let condenser_target = null;
+				for (
+					let condenser_y = 0;
+					condenser_y < tm.get_map_height() && condenser_source == null;
+					condenser_y++
+				) {
+					for (
+						let condenser_x = condenser_y % 2;
+						condenser_x < tm.get_map_width();
+						condenser_x += 2
+					) {
+						const condenser_candidate = tm.get_tile(condenser_x, condenser_y);
+						if (condenser_candidate.is_water || condenser_candidate.terraforming.condenser) {
+							continue;
+						}
+						for (nearby of condenser_candidate.get_surrounding_tiles()) {
+							if (!nearby.is_water && nearby.moisture < 3) {
+								condenser_source = condenser_candidate;
+								condenser_target = nearby;
+								break;
+							}
+						}
+						if (condenser_source != null) {
+							break;
+						}
+					}
+				}
+				if (condenser_source == null) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: no Condenser rainfall test tiles are available');
+				}
+				const moisture_before = get_effective_moisture(condenser_target);
+				condenser_source.update_terraforming({condenser: true});
+				if (get_effective_moisture(condenser_target) != #min(3, moisture_before + 1)) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: Condenser did not increase adjacent rainfall');
+				}
+				condenser_source.update_terraforming({condenser: false});
+				if (get_effective_moisture(condenser_target) != moisture_before) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: Condenser rainfall did not reverse');
 				}
 
 				let land_candidates = [];

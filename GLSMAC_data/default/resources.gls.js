@@ -105,6 +105,21 @@ const get_adjacent_mirror_bonus = (tile) => {
 	return result;
 };
 
+const get_effective_moisture = (tile) => {
+	let result = tile.moisture;
+	if (tile.terraforming.condenser) {
+		result++;
+	}
+	if (#is_defined(tile.get_surrounding_tiles)) {
+		for (nearby of tile.get_surrounding_tiles()) {
+			if (nearby.terraforming.condenser) {
+				result++;
+			}
+		}
+	}
+	return #min(3, result);
+};
+
 const get_land_yields = (tile) => {
 	if (tile.terraforming.borehole) {
 		return copy_yields(rules.borehole_yields);
@@ -114,7 +129,7 @@ const get_land_yields = (tile) => {
 	}
 	const result = empty_yields();
 	if (tile.rockiness < 3) {
-		result.NUTRIENTS = #max(tile.moisture - 1, 0);
+		result.NUTRIENTS = #max(get_effective_moisture(tile) - 1, 0);
 	}
 	if (tile.rockiness > 1) {
 		result.MINERALS = 1;
@@ -253,9 +268,13 @@ const get_tile_yields = (tile, player) => {
 const result = {
 	rules: rules,
 	get_tile_yields: get_tile_yields,
+	get_effective_moisture: get_effective_moisture,
 	apply_dust_cloud_penalty: apply_dust_cloud_penalty,
 
 	configure: (game) => {
+		if (#typeof(game.set) == 'Callable') {
+			game.set('f_resource_get_effective_moisture', get_effective_moisture);
+		}
 
 		game.get_tm().on('get_tile_resources', (e) => {
 			const tm = game.get_tm();

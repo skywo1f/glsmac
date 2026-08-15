@@ -7,6 +7,19 @@ return {
 	ROCKINESS_LEVELS: ['?', 'Flat', 'Rolling', 'Rocky'],
 	MOISTURE_LEVELS: ['?', 'Arid', 'Moist', 'Rainy'],
 
+	get_moisture: (tile) => {
+		if (
+			#is_defined(this.p) && #is_defined(this.p.game) &&
+			#typeof(this.p.game.get) == 'Callable'
+		) {
+			const resolver = this.p.game.get('f_resource_get_effective_moisture');
+			if (#typeof(resolver) == 'Callable') {
+				return resolver(tile);
+			}
+		}
+		return tile.moisture;
+	},
+
 	get_feature_name: (tile, feature) => {
 
 		if (tile.is_water) {
@@ -216,8 +229,9 @@ return {
 					tilestr += this.ROCKINESS_LEVELS[tile.rockiness];
 				}
 				tilestr += ' & ';
-				if (tile.moisture < #sizeof(this.MOISTURE_LEVELS)) {
-					tilestr += this.MOISTURE_LEVELS[tile.moisture];
+				const moisture = this.get_moisture(tile);
+				if (moisture < #sizeof(this.MOISTURE_LEVELS)) {
+					tilestr += this.MOISTURE_LEVELS[moisture];
 				}
 				this.line(tilestr);
 			}

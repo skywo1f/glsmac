@@ -109,6 +109,22 @@ yields = resource_callback({tile: forest_tile, player: player});
 test.assert(yields == {NUTRIENTS: 1, MINERALS: 2, ENERGY: 2});
 
 known_technologies = {};
+const dry_tile = make_tile(false);
+dry_tile.moisture = 1;
+const nearby_condenser = make_tile(false);
+nearby_condenser.terraforming.condenser = true;
+dry_tile.get_surrounding_tiles = () => { return [nearby_condenser]; };
+test.assert(resources.get_effective_moisture(dry_tile) == 2);
+test.assert(resources.get_tile_yields(dry_tile, player).NUTRIENTS == 1);
+const second_condenser = make_tile(false);
+second_condenser.terraforming.condenser = true;
+dry_tile.get_surrounding_tiles = () => { return [nearby_condenser, second_condenser]; };
+test.assert(resources.get_effective_moisture(dry_tile) == 3);
+test.assert(resources.get_tile_yields(dry_tile, player).NUTRIENTS == 2);
+nearby_condenser.moisture = 1;
+nearby_condenser.get_surrounding_tiles = () => { return []; };
+test.assert(resources.get_tile_yields(nearby_condenser, player).NUTRIENTS == 2);
+
 const rainy_farm = make_tile(false);
 rainy_farm.moisture = 3;
 rainy_farm.terraforming.farm = true;

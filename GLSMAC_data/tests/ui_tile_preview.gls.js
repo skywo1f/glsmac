@@ -41,3 +41,11 @@ preview.p.game.get_player = () => {
 };
 test.assert(preview.is_explored(visibility_tile));
 test.assert(!preview.is_explored({x: 8, y: 10}));
+
+const moisture_tile = {moisture: 1};
+test.assert(preview.get_moisture(moisture_tile) == 1);
+preview.p.game.get = (key) => {
+	test.assert(key == 'f_resource_get_effective_moisture');
+	return (tile) => { return tile.moisture + 1; };
+};
+test.assert(preview.get_moisture(moisture_tile) == 2);
