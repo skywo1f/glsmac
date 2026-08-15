@@ -64,6 +64,7 @@ const apply = (game, player, count) => {
 		progress: progress,
 	});
 	const map_reveals = technology_effects.apply_map_reveals(game, player, completed_ids);
+	const specialist_updates = technology_effects.apply_specialist_updates(game, player);
 	game.trigger('research_updated', {player: player});
 	const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
 	if (#is_defined(queue_datalinks)) {
@@ -76,10 +77,12 @@ const apply = (game, player, count) => {
 		completed_ids: completed_ids,
 		completed_count: #sizeof(completed_names),
 		map_reveals: map_reveals,
+		specialist_updates: specialist_updates,
 	};
 };
 
 const rollback = (game, applied) => {
+	technology_effects.rollback_specialist_updates(applied.specialist_updates);
 	technology_effects.rollback_map_reveals(game, applied.map_reveals);
 	applied.player.set_research_state(applied.state);
 	game.trigger('research_updated', {player: applied.player});

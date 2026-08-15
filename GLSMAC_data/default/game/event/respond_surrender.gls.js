@@ -1,3 +1,5 @@
+const technology_effects = #include('../technology_effects');
+
 return {
 
 	validate: (e) => {
@@ -42,6 +44,7 @@ return {
 			player_loan: player.get_diplomatic_loan(proposer),
 			proposer_loan: proposer.get_diplomatic_loan(player),
 			maps: [],
+			specialist_updates: [],
 		};
 		proposer.set_surrender_offer_to_id(-1);
 		if (e.data.accept) {
@@ -60,6 +63,11 @@ return {
 					if (#typeof(grant) == 'Object') {
 						for (map_reveal of grant.map_reveals) {
 							snapshot.maps :+map_reveal;
+						}
+						if (#is_defined(grant.specialist_updates)) {
+							for (specialist_update of grant.specialist_updates) {
+								snapshot.specialist_updates :+specialist_update;
+							}
 						}
 					}
 				}
@@ -101,6 +109,7 @@ return {
 		for (let i = #sizeof(e.applied.maps) - 1; i >= 0; i--) {
 			e.game.get('f_exploration_rollback_reveal')(e.applied.maps[i]);
 		}
+		technology_effects.rollback_specialist_updates(e.applied.specialist_updates);
 		player.set_energy_credits(e.applied.player_energy);
 		proposer.set_energy_credits(e.applied.proposer_energy);
 		player.set_research_state(e.applied.player_research);

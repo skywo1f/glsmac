@@ -669,11 +669,17 @@ const grant_technology = (game, player, id) => {
 		progress: progress,
 	});
 	const map_reveals = technology_effects.apply_map_reveals(game, player, [id]);
+	const specialist_updates = technology_effects.apply_specialist_updates(game, player);
 	const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
 	if (#is_defined(queue_datalinks)) {
 		queue_datalinks();
 	}
-	return {player: player, technology_id: id, map_reveals: map_reveals};
+	return {
+		player: player,
+		technology_id: id,
+		map_reveals: map_reveals,
+		specialist_updates: specialist_updates,
+	};
 };
 
 const get_loan_parties = (proposer, recipient, terms) => {

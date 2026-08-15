@@ -1,4 +1,25 @@
 return {
+	_get_live_base: (base_id) => {
+		for (base of this.p.game.get_bm().get_bases()) {
+			if (base.id == base_id) {
+				return base;
+			}
+		}
+		return null;
+	},
+
+	_get_live_pop: (base, pop_id) => {
+		if (base == null) {
+			return null;
+		}
+		for (pop of base.get_pops()) {
+			if (pop.id == pop_id) {
+				return pop;
+			}
+		}
+		return null;
+	},
+
 	_get_relative_base: (direction) => {
 		if (this.base == null) {
 			return null;
@@ -221,10 +242,42 @@ return {
 			if (!#is_defined(renders[pop_type][variant])) {
 				variant = 0;
 			}
-			this.pops.surface({
-				class: 'base-screen-bottombar-pop-' + pop_type + '-' + #to_string(variant),
-				left: left,
-			});
+			const icon = pop.has('worked_tile')
+				? this.pops.surface({
+					class: 'base-screen-bottombar-pop-' + pop_type + '-' + #to_string(variant),
+					left: left,
+				})
+				: this.pops.button({
+					class: 'base-screen-bottombar-pop-' + pop_type + '-' + #to_string(variant),
+					left: left,
+					sound: 'ok.wav',
+				});
+			if (!pop.has('worked_tile')) {
+				const base_id = base.id;
+				const pop_id = pop.id;
+				icon.on('click', (e) => {
+					const live_base = this._get_live_base(base_id);
+					const live_pop = this._get_live_pop(live_base, pop_id);
+					if (
+						live_base == null || live_pop == null ||
+						live_base.get_owner().id != this.p.game.get_player().id
+					) {
+						return true;
+					}
+					const next = this.p.game.get('f_base_get_next_specialist')(
+						live_base.get_owner(),
+						live_pop.get_type()
+					);
+					if (next != null) {
+						this.p.game.event('set_base_specialist', {
+							base: live_base,
+							pop: live_pop,
+							type: next.id,
+						});
+					}
+					return true;
+				});
+			}
 			left += shift;
 		}
 

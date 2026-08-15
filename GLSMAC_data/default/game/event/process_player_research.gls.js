@@ -78,6 +78,10 @@ return {
 			e.data.player,
 			completed_ids
 		);
+		const specialist_updates = technology_effects.apply_specialist_updates(
+			e.game,
+			e.data.player
+		);
 		const bonus_technologies = free_technology_count > 0
 			? technology_acquisition.apply(e.game, e.data.player, free_technology_count)
 			: #undefined;
@@ -114,6 +118,7 @@ return {
 			completed_count: #sizeof(completed_names),
 			bonus_technologies: bonus_technologies,
 			map_reveals: map_reveals,
+			specialist_updates: specialist_updates,
 		};
 	},
 
@@ -121,6 +126,7 @@ return {
 		if (#is_defined(e.applied.bonus_technologies)) {
 			technology_acquisition.rollback(e.game, e.applied.bonus_technologies);
 		}
+		technology_effects.rollback_specialist_updates(e.applied.specialist_updates);
 		technology_effects.rollback_map_reveals(e.game, e.applied.map_reveals);
 		e.data.player.set_research_state(e.applied.state);
 		e.game.trigger('research_updated', {

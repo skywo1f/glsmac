@@ -16,6 +16,13 @@ const get_turn_resource_snapshot = (game, base) => {
 	return #is_defined(resolver) ? resolver(base) : null;
 };
 
+const get_specialist_yields = (game, base) => {
+	const resolver = game.get('f_base_get_specialist_yields');
+	return #typeof(resolver) == 'Callable'
+		? resolver(base)
+		: {economy: 0, psych: 0, labs: 0};
+};
+
 const get_efficiency_rating = (game, base, facilities) => {
 	const resolver = game.get('f_social_get_ratings');
 	const ratings = #is_defined(resolver) ? resolver(base.get_owner()) : {effic: 0};
@@ -109,6 +116,7 @@ const get_base_allocation = (game, base, intake, consumption) => {
 	const facilities = get_effective_facilities(game, base);
 	const project_effects = get_project_effects(game, base);
 	const energy = get_base_energy(game, base, facilities, #undefined, intake);
+	const specialists = get_specialist_yields(game, base);
 	const total_energy = energy.net - base_consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs = game.get('f_technology_get_base_labs')(
@@ -118,7 +126,7 @@ const get_base_allocation = (game, base, intake, consumption) => {
 		facilities
 	);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
-	let psych_bonus = 0;
+	let psych_bonus = specialists.psych;
 	let psych_multiplier = 0.0;
 	for (facility of facilities) {
 		psych_bonus += facility.psych_bonus;
@@ -126,8 +134,10 @@ const get_base_allocation = (game, base, intake, consumption) => {
 			? facility.psych_multiplier
 			: 0.0;
 	}
-	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
-	const economy_value = total_energy - labs.value - psych;
+	psych_bonus += #ceil(
+		#to_float(psych + specialists.psych) * psych_multiplier
+	);
+	const economy_value = total_energy - labs.value - psych + specialists.economy;
 	const economy_bonus = #ceil(
 		#to_float(#max(economy_value, 0)) * get_base_economy_multiplier(
 			game,
@@ -158,6 +168,7 @@ const get_base_economy = (game, base, intake, consumption) => {
 	const facilities = get_effective_facilities(game, base);
 	const project_effects = get_project_effects(game, base);
 	const energy = get_base_energy(game, base, facilities, #undefined, intake);
+	const specialists = get_specialist_yields(game, base);
 	const total_energy = energy.net - base_consumption.ENERGY;
 	const energy_surplus = #max(total_energy, 0);
 	const labs_resolver = game.get('f_technology_get_base_labs_value');
@@ -165,7 +176,7 @@ const get_base_economy = (game, base, intake, consumption) => {
 		? labs_resolver(base, energy, base_consumption)
 		: #round(#to_float(energy_surplus) * LABS_ALLOCATION);
 	const psych = #round(#to_float(energy_surplus) * PSYCH_ALLOCATION);
-	const value = total_energy - labs - psych;
+	const value = total_energy - labs - psych + specialists.economy;
 	const bonus = #ceil(
 		#to_float(#max(value, 0)) * get_base_economy_multiplier(
 			game,

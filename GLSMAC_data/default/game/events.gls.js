@@ -92,6 +92,7 @@ return (game) => {
 		'chat_message',
 		'work_base_tile',
 		'unwork_base_tile',
+		'set_base_specialist',
 	]) {
 		game.register_event(e, #include('event/' + e));
 	}

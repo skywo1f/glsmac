@@ -113,6 +113,12 @@ const get_base_labs = (base, game, energy, consumption, effective_facilities) =>
 		research_multiplier += facility.research_multiplier;
 		fixed_facility_bonus += #is_defined(facility.research_bonus) ? facility.research_bonus : 0;
 	}
+	const specialist_resolver = #is_defined(game)
+		? game.get('f_base_get_specialist_yields')
+		: #undefined;
+	if (#typeof(specialist_resolver) == 'Callable') {
+		fixed_facility_bonus += specialist_resolver(base).labs;
+	}
 	fixed_facility_bonus += get_network_backbone_research_bonus(base, game);
 	const facility_bonus = #ceil(
 		#to_float(allocated + base_bonus + fixed_facility_bonus) * research_multiplier

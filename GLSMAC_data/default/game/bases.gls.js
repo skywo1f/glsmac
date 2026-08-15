@@ -6,9 +6,13 @@ const supply_rules = #include('supply_rules');
 const globals = {};
 const CONTENT_CITIZENS = 3;
 const PSYCH_PER_IMPROVEMENT = 2;
-const DOCTOR_PSYCH = 2;
 const DEFAULT_POPULATION_LIMIT = 7;
 const NUTRIENT_COST_MULTIPLIER = 10;
+
+const get_default_specialist_id = (player) => {
+	const specialist = pops.get_default(player);
+	return specialist == null ? 'DOCTOR' : specialist.id;
+};
 
 const get_turn_resource_snapshot = (base) => {
 	if (!#is_defined(globals.turn_resource_snapshots)) {
@@ -363,7 +367,7 @@ const apply_pacifism_drones = (base, drones) => {
 
 const process_psych = (game, base, allocated_psych) => {
 	let laborer_count = 0;
-	let psych = allocated_psych;
+	let psych = allocated_psych + pops.get_yields(base).psych;
 	const effects = get_social_facility_effects(game, base);
 	const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
 	for (pop of base.get_pops()) {
@@ -371,8 +375,6 @@ const process_psych = (game, base, allocated_psych) => {
 			const type = laborer_count < content_citizens ? 'WORKER' : 'DRONE';
 			pop.set_type(type);
 			laborer_count++;
-		} else if (pop.get_type() == 'DOCTOR') {
-			psych += DOCTOR_PSYCH;
 		}
 	}
 	if (
@@ -589,11 +591,16 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 	}
 	const police = get_police_state(game, base);
 	const police_suppression = police.suppression;
+	const owner = #typeof(base.get_owner) == 'Callable' ? base.get_owner() : null;
+	const default_specialist = owner == null
+		? pops.get_definition('DOCTOR')
+		: pops.get_default(owner);
+	const specialist_psych = default_specialist == null ? 0 : default_specialist.psych;
 	let result = 0;
 	for (let workers = population; workers >= 0; workers--) {
-		const doctors = population - workers;
+		const specialist_count = population - workers;
 		let improvements = #floor(
-			#to_float(allocated_psych + doctors * DOCTOR_PSYCH) /
+			#to_float(allocated_psych + specialist_count * specialist_psych) /
 			#to_float(PSYCH_PER_IMPROVEMENT)
 		) + effects.talent_bonus;
 		const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
@@ -678,13 +685,14 @@ const rebalance_workers = (base, target_worker_count) => {
 		}
 	}
 	let tile_index = 0;
+	const default_specialist_id = get_default_specialist_id(base.get_owner());
 	for (base_pop of displaced) {
 		if (tile_index < #sizeof(new_tiles)) {
 			pop_work_tile(base, base_pop, new_tiles[tile_index]);
 			changed = true;
 			tile_index++;
 		} else {
-			pop_unwork(base, base_pop, 'DOCTOR');
+			pop_unwork(base, base_pop, default_specialist_id);
 			changed = true;
 		}
 	}
@@ -693,9 +701,18 @@ const rebalance_workers = (base, target_worker_count) => {
 			pop_work_tile(base, base_pop, new_tiles[tile_index]);
 			changed = true;
 			tile_index++;
-		} else if (base_pop.get_type() != 'DOCTOR') {
-			base_pop.set_type('DOCTOR');
-			changed = true;
+		} else {
+			const specialist = pops.get_definition(base_pop.get_type());
+			if (specialist == null || !pops.is_available(base.get_owner(), specialist)) {
+				const replacement = pops.get_replacement(
+					base.get_owner(),
+					base_pop.get_type()
+				);
+				base_pop.set_type(
+					replacement == null ? default_specialist_id : replacement.id
+				);
+				changed = true;
+			}
 		}
 	}
 	return changed;
@@ -849,10 +866,10 @@ const process_growth = (game, base, allocated_psych, intake, consumption) => {
 				worked_tile: best_tile,
 			});
 		} else {
-			// all tiles already worked, spawn doctor
+			// all tiles already worked, spawn the best psych specialist available
 			game.event('add_base_pop', {
 				base: base,
-				type: 'DOCTOR',
+				type: get_default_specialist_id(base.get_owner()),
 			});
 		}
 		return true;
@@ -1120,6 +1137,10 @@ return (game) => {
 		game.set('f_base_get_police', (base) => { return get_police_state(game, base); });
 		game.set('f_base_is_rioting', (base) => { return is_rioting(game, base); });
 		game.set('f_base_get_psych', (base) => { return get_psych_state(game, base); });
+		game.set('f_base_get_specialist_yields', pops.get_yields);
+		game.set('f_base_get_available_specialists', pops.get_available);
+		game.set('f_base_get_default_specialist', pops.get_default);
+		game.set('f_base_get_next_specialist', pops.get_next);
 		game.set('f_base_pop_work_tile', pop_work_tile);
 		game.set('f_base_pop_unwork_tile', pop_unwork);
 		game.set('f_base_find_best_or_worst_tiles', find_best_or_worst_tiles);
@@ -1130,7 +1151,6 @@ return (game) => {
 			(base, psych) => { return get_stable_worker_count(game, base, psych); }
 		);
 		game.set('f_base_select_population_for_reduction', select_population_for_reduction);
-
 		// new turn, process all bases
 		game.on('turn', (e) => {
 			if (game.is_master() && (!#is_defined(e.initial) || !e.initial)) {

@@ -97,6 +97,8 @@ const apply_spoils_of_war = (game, winner, loser) => {
 		player: winner,
 		state: state,
 		map_reveals: #typeof(granted) == 'Object' ? granted.map_reveals : [],
+		specialist_updates: #typeof(granted) == 'Object'
+			? granted.specialist_updates : [],
 	};
 };
 
@@ -104,6 +106,7 @@ const rollback_spoils_of_war = (game, snapshot) => {
 	if (!#is_defined(snapshot)) {
 		return;
 	}
+	technology_effects.rollback_specialist_updates(snapshot.specialist_updates);
 	technology_effects.rollback_map_reveals(game, snapshot.map_reveals);
 	snapshot.player.set_research_state(snapshot.state);
 	game.trigger('research_updated', {player: snapshot.player});

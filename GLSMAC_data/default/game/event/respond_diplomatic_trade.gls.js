@@ -1,3 +1,5 @@
+const technology_effects = #include('../technology_effects');
+
 return {
 
 	validate: (e) => {
@@ -70,6 +72,7 @@ return {
 				? null : e.game.get('f_diplomacy_snapshot_pair')(player, military_target),
 			contacts: [],
 			maps: [],
+			specialist_updates: [],
 			bases: [],
 		};
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(terms);
@@ -91,6 +94,11 @@ return {
 				if (#typeof(grant) == 'Object') {
 					for (map_reveal of grant.map_reveals) {
 						snapshot.maps :+map_reveal;
+					}
+					if (#is_defined(grant.specialist_updates)) {
+						for (specialist_update of grant.specialist_updates) {
+							snapshot.specialist_updates :+specialist_update;
+						}
 					}
 				}
 			}
@@ -201,6 +209,7 @@ return {
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.applied.terms);
 		player.set_energy_credits(e.applied.player_energy);
 		proposer.set_energy_credits(e.applied.proposer_energy);
+		technology_effects.rollback_specialist_updates(e.applied.specialist_updates);
 		player.set_research_state(e.applied.player_research);
 		proposer.set_research_state(e.applied.proposer_research);
 		for (let map_index = #sizeof(e.applied.maps) - 1; map_index >= 0; map_index--) {

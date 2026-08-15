@@ -279,7 +279,12 @@ return (game) => {
 				const key = 'p' + #to_string(player.id);
 				const previous = player.get_research_state();
 				if (!#is_defined(snapshotted[key])) {
-					const snapshot = {player: player, state: previous, map_reveals: []};
+					const snapshot = {
+						player: player,
+						state: previous,
+						map_reveals: [],
+						specialist_updates: [],
+					};
 					snapshots :+snapshot;
 					snapshotted[key] = snapshot;
 				}
@@ -319,6 +324,12 @@ return (game) => {
 				for (map_reveal of map_reveals) {
 					snapshotted[key].map_reveals :+map_reveal;
 				}
+				for (specialist_update of technology_effects.apply_specialist_updates(
+					game,
+					player
+				)) {
+					snapshotted[key].specialist_updates :+specialist_update;
+				}
 				updated[key] = player;
 			}
 		}
@@ -330,6 +341,7 @@ return (game) => {
 	const rollback_planetary_datalinks = (applied) => {
 		planetary_datalinks_pending = false;
 		for (snapshot of applied.players) {
+			technology_effects.rollback_specialist_updates(snapshot.specialist_updates);
 			technology_effects.rollback_map_reveals(game, snapshot.map_reveals);
 			snapshot.player.set_research_state(snapshot.state);
 			game.trigger('research_updated', {player: snapshot.player});

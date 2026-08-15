@@ -28,7 +28,15 @@ return {
 				type: base_pop.get_type(),
 			};
 		}
-		e.game.get('f_base_pop_unwork_tile')(e.data.base, pop, 'DOCTOR');
+		const default_resolver = e.game.get('f_base_get_default_specialist');
+		const default_specialist = #typeof(default_resolver) == 'Callable'
+			? default_resolver(e.data.base.get_owner())
+			: null;
+		e.game.get('f_base_pop_unwork_tile')(
+			e.data.base,
+			pop,
+			default_specialist == null ? 'DOCTOR' : default_specialist.id
+		);
 		const psych = e.game.get('f_economy_get_base_psych')(e.game, e.data.base);
 		e.game.get('f_base_process_psych')(e.game, e.data.base, psych);
 		return {

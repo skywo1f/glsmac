@@ -1,4 +1,5 @@
 const technologies = #include('../content/base_technologies');
+const pops = #include('pops');
 
 const is_first_discoverer = (game, player, technology_id) => {
 	if (#typeof(game.get_players) != 'Callable') {
@@ -58,9 +59,19 @@ const rollback_map_reveals = (game, snapshots) => {
 	}
 };
 
+const apply_specialist_updates = (game, player) => {
+	return #typeof(game.get_bm) == 'Callable' ? pops.normalize(game, player) : [];
+};
+
+const rollback_specialist_updates = (snapshots) => {
+	pops.rollback_normalize(snapshots);
+};
+
 return {
 	is_first_discoverer: is_first_discoverer,
 	grants_first_discoverer_technology: grants_first_discoverer_technology,
 	apply_map_reveals: apply_map_reveals,
 	rollback_map_reveals: rollback_map_reveals,
+	apply_specialist_updates: apply_specialist_updates,
+	rollback_specialist_updates: rollback_specialist_updates,
 };

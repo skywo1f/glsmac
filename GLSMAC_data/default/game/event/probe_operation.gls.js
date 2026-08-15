@@ -702,6 +702,8 @@ return {
 					actor,
 					[e.resolved.technology_id]
 				);
+				applied.technology_specialist_updates =
+					technology_effects.apply_specialist_updates(e.game, actor);
 				e.game.trigger('research_updated', {player: actor});
 				const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
 				if (#is_defined(queue_datalinks)) {
@@ -955,6 +957,9 @@ return {
 			restore_pop_types(e.applied.pop_types);
 		}
 		if (#is_defined(e.applied.research)) {
+			technology_effects.rollback_specialist_updates(
+				e.applied.technology_specialist_updates
+			);
 			technology_effects.rollback_map_reveals(
 				e.game,
 				e.applied.technology_map_reveals
