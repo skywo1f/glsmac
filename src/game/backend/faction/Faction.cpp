@@ -150,15 +150,15 @@ WRAPIMPL_BEGIN( Faction )
 			},
 			{
 				"is_naval",
-				VALUE( gse::value::Bool, , m_flags & Faction::FF_NAVAL )
+				BOOL_VALUE( m_flags & Faction::FF_NAVAL )
 			},
 			{
 				"is_progenitor",
-				VALUE( gse::value::Bool, , m_flags & Faction::FF_PROGENITOR )
+				BOOL_VALUE( m_flags & Faction::FF_PROGENITOR )
 			},
 			{
 				"is_native",
-				VALUE( gse::value::Bool, , m_flags & Faction::FF_NATIVE )
+				BOOL_VALUE( m_flags & Faction::FF_NATIVE )
 			},
 			{
 				"get_starting_technologies",

@@ -69,6 +69,7 @@ CLASS( GSE, gc::Object )
 
 	void SetGlobal( const std::string& identifier, Value* variable );
 	Value* const GetGlobal( const std::string& identifier );
+	Value* const GetBool( const bool value ) const;
 
 	void AddRootObject( gc::Object* const object );
 	void RemoveRootObject( gc::Object* const object );
@@ -92,6 +93,8 @@ private:
 	std::unordered_set< context::GlobalContext* > m_global_contexts = {};
 	std::unordered_map< std::string, parser::Parser* > m_parsers = {}; // extension, parser
 	runner::Runner* m_runner = nullptr;
+	Value* m_true = nullptr;
+	Value* m_false = nullptr;
 
 	const std::unordered_set< std::string > m_supported_extensions = {
 		".gls.js",

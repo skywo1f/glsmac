@@ -103,7 +103,7 @@ Drawable::Drawable( DOM_ARGS_T, geometry::Geometry* const geometry )
 	} );
 
 	Property(
-		GSE_CALL, "active", gse::VT_BOOL, VALUE( gse::value::Bool, , false ), PF_NONE,
+		GSE_CALL, "active", gse::VT_BOOL, BOOL_VALUE( false ), PF_NONE,
 		[ this ]( GSE_CALLABLE, gse::Value* const v ) {
 			SetActive( GSE_CALL, ( (gse::value::Bool*)v )->value );
 		},

@@ -4,6 +4,7 @@
 #include "runner/Interpreter.h"
 #include "gse/context/GlobalContext.h"
 #include "Exception.h"
+#include "value/Bool.h"
 #include "value/Undefined.h"
 #include "program/Program.h"
 #include "util/FS.h"
@@ -25,6 +26,8 @@ GSE::GSE()
 	m_gc_space->Accumulate(
 		this,
 		[ this ]() {
+			m_true = new value::Bool( m_gc_space, true );
+			m_false = new value::Bool( m_gc_space, false );
 			m_async = new Async( m_gc_space );
 		}
 	);
@@ -42,6 +45,8 @@ GSE::~GSE() {
 		m_global_contexts.clear();
 		m_parsers.clear();
 		m_runner = nullptr;
+		m_true = nullptr;
+		m_false = nullptr;
 		m_async = nullptr;
 		m_modules.clear();
 		m_root_objects.clear();
@@ -270,6 +275,16 @@ void GSE::AddRootObject( gc::Object* const object ) {
 	m_root_objects.insert( object );
 }
 
+Value* const GSE::GetBool( const bool value ) const {
+	ASSERT( m_true && m_false, "interned boolean values are not initialized" );
+	return value ? m_true : m_false;
+}
+
+Value* const GetBoolValue( context::Context* const ctx, const bool value ) {
+	ASSERT( ctx, "boolean value context is null" );
+	return ctx->GetGSE()->GetBool( value );
+}
+
 void GSE::RemoveRootObject( gc::Object* const object ) {
 	std::lock_guard guard( m_root_objects_mutex );
 	ASSERT( m_root_objects.find( object ) != m_root_objects.end(), "root object not found" );
@@ -294,6 +309,14 @@ gc::Space* const GSE::GetGCSpace() const {
 }
 
 void GSE::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
+	GC_DEBUG_BEGIN( "interned values" );
+	if ( m_true ) {
+		GC_REACHABLE( m_true );
+	}
+	if ( m_false ) {
+		GC_REACHABLE( m_false );
+	}
+	GC_DEBUG_END();
 
 	GC_DEBUG_BEGIN( "runner" );
 	if ( m_runner ) {

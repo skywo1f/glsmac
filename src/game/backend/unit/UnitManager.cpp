@@ -693,7 +693,7 @@ WRAPIMPL_BEGIN( UnitManager )
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( unit_id, 0, Int );
-				return VALUE( gse::value::Bool,, m_units.find( unit_id ) != m_units.end() );
+				return BOOL_VALUE( m_units.find( unit_id ) != m_units.end() );
 			} )
 		},
 		{

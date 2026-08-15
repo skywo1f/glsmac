@@ -271,7 +271,7 @@ void Unit::SetTransportId( const size_t transport_id ) {
 		const auto embarked_it = wrapobj->value.find( "is_embarked" );
 		ASSERT( embarked_it != wrapobj->value.end(), "unit wrapper has no is_embarked property" );
 		ASSERT( embarked_it->second->type == gse::VT_BOOL, "unit is_embarked property is not a bool" );
-		( (gse::value::Bool*)embarked_it->second )->value = m_transport_id != 0;
+		wrapobj->AssignBool( "is_embarked", m_transport_id != 0 );
 
 		const auto convoy_it = wrapobj->value.find( "convoy_resource" );
 		ASSERT( convoy_it != wrapobj->value.end(), "unit wrapper has no convoy_resource property" );
@@ -496,12 +496,7 @@ void Unit::ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf ) {
 				( (gse::value::Int*)it->second )->value = value;
 			};
 			const auto set_bool = [ wrapobj ]( const std::string& key, const bool value ) {
-				const auto it = wrapobj->value.find( key );
-				ASSERT(
-					it != wrapobj->value.end() && it->second->type == gse::VT_BOOL,
-					"invalid unit bool wrapper property"
-				);
-				( (gse::value::Bool*)it->second )->value = value;
+				wrapobj->AssignBool( key, value );
 			};
 			const auto set_string = [ wrapobj ]( const std::string& key, const std::string& value ) {
 				const auto it = wrapobj->value.find( key );
@@ -585,11 +580,11 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "convoy_resource", String, GetConvoyResourceString( m_convoy_resource ) )
 	WRAPIMPL_GET_PTR( "airdropped_this_turn", m_airdropped_this_turn )
 	WRAPIMPL_GET_PTR( "monolith_upgraded", m_monolith_upgraded )
-	WRAPIMPL_GET_CUSTOM( "is_embarked", Bool, m_transport_id != 0 )
-	WRAPIMPL_GET_CUSTOM( "is_immovable", Bool, m_def->GetMovementType() == MT_IMMOVABLE )
-	WRAPIMPL_GET_CUSTOM( "is_land", Bool, m_def->GetMovementType() == MT_LAND )
-	WRAPIMPL_GET_CUSTOM( "is_water", Bool, m_def->GetMovementType() == MT_WATER )
-	WRAPIMPL_GET_CUSTOM( "is_air", Bool, m_def->GetMovementType() == MT_AIR )
+	WRAPIMPL_GET_BOOL( "is_embarked", m_transport_id != 0 )
+	WRAPIMPL_GET_BOOL( "is_immovable", m_def->GetMovementType() == MT_IMMOVABLE )
+	WRAPIMPL_GET_BOOL( "is_land", m_def->GetMovementType() == MT_LAND )
+	WRAPIMPL_GET_BOOL( "is_water", m_def->GetMovementType() == MT_WATER )
+	WRAPIMPL_GET_BOOL( "is_air", m_def->GetMovementType() == MT_AIR )
 	WRAPIMPL_LINK( "get_def", m_def )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )

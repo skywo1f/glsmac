@@ -15,7 +15,7 @@ public:
 		, value( initial_value ) {
 	}
 
-	bool value;
+	const bool value;
 
 };
 

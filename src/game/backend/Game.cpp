@@ -883,20 +883,20 @@ WRAPIMPL_BEGIN( Game )
 		{
 			"is_master",
 			NATIVE_CALL( this ) {
-				return VALUE( gse::value::Bool, , m_state->IsMaster() );
+				return BOOL_VALUE( m_state->IsMaster() );
 			} ),
 		},
 		{
 			"is_slave",
 			NATIVE_CALL( this ) {
-			return VALUE( gse::value::Bool, , m_state->IsSlave() );
+			return BOOL_VALUE( m_state->IsSlave() );
 		} ),
 		},
 		{
 			"is_loaded_game",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				return VALUE( gse::value::Bool, , m_is_loaded_game );
+				return BOOL_VALUE( m_is_loaded_game );
 			} ),
 		},
 		{
@@ -981,7 +981,7 @@ WRAPIMPL_BEGIN( Game )
 			"is_game_over",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				return VALUE( gse::value::Bool, , IsGameOver() );
+				return BOOL_VALUE( IsGameOver() );
 			} )
 		},
 		{
@@ -1036,7 +1036,7 @@ WRAPIMPL_BEGIN( Game )
 
 				const auto& slot = slots.at( slot_id );
 				ASSERT( slot.GetState() != slot::Slot::SS_PLAYER || slot.GetPlayer(), "player is null" );
-				return VALUE( gse::value::Bool,,
+				return BOOL_VALUE(
 					slot.GetState() == slot::Slot::SS_PLAYER
 						? slot.GetPlayer()->IsTurnCompleted()
 						: true // ai has always turn completed during turns of players
@@ -1306,7 +1306,7 @@ WRAPIMPL_BEGIN( Game )
 			"is_started",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				return VALUE( gse::value::Bool,, m_game_state != GS_NONE );
+				return BOOL_VALUE( m_game_state != GS_NONE );
 			} )
 		},
 		{
@@ -2062,7 +2062,7 @@ void Game::AdvanceTurn( const size_t turn_id ) {
 			},
 			{
 				"initial",
-				VALUE( gse::value::Bool,, m_current_turn.GetId() == 1 ),
+				BOOL_VALUE( m_current_turn.GetId() == 1 ),
 			},
 		}; } );
 	});

@@ -21,6 +21,24 @@ namespace tests {
 
 void AddGSETests( task::gsetests::GSETests* task ) {
 	task->AddTest(
+		"boolean expression results share rooted values",
+		GT() {
+			auto* const true_value = gse->GetBool( true );
+			auto* const false_value = gse->GetBool( false );
+			GT_ASSERT( true_value == gse->GetBool( true ), "true values were not interned" );
+			GT_ASSERT( false_value == gse->GetBool( false ), "false values were not interned" );
+			GT_ASSERT( true_value != false_value, "true and false shared one value" );
+			GT_ASSERT( ( (value::Bool*)true_value )->value, "interned true value was false" );
+			GT_ASSERT( !( (value::Bool*)false_value )->value, "interned false value was true" );
+
+			g_engine->GetGC()->CollectNow();
+			GT_ASSERT( true_value == gse->GetBool( true ), "true value did not survive collection" );
+			GT_ASSERT( false_value == gse->GetBool( false ), "false value did not survive collection" );
+			GT_OK();
+		}
+	);
+
+	task->AddTest(
 		"garbage collection traverses deep object graphs iteratively",
 		GT() {
 			auto* const gc_space = gse->GetGCSpace();

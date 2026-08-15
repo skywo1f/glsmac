@@ -5,6 +5,7 @@
 #include "Exception.h"
 
 #include "gse/Wrappable.h"
+#include "gse/GSE.h"
 #include "gse/context/Context.h"
 #include "ValueRef.h"
 #include "gse/context/ChildContext.h"
@@ -115,6 +116,14 @@ void Object::Unlink() {
 	wrapsetter = nullptr;
 	Invalidate();
 	type = VT_UNDEFINED; // make sure all corresponding variables are inaccessible in scripts
+}
+
+void Object::AssignBool( const object_key_t& key, const bool value ) {
+	ASSERT( m_ctx, "object context is null" );
+	const auto it = m_value.find( key );
+	ASSERT( it != m_value.end(), "object has no boolean property " + key );
+	ASSERT( it->second->type == VT_BOOL, "object property " + key + " is not boolean" );
+	it->second = m_ctx->GetGSE()->GetBool( value );
 }
 
 void Object::GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects ) {

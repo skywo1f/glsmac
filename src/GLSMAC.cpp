@@ -351,7 +351,7 @@ WRAPIMPL_BEGIN( GLSMAC )
 			"has_quicksave",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );
-				return VALUE( gse::value::Bool, , util::FS::FileExists( GetSavePath( 0 ) ) );
+				return BOOL_VALUE( util::FS::FileExists( GetSavePath( 0 ) ) );
 			} )
 		},
 		{
@@ -362,7 +362,7 @@ WRAPIMPL_BEGIN( GLSMAC )
 				if ( slot < 1 || slot > MANUAL_SAVE_SLOT_COUNT ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Save slot must be between 1 and " + std::to_string( MANUAL_SAVE_SLOT_COUNT ) );
 				}
-				return VALUE( gse::value::Bool, , util::FS::FileExists( GetSavePath( slot ) ) );
+				return BOOL_VALUE( util::FS::FileExists( GetSavePath( slot ) ) );
 			} )
 		},
 		{

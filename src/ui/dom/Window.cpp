@@ -37,7 +37,7 @@ Window::Window( DOM_ARGS )
 		// block clickthroughs
 		for ( const auto& event : s_blocked_blocker_events ) {
 			m_blocker->On( GSE_CALL, event, NATIVE_CALL() {
-				return VALUE( gse::value::Bool,, true );
+				return BOOL_VALUE( true );
 			} ) );
 		}
 	}

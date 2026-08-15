@@ -166,7 +166,7 @@ WRAPIMPL_BEGIN( Def )
 			},
 			{
 				"is_native",
-				VALUE( gse::value::Bool, , m_is_native )
+				BOOL_VALUE( m_is_native )
 			},
 			{
 				"offense",
@@ -178,15 +178,15 @@ WRAPIMPL_BEGIN( Def )
 			},
 			{
 				"can_found_base",
-				VALUE( gse::value::Bool, , m_can_found_base )
+				BOOL_VALUE( m_can_found_base )
 			},
 			{
 				"can_terraform",
-				VALUE( gse::value::Bool, , m_can_terraform )
+				BOOL_VALUE( m_can_terraform )
 			},
 			{
 				"buildable",
-				VALUE( gse::value::Bool, , m_buildable )
+				BOOL_VALUE( m_buildable )
 			},
 			{
 				"owner_player_id",

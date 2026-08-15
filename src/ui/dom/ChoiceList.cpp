@@ -191,7 +191,7 @@ void ChoiceList::SetItems( GSE_CALLABLE, const gse::value::array_elements_t& ite
 			else if ( m_on_update ) {
 				m_on_update( GSE_CALL, m_selected_choice->value, m_selected_choice->label, was_actually_changed );
 			}
-			return VALUE( gse::value::Bool,, true );
+			return BOOL_VALUE( true );
 		} ) );
 		top += m_itemheight + m_itempadding;
 	}

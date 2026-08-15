@@ -599,13 +599,13 @@ void Object::WrapEvent( GSE_CALLABLE, const input::Event& e, gse::value::object_
 			);
 			gse::value::object_properties_t modifier_props = {};
 			if ( e.data.key.modifiers & input::KM_SHIFT ) {
-				modifier_props.insert({"shift", VALUE( gse::value::Bool,, true )});
+				modifier_props.insert({"shift", BOOL_VALUE( true )});
 			}
 			if ( e.data.key.modifiers & input::KM_CTRL ) {
-				modifier_props.insert({"ctrl", VALUE( gse::value::Bool,, true )});
+				modifier_props.insert({"ctrl", BOOL_VALUE( true )});
 			}
 			if ( e.data.key.modifiers & input::KM_ALT ) {
-				modifier_props.insert({"alt", VALUE( gse::value::Bool,, true )});
+				modifier_props.insert({"alt", BOOL_VALUE( true )});
 			}
 			obj.insert({"modifiers", VALUE( gse::value::Object,, ctx, {}, ep, modifier_props ) } );
 			break;

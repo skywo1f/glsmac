@@ -35,9 +35,7 @@ CLASS( Interpreter, Runner )
 	Value* const Execute( context::Context* ctx, ExecutionPointer& ep, const program::Program* program ) override;
 
 private:
-	Value* const GetBool( const bool value ) const;
-	Value* m_true = nullptr;
-	Value* m_false = nullptr;
+	Value* const GetBool( context::Context* const ctx, const bool value ) const;
 
 	// TODO: make it multithreaded
 	std::recursive_mutex m_execute_mutex;

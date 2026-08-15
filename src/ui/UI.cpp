@@ -210,7 +210,7 @@ WRAPIMPL_BEGIN( UI )
 									on_close->Run( GSE_CALL, {} );
 									Unpersist( on_close );
 								}
-								return VALUE( gse::value::Bool,, true );
+								return BOOL_VALUE( true );
 							} )
 						},
 					}; } );

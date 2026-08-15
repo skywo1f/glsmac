@@ -59,13 +59,13 @@ void Common::AddToContext( gc::Space* const gc_space, context::Context* ctx, Exe
 		N_EXPECT_ARGS( 1 );
 		N_GETPTR( v, 0 );
 		if ( !v ) {
-			return VALUE( gse::value::Bool,, false );
+			return BOOL_VALUE( false );
 		}
 		switch ( v->type ) {
 			case VT_UNDEFINED:
-				return VALUE( gse::value::Bool,, false );
+				return BOOL_VALUE( false );
 			default:
-				return VALUE( gse::value::Bool,, true );
+				return BOOL_VALUE( true );
 		}
 	} ), ep );
 
@@ -91,7 +91,7 @@ void Common::AddToContext( gc::Space* const gc_space, context::Context* ctx, Exe
 					GSE_ERROR( EC.OPERATION_NOT_SUPPORTED, "Could not get size of " + v->GetTypeString() + ": " + v->ToString() );
 			}
 		}
-		return VALUE( value::Bool,, is_empty );
+		return BOOL_VALUE( is_empty );
 	} ), ep );
 
 	ctx->CreateBuiltin( "clone", NATIVE_CALL()

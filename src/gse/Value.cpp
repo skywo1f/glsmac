@@ -474,7 +474,7 @@ Value* const Value::New( const Value* value ) {
 		case VT_NULL:
 			return VALUE( value::Null );
 		case VT_BOOL:
-			return VALUE( value::Bool, , ( (value::Bool*)value )->value );
+			return const_cast< Value* >( value );
 		case VT_INT:
 			return VALUE( value::Int, , ( (value::Int*)value )->value );
 		case VT_FLOAT:
@@ -601,7 +601,7 @@ Value* Value::Deserialize( GSE_CALLABLE, types::Buffer* buf, game::backend::Game
 		case VT_NULL:
 			return VALUE( value::Null );
 		case VT_BOOL:
-			return VALUE( value::Bool, , buf->ReadBool() );
+			return BOOL_VALUE( buf->ReadBool() );
 		case VT_INT:
 			return VALUE( value::Int, , buf->ReadInt() );
 		case VT_FLOAT:

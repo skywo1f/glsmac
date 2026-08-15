@@ -889,13 +889,13 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"is_redacted",
-				VALUE( gse::value::Bool, , m_is_redacted )
+				BOOL_VALUE( m_is_redacted )
 			},
 			{
 				"is_ready",
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
-					return VALUE( gse::value::Bool, , m_slot->HasPlayerFlag( ::game::backend::slot::PF_READY ) );
+					return BOOL_VALUE( m_slot->HasPlayerFlag( ::game::backend::slot::PF_READY ) );
 				} )
 			},
 			{
@@ -960,7 +960,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"is_master",
-				VALUE( gse::value::Bool, , m_role == PR_SINGLE || m_role == PR_HOST )
+				BOOL_VALUE( m_role == PR_SINGLE || m_role == PR_HOST )
 			},
 			{
 				"get_research_state",
@@ -1016,7 +1016,7 @@ WRAPIMPL_BEGIN( Player )
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
-					return VALUE( gse::value::Bool, , HasTechnology( id ) );
+					return BOOL_VALUE( HasTechnology( id ) );
 				} )
 			},
 			{
@@ -1210,7 +1210,7 @@ WRAPIMPL_BEGIN( Player )
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
-					return VALUE( gse::value::Bool, , HasPrototypedComponent( id ) );
+					return BOOL_VALUE( HasPrototypedComponent( id ) );
 				} )
 			},
 			{
@@ -1255,7 +1255,7 @@ WRAPIMPL_BEGIN( Player )
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
-					return VALUE( gse::value::Bool, , IsUnitDesignObsolete( id ) );
+					return BOOL_VALUE( IsUnitDesignObsolete( id ) );
 				} )
 			},
 			{
@@ -1300,7 +1300,7 @@ WRAPIMPL_BEGIN( Player )
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
-					return VALUE( gse::value::Bool, , IsUnitDesignRetired( id ) );
+					return BOOL_VALUE( IsUnitDesignRetired( id ) );
 				} )
 			},
 			{
@@ -1500,11 +1500,11 @@ WRAPIMPL_BEGIN( Player )
 					}
 					const auto grievance = GetDiplomaticGrievance( other->m_slotnum );
 					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
-						{ "wants_revenge", VALUE( gse::value::Bool, , grievance.wants_revenge ) },
-						{ "atrocity_victim", VALUE( gse::value::Bool, , grievance.atrocity_victim ) },
+						{ "wants_revenge", BOOL_VALUE( grievance.wants_revenge ) },
+						{ "atrocity_victim", BOOL_VALUE( grievance.atrocity_victim ) },
 						{
 							"major_atrocity_victim",
-							VALUE( gse::value::Bool, , grievance.major_atrocity_victim )
+							BOOL_VALUE( grievance.major_atrocity_victim )
 						},
 					} );
 				} )
@@ -1627,7 +1627,7 @@ WRAPIMPL_BEGIN( Player )
 					if ( other == this ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot contact itself" );
 					}
-					return VALUE( gse::value::Bool, , HasContacted( other->m_slotnum ) );
+					return BOOL_VALUE( HasContacted( other->m_slotnum ) );
 				} )
 			},
 			{
@@ -1702,12 +1702,12 @@ WRAPIMPL_BEGIN( Player )
 						{ "request_technology", VALUE( gse::value::String, , trade->request_technology ) },
 						{ "offer_contact", VALUE( gse::value::Int, , trade->offer_contact ) },
 						{ "request_contact", VALUE( gse::value::Int, , trade->request_contact ) },
-						{ "offer_map", VALUE( gse::value::Bool, , trade->offer_map ) },
-						{ "request_map", VALUE( gse::value::Bool, , trade->request_map ) },
+						{ "offer_map", BOOL_VALUE( trade->offer_map ) },
+						{ "request_map", BOOL_VALUE( trade->request_map ) },
 						{ "offer_base", VALUE( gse::value::Int, , trade->offer_base ) },
 						{ "request_base", VALUE( gse::value::Int, , trade->request_base ) },
 						{ "request_vendetta_player", VALUE( gse::value::Int, , trade->request_vendetta_player ) },
-						{ "is_ultimatum", VALUE( gse::value::Bool, , trade->is_ultimatum ) },
+						{ "is_ultimatum", BOOL_VALUE( trade->is_ultimatum ) },
 					} );
 				} )
 			},
@@ -1781,7 +1781,7 @@ WRAPIMPL_BEGIN( Player )
 						return VALUE( gse::value::Null );
 					}
 					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
-						{ "proposer_is_lender", VALUE( gse::value::Bool, , offer->proposer_is_lender ) },
+						{ "proposer_is_lender", BOOL_VALUE( offer->proposer_is_lender ) },
 						{ "principal", VALUE( gse::value::Int, , offer->principal ) },
 						{ "payment", VALUE( gse::value::Int, , offer->payment ) },
 						{ "turns", VALUE( gse::value::Int, , offer->turns ) },
@@ -1889,7 +1889,7 @@ WRAPIMPL_BEGIN( Player )
 					if ( other == this ) {
 						GSE_ERROR( gse::EC.INVALID_CALL, "A player cannot infiltrate itself" );
 					}
-					return VALUE( gse::value::Bool, , HasInfiltrated( other->m_slotnum ) );
+					return BOOL_VALUE( HasInfiltrated( other->m_slotnum ) );
 				} )
 			},
 			{
@@ -1911,20 +1911,20 @@ WRAPIMPL_BEGIN( Player )
 				NATIVE_CALL( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
-						{ "is_governor", VALUE( gse::value::Bool, , m_council_state.is_governor ) },
+						{ "is_governor", BOOL_VALUE( m_council_state.is_governor ) },
 						{ "last_session_turn", VALUE( gse::value::Int, , m_council_state.last_session_turn ) },
 						{ "proposal", VALUE( gse::value::String, , m_council_state.proposal ) },
 						{ "caller_id", VALUE( gse::value::Int, , m_council_state.caller_id ) },
 						{ "candidate_a_id", VALUE( gse::value::Int, , m_council_state.candidate_a_id ) },
 						{ "candidate_b_id", VALUE( gse::value::Int, , m_council_state.candidate_b_id ) },
 						{ "vote_id", VALUE( gse::value::Int, , m_council_state.vote_id ) },
-						{ "global_trade_pact", VALUE( gse::value::Bool, , m_council_state.global_trade_pact ) },
-						{ "unity_core_salvaged", VALUE( gse::value::Bool, , m_council_state.unity_core_salvaged ) },
-						{ "un_charter_repealed", VALUE( gse::value::Bool, , m_council_state.un_charter_repealed ) },
-						{ "is_expelled", VALUE( gse::value::Bool, , m_council_state.is_expelled ) },
+						{ "global_trade_pact", BOOL_VALUE( m_council_state.global_trade_pact ) },
+						{ "unity_core_salvaged", BOOL_VALUE( m_council_state.unity_core_salvaged ) },
+						{ "un_charter_repealed", BOOL_VALUE( m_council_state.un_charter_repealed ) },
+						{ "is_expelled", BOOL_VALUE( m_council_state.is_expelled ) },
 						{ "supreme_leader_id", VALUE( gse::value::Int, , m_council_state.supreme_leader_id ) },
 						{ "supreme_response", VALUE( gse::value::Int, , m_council_state.supreme_response ) },
-						{ "supreme_resolved", VALUE( gse::value::Bool, , m_council_state.supreme_resolved ) },
+						{ "supreme_resolved", BOOL_VALUE( m_council_state.supreme_resolved ) },
 					} );
 				} )
 			},

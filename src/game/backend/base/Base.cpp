@@ -924,7 +924,7 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	if ( network_node_artifact_linked ) {
 		base->CustomSet(
 			"network_node_artifact_linked",
-			VALUE( gse::value::Bool, , true )
+			BOOL_VALUE( true )
 		);
 	}
 	if ( economic_victory_turn > 0 ) {
@@ -957,19 +957,19 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	if ( probe_research_data_stolen ) {
 		base->CustomSet(
 			"probe_research_data_stolen",
-			VALUE( gse::value::Bool, , true )
+			BOOL_VALUE( true )
 		);
 	}
 	if ( probe_energy_reserves_drained ) {
 		base->CustomSet(
 			"probe_energy_reserves_drained",
-			VALUE( gse::value::Bool, , true )
+			BOOL_VALUE( true )
 		);
 	}
 	if ( probe_genetic_plague_introduced ) {
 		base->CustomSet(
 			"probe_genetic_plague_introduced",
-			VALUE( gse::value::Bool, , true )
+			BOOL_VALUE( true )
 		);
 	}
 	if ( former_owner_id >= 0 ) {
@@ -993,7 +993,7 @@ Base* Base::Deserialize( GSE_CALLABLE, types::Buffer& buf, Game* game ) {
 	if ( has_governor_state ) {
 		base->CustomSet(
 			"governor_enabled",
-			VALUE( gse::value::Bool, , governor_enabled )
+			BOOL_VALUE( governor_enabled )
 		);
 		base->CustomSet(
 			"governor_priority",
@@ -1020,7 +1020,7 @@ WRAPIMPL_DESERIALIZE( Base )
 WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_GET_CUSTOM( "id", Int, m_id )
 	WRAPIMPL_GET_CUSTOM( "name", String, m_name )
-	WRAPIMPL_GET_CUSTOM( "is_redacted", Bool, m_is_redacted )
+	WRAPIMPL_GET_BOOL( "is_redacted", m_is_redacted )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	WRAPIMPL_CUSTOM_SETTERS
@@ -1061,9 +1061,9 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			N_GETVALUE( def_id, 1, String );
 			production_kind_t kind;
 			if ( !ParseProductionKind( kind_string, kind ) ) {
-				return VALUE( gse::value::Bool,, false );
+				return BOOL_VALUE( false );
 			}
-			return VALUE( gse::value::Bool,, CanProduce( { kind, def_id } ) );
+			return BOOL_VALUE( CanProduce( { kind, def_id } ) );
 		} )
 	},
 	{
@@ -1074,9 +1074,9 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			N_GETVALUE( def_id, 1, String );
 			production_kind_t kind;
 			if ( !ParseProductionKind( kind_string, kind ) ) {
-				return VALUE( gse::value::Bool,, false );
+				return BOOL_VALUE( false );
 			}
-			return VALUE( gse::value::Bool,, CanQueueProduction( { kind, def_id } ) );
+			return BOOL_VALUE( CanQueueProduction( { kind, def_id } ) );
 		} )
 	},
 	{
@@ -1087,9 +1087,9 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 			N_GETVALUE( def_id, 1, String );
 			production_kind_t kind;
 			if ( !ParseProductionKind( kind_string, kind ) ) {
-				return VALUE( gse::value::Bool,, false );
+				return BOOL_VALUE( false );
 			}
-			return VALUE( gse::value::Bool,, CanSetProduction( { kind, def_id } ) );
+			return BOOL_VALUE( CanSetProduction( { kind, def_id } ) );
 		} )
 	},
 	{
@@ -1176,7 +1176,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 		NATIVE_CALL( this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( id, 0, String );
-			return VALUE( gse::value::Bool,, HasFacility( id ) );
+			return BOOL_VALUE( HasFacility( id ) );
 		} )
 	},
 	{
@@ -1385,7 +1385,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 		NATIVE_CALL( this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
-			return VALUE( gse::value::Bool,, m_worked_tiles.find( tile ) != m_worked_tiles.end() );
+			return BOOL_VALUE( m_worked_tiles.find( tile ) != m_worked_tiles.end() );
 		} )
 	},
 	{

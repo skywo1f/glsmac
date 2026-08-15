@@ -25,9 +25,13 @@ class Buffer;
 
 namespace gse {
 
+class Value;
+
 namespace context {
 class Context;
 }
+
+Value* const GetBoolValue( context::Context* const ctx, const bool value );
 
 // TODO: move all this shit somewhere
 
@@ -42,6 +46,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
 
 #define VALUE( _type, ... ) ( new _type( gc_space __VA_ARGS__ ) )
 #define VALUEEXT( _type, ... ) ( new _type( __VA_ARGS__ ) )
+#define BOOL_VALUE( _value ) gse::GetBoolValue( ctx, ( _value ) )
 #ifdef DEBUG
 #define VALUE_DATA( _type, _var ) ( _var->type == _type::GetType() ? ((_type*)_var) : THROW( "invalid GSE value type (expected " + Value::GetTypeStringStatic( _type::GetType() ) + ", got " + _var->GetTypeString() + ")" ) )
 #else
@@ -120,7 +125,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
         NATIVE_CALL( this ) { \
             N_EXPECT_ARGS( 1 ); \
             N_GETVALUE( key, 0, String );\
-            return VALUE( gse::value::Bool,, CustomHas( key ) ); \
+            return BOOL_VALUE( CustomHas( key ) ); \
         } ) \
     }, \
     { \
@@ -211,6 +216,11 @@ void _type::OnWrapSet( GSE_CALLABLE, const std::string& property_name ) {
     { \
         _key, \
         VALUE( gse::value::_type,, __VA_ARGS__ ) \
+    },
+#define WRAPIMPL_GET_BOOL( _key, _value ) \
+    { \
+        _key, \
+        BOOL_VALUE( _value ) \
     },
 #define WRAPIMPL_GET_PTR( _key, ... ) \
     { \

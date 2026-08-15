@@ -1,5 +1,6 @@
 #include "Interpreter.h"
 
+#include "gse/GSE.h"
 #include "gse/context/Context.h"
 #include "gse/context/ChildContext.h"
 #include "gse/program/Program.h"
@@ -58,15 +59,10 @@ using namespace value;
 namespace runner {
 
 Interpreter::Interpreter( gc::Space* const gc_space )
-	: Runner( gc_space )
-	, m_true( VALUE( Bool, , true ) )
-	, m_false( VALUE( Bool, , false ) ) {
-	Persist( m_true );
-	Persist( m_false );
-}
+	: Runner( gc_space ) {}
 
-gse::Value* const Interpreter::GetBool( const bool value ) const {
-	return value ? m_true : m_false;
+gse::Value* const Interpreter::GetBool( context::Context* const ctx, const bool value ) const {
+	return ctx->GetGSE()->GetBool( value );
 }
 
 gse::Value* const Interpreter::Execute( context::Context* ctx, ExecutionPointer& ep, const Program* program ) {
@@ -480,10 +476,10 @@ gse::Value* const Interpreter::EvaluateExpression(
 		}
 		case OT_NOT: {
 			ASSERT( !expression->a, "unary not may not have left operand" );
-			return GetBool( !EvaluateBool( ctx, ep, expression->b ) );
+			return GetBool( ctx, !EvaluateBool( ctx, ep, expression->b ) );
 		}
 #define CMP_OP( _op ) { \
-		return GetBool( \
+		return GetBool( ctx, \
 			*Deref( ctx, expression->a->m_si, ep, EvaluateOperand( ctx, ep, expression->a ) ) \
 				_op \
             *Deref( ctx, expression->b->m_si, ep, EvaluateOperand( ctx, ep, expression->b ) ) \
@@ -497,7 +493,7 @@ gse::Value* const Interpreter::EvaluateExpression(
 		case OT_GTE: CMP_OP( >= )
 #undef CMP_OP
 #define CMP_BOOL( _op ) { \
-		return GetBool( \
+		return GetBool( ctx, \
 			EvaluateBool( ctx, ep, expression->a ) _op \
                 EvaluateBool( ctx, ep, expression->b ) \
             ); \

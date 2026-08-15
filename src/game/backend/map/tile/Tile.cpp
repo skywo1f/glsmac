@@ -125,8 +125,8 @@ void Tile::RefreshWrappers() {
 			return it->second;
 		};
 
-		( (gse::value::Bool*)f_get_property( "is_water", gse::VT_BOOL ) )->value = is_water_tile;
-		( (gse::value::Bool*)f_get_property( "is_land", gse::VT_BOOL ) )->value = !is_water_tile;
+		wrapobj->AssignBool( "is_water", is_water_tile );
+		wrapobj->AssignBool( "is_land", !is_water_tile );
 		( (gse::value::Int*)f_get_property( "moisture", gse::VT_INT ) )->value = moisture;
 		( (gse::value::Int*)f_get_property( "rockiness", gse::VT_INT ) )->value = rockiness;
 		( (gse::value::Int*)f_get_property( "elevation", gse::VT_INT ) )->value = *elevation.center;
@@ -141,7 +141,7 @@ void Tile::RefreshWrappers() {
 			const auto& flag_it = wrapped_features->value.find( util::String::GetLowerCase( #_x ) ); \
 			ASSERT( flag_it != wrapped_features->value.end(), "tile wrapper has no feature flag" ); \
 			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile feature flag is not a bool" ); \
-			( (gse::value::Bool*)flag_it->second )->value = ( features & FEATURE_ ## _x ) != 0; \
+			wrapped_features->AssignBool( util::String::GetLowerCase( #_x ), ( features & FEATURE_ ## _x ) != 0 ); \
 		}
 		X_FEATURES
 #undef X_FEATURE
@@ -152,7 +152,7 @@ void Tile::RefreshWrappers() {
 			const auto& flag_it = wrapped_landmarks->value.find( util::String::GetLowerCase( #_x ) ); \
 			ASSERT( flag_it != wrapped_landmarks->value.end(), "tile wrapper has no landmark flag" ); \
 			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile landmark flag is not a bool" ); \
-			( (gse::value::Bool*)flag_it->second )->value = ( landmarks & LANDMARK_ ## _x ) != 0; \
+			wrapped_landmarks->AssignBool( util::String::GetLowerCase( #_x ), ( landmarks & LANDMARK_ ## _x ) != 0 ); \
 		}
 		X_LANDMARKS
 #undef X_LANDMARK
@@ -163,7 +163,7 @@ void Tile::RefreshWrappers() {
 			const auto& flag_it = wrapped_bonuses->value.find( util::String::GetLowerCase( #_x ) ); \
 			ASSERT( flag_it != wrapped_bonuses->value.end(), "tile wrapper has no bonus flag" ); \
 			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile bonus flag is not a bool" ); \
-			( (gse::value::Bool*)flag_it->second )->value = bonus == BONUS_ ## _x; \
+			wrapped_bonuses->AssignBool( util::String::GetLowerCase( #_x ), bonus == BONUS_ ## _x ); \
 		}
 		X_BONUSES
 #undef X_BONUS
@@ -174,7 +174,7 @@ void Tile::RefreshWrappers() {
 			const auto& flag_it = wrapped_terraforming->value.find( util::String::GetLowerCase( #_x ) ); \
 			ASSERT( flag_it != wrapped_terraforming->value.end(), "tile wrapper has no terraforming flag" ); \
 			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile terraforming flag is not a bool" ); \
-			( (gse::value::Bool*)flag_it->second )->value = ( terraforming & TERRAFORMING_ ## _x ) != 0; \
+			wrapped_terraforming->AssignBool( util::String::GetLowerCase( #_x ), ( terraforming & TERRAFORMING_ ## _x ) != 0 ); \
 		}
 		X_TERRAFORMING_IMPROVEMENTS
 #undef X_TERRAFORMING
@@ -501,16 +501,16 @@ WRAPIMPL_BEGIN( Tile )
 			"is_locked",
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS(0);
-				return VALUE( gse::value::Bool,, m_is_locked );
+				return BOOL_VALUE( m_is_locked );
 			} )
 		},
 		{
 			"is_water",
-			VALUE( gse::value::Bool,, is_water_tile )
+			BOOL_VALUE( is_water_tile )
 		},
 		{
 			"is_land",
-			VALUE( gse::value::Bool,, !is_water_tile )
+			BOOL_VALUE( !is_water_tile )
 		},
 		{
 			"moisture",
@@ -543,7 +543,7 @@ WRAPIMPL_BEGIN( Tile )
 			NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( other, 0, Tile );
-				return VALUE( gse::value::Bool,, IsAdjactentTo( other ) );
+				return BOOL_VALUE( IsAdjactentTo( other ) );
 			} )
 		},
 		{
@@ -774,7 +774,7 @@ gse::Value* const Tile::GetFeatures( GSE_CALLABLE ) const {
 #define X_FEATURE( _x, _i ) \
 	result.insert_or_assign(   \
 		util::String::GetLowerCase( # _x ), \
-		VALUE( gse::value::Bool,, features & backend::map::tile::FEATURE_ ## _x ) \
+		BOOL_VALUE( features & backend::map::tile::FEATURE_ ## _x ) \
 	);
 X_FEATURES
 #undef X_FEATURE
@@ -786,7 +786,7 @@ gse::Value* const Tile::GetBonuses( GSE_CALLABLE ) const {
 #define X_BONUS( _x, _i ) \
 	result.insert_or_assign(   \
 		util::String::GetLowerCase( # _x ), \
-		VALUE( gse::value::Bool,, bonus == backend::map::tile::BONUS_ ## _x ) \
+		BOOL_VALUE( bonus == backend::map::tile::BONUS_ ## _x ) \
 	);
 	X_BONUSES
 #undef X_BONUS
@@ -798,7 +798,7 @@ gse::Value* const Tile::GetLandmarks( GSE_CALLABLE ) const {
 #define X_LANDMARK( _x, _i ) \
 	result.insert_or_assign(   \
 		util::String::GetLowerCase( # _x ), \
-		VALUE( gse::value::Bool,, landmarks & backend::map::tile::LANDMARK_ ## _x ) \
+		BOOL_VALUE( landmarks & backend::map::tile::LANDMARK_ ## _x ) \
 	);
 X_LANDMARKS
 #undef X_LANDMARK
@@ -810,7 +810,7 @@ gse::Value* const Tile::GetTerraformings( GSE_CALLABLE ) const {
 #define X_TERRAFORMING( _x, _i ) \
 	result.insert_or_assign( \
 		util::String::GetLowerCase( #_x ), \
-		VALUE( gse::value::Bool,, terraforming & TERRAFORMING_ ## _x ) \
+		BOOL_VALUE( terraforming & TERRAFORMING_ ## _x ) \
 	);
 	X_TERRAFORMING_IMPROVEMENTS
 #undef X_TERRAFORMING

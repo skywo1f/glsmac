@@ -585,7 +585,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"suppress_psych",
-			VALUE( gse::value::Bool, , m_suppress_psych )
+			BOOL_VALUE( m_suppress_psych )
 		},
 		{
 			"unit_morale_land_bonus",
@@ -617,7 +617,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"is_project",
-			VALUE( gse::value::Bool, , m_is_project )
+			BOOL_VALUE( m_is_project )
 		},
 		{
 			"granted_facility",
@@ -665,7 +665,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"global_prevent_riots",
-			VALUE( gse::value::Bool, , m_global_prevent_riots )
+			BOOL_VALUE( m_global_prevent_riots )
 		},
 		{
 			"global_terraforming_rate_multiplier",
@@ -693,7 +693,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"global_full_repair",
-			VALUE( gse::value::Bool, , m_global_full_repair )
+			BOOL_VALUE( m_global_full_repair )
 		},
 		{
 			"forest_nutrient_bonus",
@@ -709,19 +709,19 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"full_repair_land",
-			VALUE( gse::value::Bool, , m_full_repair_land )
+			BOOL_VALUE( m_full_repair_land )
 		},
 		{
 			"full_repair_water",
-			VALUE( gse::value::Bool, , m_full_repair_water )
+			BOOL_VALUE( m_full_repair_water )
 		},
 		{
 			"full_repair_air",
-			VALUE( gse::value::Bool, , m_full_repair_air )
+			BOOL_VALUE( m_full_repair_air )
 		},
 		{
 			"full_repair_native",
-			VALUE( gse::value::Bool, , m_full_repair_native )
+			BOOL_VALUE( m_full_repair_native )
 		},
 		{
 			"defender_morale_bonus",
@@ -745,7 +745,7 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"prototype_cost_waiver",
-			VALUE( gse::value::Bool, , m_prototype_cost_waiver )
+			BOOL_VALUE( m_prototype_cost_waiver )
 		},
 		{
 			"mineral_to_energy_divisor",
@@ -757,11 +757,11 @@ WRAPIMPL_BEGIN( FacilityDef )
 		},
 		{
 			"orbital_defense",
-			VALUE( gse::value::Bool, , m_orbital_defense )
+			BOOL_VALUE( m_orbital_defense )
 		},
 		{
 			"psi_gate",
-			VALUE( gse::value::Bool, , m_psi_gate )
+			BOOL_VALUE( m_psi_gate )
 		},
 	};
 WRAPIMPL_END_PTR()

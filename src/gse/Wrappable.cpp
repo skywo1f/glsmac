@@ -168,7 +168,7 @@ Value* const Wrappable::Trigger( GSE_CALLABLE, const std::string& event, const f
 	if ( m_catchall && event != "*" ) {
 		return Trigger( GSE_CALL, "*", f_args, expected_return_type );
 	}
-	return VALUE( gse::value::Bool, , false );
+	return BOOL_VALUE( false );
 }
 
 Value* const Wrappable::Trigger( GSE_CALLABLE, const std::string& event, gse::value::Object* const args_obj, const std::optional< value_type_t > expected_return_type ) {
@@ -204,7 +204,7 @@ Value* const Wrappable::Trigger( GSE_CALLABLE, const std::string& event, gse::va
 	}
 	return result
 		? result
-		: VALUE( gse::value::Bool, , false );
+		: BOOL_VALUE( false );
 }
 
 void Wrappable::ClearHandlers() {

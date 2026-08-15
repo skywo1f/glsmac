@@ -87,7 +87,7 @@ Select::Select( DOM_ARGS )
 	ForwardProperty( GSE_CALL, "items", "items", m_choicelist );
 
 	Property(
-		GSE_CALL, "readonly", gse::value::Bool::GetType(), VALUE( gse::value::Bool, , false ), PF_NONE,
+		GSE_CALL, "readonly", gse::value::Bool::GetType(), BOOL_VALUE( false ), PF_NONE,
 		[ this ]( GSE_CALLABLE, gse::Value* const v ) {
 			SetReadOnly( GSE_CALL, ( (gse::value::Bool*)v )->value );
 		},
