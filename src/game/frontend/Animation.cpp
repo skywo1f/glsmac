@@ -15,11 +15,16 @@ Animation::Animation( const size_t animation_id, AnimationDef* def, const types:
 	, m_render_coords( render_coords )
 	, m_frames( def->GetSprites() ) {
 	ASSERT( !m_def->GetSprites().empty(), "animation has no sprites defined" );
-	m_sound = new scene::actor::Sound( "Animation_Sound_" + std::to_string( animation_id ), def->GetSound() );
-	g_engine->GetAudio()->AddActor( m_sound );
+	const auto* sound = def->GetSound();
+	if ( sound ) {
+		m_sound = new scene::actor::Sound( "Animation_Sound_" + std::to_string( animation_id ), sound );
+		g_engine->GetAudio()->AddActor( m_sound );
+	}
 	m_timer.SetInterval( m_def->GetDurationMs() / m_frames.size() );
 	ShowNextFrame();
-	m_sound->Play();
+	if ( m_sound ) {
+		m_sound->Play();
+	}
 }
 
 Animation::~Animation() {
@@ -28,8 +33,10 @@ Animation::~Animation() {
 		// clear animation
 		m_frames.at( m_frame_index - 1 )->actor->RemoveInstance( m_instance_id );
 	}
-	m_sound->Stop();
-	g_engine->GetAudio()->RemoveAndDeleteActor( m_sound );
+	if ( m_sound ) {
+		m_sound->Stop();
+		g_engine->GetAudio()->RemoveAndDeleteActor( m_sound );
+	}
 }
 
 const bool Animation::IsFinished() const {

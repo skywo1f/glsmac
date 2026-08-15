@@ -819,41 +819,45 @@ return {
 	},
 
 	refresh: () => {
-		const relation_buttons = [
-			this.offer_treaty, this.offer_pact, this.declare_vendetta,
-			this.use_excuse, this.overlook_excuse,
-			this.accept_offer, this.reject_offer,
-			this.accept_surrender, this.reject_surrender,
-		];
-		const trade_editor = [
-			this.offer_technology_label, this.offer_technology,
-			this.offer_contact_label, this.offer_contact,
-			this.offer_base_label, this.offer_base,
-			this.offer_energy_label, this.offer_energy,
-			this.offer_map,
-			this.request_technology_label, this.request_technology,
-			this.request_contact_label, this.request_contact,
-			this.request_base_label, this.request_base,
-			this.request_energy_label, this.request_energy,
-			this.request_map,
-			this.propose_trade_button,
-			this.issue_ultimatum_button,
-		];
-		const loan_editor = [
-			this.loan_principal_label, this.loan_principal,
-			this.loan_payment_label, this.loan_payment,
-			this.loan_turns_label, this.loan_turns,
-			this.offer_loan_button, this.request_loan_button,
-		];
-		for (button of relation_buttons) {
-			button.hide();
-		}
-		for (control of trade_editor) {
-			control.hide();
-		}
-		for (control of loan_editor) {
-			control.hide();
-		}
+		// UI wrappers must remain direct references; storing them in a script array
+		// converts them to plain values in the interpreter.
+		this.offer_treaty.hide();
+		this.offer_pact.hide();
+		this.declare_vendetta.hide();
+		this.use_excuse.hide();
+		this.overlook_excuse.hide();
+		this.accept_offer.hide();
+		this.reject_offer.hide();
+		this.accept_surrender.hide();
+		this.reject_surrender.hide();
+		this.offer_technology_label.hide();
+		this.offer_technology.hide();
+		this.offer_contact_label.hide();
+		this.offer_contact.hide();
+		this.offer_base_label.hide();
+		this.offer_base.hide();
+		this.offer_energy_label.hide();
+		this.offer_energy.hide();
+		this.offer_map.hide();
+		this.request_technology_label.hide();
+		this.request_technology.hide();
+		this.request_contact_label.hide();
+		this.request_contact.hide();
+		this.request_base_label.hide();
+		this.request_base.hide();
+		this.request_energy_label.hide();
+		this.request_energy.hide();
+		this.request_map.hide();
+		this.propose_trade_button.hide();
+		this.issue_ultimatum_button.hide();
+		this.loan_principal_label.hide();
+		this.loan_principal.hide();
+		this.loan_payment_label.hide();
+		this.loan_payment.hide();
+		this.loan_turns_label.hide();
+		this.loan_turns.hide();
+		this.offer_loan_button.hide();
+		this.request_loan_button.hide();
 		this.accept_trade.hide();
 		this.counter_trade.hide();
 		this.reject_trade.hide();
@@ -1050,9 +1054,26 @@ return {
 		this.propose_trade_button.text = this.countering_trade
 			? 'Send Counter' : 'Propose Trade';
 		if (regular_trade_available || this.countering_trade) {
-			for (control of trade_editor) {
-				control.show();
-			}
+			this.offer_technology_label.show();
+			this.offer_technology.show();
+			this.offer_contact_label.show();
+			this.offer_contact.show();
+			this.offer_base_label.show();
+			this.offer_base.show();
+			this.offer_energy_label.show();
+			this.offer_energy.show();
+			this.offer_map.show();
+			this.request_technology_label.show();
+			this.request_technology.show();
+			this.request_contact_label.show();
+			this.request_contact.show();
+			this.request_base_label.show();
+			this.request_base.show();
+			this.request_energy_label.show();
+			this.request_energy.show();
+			this.request_map.show();
+			this.propose_trade_button.show();
+			this.issue_ultimatum_button.show();
 			if (!ultimatum_available || this.countering_trade) {
 				this.issue_ultimatum_button.hide();
 			}
@@ -1092,9 +1113,14 @@ return {
 		) {
 			return;
 		}
-		for (control of loan_editor) {
-			control.show();
-		}
+		this.loan_principal_label.show();
+		this.loan_principal.show();
+		this.loan_payment_label.show();
+		this.loan_payment.show();
+		this.loan_turns_label.show();
+		this.loan_turns.show();
+		this.offer_loan_button.show();
+		this.request_loan_button.show();
 	},
 
 	on_show: () => {

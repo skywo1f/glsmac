@@ -56,7 +56,14 @@ return {
 			retired: true,
 		});
 		const definition = rules.find_definition(e.game, e.data.id);
-		e.game.message(player.name + ' permanently retired ' + definition.name + '.');
+		const message = player.name + ' permanently retired ' + definition.name + '.';
+		const scoped_message = #typeof(e.game.get) == 'Callable'
+			? e.game.get('f_message_to_player') : #undefined;
+		if (#typeof(scoped_message) == 'Callable') {
+			scoped_message(player, message);
+		} else {
+			e.game.message(message);
+		}
 		return {retired: true};
 	},
 

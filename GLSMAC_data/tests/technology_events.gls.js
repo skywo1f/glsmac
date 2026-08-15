@@ -191,6 +191,9 @@ const game = {
 	},
 	message: (text) => { messages :+text; },
 	get: (key) => {
+		if (key == 'f_message_to_contacts') {
+			return (player, text) => { messages :+text; };
+		}
 		if (key == 'f_technology_get_next_target') {
 			return technologies.get_next_target;
 		}

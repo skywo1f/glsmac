@@ -47,6 +47,7 @@ return (game) => {
 		'hurry_base_production',
 		'liquidate_base_facility',
 		'initialize_player_research',
+		'set_research_target',
 		'process_player_research',
 		'process_planetary_datalinks',
 		'settle_player_economy',

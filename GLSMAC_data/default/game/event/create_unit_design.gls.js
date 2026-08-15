@@ -45,7 +45,14 @@ return {
 			player: player,
 			definition: e.game.um.get_unit_def(e.resolved.id),
 		});
-		e.game.message(player.name + ' designed ' + e.resolved.data.name + '.');
+		const message = player.name + ' designed ' + e.resolved.data.name + '.';
+		const scoped_message = #typeof(e.game.get) == 'Callable'
+			? e.game.get('f_message_to_player') : #undefined;
+		if (#typeof(scoped_message) == 'Callable') {
+			scoped_message(player, message);
+		} else {
+			e.game.message(message);
+		}
 		return {id: e.resolved.id};
 	},
 

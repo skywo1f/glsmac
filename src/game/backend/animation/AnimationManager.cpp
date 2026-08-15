@@ -184,7 +184,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 					) {
 						GSE_ERROR( gse::EC.INVALID_DEFINITION, "Animation fields are outside their supported ranges" );
 					}
-					if ( !g_engine->GetSoundLoader()->LoadCustomSound( sound ) ) {
+					if ( !sound.empty() && !g_engine->GetSoundLoader()->LoadCustomSound( sound ) ) {
 						GSE_ERROR( gse::EC.GAME_ERROR, "Failed to load animation sound '" + sound + "'" );
 					}
 					auto* def = new animation::FramesRow(

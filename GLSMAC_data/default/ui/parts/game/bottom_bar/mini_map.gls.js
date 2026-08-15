@@ -249,7 +249,7 @@ return {
 			f_set_status(e.status);
 		});
 
-		btn_turn_complete.on('click', (e) => {
+		const request_turn_action = () => {
 			if (turn_rules.has_pending_owned_animation(p.game, p.game.get_player().id)) {
 				return true;
 			}
@@ -275,6 +275,11 @@ return {
 				}
 			}
 			return true;
+		};
+		p.request_turn_action = request_turn_action;
+
+		btn_turn_complete.on('click', (e) => {
+			return request_turn_action();
 		});
 
 	},

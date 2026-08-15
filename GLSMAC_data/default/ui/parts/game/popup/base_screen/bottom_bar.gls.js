@@ -293,6 +293,11 @@ return {
 		this.parts.support.set(data.support);
 		finish_bottom_phase('bottom_support');
 
+		return {
+			production: production,
+			set_candidates: candidates.set,
+		};
+
 	},
 
 };

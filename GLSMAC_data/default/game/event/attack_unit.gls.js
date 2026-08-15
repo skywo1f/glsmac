@@ -402,6 +402,11 @@ return {
 		};
 		const attacker_owner = e.game.get_player(attacker.owner);
 		const defender_owner = e.game.get_player(defender.owner);
+		const local_player = e.game.get_player();
+		const is_local_combat =
+			local_player.id == attacker_owner.id || local_player.id == defender_owner.id;
+		const attack_animation = is_local_combat ? 'ATTACK_PSI' : 'ATTACK_PSI_SILENT';
+		const death_animation_id = is_local_combat ? 'DEATH_PSI' : 'DEATH_PSI_SILENT';
 		if (nerve_gas) {
 			applied.nerve_gas = {
 				actor_atrocities: attacker_owner.get_major_atrocities(),
@@ -475,7 +480,7 @@ return {
 				}
 			};
 			applied.animations_id = e.game.am.show_animations([{
-				id: 'ATTACK_PSI',
+				id: attack_animation,
 				tile: defender_tile,
 				oncomplete: advance,
 			}]);
@@ -503,26 +508,26 @@ return {
 		for (step of e.resolved.sequence) {
 			if (step[0]) {
 				animations :+{
-					id: 'ATTACK_PSI',
+					id: attack_animation,
 					tile: defender_tile,
 				};
 			}
 			else {
 				animations :+{
-					id: 'ATTACK_PSI',
+					id: attack_animation,
 					tile: attacker_tile,
 				};
 			}
 		}
 		if (attacker_destroyed) {
 			animations :+{
-				id: 'DEATH_PSI',
+				id: death_animation_id,
 				tile: attacker_tile,
 			};
 		}
 		if (e.resolved.defender_dead) {
 			let death_animation = {
-				id: 'DEATH_PSI',
+				id: death_animation_id,
 				tile: defender_tile,
 			};
 			let advance_after_combat = true;

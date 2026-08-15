@@ -163,7 +163,7 @@ const special_unit = (
 };
 
 const predefined_units = [
-	// Stock-sheet fallbacks keep these roles distinct until CVR composition is available.
+	// Role icons stand in for conventional CVR composition, which is not implemented yet.
 	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
 	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
 	conventional_unit('Former', 'Former', 20, 0, 1, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),

@@ -182,6 +182,7 @@ return {
 				return available[0];
 			};
 			game.set('f_technology_get_definition', get_definition);
+			game.set('f_technology_get_available_targets', get_available_targets);
 			game.set('f_technology_get_order', () => { return technology_order; });
 			game.set('f_technology_get_total_commerce_bonus', get_total_commerce_bonus);
 			game.set('f_technology_get_base_labs_value', (base, energy, consumption) => {

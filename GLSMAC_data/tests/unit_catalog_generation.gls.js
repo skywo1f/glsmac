@@ -36,21 +36,21 @@ const scout = get_unit('ScoutPatrol');
 const colony = get_unit('ColonyPod');
 const former = get_unit('Former');
 test.assert(
-	scout.data.render.file == 'units.pcx' &&
-	scout.data.render.x == 2 && scout.data.render.y == 2
+	scout.data.render.file == 'newicons.pcx' &&
+	scout.data.render.x == 518 && scout.data.render.y == 82
 );
 test.assert(
-	colony.data.render.file == 'units.pcx' &&
-	colony.data.render.x == 410 && colony.data.render.y == 2
+	colony.data.render.file == 'newicons.pcx' &&
+	colony.data.render.x == 518 && colony.data.render.y == 235
 );
 test.assert(
-	former.data.render.file == 'units.pcx' &&
-	former.data.render.x == 206 && former.data.render.y == 2
+	former.data.render.file == 'newicons.pcx' &&
+	former.data.render.x == 518 && former.data.render.y == 158
 );
 const recon = get_unit('ReconRover');
 const probe = get_unit('ProbeTeam');
-test.assert(recon.data.render.x == 2 && recon.data.render.y == 79);
-test.assert(probe.data.render.x == 614 && probe.data.render.y == 79);
+test.assert(recon.data.render.x == 518 && recon.data.render.y == 82);
+test.assert(probe.data.render.x == 518 && probe.data.render.y == 158);
 
 const unity_rover = get_unit('UnityRover');
 const unity_chopper = get_unit('UnityScoutChopper');
@@ -122,7 +122,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
-	test.assert(data.render.file == 'units.pcx');
+	test.assert(data.render.file == (data.is_native ? 'units.pcx' : 'newicons.pcx'));
 	test.assert(data.chassis != '');
 	test.assert(data.weapon != '');
 	test.assert(data.armor != '');

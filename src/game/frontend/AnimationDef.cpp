@@ -76,6 +76,9 @@ const size_t AnimationDef::GetDurationMs() const {
 }
 
 const types::Sound* AnimationDef::GetSound() {
+	if ( m_sound_file.empty() ) {
+		return nullptr;
+	}
 	if ( !m_sound ) {
 		m_sound = g_engine->GetSoundLoader()->LoadCustomSound( m_sound_file );
 	}

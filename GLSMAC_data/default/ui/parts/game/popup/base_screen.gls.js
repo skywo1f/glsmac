@@ -223,17 +223,18 @@ return {
 			support: support,
 		});
 		finish_base_phase('middle_area');
-		this.sections.buttons.set({
-			base: base,
-		});
-		finish_base_phase('buttons');
-
-		this.sections.bottom_bar.set({
+		const production_selection = this.sections.bottom_bar.set({
 			base: base,
 			support: support,
 			pending_production: pending_production,
 		});
 		finish_base_phase('bottom_bar');
+		this.sections.buttons.set({
+			base: base,
+			production: production_selection.production,
+			production_candidates: production_selection.set_candidates,
+		});
+		finish_base_phase('buttons');
 	},
 
 	on_hide: () => {

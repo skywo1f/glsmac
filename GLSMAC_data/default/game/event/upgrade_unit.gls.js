@@ -57,10 +57,15 @@ return {
 			previous_def_id: snapshot.def,
 			cost: e.resolved.cost,
 		});
-		e.game.message(
-			player.name + ' upgraded ' + source_name + ' to ' +
-			target.name + ' for ' + #to_string(e.resolved.cost) + ' energy credits.'
-		);
+		const message = player.name + ' upgraded ' + source_name + ' to ' +
+			target.name + ' for ' + #to_string(e.resolved.cost) + ' energy credits.';
+		const scoped_message = #typeof(e.game.get) == 'Callable'
+			? e.game.get('f_message_to_player') : #undefined;
+		if (#typeof(scoped_message) == 'Callable') {
+			scoped_message(player, message);
+		} else {
+			e.game.message(message);
+		}
 		return {
 			unit: snapshot,
 			energy_credits: old_energy,

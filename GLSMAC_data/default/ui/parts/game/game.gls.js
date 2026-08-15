@@ -35,6 +35,25 @@ return (m) => {
 			}
 		});
 
+		game.on('scoped_message', (e) => {
+			let is_visible = false;
+			const player = game.get_player();
+			for (player_id of e.player_ids) {
+				if (player_id == player.id) {
+					is_visible = true;
+					break;
+				}
+			}
+			if (!is_visible) {
+				return;
+			}
+			if (p != null) {
+				p.process_message(e.text);
+			} else {
+				messages_buffer :+e.text;
+			}
+		});
+
 		game.on('probe_interception_requested', (e) => {
 			if (p == null || game.get_player().id != e.player.id) {
 				return;
@@ -49,6 +68,15 @@ return (m) => {
 			}
 			p.modules.popup.set('headquarters_evacuation', e);
 			p.modules.popup.show('headquarters_evacuation');
+		});
+
+		game.on('research_selection_requested', (e) => {
+			if (
+				p != null && game.get_player().id == e.player.id &&
+				!p.modules.popup.is_shown()
+			) {
+				p.modules.popup.show('research');
+			}
 		});
 
 		game.on('start_ui', (e) => {
@@ -69,11 +97,11 @@ return (m) => {
 
 			m.root.clear();
 			m.root.sound({
-				id: 'game-ambience',
-				sound: 'wind e4.wav',
+				id: 'game-music',
+				sound: 'opening menu.wav',
 				autoplay: true,
 				repeat: true,
-				volume: 0.35,
+				volume: 0.55,
 			});
 			finish_ui_phase('root');
 
@@ -115,6 +143,13 @@ return (m) => {
 			}
 
 			m.root.on('keydown', (e) => {
+				if (
+					e.modifiers == {} && e.code == 'ENTER' &&
+					!p.modules.popup.is_shown() &&
+					#typeof(p.request_turn_action) == 'Callable'
+				) {
+					return p.request_turn_action();
+				}
 				if (e.modifiers == {} && e.code == 'ESCAPE') {
 					p.maybe_quit(true);
 					return true;
@@ -160,6 +195,13 @@ return (m) => {
 			}
 			if (game.is_game_over() && !p.modules.popup.is_shown()) {
 				p.modules.popup.show('victory');
+			}
+			const research_state = game.get_player().get_research_state();
+			if (
+				research_state.target != '' &&
+				!p.modules.popup.is_shown()
+			) {
+				p.modules.popup.show('research');
 			}
 			const ui_ready_callback = game.get('f_ui_ready');
 			if (#typeof(ui_ready_callback) == 'Callable') {

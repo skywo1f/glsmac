@@ -499,6 +499,14 @@ const get_terraforming_changes = (type) => {
 
 const apply = (game, unit, tile, resolved) => {
 	const player = game.get_player(unit.owner);
+	const message = (text) => {
+		const scoped_message = game.get('f_message_to_player');
+		if (#typeof(scoped_message) == 'Callable') {
+			scoped_message(player, text);
+		} else {
+			game.message(text);
+		}
+	};
 	let applied = {
 		kind: resolved.kind,
 		tile: tile,
@@ -522,23 +530,23 @@ const apply = (game, unit, tile, resolved) => {
 	if (resolved.kind == 'energy') {
 		applied.energy_credits = get_player_energy(player);
 		set_player_energy(player, #min(MAX_ENERGY_CREDITS, applied.energy_credits + resolved.amount));
-		game.message(player.name + ' recovered ' + #to_string(resolved.amount) + ' energy credits from a Unity Pod.');
+		message(player.name + ' recovered ' + #to_string(resolved.amount) + ' energy credits from a Unity Pod.');
 	} else if (resolved.kind == 'river') {
 		applied.tiles :+snapshot_tile(tile);
 		tile.update_features({river: true});
-		game.message('A Unity hydrology pod tapped an underground river.');
+		message('A Unity hydrology pod tapped an underground river.');
 	} else if (resolved.kind == 'earthquake') {
 		applied.terrain_snapshot = game.tm.apply_earthquake(tile, resolved.elevation_steps);
 		for (road_tile of resolved.broken_roads) {
 			road_tile.update_terraforming({road: false, mag_tube: false});
 		}
-		game.message('A Unity Pod triggered a major earthquake and raised the surrounding terrain.');
+		message('A Unity Pod triggered a major earthquake and raised the surrounding terrain.');
 	} else if (resolved.kind == 'production') {
 		applied.base = resolved.base;
 		applied.base_minerals = resolved.base.get_accumulated_minerals();
 		resolved.base.set_accumulated_minerals(resolved.cost);
 		game.trigger('update_base', {base: resolved.base});
-		game.message('A Unity Pod completed ' + resolved.production_name + ' at ' + resolved.base.name + '.');
+		message('A Unity Pod completed ' + resolved.production_name + ' at ' + resolved.base.name + '.');
 	} else if (resolved.kind == 'artifact') {
 		const spawned = spawn_reward_unit(
 			game,
@@ -550,14 +558,14 @@ const apply = (game, unit, tile, resolved) => {
 			resolved.transport_id
 		);
 		applied.spawned_unit_id = spawned.id;
-		game.message(player.name + ' discovered an Alien Artifact in a Unity Pod.');
+		message(player.name + ' discovered an Alien Artifact in a Unity Pod.');
 	} else if (resolved.kind == 'fungus') {
 		for (fungus_tile of resolved.tiles) {
 			applied.tiles :+snapshot_tile(fungus_tile);
 			fungus_tile.update_terraforming(CLEAR_SURFACE_IMPROVEMENTS);
 			fungus_tile.update_features({xenofungus: true});
 		}
-		game.message('A Unity Pod released an uncontrolled xenofungal bloom.');
+		message('A Unity Pod released an uncontrolled xenofungal bloom.');
 	} else if (resolved.kind == 'monolith') {
 		applied.tiles :+snapshot_tile(tile);
 		tile.update_terraforming(CLEAR_SURFACE_IMPROVEMENTS);
@@ -574,7 +582,7 @@ const apply = (game, unit, tile, resolved) => {
 			0
 		);
 		applied.spawned_unit_id = spawned.id;
-		game.message(
+		message(
 			resolved.kind == 'clone'
 				? 'A dimensional rift created a copy of ' + unit.get_def().name + '.'
 				: player.name + ' recovered a ' + spawned.get_def().name + ' from a Unity Pod.'
@@ -597,7 +605,7 @@ const apply = (game, unit, tile, resolved) => {
 		if (#is_defined(queue_exploration)) {
 			queue_exploration(unit.get_owner(), resolved.destination, unit);
 		}
-		game.message(
+		message(
 			tile.is_water
 				? 'A tidal wave swept ' + unit.get_def().name + ' across Planet.'
 				: unit.get_def().name + ' fell through a dimensional gate.'
@@ -608,7 +616,7 @@ const apply = (game, unit, tile, resolved) => {
 			throw Error('Unity Pod did not discover a technology');
 		}
 		for (name of applied.research.completed_names) {
-			game.message(player.name + ' recovered ' + name + ' from a Unity data pod.');
+			message(player.name + ' recovered ' + name + ' from a Unity data pod.');
 		}
 	} else if (resolved.kind == 'commlink') {
 		let contact = null;
@@ -629,10 +637,10 @@ const apply = (game, unit, tile, resolved) => {
 		player.set_contact(contact, true);
 		contact.set_contact(player, true);
 		game.trigger('diplomatic_contact_established', {player: player, target: contact});
-		game.message(player.name + ' recovered the commlink frequency for ' + contact.name + '.');
+		message(player.name + ' recovered the commlink frequency for ' + contact.name + '.');
 	} else if (resolved.kind == 'survey') {
 		applied.map_reveal = game.get('f_exploration_apply_reveal')(player, resolved.tiles);
-		game.message(
+		message(
 			player.name + ' recovered a ' +
 			(tile.is_water ? 'sonar' : 'cartographic') +
 			' pod containing data on the surrounding area.'
@@ -647,14 +655,14 @@ const apply = (game, unit, tile, resolved) => {
 		const label = tile.is_water
 			? 'kelp farms'
 			: resolved.improvement + ' improvements';
-		game.message('A Unity terraforming pod established nearby ' + label + '.');
+		message('A Unity terraforming pod established nearby ' + label + '.');
 	} else if (resolved.kind == 'native') {
 		applied.native_outbreak = native_life.apply_outbreak(game, resolved.outbreak);
-		game.message('A Unity Pod disturbed a nest of native lifeforms.');
+		message('A Unity Pod disturbed a nest of native lifeforms.');
 	} else if (resolved.kind == 'resource') {
 		applied.tiles :+snapshot_tile(tile);
 		tile.set_bonus(resolved.bonus);
-		game.message('A Unity Pod revealed a permanent ' + resolved.bonus + ' resource deposit.');
+		message('A Unity Pod revealed a permanent ' + resolved.bonus + ' resource deposit.');
 	} else {
 		throw Error('Unknown Unity Pod outcome: ' + resolved.kind);
 	}

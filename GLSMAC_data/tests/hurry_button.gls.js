@@ -25,6 +25,17 @@ const workshop_button = {
 	},
 };
 let button_count = 0;
+let production_handler = null;
+const production_select = {
+	items: [],
+	value: '',
+	readonly: true,
+	on: (name, handler) => {
+		if (name == 'select') {
+			production_handler = handler;
+		}
+	},
+};
 const frame = {
 	button: (properties) => {
 		button_count++;
@@ -34,6 +45,7 @@ const frame = {
 		button.text = properties.text;
 		return button;
 	},
+	select: (properties) => { return production_select; },
 };
 let ui_class = null;
 ui_class = {
@@ -42,7 +54,7 @@ ui_class = {
 };
 const player = {id: 1};
 const owner = {id: 1, energy_credits: 100};
-const production = {id: 'ScoutPatrol'};
+const production = {production_kind: 'unit', id: 'ScoutPatrol'};
 const base = {
 	get_production: () => { return production; },
 	get_owner: () => { return owner; },
@@ -59,7 +71,11 @@ const game = {
 		};
 	},
 	event: (name, data) => {
-		emitted :+{name: name, base: data.base};
+		emitted :+{
+			name: name,
+			kind: #is_defined(data.kind) ? data.kind : '',
+			id: #is_defined(data.id) ? data.id : '',
+		};
 	},
 };
 
@@ -75,19 +91,34 @@ module.init({
 	},
 	hide: () => {},
 });
-module.set({base: base});
+const former = {
+	production_kind: 'unit',
+	id: 'Former',
+	name: 'Former',
+};
+module.set({
+	base: base,
+	production: {production_kind: 'unit', id: 'ScoutPatrol'},
+	production_candidates: [former],
+});
 
 test.assert(hurry_button.text == 'HURRY (25)');
 test.assert(hurry_handler != null);
 test.assert(workshop_handler != null);
+test.assert(production_handler != null);
+test.assert(production_select.items == [['unit:Former', 'CHANGE PRODUCTION: Former']]);
+production_handler({value: 'unit:Former'});
+test.assert(emitted[0].name == 'set_base_production');
+test.assert(emitted[0].kind == 'unit');
+test.assert(emitted[0].id == 'Former');
 hurry_handler({});
 hurry_handler({});
-test.assert(#sizeof(emitted) == 1);
-test.assert(emitted[0].name == 'hurry_base_production');
+test.assert(#sizeof(emitted) == 2);
+test.assert(emitted[1].name == 'hurry_base_production');
 test.assert(hurry_button.text == 'HURRYING...');
 
 owner.energy_credits = 20;
-module.set({base: base});
+module.set({base: base, production: production, production_candidates: [former]});
 test.assert(hurry_button.text == 'NEED 25 EC');
 hurry_handler({});
-test.assert(#sizeof(emitted) == 1);
+test.assert(#sizeof(emitted) == 2);

@@ -4,6 +4,7 @@ return {
 		this.p = p;
 		this.base = null;
 		this.hurry_pending = false;
+		this.production_candidates = {};
 		this.get_live_base = () => {
 			if (this.base == null) {
 				return null;
@@ -55,27 +56,45 @@ return {
 		p.ui.class('base-screen-popup-bottom-button').extend('game-popup-button').set({
 			top: 3,
 			bottom: 3,
-			width: 210, // TODO: why doesn't this work?
+			width: 124,
+		});
+		p.ui.class('base-screen-change-production').extend('popup-list-select').set({
+			top: 3,
+			bottom: 3,
+			itemclass: 'base-screen-change-production-item',
+		});
+		p.ui.class('base-screen-change-production-item').extend('popup-list-select-item').set({
+			font: 'arialnb.ttf:13',
 		});
 
 		this.btn_hurry = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
 			align: 'left',
 			left: 3,
-			width: 210,
+			width: 124,
 			text: 'HURRY',
+		});
+		this.change_production = this.frame.select({
+			class: 'base-screen-change-production',
+			align: 'left',
+			left: 130,
+			width: 250,
+			items: [['', 'CHANGE PRODUCTION: NOTHING']],
+			value: '',
+			readonly: true,
 		});
 		const btn_workshop = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
-			align: 'center',
-			width: 210,
+			align: 'left',
+			left: 383,
+			width: 124,
 			text: 'UNIT WORKSHOP',
 		});
 		const btn_ok = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
 			align: 'right',
 			right: 3,
-			width: 210,
+			width: 124,
 			text: 'OK',
 			is_ok: true,
 			is_cancel: true,
@@ -105,12 +124,41 @@ return {
 			}
 			return true;
 		});
+		this.change_production.on('select', (e) => {
+			if (
+				this.base != null &&
+				#is_defined(this.production_candidates[e.value])
+			) {
+				const selected = this.production_candidates[e.value];
+				this.p.game.event('set_base_production', {
+					base: this.base,
+					kind: selected.production_kind,
+					id: selected.id,
+				});
+			}
+			return true;
+		});
 
 	},
 
 	set: (data) => {
 		this.base = data.base;
 		this.hurry_pending = false;
+		this.production_candidates = {};
+		let production_items = [];
+		for (candidate of data.production_candidates) {
+			const key = candidate.production_kind + ':' + candidate.id;
+			this.production_candidates[key] = candidate;
+			production_items :+[key, 'CHANGE PRODUCTION: ' + candidate.name];
+		}
+		if (#sizeof(production_items) == 0) {
+			production_items :+['', 'CHANGE PRODUCTION: NOTHING'];
+		}
+		this.change_production.items = production_items;
+		this.change_production.readonly = #sizeof(data.production_candidates) == 0;
+		this.change_production.value = #is_defined(data.production)
+			? data.production.production_kind + ':' + data.production.id
+			: '';
 		const state = this.get_hurry_state();
 		this.btn_hurry.text = state.cost <= 0
 			? 'HURRY'

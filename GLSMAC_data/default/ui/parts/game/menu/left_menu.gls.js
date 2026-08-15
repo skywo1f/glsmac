@@ -22,6 +22,12 @@ return {
 				},
 			},
 			{
+				label: 'RESEARCH',
+				open: () => {
+					p.modules.popup.show('research');
+				},
+			},
+			{
 				label: 'DIPLOMACY',
 				open: () => {
 					p.modules.popup.show('diplomacy');

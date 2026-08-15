@@ -84,11 +84,16 @@ return {
 			count: count,
 			cost: e.resolved.total_cost,
 		});
-		e.game.message(
-			player.name + ' upgraded ' + #to_string(count) + ' ' + source.name +
+		const message = player.name + ' upgraded ' + #to_string(count) + ' ' + source.name +
 			(count == 1 ? ' unit' : ' units') + ' to ' + target.name + ' for ' +
-			#to_string(e.resolved.total_cost) + ' energy credits.'
-		);
+			#to_string(e.resolved.total_cost) + ' energy credits.';
+		const scoped_message = #typeof(e.game.get) == 'Callable'
+			? e.game.get('f_message_to_player') : #undefined;
+		if (#typeof(scoped_message) == 'Callable') {
+			scoped_message(player, message);
+		} else {
+			e.game.message(message);
+		}
 		return {
 			units: original_units,
 			cargo: cargo,
