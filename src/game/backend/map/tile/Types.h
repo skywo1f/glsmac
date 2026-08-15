@@ -112,7 +112,7 @@ X_BONUSES
 #undef X_BONUS
 
 // bitflags
-typedef uint16_t terraforming_t;
+typedef uint32_t terraforming_t;
 #define X_FEATURES \
     X_FEATURE( RIVER, 0 ) \
     X_FEATURE( MONOLITH, 1 ) \
@@ -166,7 +166,7 @@ static constexpr landmark_t LANDMARK_ALL = X_LANDMARKS LANDMARK_NONE;
 #undef X_LANDMARK
 
 // bitflags
-#define X_TERRAFORMINGS \
+#define X_TERRAFORMING_IMPROVEMENTS \
 	X_TERRAFORMING( ROAD, 0 ) \
 	X_TERRAFORMING( MAG_TUBE, 1 ) \
 	X_TERRAFORMING( FOREST, 2 ) \
@@ -183,11 +183,22 @@ static constexpr landmark_t LANDMARK_ALL = X_LANDMARKS LANDMARK_NONE;
 	X_TERRAFORMING( REMOVE_FUNGUS, 13 ) \
 	X_TERRAFORMING( PLANT_FUNGUS, 14 )
 
+#define X_TERRAFORMING_ORDERS \
+	X_TERRAFORMING( AQUIFER, 15 ) \
+	X_TERRAFORMING( RAISE_LAND, 16 ) \
+	X_TERRAFORMING( LOWER_LAND, 17 ) \
+	X_TERRAFORMING( LEVEL_TERRAIN, 18 )
+
+#define X_TERRAFORMINGS \
+	X_TERRAFORMING_IMPROVEMENTS \
+	X_TERRAFORMING_ORDERS
+
 static constexpr terraforming_t TERRAFORMING_NONE = 0;
-#define X_TERRAFORMING( _x, _i ) static constexpr terraforming_t TERRAFORMING_ ## _x = 1 << _i;
+#define X_TERRAFORMING( _x, _i ) static constexpr terraforming_t TERRAFORMING_ ## _x = 1u << _i;
 X_TERRAFORMINGS
 #undef X_TERRAFORMING
 #define X_TERRAFORMING( _x, _i ) TERRAFORMING_ ## _x |
+static constexpr terraforming_t TERRAFORMING_IMPROVEMENTS = X_TERRAFORMING_IMPROVEMENTS TERRAFORMING_NONE;
 static constexpr terraforming_t TERRAFORMING_ALL = X_TERRAFORMINGS TERRAFORMING_NONE;
 #undef X_TERRAFORMING
 

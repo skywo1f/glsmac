@@ -2157,6 +2157,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.features == source.features, "tile features changed" );
 				GT_ASSERT( restored.terraforming == source.terraforming, "tile terraforming changed" );
 				GT_ASSERT( restored.is_water_tile == source.is_water_tile, "tile water state changed" );
+				GT_ASSERT( Tile::GetTerraformingFromString( "aquifer" ) == TERRAFORMING_AQUIFER, "aquifer order is unavailable" );
+				GT_ASSERT( Tile::GetTerraformingFromString( "raise_land" ) == TERRAFORMING_RAISE_LAND, "raise order is unavailable" );
+				GT_ASSERT( Tile::GetTerraformingFromString( "lower_land" ) == TERRAFORMING_LOWER_LAND, "lower order is unavailable" );
+				GT_ASSERT( Tile::GetTerraformingFromString( "level_terrain" ) == TERRAFORMING_LEVEL_TERRAIN, "level order is unavailable" );
+				GT_ASSERT( Tile::GetTerraformingString( TERRAFORMING_LEVEL_TERRAIN ) == "level_terrain", "level order name changed" );
 
 				// Rendering may temporarily adjust the cached center without changing its corners.
 				source_center++;

@@ -176,7 +176,7 @@ void Tile::RefreshWrappers() {
 			ASSERT( flag_it->second->type == gse::VT_BOOL, "tile terraforming flag is not a bool" ); \
 			( (gse::value::Bool*)flag_it->second )->value = ( terraforming & TERRAFORMING_ ## _x ) != 0; \
 		}
-		X_TERRAFORMINGS
+		X_TERRAFORMING_IMPROVEMENTS
 #undef X_TERRAFORMING
 	}
 }
@@ -279,7 +279,7 @@ void Tile::Deserialize( types::Buffer buf ) {
 	if ( serialized_features & static_cast< feature_t >( ~FEATURE_ALL ) ) {
 		THROW( "invalid serialized tile features" );
 	}
-	if ( serialized_terraforming & static_cast< terraforming_t >( ~TERRAFORMING_ALL ) ) {
+	if ( serialized_terraforming & static_cast< terraforming_t >( ~TERRAFORMING_IMPROVEMENTS ) ) {
 		THROW( "invalid serialized tile terraforming" );
 	}
 	if ( serialized_landmarks & static_cast< landmark_t >( ~LANDMARK_ALL ) ) {
@@ -417,7 +417,7 @@ void Tile::SetBonus( GSE_CALLABLE, const bonus_t value ) {
 }
 
 void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
-	if ( value & static_cast< terraforming_t >( ~TERRAFORMING_ALL ) ) {
+	if ( value & static_cast< terraforming_t >( ~TERRAFORMING_IMPROVEMENTS ) ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile terraforming value: " + std::to_string( value ) );
 	}
 	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
@@ -812,7 +812,7 @@ gse::Value* const Tile::GetTerraformings( GSE_CALLABLE ) const {
 		util::String::GetLowerCase( #_x ), \
 		VALUE( gse::value::Bool,, terraforming & TERRAFORMING_ ## _x ) \
 	);
-	X_TERRAFORMINGS
+	X_TERRAFORMING_IMPROVEMENTS
 #undef X_TERRAFORMING
 	return VALUE( gse::value::Object,, GSE_CALL_NOGC, result );
 }

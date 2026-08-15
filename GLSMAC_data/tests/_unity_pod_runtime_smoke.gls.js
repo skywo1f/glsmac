@@ -22,7 +22,7 @@
 			exit_scheduled = true;
 			#print(
 				'UNITY_POD_RUNTIME_PASS: installed assets, Unity reward definitions, ' +
-				'live sea refresh, bonus mutation, former elevation rollback, earthquake rollback, ' +
+				'live sea refresh, bonus mutation, native Former orders, elevation rollback, earthquake rollback, ' +
 				'and movement resolution verified'
 			);
 			#async(500, () => { glsmac.exit(); });
@@ -93,6 +93,23 @@
 				const earthquake_tile = e.data.earthquake_tile;
 				const elevation_raise_tile = e.data.elevation_raise_tile;
 				const elevation_lower_tile = e.data.elevation_lower_tile;
+				const former = e.data.former;
+
+				for (type of ['aquifer', 'raise_land', 'lower_land', 'level_terrain']) {
+					former.set_terraforming_order(type, 2);
+					if (former.terraforming != type || former.terraforming_turns_remaining != 2) {
+						throw Error('UNITY_POD_RUNTIME_FAIL: native Former rejected ' + type);
+					}
+					former.set_terraforming_order('none', 0);
+				}
+				if (
+					#is_defined(source.terraforming.aquifer) ||
+					#is_defined(source.terraforming.raise_land) ||
+					#is_defined(source.terraforming.lower_land) ||
+					#is_defined(source.terraforming.level_terrain)
+				) {
+					throw Error('UNITY_POD_RUNTIME_FAIL: transient Former orders leaked into tile improvements');
+				}
 
 				const old_bonus = get_bonus_name(source);
 				source.set_bonus('minerals');
@@ -288,6 +305,13 @@
 				morale: 2,
 				health: 1.0,
 			});
+			const former = um.spawn_unit({
+				def: 'Former',
+				owner: game.get_player(),
+				tile: route.source,
+				morale: 2,
+				health: 1.0,
+			});
 			explorer.movement = 10.0;
 			explorer.moved_this_turn = false;
 			expected_explorer_id = explorer.id;
@@ -300,6 +324,7 @@
 					earthquake_tile: earthquake_tile,
 					elevation_raise_tile: elevation_raise_tile,
 					elevation_lower_tile: elevation_lower_tile,
+					former: former,
 				});
 				wait_for_pod_ready(route.destination, () => {
 					game.event('move_unit', {unit: explorer, tile: route.destination});
