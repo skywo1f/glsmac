@@ -1,5 +1,4 @@
 const terraforming = #include('../../units/terraforming');
-const unit_abilities = #include('../unit_abilities');
 
 return {
 	unit_visibility: 'private',
@@ -61,9 +60,23 @@ return {
 		if (unavailable != null) {
 			return unavailable;
 		}
+		if (
+			terraforming.is_elevation_order(e.data.type) &&
+			!terraforming.has_order_helper(tile, unit, e.data.type)
+		) {
+			const owner = unit.get_owner();
+			const cost = terraforming.get_elevation_change_cost(e.game, tile, owner);
+			if (owner.energy_credits < cost) {
+				return terraforming.get_order_name(e.data.type, tile.is_water) + ' costs ' +
+					#to_string(cost) + ' energy credits; only ' +
+					#to_string(owner.energy_credits) + ' are available';
+			}
+		}
 		for (other of tile.get_units()) {
 			if (other.id != unit.id && other.terraforming != 'none') {
-				return 'Another Former is already working this tile';
+				if (other.owner != unit.owner || other.terraforming != e.data.type) {
+					return 'Another Former is already performing a different order on this tile';
+				}
 			}
 		}
 	},
@@ -81,25 +94,51 @@ return {
 			movement: unit.movement + 0.0,
 			moved_this_turn: unit.moved_this_turn == true,
 		};
-		const order = terraforming.get_order(e.data.type);
 		const get_effects = #is_defined(e.game.get)
 			? e.game.get('f_project_get_player_effects')
 			: #undefined;
 		const effects = #is_defined(get_effects)
 			? get_effects(unit.get_owner())
-			: {terraforming_rate_multiplier: 1.0};
-		const fungus_rate_multiplier = (
-			e.data.type == 'remove_fungus' || e.data.type == 'plant_fungus'
-		) && #is_defined(effects.fungus_terraforming_rate_multiplier)
-			? effects.fungus_terraforming_rate_multiplier
-			: 1.0;
-		const rate_multiplier = effects.terraforming_rate_multiplier *
-			fungus_rate_multiplier *
-			unit_abilities.get_terraforming_rate_multiplier(unit, e.data.type);
-		const turns = #max(
-			#ceil(#to_float(order.turns) / rate_multiplier),
-			1
+			: {
+				terraforming_rate_multiplier: 1.0,
+				fungus_terraforming_rate_multiplier: 1.0,
+			};
+		const turns = terraforming.get_joined_completion_turns(
+			unit.get_tile(),
+			unit,
+			e.data.type,
+			effects
 		);
+		let helper_states = [];
+		for (helper of unit.get_tile().get_units()) {
+			if (
+				helper.id != unit.id && helper.owner == unit.owner &&
+				helper.terraforming == e.data.type
+			) {
+				helper_states :+{
+					id: helper.id + 0,
+					type: '' + helper.terraforming,
+					turns: helper.terraforming_turns_remaining + 0,
+				};
+			}
+		}
+		if (#sizeof(helper_states) > 0) {
+			previous.helpers = helper_states;
+			const um = e.game.get_um();
+			for (state of helper_states) {
+				um.get_unit(state.id).set_terraforming_order(e.data.type, turns);
+			}
+		}
+		if (terraforming.is_elevation_order(e.data.type) && #sizeof(helper_states) == 0) {
+			const owner = unit.get_owner();
+			const cost = terraforming.get_elevation_change_cost(
+				e.game,
+				unit.get_tile(),
+				owner
+			);
+			previous.energy_credits = owner.energy_credits + 0;
+			owner.set_energy_credits(owner.energy_credits - cost);
+		}
 		unit.set_terraforming_order(e.data.type, turns);
 		unit.movement = 0.0;
 		unit.moved_this_turn = true;
@@ -111,6 +150,17 @@ return {
 		unit.set_terraforming_order(e.applied.type, e.applied.turns);
 		unit.movement = e.applied.movement;
 		unit.moved_this_turn = e.applied.moved_this_turn;
+		if (#is_defined(e.applied.energy_credits)) {
+			unit.get_owner().set_energy_credits(e.applied.energy_credits);
+		}
+		if (#is_defined(e.applied.helpers)) {
+			const um = e.game.get_um();
+			for (state of e.applied.helpers) {
+				if (um.has_unit(state.id)) {
+					um.get_unit(state.id).set_terraforming_order(state.type, state.turns);
+				}
+			}
+		}
 	},
 
 };

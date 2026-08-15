@@ -89,7 +89,6 @@ return {
 		let top = 0;
 		for (type of terraforming.order_ids) {
 			const button = this.terraform_buttons[type];
-			const order = terraforming.get_order(type);
 			if (
 				terraforming.get_unavailable_reason(
 					tile,
@@ -101,8 +100,23 @@ return {
 				button.hide();
 				continue;
 			}
-			button.text = terraforming.get_order_name(type, tile.is_water) +
-				' (' + #to_string(order.turns) + ')';
+			let detail = #to_string(terraforming.get_joined_completion_turns(
+				tile,
+				this.action_unit,
+				type,
+				project_effects
+			));
+			if (
+				terraforming.is_elevation_order(type) &&
+				!terraforming.has_order_helper(tile, this.action_unit, type)
+			) {
+				detail += ', ' + #to_string(terraforming.get_elevation_change_cost(
+					this.p.game,
+					tile,
+					player
+				)) + ' EC';
+			}
+			button.text = terraforming.get_order_name(type, tile.is_water) + ' (' + detail + ')';
 			button.top = top;
 			button.show();
 			top += 18;

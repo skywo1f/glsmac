@@ -1,3 +1,5 @@
+const unit_abilities = #include('../game/unit_abilities');
+
 const orders = {
 	road: {
 		name: 'Road',
@@ -187,6 +189,172 @@ const sea_order_ids = {
 	plant_fungus: true,
 	raise_land: true,
 	lower_land: true,
+};
+
+const DIFFICULTY_LEVELS = {
+	Citizen: 0,
+	Specialist: 1,
+	Talent: 2,
+	Librarian: 3,
+	Thinker: 4,
+	Transcend: 5,
+};
+
+const is_fungus_order = (type) => {
+	return type == 'remove_fungus' || type == 'plant_fungus';
+};
+
+const is_elevation_order = (type) => {
+	return type == 'raise_land' || type == 'lower_land';
+};
+
+const get_modified_rate = (tile, unit, type, listed_rate) => {
+	let rate = listed_rate;
+	if (type == 'solar') {
+		rate += #floor(#to_float(rate * #max(0, tile.rockiness - 1)) / 2.0);
+	} else if (type == 'road' || type == 'mag_tube') {
+		if (tile.features.river) {
+			rate += 1;
+		}
+		if (tile.features.xenofungus) {
+			rate += 2;
+		}
+		rate += tile.terraforming.forest ? 2 : #max(0, tile.rockiness - 1);
+	} else if (type == 'remove_fungus' && unit_abilities.has(unit, 'FungicideTanks')) {
+		rate = #max(1, #floor(#to_float(rate) / 2.0));
+	}
+
+	const player = unit.get_owner();
+	const difficulty = #is_defined(DIFFICULTY_LEVELS[player.difficulty_level])
+		? DIFFICULTY_LEVELS[player.difficulty_level]
+		: DIFFICULTY_LEVELS.Transcend;
+	if (player.type == 'ai' && difficulty > DIFFICULTY_LEVELS.Librarian && rate > 3) {
+		rate -= 1;
+	}
+	return rate;
+};
+
+const get_completion_turns = (tile, unit, type, project_effects) => {
+	const order = get_order(type);
+	if (order == null) {
+		return 0;
+	}
+	const rate = get_modified_rate(tile, unit, type, order.turns);
+	const contribution = get_contribution(unit, type, project_effects);
+	return #max(1, #ceil(#to_float(rate * 2) / #to_float(contribution)));
+};
+
+const get_contribution = (unit, type, project_effects) => {
+	let contribution = unit_abilities.has(unit, 'SuperFormer') ? 4 : 2;
+	if (is_fungus_order(type)) {
+		const multiplier = #is_defined(project_effects.fungus_terraforming_rate_multiplier)
+			? project_effects.fungus_terraforming_rate_multiplier
+			: 1.0;
+		contribution = #floor(#to_float(contribution) * multiplier);
+	} else {
+		const multiplier = #is_defined(project_effects.terraforming_rate_multiplier)
+			? project_effects.terraforming_rate_multiplier
+			: 1.0;
+		contribution = #floor(#to_float(contribution) * multiplier);
+	}
+	return #max(1, contribution);
+};
+
+const has_order_helper = (tile, unit, type) => {
+	if (!#is_defined(tile.get_units)) {
+		return false;
+	}
+	for (helper of tile.get_units()) {
+		if (
+			helper.id != unit.id && helper.owner == unit.owner &&
+			helper.terraforming == type
+		) {
+			return true;
+		}
+	}
+	return false;
+};
+
+const get_joined_completion_turns = (tile, unit, type, project_effects) => {
+	const solo_turns = get_completion_turns(tile, unit, type, project_effects);
+	let helper_contribution = 0;
+	let existing_turns = solo_turns;
+	if (#is_defined(tile.get_units)) {
+		for (helper of tile.get_units()) {
+			if (
+				helper.id != unit.id && helper.owner == unit.owner &&
+				helper.terraforming == type
+			) {
+				existing_turns = #min(existing_turns, helper.terraforming_turns_remaining);
+				helper_contribution += get_contribution(helper, type, project_effects);
+			}
+		}
+	}
+	if (helper_contribution == 0) {
+		return solo_turns;
+	}
+	const joined_contribution = helper_contribution + get_contribution(
+		unit,
+		type,
+		project_effects
+	);
+	return #max(1, #ceil(
+		#to_float(existing_turns * helper_contribution) / #to_float(joined_contribution)
+	));
+};
+
+const get_elevation_change_cost = (game, tile, player) => {
+	const sea_level = #is_defined(tile.sea_level) ? tile.sea_level : 0;
+	const relative_level = #floor(#to_float(tile.elevation - sea_level) / 1000.0);
+	const altitude_distance = relative_level < 0 ? 0 - relative_level : relative_level;
+	const altitude_factor = altitude_distance + 2;
+	let cost = altitude_factor * altitude_factor * (tile.features.xenofungus ? 6 : 2);
+	if (tile.is_water) {
+		let air_power_discovered = false;
+		for (candidate of game.get_players()) {
+			if (candidate.has_technology('DoctrineAirPower')) {
+				air_power_discovered = true;
+				break;
+			}
+		}
+		cost *= air_power_discovered ? 2 : 4;
+	}
+
+	const tm = game.get_tm();
+	let own_base = null;
+	let own_distance = 101;
+	let enemy_base = null;
+	let enemy_distance = 101;
+	for (base of game.get_bm().get_bases()) {
+		const distance = tm.get_distance(tile, base.get_tile());
+		if (base.owner == player.id) {
+			if (distance < own_distance) {
+				own_base = base;
+				own_distance = distance;
+			}
+		} else if (distance < enemy_distance) {
+			enemy_base = base;
+			enemy_distance = distance;
+		}
+	}
+	if (own_base != null) {
+		cost *= #min(100, #max(1, own_distance));
+		if (
+			enemy_base != null &&
+			player.get_diplomatic_relation(game.get_player(enemy_base.owner)) != 'pact'
+		) {
+			const enemy_value = #floor(
+				#to_float((enemy_base.get_size() + 2) * own_distance) / 3.0
+			);
+			const own_value = #floor(
+				#to_float((own_base.get_size() + 2) * enemy_distance) / 3.0
+			);
+			if (own_value > 0 && enemy_value > own_value) {
+				cost = #floor(#to_float(cost * enemy_value) / #to_float(own_value));
+			}
+		}
+	}
+	return #min(30000, #max(1, #floor(#to_float(cost) / 2.0)));
 };
 
 const get_order = (type) => {
@@ -444,14 +612,43 @@ const despawn_domain_losses = (game, units) => {
 	}
 };
 
+const get_order_group = (unit) => {
+	let result = [unit];
+	const tile = unit.get_tile();
+	if (!#is_defined(tile.get_units)) {
+		return result;
+	}
+	for (candidate of tile.get_units(true)) {
+		if (
+			candidate.id != unit.id && candidate.owner == unit.owner &&
+			candidate.terraforming == unit.terraforming
+		) {
+			result :+candidate;
+		}
+	}
+	return result;
+};
+
 const advance_order_result = (unit, game) => {
 	const type = unit.terraforming;
 	const order = get_order(type);
 	if (order == null) {
 		throw Error('Unknown terraforming order: ' + type);
 	}
+	const order_group = get_order_group(unit);
+	let leader_id = unit.id;
+	for (helper of order_group) {
+		leader_id = #min(leader_id, helper.id);
+	}
+	if (unit.id != leader_id) {
+		unit.movement = 0.0;
+		return {in_progress: true, completed: false, unit_survived: true};
+	}
 	if (unit.terraforming_turns_remaining > 1) {
-		unit.set_terraforming_order(type, unit.terraforming_turns_remaining - 1);
+		const turns_remaining = unit.terraforming_turns_remaining - 1;
+		for (helper of order_group) {
+			helper.set_terraforming_order(type, turns_remaining);
+		}
 		unit.movement = 0.0;
 		return {in_progress: true, completed: false, unit_survived: true};
 	}
@@ -461,7 +658,9 @@ const advance_order_result = (unit, game) => {
 	if (#is_defined(order.elevation_delta)) {
 		const error = tile.get_elevation_change_error(order.elevation_delta);
 		if (error != '') {
-			unit.set_terraforming_order('none', 0);
+			for (helper of order_group) {
+				helper.set_terraforming_order('none', 0);
+			}
 			const message_to_player = #is_defined(game) && #is_defined(game.get)
 				? game.get('f_message_to_player')
 				: #undefined;
@@ -473,6 +672,9 @@ const advance_order_result = (unit, game) => {
 		if (#is_defined(game)) {
 			domain_states = get_elevation_domain_states(tile);
 		}
+	}
+	for (helper of order_group) {
+		helper.set_terraforming_order('none', 0);
 	}
 	if (#is_defined(order.changes)) {
 		tile.update_terraforming(order.changes);
@@ -486,7 +688,6 @@ const advance_order_result = (unit, game) => {
 	if (#is_defined(order.elevation_delta)) {
 		tile.apply_elevation_change(order.elevation_delta);
 	}
-	unit.set_terraforming_order('none', 0);
 	let unit_survived = true;
 	if (#is_defined(game) && #sizeof(domain_states) > 0) {
 		const unit_key = 'u' + #to_string(unit.id);
@@ -511,6 +712,12 @@ return {
 	order_ids: order_ids,
 	get_order: get_order,
 	get_order_name: get_order_name,
+	get_contribution: get_contribution,
+	get_completion_turns: get_completion_turns,
+	get_joined_completion_turns: get_joined_completion_turns,
+	has_order_helper: has_order_helper,
+	is_elevation_order: is_elevation_order,
+	get_elevation_change_cost: get_elevation_change_cost,
 	get_unavailable_reason: get_unavailable_reason,
 	advance_order_result: advance_order_result,
 	advance_order: advance_order,

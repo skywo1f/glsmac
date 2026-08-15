@@ -16,11 +16,23 @@ let tile_state = {
 };
 
 let known_technologies = {};
-const owner = {
+let diplomatic_relation = 'neutral';
+let cost_bases = [];
+let owner = null;
+owner = {
 	id: 1,
+	type: 'human',
+	difficulty_level: 'Transcend',
+	energy_credits: 1000,
 	has_technology: (id) => {
 		return #is_defined(known_technologies[id]);
 	},
+	get_diplomatic_relation: () => { return diplomatic_relation; },
+	set_energy_credits: (value) => { owner.energy_credits = value; },
+};
+const enemy_owner = {
+	id: 2,
+	has_technology: () => { return false; },
 };
 
 let tile = null;
@@ -100,6 +112,7 @@ tile = {
 let can_terraform = true;
 let former_is_water = false;
 let former_abilities = [];
+let helper_unit = null;
 let unit = null;
 unit = {
 	id: 10,
@@ -153,6 +166,22 @@ const event = {
 					fungus_terraforming_rate_multiplier:
 						fungus_terraforming_rate_multiplier,
 				};
+			};
+		},
+		get_players: () => { return [owner, enemy_owner]; },
+		get_player: (id) => { return id == owner.id ? owner : enemy_owner; },
+		get_tm: () => {
+			return {get_distance: (source, destination) => { return destination.distance; }};
+		},
+		get_bm: () => {
+			return {get_bases: () => { return cost_bases; }};
+		},
+		get_um: () => {
+			return {
+				get_unit: (id) => { return id == unit.id ? unit : helper_unit; },
+				has_unit: (id) => {
+					return id == unit.id || (helper_unit != null && id == helper_unit.id);
+				},
 			};
 		},
 	},
@@ -297,9 +326,34 @@ test.assert(!#is_defined(terraform_tile.validate(event)));
 advanced_terraforming = false;
 known_technologies.EnvironmentalEconomics = true;
 test.assert(!#is_defined(terraform_tile.validate(event)));
+owner.energy_credits = 3;
+test.assert(#is_defined(terraform_tile.validate(event)));
+owner.energy_credits = 1000;
 tile_state.elevation_change_error = 'Terrain cannot be raised any further';
 test.assert(#is_defined(terraform_tile.validate(event)));
 tile_state.elevation_change_error = '';
+
+tile.elevation = 0;
+tile.features.xenofungus = false;
+test.assert(terraforming.get_elevation_change_cost(event.game, tile, owner) == 4);
+cost_bases = [
+	{owner: 1, get_size: () => { return 2; }, get_tile: () => { return {distance: 3}; }},
+	{owner: 2, get_size: () => { return 10; }, get_tile: () => { return {distance: 1}; }},
+];
+test.assert(terraforming.get_elevation_change_cost(event.game, tile, owner) == 144);
+diplomatic_relation = 'pact';
+test.assert(terraforming.get_elevation_change_cost(event.game, tile, owner) == 12);
+diplomatic_relation = 'neutral';
+cost_bases = [];
+tile.is_water = true;
+tile.elevation = 0 - 1;
+test.assert(terraforming.get_elevation_change_cost(event.game, tile, owner) == 36);
+known_technologies.DoctrineAirPower = true;
+test.assert(terraforming.get_elevation_change_cost(event.game, tile, owner) == 18);
+known_technologies.DoctrineAirPower = #undefined;
+tile.is_water = false;
+tile.elevation = 0;
+
 event.data.type = 'lower_land';
 test.assert(!#is_defined(terraform_tile.validate(event)));
 tile.is_water = true;
@@ -358,6 +412,113 @@ event.applied = terraform_tile.apply(event);
 test.assert(unit.terraforming_turns_remaining == 3);
 terraform_tile.rollback(event);
 fungus_terraforming_rate_multiplier = 1.0;
+
+terraforming_rate_multiplier = 1.5;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 6);
+terraform_tile.rollback(event);
+terraforming_rate_multiplier = 1.0;
+
+event.data.type = 'road';
+tile.rockiness = 2;
+tile.features.river = true;
+tile.features.xenofungus = false;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 3);
+terraform_tile.rollback(event);
+
+event.data.type = 'solar';
+tile.rockiness = 3;
+tile.features.river = false;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 8);
+terraform_tile.rollback(event);
+
+event.data.type = 'farm';
+tile.rockiness = 1;
+owner.type = 'ai';
+owner.difficulty_level = 'Thinker';
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 3);
+terraform_tile.rollback(event);
+owner.difficulty_level = 'Librarian';
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 4);
+terraform_tile.rollback(event);
+owner.type = 'human';
+owner.difficulty_level = 'Transcend';
+
+event.data.type = 'raise_land';
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 12);
+test.assert(owner.energy_credits == 996);
+terraform_tile.rollback(event);
+test.assert(owner.energy_credits == 1000);
+event.data.type = 'lower_land';
+event.applied = terraform_tile.apply(event);
+test.assert(owner.energy_credits == 996);
+terraform_tile.rollback(event);
+test.assert(owner.energy_credits == 1000);
+
+helper_unit = {
+	id: 11,
+	owner: 1,
+	movement: 0.0,
+	terraforming: 'farm',
+	terraforming_turns_remaining: 4,
+	get_def: () => { return {abilities: []}; },
+	get_owner: () => { return owner; },
+	get_tile: () => { return tile; },
+	set_terraforming_order: (type, turns) => {
+		helper_unit.terraforming = type;
+		helper_unit.terraforming_turns_remaining = turns;
+	},
+};
+tile_state.other_units = [unit, helper_unit];
+event.data.type = 'farm';
+test.assert(!#is_defined(terraform_tile.validate(event)));
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 2);
+test.assert(helper_unit.terraforming_turns_remaining == 2);
+terraform_tile.rollback(event);
+test.assert(unit.terraforming == 'none');
+test.assert(helper_unit.terraforming_turns_remaining == 4);
+
+helper_unit.set_terraforming_order('raise_land', 12);
+event.data.type = 'raise_land';
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 6);
+test.assert(helper_unit.terraforming_turns_remaining == 6);
+test.assert(owner.energy_credits == 1000);
+terraform_tile.rollback(event);
+
+unit.set_terraforming_order('farm', 2);
+helper_unit.set_terraforming_order('farm', 2);
+let helper_completion = terraforming.advance_order_result(helper_unit, event.game);
+test.assert(helper_completion.in_progress);
+test.assert(unit.terraforming_turns_remaining == 2);
+test.assert(helper_unit.terraforming_turns_remaining == 2);
+helper_completion = terraforming.advance_order_result(unit, event.game);
+test.assert(helper_completion.in_progress);
+test.assert(unit.terraforming_turns_remaining == 1);
+test.assert(helper_unit.terraforming_turns_remaining == 1);
+const group_cancel_event = {caller: 1, game: event.game, data: {unit: unit}};
+group_cancel_event.applied = cancel_terraform.apply(group_cancel_event);
+test.assert(unit.terraforming == 'none');
+test.assert(helper_unit.terraforming_turns_remaining == 2);
+cancel_terraform.rollback(group_cancel_event);
+test.assert(unit.terraforming_turns_remaining == 1);
+test.assert(helper_unit.terraforming_turns_remaining == 1);
+helper_completion = terraforming.advance_order_result(unit, event.game);
+test.assert(helper_completion.completed);
+test.assert(unit.terraforming == 'none');
+test.assert(helper_unit.terraforming == 'none');
+test.assert(tile.terraforming.farm);
+tile.terraforming.farm = false;
+tile_state.updates = 0;
+tile_state.other_units = [];
+helper_unit = null;
+
 event.data.type = 'farm';
 tile.features.xenofungus = false;
 
