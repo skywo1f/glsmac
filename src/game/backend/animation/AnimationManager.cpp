@@ -139,7 +139,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"define",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -214,7 +214,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 			},
 		{
 			"show_animation",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -254,7 +254,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 		},
 		{
 			"stop_animations",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( animations_id, 0, Int );
 
@@ -275,7 +275,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 		},
 		{
 			"show_animations",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( animations, 0, Array );
 
@@ -331,7 +331,7 @@ WRAPIMPL_BEGIN( AnimationManager )
 		},
 		{
 			"undefine",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 

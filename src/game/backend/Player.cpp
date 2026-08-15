@@ -869,7 +869,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_difficulty_level",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 
 					game->CheckRW( GSE_CALL );
 
@@ -893,14 +893,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"is_ready",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return BOOL_VALUE( m_slot->HasPlayerFlag( ::game::backend::slot::PF_READY ) );
 				} )
 			},
 			{
 				"set_ready",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 
 					game->CheckRW( GSE_CALL );
 
@@ -919,7 +919,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_faction",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return m_faction
 						? m_faction->Wrap( GSE_CALL )
@@ -928,7 +928,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_faction_by_id",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 
 					game->CheckRW( GSE_CALL );
 
@@ -948,7 +948,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"unset_faction",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 
 					game->CheckRW( GSE_CALL );
 
@@ -964,7 +964,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_research_state",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t technologies = {};
 					technologies.reserve( m_technologies.size() );
@@ -981,7 +981,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_research_state",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( state, 0, Object );
@@ -1013,7 +1013,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"has_technology",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return BOOL_VALUE( HasTechnology( id ) );
@@ -1021,14 +1021,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_transcendent_thoughts",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetTranscendentThoughts() );
 				} )
 			},
 			{
 				"set_transcendent_thoughts",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( transcendent_thoughts, 0, Int );
@@ -1043,14 +1043,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_energy_credits",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetEnergyCredits() );
 				} )
 			},
 			{
 				"set_energy_credits",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( energy_credits, 0, Int );
@@ -1063,14 +1063,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_ecological_damage_events",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , m_ecological_damage_events );
 				} )
 			},
 			{
 				"set_ecological_damage_events",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( ecological_damage_events, 0, Int );
@@ -1086,14 +1086,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_clean_mineral_facilities",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , m_clean_mineral_facilities );
 				} )
 			},
 			{
 				"set_clean_mineral_facilities",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( clean_mineral_facilities, 0, Int );
@@ -1109,14 +1109,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_major_atrocities",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , m_major_atrocities );
 				} )
 			},
 			{
 				"set_major_atrocities",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( major_atrocities, 0, Int );
@@ -1129,14 +1129,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_sanction_turns",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetSanctionTurns() );
 				} )
 			},
 			{
 				"set_sanction_turns",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( sanction_turns, 0, Int );
@@ -1151,14 +1151,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_integrity_blemishes",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetIntegrityBlemishes() );
 				} )
 			},
 			{
 				"set_integrity_blemishes",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( integrity_blemishes, 0, Int );
@@ -1173,14 +1173,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_mind_control_total",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetMindControlTotal() );
 				} )
 			},
 			{
 				"set_mind_control_total",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( mind_control_total, 0, Int );
@@ -1195,7 +1195,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_prototyped_components",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t result = {};
 					result.reserve( m_prototyped_components.size() );
@@ -1207,7 +1207,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"has_prototyped_component",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return BOOL_VALUE( HasPrototypedComponent( id ) );
@@ -1215,7 +1215,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_prototyped_components",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( values, 0, Array );
@@ -1240,7 +1240,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_obsolete_unit_designs",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t result = {};
 					result.reserve( m_obsolete_unit_designs.size() );
@@ -1252,7 +1252,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"is_unit_design_obsolete",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return BOOL_VALUE( IsUnitDesignObsolete( id ) );
@@ -1260,7 +1260,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_obsolete_unit_designs",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( values, 0, Array );
@@ -1285,7 +1285,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_retired_unit_designs",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t result = {};
 					result.reserve( m_retired_unit_designs.size() );
@@ -1297,7 +1297,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"is_unit_design_retired",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return BOOL_VALUE( IsUnitDesignRetired( id ) );
@@ -1305,7 +1305,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_retired_unit_designs",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( values, 0, Array );
@@ -1330,7 +1330,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_orbital_facilities",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::object_properties_t result = {};
 					for ( const auto& [ id, count ] : m_orbital_facilities ) {
@@ -1341,7 +1341,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_orbital_facility_count",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( id, 0, String );
 					return VALUE( gse::value::Int, , GetOrbitalFacilityCount( id ) );
@@ -1349,7 +1349,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_orbital_facility_count",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE( id, 0, String );
@@ -1365,14 +1365,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_orbital_defense_deployments",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetOrbitalDefenseDeployments() );
 				} )
 			},
 			{
 				"set_orbital_defense_deployments",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( deployments, 0, Int );
@@ -1387,7 +1387,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_social_engineering",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
 						{ "politics", VALUE( gse::value::String, , m_social_engineering.at( 0 ) ) },
@@ -1399,7 +1399,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_social_engineering",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( choices, 0, Object );
@@ -1420,7 +1420,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_relation",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1435,7 +1435,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_relation",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1453,7 +1453,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_excuse_turn",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1467,7 +1467,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_excuse_turn",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1489,7 +1489,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_grievance",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1511,7 +1511,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_grievance",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1540,7 +1540,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_offer",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1556,7 +1556,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_offer",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1577,14 +1577,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_submissive_to_id",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetSubmissiveToId() );
 				} )
 			},
 			{
 				"set_submissive_to_id",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( player_id, 0, Int );
@@ -1599,14 +1599,14 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_surrender_offer_to_id",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUE( gse::value::Int, , GetSurrenderOfferToId() );
 				} )
 			},
 			{
 				"set_surrender_offer_to_id",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( player_id, 0, Int );
@@ -1621,7 +1621,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"has_contact",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1632,7 +1632,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_contact",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1646,7 +1646,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"has_explored",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
 					return VALUE(
@@ -1658,7 +1658,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_explored",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
@@ -1669,7 +1669,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_explored_tiles",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t tiles = {};
 					const auto* const game_map = game->GetMap();
@@ -1685,7 +1685,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_trade",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1713,7 +1713,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_trade",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1757,7 +1757,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"clear_diplomatic_trade",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1770,7 +1770,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_loan_offer",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1790,7 +1790,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_loan_offer",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1818,7 +1818,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"clear_diplomatic_loan_offer",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1831,7 +1831,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_diplomatic_loan",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( lender, 0, Player );
 					if ( lender == this ) {
@@ -1849,7 +1849,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_diplomatic_loan",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( lender, 0, Player );
@@ -1870,7 +1870,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"clear_diplomatic_loan",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( lender, 0, Player );
@@ -1883,7 +1883,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"has_infiltrated",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
 					if ( other == this ) {
@@ -1894,7 +1894,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_infiltrated",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 2 );
 					N_GETVALUE_UNWRAP( other, 0, Player );
@@ -1908,7 +1908,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"get_council_state",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
 						{ "is_governor", BOOL_VALUE( m_council_state.is_governor ) },
@@ -1930,7 +1930,7 @@ WRAPIMPL_BEGIN( Player )
 			},
 			{
 				"set_council_state",
-				NATIVE_CALL( this, game ) {
+				NATIVE_METHOD_AUTO( this, game ) {
 					game->CheckRW( GSE_CALL );
 					N_EXPECT_ARGS( 1 );
 					N_GETVALUE( state, 0, Object );

@@ -2,6 +2,8 @@
 
 #include "task/gsetests/GSETests.h"
 #include "gse/GSE.h"
+#include "gse/Wrappable.h"
+#include "gse/context/GlobalContext.h"
 #include "gse/value/Null.h"
 #include "gse/value/Bool.h"
 #include "gse/value/Int.h"
@@ -20,6 +22,113 @@ namespace gse {
 namespace tests {
 
 void AddGSETests( task::gsetests::GSETests* task ) {
+	task->AddTest(
+		"native wrapper methods are weakly cached across snapshots",
+		GT() {
+			class CachedMethodWrappable final : public Wrappable {
+			public:
+				Value* const Wrap( GSE_CALLABLE ) override {
+					auto* const method = CacheNative(
+						gc_space,
+						"CachedMethodWrappable\nmethod",
+						[ this ]( GSE_CALLABLE, const value::function_arguments_t& arguments ) -> Value* {
+							calls++;
+							return BOOL_VALUE( true );
+						}
+					);
+					return VALUEEXT(
+						value::Object,
+						GSE_CALL,
+						value::object_properties_t{ { "method", method } },
+						"CachedMethodWrappable",
+						this
+					);
+				}
+
+				size_t calls = 0;
+			};
+
+			auto* const gc_space = gse->GetGCSpace();
+			CachedMethodWrappable wrappable;
+			value::Object* first = nullptr;
+			value::Object* second = nullptr;
+			const auto create_rooted_wrap = [ & ]( value::Object*& result ) {
+				gc_space->Accumulate(
+					gse,
+					[ & ]() {
+						ExecutionPointer ep;
+						const si_t si = {};
+						result = (value::Object*)wrappable.Wrap( GSE_CALL );
+						gse->AddRootObject( result );
+					}
+				);
+			};
+
+			create_rooted_wrap( first );
+			g_engine->GetGC()->CollectNow();
+			create_rooted_wrap( second );
+			auto* const first_method = first->value.at( "method" );
+			auto* const second_method = second->value.at( "method" );
+			GT_ASSERT( first_method == second_method, "wrapper method was recreated while still reachable" );
+			GT_ASSERT(
+				!( (value::Callable*)second_method )->m_ctx,
+				"cached wrapper method retained its creation context"
+			);
+
+			Value* run_result = nullptr;
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					ExecutionPointer ep;
+					const si_t si = {};
+					run_result = ( (value::Callable*)second_method )->Run( GSE_CALL, {} );
+				}
+			);
+			GT_ASSERT( run_result == gse->GetBool( true ), "cached wrapper method returned the wrong value" );
+			GT_ASSERT( wrappable.calls == 1, "cached wrapper method did not execute exactly once" );
+
+			{
+				GSE other_gse;
+				context::GlobalContext* other_ctx = nullptr;
+				auto* const other_gc_space = other_gse.GetGCSpace();
+				other_gc_space->Accumulate(
+					&other_gse,
+					[ & ]() {
+						other_ctx = other_gse.CreateGlobalContext();
+					}
+				);
+				value::Object* other_wrap = nullptr;
+				other_gc_space->Accumulate(
+					&other_gse,
+					[ & ]() {
+						auto* const gc_space = other_gc_space;
+						auto* const ctx = other_ctx;
+						ExecutionPointer ep;
+						const si_t si = {};
+						other_wrap = (value::Object*)wrappable.Wrap( GSE_CALL );
+						other_gse.AddRootObject( other_wrap );
+					}
+				);
+				GT_ASSERT(
+					other_wrap->value.at( "method" ) != second_method,
+					"wrapper method cache crossed GC spaces"
+				);
+				other_gse.RemoveRootObject( other_wrap );
+				g_engine->GetGC()->CollectNow();
+			}
+
+			gse->RemoveRootObject( first );
+			gse->RemoveRootObject( second );
+			g_engine->GetGC()->CollectNow();
+
+			value::Object* after_collection = nullptr;
+			create_rooted_wrap( after_collection );
+			gse->RemoveRootObject( after_collection );
+			g_engine->GetGC()->CollectNow();
+			GT_OK();
+		}
+	);
+
 	task->AddTest(
 		"boolean expression results share rooted values",
 		GT() {

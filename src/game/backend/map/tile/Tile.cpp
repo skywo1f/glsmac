@@ -483,7 +483,7 @@ void Tile::UnsetWorkingPop( GSE_CALLABLE, const base::Pop* const pop ) {
 #define GETN( _n ) \
 { \
 	"get_" #_n, \
-	NATIVE_CALL( this ) { return _n->Wrap( GSE_CALL ); } ) \
+	NATIVE_METHOD( "get_" #_n, this ) { return _n->Wrap( GSE_CALL ); } ) \
 }
 
 WRAPIMPL_BEGIN( Tile )
@@ -499,7 +499,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"is_locked",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "is_locked", this ) {
 				N_EXPECT_ARGS(0);
 				return BOOL_VALUE( m_is_locked );
 			} )
@@ -540,7 +540,7 @@ WRAPIMPL_BEGIN( Tile )
 		GETN( SW ),
 		{
 			"is_adjactent_to",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "is_adjactent_to", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( other, 0, Tile );
 				return BOOL_VALUE( IsAdjactentTo( other ) );
@@ -548,7 +548,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"get_surrounding_tiles",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "get_surrounding_tiles", this ) {
 				N_EXPECT_ARGS( 0 );
 				gse::value::array_elements_t result = {};
 				for ( const auto& n : neighbours ) {
@@ -559,7 +559,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"get_elevation_change_error",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "get_elevation_change_error", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( amount, 0, Int );
 				if ( amount != -1000 && amount != 1000 ) {
@@ -577,7 +577,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"apply_elevation_change",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "apply_elevation_change", this ) {
 				tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( amount, 0, Int );
@@ -605,7 +605,7 @@ WRAPIMPL_BEGIN( Tile )
 		{ "terraforming", GetTerraformings( GSE_CALL ) },
 		{
 			"update_features",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "update_features", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( changes, 0, Object );
 				auto updated = features;
@@ -627,7 +627,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"update_landmarks",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "update_landmarks", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( changes, 0, Object );
 				auto updated = landmarks;
@@ -649,7 +649,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"set_rockiness",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "set_rockiness", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( value, 0, Int );
 				if ( value < ROCKINESS_FLAT || value > ROCKINESS_ROCKY ) {
@@ -661,7 +661,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"set_bonus",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "set_bonus", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( name, 0, String );
 				const auto value = GetBonusFromString( name );
@@ -674,7 +674,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"update_terraforming",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "update_terraforming", this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( changes, 0, Object );
 				auto updated = terraforming;
@@ -696,7 +696,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"get_units",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "get_units", this ) {
 				N_EXPECT_ARGS_MAX( 1 );
 				bool include_embarked = false;
 				if ( !arguments.empty() ) {
@@ -714,7 +714,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"get_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "get_base", this ) {
 				N_EXPECT_ARGS( 0 );
 				if ( base ) {
 					return base->Wrap( GSE_CALL );
@@ -726,7 +726,7 @@ WRAPIMPL_BEGIN( Tile )
 		},
 		{
 			"get_resources",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD( "get_resources", this ) {
 				N_EXPECT_ARGS_MAX( 1 );
 				slot::Slot* slot;
 				if ( arguments.size() > 0 ) {

@@ -1026,7 +1026,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	WRAPIMPL_CUSTOM_SETTERS
 	{
 		"get_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			const auto* const production = GetProduction();
 			auto* const def = production
@@ -1039,7 +1039,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"get_production_queue",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			gse::value::array_elements_t result = {};
 			result.reserve( m_production_queue.size() );
@@ -1055,7 +1055,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"can_produce",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( kind_string, 0, String );
 			N_GETVALUE( def_id, 1, String );
@@ -1068,7 +1068,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"can_queue_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( kind_string, 0, String );
 			N_GETVALUE( def_id, 1, String );
@@ -1081,7 +1081,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"can_set_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( kind_string, 0, String );
 			N_GETVALUE( def_id, 1, String );
@@ -1094,7 +1094,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"set_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( kind_string, 0, String );
@@ -1109,7 +1109,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"queue_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( kind_string, 0, String );
@@ -1124,7 +1124,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"remove_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( index, 0, Int );
@@ -1137,7 +1137,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"set_production_queue",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( values, 0, Array );
@@ -1164,7 +1164,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"clear_production",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 0 );
 			ClearProduction();
@@ -1173,7 +1173,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"has_facility",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( id, 0, String );
 			return BOOL_VALUE( HasFacility( id ) );
@@ -1181,7 +1181,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"get_facilities",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			std::vector< std::string > ids( m_facilities.begin(), m_facilities.end() );
 			std::sort( ids.begin(), ids.end() );
@@ -1199,7 +1199,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"add_facility",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( id, 0, String );
@@ -1209,7 +1209,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"remove_facility",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( id, 0, String );
@@ -1219,14 +1219,14 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"get_accumulated_minerals",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return VALUE( gse::value::Int,, m_accumulated_minerals );
 		} )
 	},
 	{
 		"set_accumulated_minerals",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( minerals, 0, Int );
@@ -1236,7 +1236,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"set_owner",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1249,7 +1249,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"work_pop_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1263,7 +1263,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"unwork_pop_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1277,7 +1277,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"create_pop",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1310,7 +1310,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"destroy_pop",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1329,7 +1329,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"add_worked_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1350,7 +1350,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"remove_worked_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 
 			m_game->CheckRW( GSE_CALL );
 
@@ -1382,7 +1382,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"is_tile_worked",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
 			return BOOL_VALUE( m_worked_tiles.find( tile ) != m_worked_tiles.end() );
@@ -1390,7 +1390,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"get_pops",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 
 			gse::value::array_elements_t elements = {};
@@ -1404,56 +1404,56 @@ WRAPIMPL_DYNAMIC_GETTERS( Base )
 	},
 	{
 		"get_size",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return VALUE( gse::value::Int,, m_pops.size() );
 		} ),
 	},
 	{
 		"get_workable_tiles",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetWorkableTiles( GSE_CALL );
 		} ),
 	},
 	{
 		"get_worked_tiles",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetWorkedTiles( GSE_CALL );
 		} ),
 	},
 	{
 		"get_unworked_tiles",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetUnworkedTiles( GSE_CALL );
 		} ),
 	},
 	{
 		"get_supported_units",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetSupportedUnits( GSE_CALL );
 		} ),
 	},
 	{
 		"get_convoy_units",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetConvoyUnits( GSE_CALL );
 		} ),
 	},
 	{
 		"get_intake",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetIntake( GSE_CALL );
 		} ),
 	},
 	{
 		"get_consumption",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD_AUTO( this ) {
 			N_EXPECT_ARGS( 0 );
 			return GetConsumption( GSE_CALL );
 		} ),

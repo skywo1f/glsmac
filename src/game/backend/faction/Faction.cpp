@@ -162,7 +162,7 @@ WRAPIMPL_BEGIN( Faction )
 			},
 			{
 				"get_starting_technologies",
-				NATIVE_CALL( this ) {
+				NATIVE_METHOD_AUTO( this ) {
 					N_EXPECT_ARGS( 0 );
 					gse::value::array_elements_t result = {};
 					result.reserve( m_starting_technologies.size() );

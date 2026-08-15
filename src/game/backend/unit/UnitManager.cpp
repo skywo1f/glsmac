@@ -390,7 +390,7 @@ WRAPIMPL_BEGIN( UnitManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"define_moraleset",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -423,7 +423,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"undefine_moraleset",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -441,7 +441,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"get_moraleset",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
@@ -462,7 +462,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"define_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -636,7 +636,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"undefine_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -654,7 +654,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"get_unit_def",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
 				auto* const def = GetUnitDef( id );
@@ -666,7 +666,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"get_unit_defs",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				std::vector< unit::Def* > defs = {};
 				defs.reserve( m_unit_defs.size() );
@@ -690,7 +690,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"has_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( unit_id, 0, Int );
 				return BOOL_VALUE( m_units.find( unit_id ) != m_units.end() );
@@ -698,7 +698,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"get_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( unit_id, 0, Int );
 				const auto& it = m_units.find( unit_id );
@@ -712,7 +712,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"get_units",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS_MAX( 1 );
 				bool include_embarked = false;
 				if ( !arguments.empty() ) {
@@ -734,7 +734,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"spawn_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -832,7 +832,7 @@ WRAPIMPL_BEGIN( UnitManager )
 		},
 		{
 			"despawn_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 

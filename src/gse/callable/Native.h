@@ -11,6 +11,10 @@ namespace gse {
 namespace callable {
 
 #define NATIVE_CALL( ... ) VALUE( gse::callable::Native,, ctx, [ __VA_ARGS__ ]( GSE_CALLABLE, const gse::value::function_arguments_t& arguments ) -> gse::Value*
+#define NATIVE_METHOD( _key, ... ) CacheNative( gc_space, WRAP_CLASS + std::string( "\n" ) + ( _key ), [ __VA_ARGS__ ]( GSE_CALLABLE, const gse::value::function_arguments_t& arguments ) -> gse::Value*
+#define GSE_STRINGIFY_INNER( _value ) #_value
+#define GSE_STRINGIFY( _value ) GSE_STRINGIFY_INNER( _value )
+#define NATIVE_METHOD_AUTO( ... ) NATIVE_METHOD( __FILE__ ":" GSE_STRINGIFY( __LINE__ ), __VA_ARGS__ )
 
 // TODO: refactor these
 #define N_ARGS \
@@ -160,13 +164,16 @@ namespace callable {
 class Native : public value::Callable {
 public:
 	typedef std::function< Value*( GSE_CALLABLE, const value::function_arguments_t& arguments ) > executor_t;
+	typedef std::function< void( Native* ) > destructor_t;
 	Native() = delete;
 	Native( gc::Space* const gc_space, context::Context* const ctx, const executor_t& executor );
+	Native( gc::Space* const gc_space, const executor_t& executor, const destructor_t& on_destroy );
 	~Native();
 	virtual Value* Run( GSE_CALLABLE, const value::function_arguments_t& arguments ) override;
 
 private:
 	const executor_t m_executor = nullptr;
+	const destructor_t m_on_destroy = nullptr;
 };
 
 }

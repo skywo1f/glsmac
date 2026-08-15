@@ -77,7 +77,7 @@ WRAPIMPL_BEGIN( FactionManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"import_base_names",
-			NATIVE_CALL() {
+			NATIVE_METHOD_AUTO() {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( filename, 0, String );
 				const auto& data = g_engine->GetTXTLoaders()->factions->GetFactionData( filename );
@@ -100,7 +100,7 @@ WRAPIMPL_BEGIN( FactionManager )
 			},
 			{
 				"import_colors",
-				NATIVE_CALL() {
+				NATIVE_METHOD_AUTO() {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( filename, 0, String );
 				const auto* texture = g_engine->GetTextureLoader()->TryLoadCustomTexture( filename );
@@ -121,7 +121,7 @@ WRAPIMPL_BEGIN( FactionManager )
 		},
 		{
 			"add",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( id, 0, String );
 				N_GETVALUE( faction_def, 1, Object );
@@ -224,7 +224,7 @@ WRAPIMPL_BEGIN( FactionManager )
 		},
 		{
 			"remove",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
 				if ( !Get( id ) ) {
@@ -236,7 +236,7 @@ WRAPIMPL_BEGIN( FactionManager )
 		},
 		{
 			"list",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				gse::value::array_elements_t arr = {};
 				for ( const auto& f : m_factions_order ) {

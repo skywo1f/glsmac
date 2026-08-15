@@ -6,6 +6,7 @@
 #include <optional>
 #include <functional>
 #include <cstdint>
+#include <memory>
 
 #include "common/Mutex.h"
 
@@ -113,12 +114,22 @@ protected:
 	std::unordered_set< value::Object* > m_wrapobjs = {};
 	value::Object* const GetCachedWrap( gc::Space* const gc_space );
 	value::Object* const CacheWrap( gc::Space* const gc_space, value::Object* const wrapobj );
+	callable::Native* const CacheNative(
+		gc::Space* const gc_space,
+		const std::string& key,
+		const callable::Native::executor_t& executor
+	);
 
 private:
 	common::Mutex m_wrap_cache_mutex;
 	uint64_t m_wrap_cache_pass = 0;
 	uint64_t m_wrap_cache_generation = 0;
 	value::Object* m_wrap_cache_object = nullptr;
+	struct native_cache_t {
+		std::mutex mutex;
+		std::map< std::pair< gc::Space*, std::string >, callable::Native* > values = {};
+	};
+	std::shared_ptr< native_cache_t > m_native_cache = std::make_shared< native_cache_t >();
 
 protected:
 	struct callback_t {

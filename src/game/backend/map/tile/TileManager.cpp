@@ -146,28 +146,28 @@ WRAPIMPL_BEGIN( TileManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"get_map_width",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				const auto* m = GetMap( GSE_CALL );
 				return VALUE( gse::value::Int,, m->GetWidth() );
 			} )
 		},
 		{
 			"get_map_height",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				const auto* m = GetMap( GSE_CALL );
 				return VALUE( gse::value::Int,, m->GetHeight() );
 			})
 		},
 		{
 			"get_sea_level",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUE( gse::value::Int,, GetMap( GSE_CALL )->GetSeaLevel() );
 			} )
 		},
 		{
 			"get_climate_state",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				const auto& state = GetMap( GSE_CALL )->GetClimateState();
 				return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
@@ -180,7 +180,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"set_climate_state",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 3 );
 				N_GETVALUE( level, 0, Int );
@@ -201,7 +201,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"set_dust_cloud_duration",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( duration, 0, Int );
@@ -218,7 +218,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"get_tile",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( x, 0, Int );
 				N_GETVALUE( y, 1, Int );
@@ -245,7 +245,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"get_distance",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE_UNWRAP( tile, 0, Tile );
 				N_GETVALUE_UNWRAP( other, 1, Tile );
@@ -255,7 +255,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"apply_crater",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE_UNWRAP( center, 0, Tile );
@@ -277,7 +277,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"apply_earthquake",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE_UNWRAP( center, 0, Tile );
@@ -299,7 +299,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"apply_volcano",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( center, 0, Tile );
@@ -317,7 +317,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"apply_major_eruption",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( center, 0, Tile );
@@ -335,7 +335,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"restore_terrain",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( snapshot, 0, String );
@@ -350,7 +350,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"apply_sea_level_change",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( amount, 0, Int );
@@ -371,7 +371,7 @@ WRAPIMPL_BEGIN( TileManager )
 		},
 		{
 			"restore_sea_level",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( snapshot, 0, String );

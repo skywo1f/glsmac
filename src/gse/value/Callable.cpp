@@ -11,14 +11,19 @@ Callable::Callable( gc::Space* const gc_space, context::Context* ctx )
 	ASSERT( ctx, "callable ctx is null" );
 }
 
+Callable::Callable( gc::Space* const gc_space )
+	: Value( gc_space, GetType() ) {}
+
 void Callable::GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects ) {
 	Value::GetReachableObjects( reachable_objects );
 
 	GC_DEBUG_BEGIN( "Callable" );
 
-	GC_DEBUG_BEGIN( "owner_context" );
-	GC_REACHABLE( m_ctx );
-	GC_DEBUG_END();
+	if ( m_ctx ) {
+		GC_DEBUG_BEGIN( "owner_context" );
+		GC_REACHABLE( m_ctx );
+		GC_DEBUG_END();
+	}
 
 	GC_DEBUG_END();
 }

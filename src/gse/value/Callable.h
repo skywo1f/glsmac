@@ -21,6 +21,7 @@ public:
 	static const value_type_t GetType() { return VT_CALLABLE; }
 	
 	Callable( gc::Space* const gc_space, context::Context* const ctx );
+	Callable( gc::Space* const gc_space );
 
 	virtual ~Callable() = default;
 

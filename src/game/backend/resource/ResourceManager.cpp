@@ -131,7 +131,7 @@ WRAPIMPL_BEGIN( ResourceManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"define",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -176,7 +176,7 @@ WRAPIMPL_BEGIN( ResourceManager )
 		},
 		{
 			"undefine",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -194,7 +194,7 @@ WRAPIMPL_BEGIN( ResourceManager )
 		},
 		{
 			"define_no_resource",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -230,7 +230,7 @@ WRAPIMPL_BEGIN( ResourceManager )
 		},
 		{
 			"undefine_no_resource",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 

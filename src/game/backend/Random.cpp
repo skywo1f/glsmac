@@ -18,7 +18,7 @@ WRAPIMPL_BEGIN( Random )
 	WRAPIMPL_PROPS
 		{
 			"get_int",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( min, 0, Int );
 				N_GETVALUE( max, 1, Int );
@@ -33,7 +33,7 @@ WRAPIMPL_BEGIN( Random )
 		},
 		{
 			"get_float",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( min, 0, Float );
 				N_GETVALUE( max, 1, Float );

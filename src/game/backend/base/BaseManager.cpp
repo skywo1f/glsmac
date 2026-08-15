@@ -413,7 +413,7 @@ WRAPIMPL_BEGIN( BaseManager )
 	WRAPIMPL_TRIGGERS
 		{
 			"define_facility",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( id, 0, String );
@@ -713,7 +713,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"undefine_facility",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
@@ -726,7 +726,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"get_facility_def",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
 				auto* const def = GetFacilityDef( id );
@@ -738,7 +738,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"get_facility_defs",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				std::vector< base::FacilityDef* > defs = {};
 				defs.reserve( m_facility_defs.size() );
@@ -762,7 +762,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"get_project_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( id, 0, String );
 				auto* const base = GetProjectBase( id );
@@ -773,7 +773,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"define_pop",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -833,7 +833,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"undefine_pop",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -847,7 +847,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"get_pop_renders",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( player, 0, Player );
@@ -873,7 +873,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"spawn_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -912,7 +912,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"despawn_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_game->CheckRW( GSE_CALL );
 
@@ -932,7 +932,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"snapshot_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( base, 0, Base );
 				try {
@@ -945,7 +945,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"restore_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				m_game->CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( snapshot, 0, String );
@@ -959,7 +959,7 @@ WRAPIMPL_BEGIN( BaseManager )
 		},
 		{
 			"get_bases",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				gse::value::array_elements_t arr = {};
 				arr.reserve( m_bases.size() );

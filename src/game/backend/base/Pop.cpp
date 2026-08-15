@@ -174,7 +174,7 @@ WRAPIMPL_BEGIN( Pop )
 		},
 		{
 			"get_type",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUE( gse::value::String, , m_def->m_id );
 			} )
@@ -185,7 +185,7 @@ WRAPIMPL_BEGIN( Pop )
 		},
 		{
 			"get_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				ASSERT( m_base, "pop has no base" );
 				return m_base->Wrap( GSE_CALL );
@@ -193,7 +193,7 @@ WRAPIMPL_BEGIN( Pop )
 		},
 		{
 			"set_type",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				m_base->GetGame()->CheckRW( GSE_CALL );
 

@@ -21,6 +21,7 @@ Wrappable& Wrappable::operator=( const Wrappable& other ) {
 }
 
 Wrappable::~Wrappable() {
+	m_native_cache.reset();
 	{
 		std::lock_guard guard( m_wrapobjs_mutex );
 		for ( const auto& wrapobj : m_wrapobjs ) {
@@ -74,6 +75,38 @@ value::Object* const Wrappable::CacheWrap(
 	m_wrap_cache_generation = generation;
 	m_wrap_cache_object = wrapobj;
 	return wrapobj;
+}
+
+callable::Native* const Wrappable::CacheNative(
+	gc::Space* const gc_space,
+	const std::string& key,
+	const callable::Native::executor_t& executor
+) {
+	ASSERT( gc_space, "cannot cache a native method without a GC space" );
+	ASSERT( m_native_cache, "native method cache is unavailable" );
+	const auto cache = m_native_cache;
+	const auto cache_key = std::make_pair( gc_space, key );
+	std::lock_guard guard( cache->mutex );
+	const auto existing = cache->values.find( cache_key );
+	if ( existing != cache->values.end() ) {
+		return existing->second;
+	}
+	const std::weak_ptr< native_cache_t > weak_cache = cache;
+	auto* const native = new callable::Native(
+		gc_space,
+		executor,
+		[ weak_cache, cache_key ]( callable::Native* const destroyed ) {
+			if ( const auto cache = weak_cache.lock() ) {
+				std::lock_guard guard( cache->mutex );
+				const auto it = cache->values.find( cache_key );
+				if ( it != cache->values.end() && it->second == destroyed ) {
+					cache->values.erase( it );
+				}
+			}
+		}
+	);
+	cache->values.insert_or_assign( cache_key, native );
+	return native;
 }
 
 void Wrappable::Depend( Wrappable* other ) {

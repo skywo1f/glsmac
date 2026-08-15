@@ -830,8 +830,11 @@ void Game::HideLoader() {
 }
 
 void Game::AddEvent( event::Event* const event ) {
+	const auto serialized_event = m_state && !m_state->IsMaster() && event->GetSource() == event::Event::ES_LOCAL
+		? event->Serialize().ToString()
+		: "";
 	std::lock_guard guard( m_pending_events_mutex );
-	m_pending_events.push_back({ event, "", false });
+	m_pending_events.push_back({ event, serialized_event, false });
 }
 
 void Game::AddSerializedEvent( const std::string& serialized_event, const bool from_server ) {
@@ -882,19 +885,19 @@ WRAPIMPL_BEGIN( Game )
 	WRAPIMPL_CUSTOM_SETTERS
 		{
 			"is_master",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				return BOOL_VALUE( m_state->IsMaster() );
 			} ),
 		},
 		{
 			"is_slave",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 			return BOOL_VALUE( m_state->IsSlave() );
 		} ),
 		},
 		{
 			"is_loaded_game",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return BOOL_VALUE( m_is_loaded_game );
 			} ),
@@ -905,7 +908,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"message",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( text, 0, String );
 				Message( text );
@@ -914,7 +917,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_player",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
 				size_t slot_id = m_slot_num;
 				if ( arguments.size() > 0 ) {
@@ -931,7 +934,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_players",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				auto& slots = m_state->m_slots->GetSlots();
 				gse::value::array_elements_t elements = {};
@@ -950,7 +953,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_native_player",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				for ( auto& slot : m_state->m_slots->GetSlots() ) {
 					if (
@@ -965,28 +968,28 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_turn",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUE( gse::value::Int,, m_current_turn.GetId() );
 			} )
 		},
 		{
 			"get_year",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUE( gse::value::Int,, m_current_turn.GetId() + 2100 /* TODO: better way to define starting year? */ );
 			} )
 		},
 		{
 			"is_game_over",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return BOOL_VALUE( IsGameOver() );
 			} )
 		},
 		{
 			"get_victory_state",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return VALUEEXT( gse::value::Object, GSE_CALL, gse::value::object_properties_t{
 					{ "type", VALUE( gse::value::String, , GetVictoryTypeString( m_victory_state.type ) ) },
@@ -997,7 +1000,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_conquest_winner",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				auto* const winner = GetConquestWinner();
 				return winner
@@ -1007,7 +1010,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"declare_victory",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				CheckRW( GSE_CALL );
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( type_name, 0, String );
@@ -1025,7 +1028,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"is_turn_complete",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE( slot_id, 0, Int );
 
@@ -1045,7 +1048,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"complete_turn",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				CheckRW( GSE_CALL );
 
@@ -1070,7 +1073,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"uncomplete_turn",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				CheckRW( GSE_CALL );
 
@@ -1095,7 +1098,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"advance_turn",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				CheckRW( GSE_CALL );
 
@@ -1109,7 +1112,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_settings", // deprecated
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				if ( !m_state ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Game not initialized" );
@@ -1119,7 +1122,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_map",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				if ( !m_map ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Map not initialized" );
@@ -1129,7 +1132,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"register_event",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( name, 0, String );
 				{
@@ -1217,7 +1220,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"event",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 2 );
 				N_GETVALUE( name, 0, String );
 				{
@@ -1237,7 +1240,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"event_as",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 3 );
 				if ( !m_state->IsMaster() ) {
 					GSE_ERROR( gse::EC.GAME_ERROR, "Only the game master can submit AI events" );
@@ -1278,7 +1281,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"get_fm",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return m_state
 					? m_state->GetFM()->Wrap( GSE_CALL )
@@ -1289,7 +1292,7 @@ WRAPIMPL_BEGIN( Game )
 #define X( _x ) \
 		{ \
 			"get_" # _x, \
-			NATIVE_CALL( this ) { \
+			NATIVE_METHOD_AUTO( this ) { \
 				N_EXPECT_ARGS( 0 ); \
 				return m_##_x \
 					? m_##_x->Wrap( GSE_CALL ) \
@@ -1304,14 +1307,14 @@ WRAPIMPL_BEGIN( Game )
 #undef X
 		{
 			"is_started",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );
 				return BOOL_VALUE( m_game_state != GS_NONE );
 			} )
 		},
 		{
 			"select_tile",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
 				auto fr = FrontendRequest( FrontendRequest::FR_TILE_SELECT );
@@ -1323,7 +1326,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"select_unit",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( unit, 0, unit::Unit );
 				auto fr = FrontendRequest( FrontendRequest::FR_UNIT_SELECT );
@@ -1334,7 +1337,7 @@ WRAPIMPL_BEGIN( Game )
 		},
 		{
 			"select_base",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 1 );
 				N_GETVALUE_UNWRAP( base, 0, base::Base );
 				auto fr = FrontendRequest( FrontendRequest::FR_BASE_SELECT );
@@ -2386,7 +2389,7 @@ void Game::ProcessEvents() {
 			const std::string* errptr = nullptr;
 			for ( size_t event_index = 0 ; event_index < events.size() ; event_index++ ) {
 				const auto& pending = events.at( event_index );
-				auto* const event = pending.event
+				auto* event = pending.event
 					? pending.event
 					: event::Event::Deserialize(
 						this,
@@ -2394,6 +2397,22 @@ void Game::ProcessEvents() {
 						GSE_CALL,
 						types::Buffer( pending.serialized_event )
 					);
+				if (
+					pending.event && !pending.serialized_event.empty() &&
+					pending.event->HasInvalidatedReferences()
+				) {
+					try {
+						event = event::Event::Deserialize(
+							this,
+							pending.event->GetSource(),
+							GSE_CALL,
+							types::Buffer( pending.serialized_event )
+						);
+					}
+					catch ( const std::runtime_error& ) {
+						// Leave the invalid event in place so normal validation rejects it.
+					}
+				}
 				const auto event_started = std::chrono::steady_clock::now();
 				errptr = nullptr;
 #if defined(DEBUG) || defined(FASTDEBUG)

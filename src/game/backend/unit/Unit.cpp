@@ -590,7 +590,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_LINK( "get_tile", m_tile )
 	{
 		"get_transport",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "get_transport", this ) {
 			N_EXPECT_ARGS( 0 );
 			if ( m_transport_id == 0 ) {
 				return VALUE( gse::value::Null );
@@ -604,7 +604,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"get_cargo",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "get_cargo", this ) {
 			N_EXPECT_ARGS( 0 );
 			gse::value::array_elements_t result = {};
 			for ( auto* const cargo : m_um->GetCargo( this ) ) {
@@ -615,7 +615,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"embark",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "embark", this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE_UNWRAP( transport, 0, Unit );
 			m_um->EmbarkUnit( GSE_CALL, this, transport );
@@ -624,7 +624,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"disembark",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "disembark", this ) {
 			N_EXPECT_ARGS( 0 );
 			m_um->DisembarkUnit( GSE_CALL, this );
 			return VALUE( gse::value::Undefined );
@@ -632,7 +632,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"set_convoy_resource",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "set_convoy_resource", this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( resource_name, 0, String );
 			const auto resource = GetConvoyResourceFromString( resource_name );
@@ -645,7 +645,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"set_fuel",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "set_fuel", this ) {
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( fuel, 0, Int );
 			if ( fuel < 0 || fuel > StaticDef::MAX_OPERATIONAL_RANGE ) {
@@ -657,7 +657,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"set_home_base_id",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "set_home_base_id", this ) {
 			m_um->m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE( home_base_id, 0, Int );
@@ -676,7 +676,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"move_to_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "move_to_tile", this ) {
 
 			m_um->m_game->CheckRW( GSE_CALL );
 
@@ -699,7 +699,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"teleport_to_tile",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "teleport_to_tile", this ) {
 			m_um->m_game->CheckRW( GSE_CALL );
 			N_EXPECT_ARGS( 1 );
 			N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
@@ -713,7 +713,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	},
 	{
 		"set_terraforming_order",
-		NATIVE_CALL( this ) {
+		NATIVE_METHOD( "set_terraforming_order", this ) {
 			N_EXPECT_ARGS( 2 );
 			N_GETVALUE( terraforming_name, 0, String );
 			N_GETVALUE( turns_remaining, 1, Int );

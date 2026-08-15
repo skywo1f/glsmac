@@ -409,7 +409,7 @@ WRAPIMPL_BEGIN( Connection )
 		WRAPIMPL_TRIGGERS
 		{
 			"open",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
 				N_GET_CALLABLE_OPT( f_on_open, 0 );
@@ -429,7 +429,7 @@ WRAPIMPL_BEGIN( Connection )
 		},
 		{
 			"close",
-			NATIVE_CALL( this ) {
+			NATIVE_METHOD_AUTO( this ) {
 
 				N_EXPECT_ARGS_MIN_MAX( 0, 1 );
 

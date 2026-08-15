@@ -103,7 +103,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
 #define WRAPIMPL_CUSTOM_SETTERS \
     { \
         "set", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "set", this ) { \
             N_EXPECT_ARGS( 2 ); \
             N_GETVALUE( key, 0, String ); \
             auto* const value = arguments[ 1 ]; \
@@ -113,7 +113,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     }, \
     { \
         "unset", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "unset", this ) { \
             N_EXPECT_ARGS( 1 ); \
             N_GETVALUE( key, 0, String ); \
             CustomUnset( key ); \
@@ -122,7 +122,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     }, \
     { \
         "has", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "has", this ) { \
             N_EXPECT_ARGS( 1 ); \
             N_GETVALUE( key, 0, String );\
             return BOOL_VALUE( CustomHas( key ) ); \
@@ -130,7 +130,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     }, \
     { \
         "get", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "get", this ) { \
             N_EXPECT_ARGS( 1 ); \
             N_GETVALUE( key, 0, String );\
             auto* const value = CustomGet( key ); \
@@ -145,7 +145,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
 #define WRAPIMPL_TRIGGERS \
     { \
         "on", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "on", this ) { \
             N_EXPECT_ARGS( 2 ); \
             N_GETVALUE( event, 0, String ); \
             N_GET( cb, 1, Callable ); \
@@ -154,7 +154,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     }, \
     { \
         "off", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "off", this ) { \
             N_EXPECT_ARGS_MIN_MAX( 1, 2 ); \
             N_GETVALUE( event, 0, String ); \
             if ( arguments.size() == 2 ) { \
@@ -169,7 +169,7 @@ typedef std::function< void( GSE_CALLABLE, value::object_properties_t& args ) > 
     }, \
     { \
         "trigger", \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( "trigger", this ) { \
             N_EXPECT_ARGS_MIN_MAX( 1, 2 ); \
             N_GETVALUE( event, 0, String ); \
             if ( arguments.size() == 2 ) { \
@@ -243,7 +243,7 @@ void _type::OnWrapSet( GSE_CALLABLE, const std::string& property_name ) {
 #define WRAPIMPL_LINK( _key, _property ) \
     { \
         _key, \
-        NATIVE_CALL( this ) { \
+        NATIVE_METHOD( _key, this ) { \
             return _property->Wrap( GSE_CALL ); \
         }) \
     },
