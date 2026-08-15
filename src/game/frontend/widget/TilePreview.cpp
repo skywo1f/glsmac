@@ -47,7 +47,7 @@ void TilePreview::Update( ui::dom::Widget* const widget, const void* const data 
 	const auto* tile = (const tile::Tile*)data;
 	const auto& coords = tile->GetCoords();
 	const auto* const player = m_game->GetBackend()->GetPlayer();
-	if ( player && !player->HasExploredTile( coords.x, coords.y ) ) {
+	if ( !player || !player->HasExploredTile( coords.x, coords.y ) ) {
 		return;
 	}
 

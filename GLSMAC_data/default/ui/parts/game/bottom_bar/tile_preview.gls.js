@@ -125,12 +125,11 @@ return {
 			!#is_defined(this.p) || !#is_defined(this.p.game) ||
 			#typeof(this.p.game.get_player) != 'Callable'
 		) {
-			return true;
+			return false;
 		}
 		const player = this.p.game.get_player();
-		return player == null || #typeof(player.has_explored) != 'Callable'
-			? true
-			: player.has_explored(tile);
+		return player != null && #typeof(player.has_explored) == 'Callable' &&
+			player.has_explored(tile);
 	},
 
 	set_image: () => {

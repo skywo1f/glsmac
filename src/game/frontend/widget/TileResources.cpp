@@ -46,14 +46,14 @@ void TileResources::Update( ui::dom::Widget* const widget, const void* const dat
 
 	auto* const backend = m_game->GetBackend();
 	const auto* const player = backend->GetPlayer();
-	if ( player && !player->HasExploredTile( tile->coord.x, tile->coord.y ) ) {
+	if ( !player || !player->HasExploredTile( tile->coord.x, tile->coord.y ) ) {
 		return;
 	}
 
 	::game::backend::map::tile::Tile::resources_t resources = {};
 	backend->GetState()->WithGSE(
-		backend, [ &resources, &tile, &backend ]( GSE_CALLABLE ) {
-			resources = tile->GetResources( GSE_CALL, backend->GetPlayer()->GetSlot() );
+		backend, [ &resources, &tile, &player ]( GSE_CALLABLE ) {
+			resources = tile->GetResources( GSE_CALL, player->GetSlot() );
 		}, nullptr, true
 	);
 

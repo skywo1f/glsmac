@@ -25,3 +25,19 @@ test.assert(preview.get_feature_name(legacy_land_tile, 'sunny_mesa') == 'Sunny M
 test.assert(preview.get_feature_name(legacy_land_tile, 'garland_crater') == 'Garland Crater');
 legacy_land_tile.landmarks.mount_planet = true;
 test.assert(!#is_defined(preview.get_feature_name(legacy_land_tile, 'volcano')));
+
+const visibility_tile = {x: 4, y: 6};
+test.assert(!preview.is_explored(visibility_tile));
+preview.p = {
+	game: {
+		get_player: () => { return null; },
+	},
+};
+test.assert(!preview.is_explored(visibility_tile));
+preview.p.game.get_player = () => {
+	return {
+		has_explored: (tile) => { return tile == visibility_tile; },
+	};
+};
+test.assert(preview.is_explored(visibility_tile));
+test.assert(!preview.is_explored({x: 8, y: 10}));
