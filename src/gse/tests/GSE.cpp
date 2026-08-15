@@ -7,16 +7,42 @@
 #include "gse/value/Int.h"
 #include "gse/value/String.h"
 #include "gse/value/Object.h"
+#include "gse/value/Array.h"
 #include "gse/value/Float.h"
 #include "gse/value/Ptr.h"
 #include "gse/value/Callable.h"
 #include "gse/ExecutionPointer.h"
+#include "engine/Engine.h"
+#include "gc/GC.h"
 #include "gc/Space.h"
 
 namespace gse {
 namespace tests {
 
 void AddGSETests( task::gsetests::GSETests* task ) {
+	task->AddTest(
+		"garbage collection traverses deep object graphs iteratively",
+		GT() {
+			auto* const gc_space = gse->GetGCSpace();
+			value::Array* root = nullptr;
+			gc_space->Accumulate(
+				gse,
+				[ &gc_space, &gse, &root ]() {
+					Value* current = VALUE( value::Null );
+					for ( size_t depth = 0 ; depth < 50000 ; depth++ ) {
+						current = VALUE( value::Array, , value::array_elements_t{ current } );
+					}
+					root = (value::Array*)current;
+					gse->AddRootObject( root );
+				}
+			);
+
+			g_engine->GetGC()->Iterate();
+			gse->RemoveRootObject( root );
+			g_engine->GetGC()->Iterate();
+			GT_OK();
+		}
+	);
 
 	task->AddTest(
 		"test if cloned references snapshot pointer values",

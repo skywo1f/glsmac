@@ -10,12 +10,9 @@
 #include "common/Common.h"
 
 #define GC_REACHABLE( _var ) \
-    if ( !(_var)->IsReachable() ) { \
-        (_var)->GetReachableObjects( reachable_objects ); \
-    } \
-    else { \
+    if ( !gc::Object::QueueReachable( _var, reachable_objects ) ) { \
         GC_DEBUG( "ref", _var ); \
-}
+    }
 
 #if ( defined( DEBUG ) || defined( FASTDEBUG ) )
 #include "GC.h"
@@ -47,6 +44,7 @@ CLASS( Object, common::Class )
 	virtual ~Object() = default;
 
 	virtual void GetReachableObjects( std::unordered_set< Object* >& reachable_objects );
+	static const bool QueueReachable( Object* const object, std::unordered_set< Object* >& reachable_objects );
 	const bool IsReachable() const;
 
 protected:
@@ -56,6 +54,7 @@ protected:
 
 private:
 	static void BeginReachabilityPass();
+	static void DrainReachabilityQueue( std::unordered_set< Object* >& reachable_objects );
 	uint64_t m_reachability_pass = 0;
 	mutable std::mutex m_persisted_objects_mutex;
 	std::unordered_map< Object*, size_t > m_persisted_objects = {};

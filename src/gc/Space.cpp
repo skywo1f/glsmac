@@ -222,19 +222,20 @@ const bool Space::Collect() {
 
 	GC_DEBUG_LOCK();
 	GC_DEBUG_BEGIN( "Root" );
-	m_root_object->GetReachableObjects( m_reachable_objects_tmp );
+	Object::QueueReachable( m_root_object, m_reachable_objects_tmp );
 	GC_DEBUG_END();
-	GC_DEBUG_UNLOCK();
 
 	if ( !m_pending_accumulations.empty() ) {
 		GC_DEBUG_BEGIN( "pending accumulations owners" );
 		for ( const auto& it : m_pending_accumulations ) {
-			if ( it.second.owner && !it.second.owner->IsReachable() ) {
-				it.second.owner->GetReachableObjects( m_reachable_objects_tmp );
+			if ( it.second.owner ) {
+				Object::QueueReachable( it.second.owner, m_reachable_objects_tmp );
 			}
 		}
 		GC_DEBUG_END();
 	}
+	Object::DrainReachabilityQueue( m_reachable_objects_tmp );
+	GC_DEBUG_UNLOCK();
 
 	size_t removed_count = 0;
 	size_t retained_count = 0;

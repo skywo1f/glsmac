@@ -1,6 +1,7 @@
 #include "Object.h"
 
 #include <atomic>
+#include <vector>
 
 #include "Space.h"
 
@@ -8,6 +9,7 @@ namespace gc {
 
 static std::atomic< uint64_t > s_next_reachability_pass = 1;
 thread_local static uint64_t s_reachability_pass = 0;
+thread_local static std::vector< Object* > s_reachability_queue = {};
 
 Object::Object( gc::Space* const gc_space ) {
 	if ( gc_space ) {
@@ -18,7 +20,7 @@ Object::Object( gc::Space* const gc_space ) {
 void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
 	GC_DEBUG_BEGIN( "gc::Object" );
 
-	m_reachability_pass = s_reachability_pass;
+	ASSERT( IsReachable(), "object was visited without being queued" );
 	GC_DEBUG( "this", this );
 	reachable_objects.insert( this );
 
@@ -39,9 +41,33 @@ void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objec
 }
 
 void Object::BeginReachabilityPass() {
+	s_reachability_queue.clear();
 	s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
 	if ( s_reachability_pass == 0 ) {
 		s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
+	}
+}
+
+const bool Object::QueueReachable(
+	Object* const object,
+	std::unordered_set< Object* >& reachable_objects
+) {
+	ASSERT( object, "cannot queue null reachable object" );
+	ASSERT( s_reachability_pass != 0, "reachability pass not started" );
+	if ( object->IsReachable() ) {
+		return false;
+	}
+	object->m_reachability_pass = s_reachability_pass;
+	reachable_objects.insert( object );
+	s_reachability_queue.push_back( object );
+	return true;
+}
+
+void Object::DrainReachabilityQueue( std::unordered_set< Object* >& reachable_objects ) {
+	while ( !s_reachability_queue.empty() ) {
+		auto* const object = s_reachability_queue.back();
+		s_reachability_queue.pop_back();
+		object->GetReachableObjects( reachable_objects );
 	}
 }
 
