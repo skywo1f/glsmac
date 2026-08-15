@@ -2,15 +2,15 @@ return {
 
 	init: (p) => {
 		this.p = p;
-		this.base = null;
+		this.base_id = null;
 		this.hurry_pending = false;
 		this.production_candidates = {};
 		this.get_live_base = () => {
-			if (this.base == null) {
+			if (this.base_id == null) {
 				return null;
 			}
 			for (candidate of this.p.game.get_bm().get_bases()) {
-				if (candidate.id == this.base.id) {
+				if (candidate.id == this.base_id) {
 					return candidate;
 				}
 			}
@@ -83,14 +83,14 @@ return {
 			value: '',
 			readonly: true,
 		});
-		const btn_workshop = this.frame.button({
+		this.btn_workshop = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
 			align: 'left',
 			left: 383,
 			width: 124,
 			text: 'UNIT WORKSHOP',
 		});
-		const btn_ok = this.frame.button({
+		this.btn_ok = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
 			align: 'right',
 			right: 3,
@@ -100,11 +100,11 @@ return {
 			is_cancel: true,
 		});
 
-		btn_ok.on('click', (e) => {
+		this.btn_ok.on('click', (e) => {
 			p.hide();
 			return false;
 		});
-		btn_workshop.on('click', (e) => {
+		this.btn_workshop.on('click', (e) => {
 			const base = this.get_live_base();
 			if (
 				base != null &&
@@ -125,13 +125,14 @@ return {
 			return true;
 		});
 		this.change_production.on('select', (e) => {
+			const base = this.get_live_base();
 			if (
-				this.base != null &&
+				base != null &&
 				#is_defined(this.production_candidates[e.value])
 			) {
 				const selected = this.production_candidates[e.value];
 				this.p.game.event('set_base_production', {
-					base: this.base,
+					base: base,
 					kind: selected.production_kind,
 					id: selected.id,
 				});
@@ -142,7 +143,7 @@ return {
 	},
 
 	set: (data) => {
-		this.base = data.base;
+		this.base_id = data.base.id;
 		this.hurry_pending = false;
 		this.production_candidates = {};
 		let production_items = [];

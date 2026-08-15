@@ -11,9 +11,14 @@ const hurry_button = {
 		}
 	},
 };
+let ok_handler = null;
 const ok_button = {
 	text: '',
-	on: (name, handler) => {},
+	on: (name, handler) => {
+		if (name == 'click') {
+			ok_handler = handler;
+		}
+	},
 };
 let workshop_handler = null;
 const workshop_button = {
@@ -56,17 +61,26 @@ const player = {id: 1};
 const owner = {id: 1, energy_credits: 100};
 const production = {production_kind: 'unit', id: 'ScoutPatrol'};
 const base = {
+	id: 9,
 	get_production: () => { return production; },
 	get_owner: () => { return owner; },
 };
+const live_base = {
+	id: base.id,
+	get_production: () => { return production; },
+	get_owner: () => { return owner; },
+};
+let popup_set = null;
+let popup_shown = '';
+let hidden = false;
 const game = {
 	get_player: () => { return player; },
-	get_bm: () => { return {get_bases: () => { return [base]; }}; },
+	get_bm: () => { return {get_bases: () => { return [live_base]; }}; },
 	is_turn_complete: (player_id) => { return false; },
 	get: (name) => {
 		test.assert(name == 'f_economy_get_hurry_cost');
 		return (target) => {
-			test.assert(target == base);
+			test.assert(target == live_base);
 			return 25;
 		};
 	},
@@ -75,6 +89,7 @@ const game = {
 			name: name,
 			kind: #is_defined(data.kind) ? data.kind : '',
 			id: #is_defined(data.id) ? data.id : '',
+			base: data.base,
 		};
 	},
 };
@@ -85,11 +100,11 @@ module.init({
 	game: game,
 	modules: {
 		popup: {
-			set: (name, data) => {},
-			show: (name) => {},
+			set: (name, data) => { popup_set = {name: name, data: data}; },
+			show: (name) => { popup_shown = name; },
 		},
 	},
-	hide: () => {},
+	hide: () => { hidden = true; },
 });
 const former = {
 	production_kind: 'unit',
@@ -105,12 +120,20 @@ module.set({
 test.assert(hurry_button.text == 'HURRY (25)');
 test.assert(hurry_handler != null);
 test.assert(workshop_handler != null);
+test.assert(ok_handler != null);
 test.assert(production_handler != null);
 test.assert(production_select.items == [['unit:Former', 'CHANGE PRODUCTION: Former']]);
 production_handler({value: 'unit:Former'});
 test.assert(emitted[0].name == 'set_base_production');
 test.assert(emitted[0].kind == 'unit');
 test.assert(emitted[0].id == 'Former');
+test.assert(emitted[0].base == live_base);
+workshop_handler({});
+test.assert(popup_set.name == 'unit_workshop');
+test.assert(popup_set.data.base == live_base);
+test.assert(popup_shown == 'unit_workshop');
+ok_handler({});
+test.assert(hidden);
 hurry_handler({});
 hurry_handler({});
 test.assert(#sizeof(emitted) == 2);
