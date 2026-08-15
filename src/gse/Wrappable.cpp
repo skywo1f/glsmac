@@ -86,10 +86,12 @@ callable::Native* const Wrappable::CacheNative(
 	ASSERT( m_native_cache, "native method cache is unavailable" );
 	const auto cache = m_native_cache;
 	const auto cache_key = std::make_pair( gc_space, key );
-	std::lock_guard guard( cache->mutex );
-	const auto existing = cache->values.find( cache_key );
-	if ( existing != cache->values.end() ) {
-		return existing->second;
+	{
+		std::lock_guard guard( cache->mutex );
+		const auto existing = cache->values.find( cache_key );
+		if ( existing != cache->values.end() ) {
+			return existing->second;
+		}
 	}
 	const std::weak_ptr< native_cache_t > weak_cache = cache;
 	auto* const native = new callable::Native(
@@ -105,8 +107,11 @@ callable::Native* const Wrappable::CacheNative(
 			}
 		}
 	);
-	cache->values.insert_or_assign( cache_key, native );
-	return native;
+	std::lock_guard guard( cache->mutex );
+	const auto result = cache->values.emplace( cache_key, native );
+	return result.second
+		? native
+		: result.first->second;
 }
 
 void Wrappable::Depend( Wrappable* other ) {
