@@ -67,6 +67,7 @@ const facility_fields = {
 	defender_morale_bonus: true,
 	global_prevent_riots: true,
 	global_terraforming_rate_multiplier: true,
+	global_advanced_terraforming: true,
 	new_base_population: true,
 	small_base_drone_modifier: true,
 	global_psi_attack_multiplier: true,
@@ -536,6 +537,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 		validate_int(data, 'defender_morale_bonus', path, errors, false, 0, 10);
 		validate_bool(data, 'global_prevent_riots', path, errors, false);
 		validate_number(data, 'global_terraforming_rate_multiplier', path, errors, false, 1.0, 10.0);
+		validate_bool(data, 'global_advanced_terraforming', path, errors, false);
 		validate_int(data, 'new_base_population', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_int(
 			data,
@@ -719,6 +721,7 @@ const validate_facilities = (facilities, technologies, errors) => {
 				#is_defined(data.global_terraforming_rate_multiplier) &&
 				data.global_terraforming_rate_multiplier > 1.0
 			) ||
+			(#is_defined(data.global_advanced_terraforming) && data.global_advanced_terraforming) ||
 			(#is_defined(data.new_base_population) && data.new_base_population > 0) ||
 			(
 				#is_defined(data.small_base_drone_modifier) &&

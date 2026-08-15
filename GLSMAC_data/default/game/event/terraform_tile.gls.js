@@ -46,10 +46,17 @@ return {
 		if (tile.is_locked()) {
 			return 'Terraforming site is locked';
 		}
+		const get_effects = #is_defined(e.game.get)
+			? e.game.get('f_project_get_player_effects')
+			: #undefined;
+		const effects = #is_defined(get_effects)
+			? get_effects(unit.get_owner())
+			: {advanced_terraforming: false};
 		const unavailable = terraforming.get_unavailable_reason(
 			tile,
 			unit.get_owner(),
-			e.data.type
+			e.data.type,
+			effects
 		);
 		if (unavailable != null) {
 			return unavailable;

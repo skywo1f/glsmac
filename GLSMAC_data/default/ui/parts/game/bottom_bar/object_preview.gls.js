@@ -82,11 +82,22 @@ return {
 		}
 		const tile = this.action_unit.get_tile();
 		const player = this.p.game.get_player();
+		const get_project_effects = this.p.game.get('f_project_get_player_effects');
+		const project_effects = #is_defined(get_project_effects)
+			? get_project_effects(player)
+			: {advanced_terraforming: false};
 		let top = 0;
 		for (type of terraforming.order_ids) {
 			const button = this.terraform_buttons[type];
 			const order = terraforming.get_order(type);
-			if (terraforming.get_unavailable_reason(tile, player, type) != null) {
+			if (
+				terraforming.get_unavailable_reason(
+					tile,
+					player,
+					type,
+					project_effects
+				) != null
+			) {
 				button.hide();
 				continue;
 			}

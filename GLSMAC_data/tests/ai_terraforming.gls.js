@@ -14,7 +14,7 @@ const make_tile = (moisture, rockiness, nutrients, minerals, energy) => {
 		moisture: moisture,
 		rockiness: rockiness,
 		bonuses: {nutrient: false, minerals: false, energy: false},
-		features: {monolith: false, xenofungus: false},
+		features: {monolith: false, xenofungus: false, river: false},
 		terraforming: {
 			road: false,
 			mag_tube: false,
@@ -26,6 +26,8 @@ const make_tile = (moisture, rockiness, nutrients, minerals, energy) => {
 			condenser: false,
 			mirror: false,
 			borehole: false,
+			aquifer: false,
+			level_terrain: false,
 			sensor: false,
 			bunker: false,
 			airbase: false,

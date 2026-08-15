@@ -392,6 +392,18 @@ void Tile::SetLandmarks( GSE_CALLABLE, const landmark_t value ) {
 	}
 }
 
+void Tile::SetRockiness( GSE_CALLABLE, const rockiness_t value ) {
+	if ( value < ROCKINESS_FLAT || value > ROCKINESS_ROCKY ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile rockiness value: " + std::to_string( value ) );
+	}
+	tiles->GetMap()->GetGame()->CheckRW( GSE_CALL );
+	if ( rockiness != value ) {
+		rockiness = value;
+		RefreshWrappers();
+		tiles->GetMap()->RefreshTile( this );
+	}
+}
+
 void Tile::SetBonus( GSE_CALLABLE, const bonus_t value ) {
 	if ( value > BONUS_MINERALS ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile bonus value: " + std::to_string( value ) );
@@ -590,6 +602,18 @@ WRAPIMPL_BEGIN( Tile )
 					}
 				}
 				SetLandmarks( GSE_CALL, updated );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"set_rockiness",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( value, 0, Int );
+				if ( value < ROCKINESS_FLAT || value > ROCKINESS_ROCKY ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid tile rockiness value: " + std::to_string( value ) );
+				}
+				SetRockiness( GSE_CALL, static_cast< rockiness_t >( value ) );
 				return VALUE( gse::value::Undefined );
 			} )
 		},

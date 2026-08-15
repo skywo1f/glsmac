@@ -15,6 +15,7 @@ const empty_effects = () => {
 		network_node_research_bonus: 0,
 		prevent_riots: false,
 		terraforming_rate_multiplier: 1.0,
+		advanced_terraforming: false,
 		new_base_population: 1,
 		small_base_drone_modifier: 0,
 		psi_attack_multiplier: 1.0,
@@ -124,6 +125,10 @@ const get_player_effects = (game, player) => {
 			#is_defined(project.global_terraforming_rate_multiplier)
 				? project.global_terraforming_rate_multiplier
 				: 1.0
+		);
+		result.advanced_terraforming = result.advanced_terraforming || (
+			#is_defined(project.global_advanced_terraforming) &&
+			project.global_advanced_terraforming
 		);
 		result.new_base_population = #max(
 			result.new_base_population,

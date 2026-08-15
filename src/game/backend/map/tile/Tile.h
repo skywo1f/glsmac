@@ -117,6 +117,7 @@ public:
 	static const std::string& GetTerraformingString( const terraforming_t value );
 	void SetFeatures( GSE_CALLABLE, const feature_t value );
 	void SetLandmarks( GSE_CALLABLE, const landmark_t value );
+	void SetRockiness( GSE_CALLABLE, const rockiness_t value );
 	void SetBonus( GSE_CALLABLE, const bonus_t value );
 	void SetTerraforming( GSE_CALLABLE, const terraforming_t value );
 

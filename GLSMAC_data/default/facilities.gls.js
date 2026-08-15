@@ -80,7 +80,10 @@ const partial_effects = {};
 const project_effects = {
 	TheHumanGenomeProject: {global_talent_bonus: 1},
 	TheCommandNexus: {granted_facility: 'CommandCenter'},
-	TheWeatherParadigm: {global_terraforming_rate_multiplier: 1.5},
+	TheWeatherParadigm: {
+		global_terraforming_rate_multiplier: 1.5,
+		global_advanced_terraforming: true,
+	},
 	TheMerchantExchange: {worked_tile_energy_bonus: 1},
 	TheEmpathGuild: {},
 	TheCitizensDefenseForce: {granted_facility: 'PerimeterDefense'},

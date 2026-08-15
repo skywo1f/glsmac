@@ -57,18 +57,21 @@ const orders = {
 		name: 'Condenser',
 		turns: 12,
 		required_technology: 'EcologicalEngineering',
+		advanced: true,
 		changes: {forest: false, borehole: false, condenser: true},
 	},
 	mirror: {
 		name: 'Echelon Mirror',
 		turns: 12,
 		required_technology: 'EcologicalEngineering',
+		advanced: true,
 		changes: {forest: false, mine: false, solar: false, borehole: false, mirror: true},
 	},
 	borehole: {
 		name: 'Thermal Borehole',
 		turns: 24,
 		required_technology: 'EcologicalEngineering',
+		advanced: true,
 		changes: {
 			forest: false,
 			farm: false,
@@ -79,6 +82,20 @@ const orders = {
 			mirror: false,
 			borehole: true,
 		},
+	},
+	aquifer: {
+		name: 'Aquifer',
+		turns: 18,
+		required_technology: 'EcologicalEngineering',
+		advanced: true,
+		feature_changes: {river: true},
+	},
+	level_terrain: {
+		name: 'Level Terrain',
+		turns: 8,
+		required_technology: '',
+		advanced: true,
+		rockiness_delta: -1,
 	},
 	sensor: {
 		name: 'Sensor Array',
@@ -135,6 +152,8 @@ const order_ids = [
 	'condenser',
 	'mirror',
 	'borehole',
+	'aquifer',
+	'level_terrain',
 	'sensor',
 	'bunker',
 	'airbase',
@@ -188,7 +207,7 @@ const is_volcano_center = (tile) => {
 	return true;
 };
 
-const get_unavailable_reason = (tile, player, type) => {
+const get_unavailable_reason = (tile, player, type, project_effects) => {
 	const order = get_order(type);
 	if (order == null) {
 		return 'Unknown terraforming order';
@@ -211,7 +230,13 @@ const get_unavailable_reason = (tile, player, type) => {
 	) {
 		return 'This improvement cannot be built in a volcanic area';
 	}
-	if (!has_technology(player, order.required_technology)) {
+	const has_advanced_terraforming = #is_defined(project_effects) &&
+		#is_defined(project_effects.advanced_terraforming) &&
+		project_effects.advanced_terraforming;
+	if (
+		!has_technology(player, order.required_technology) &&
+		(!#is_defined(order.advanced) || !order.advanced || !has_advanced_terraforming)
+	) {
 		return 'Required technology has not been discovered';
 	}
 	if (type == 'plant_fungus' && tile.features.xenofungus) {
@@ -227,7 +252,10 @@ const get_unavailable_reason = (tile, player, type) => {
 	} else if (type == 'remove_fungus') {
 		return 'This square has no xenofungus to remove';
 	}
-	if (type != 'remove_fungus' && type != 'plant_fungus' && tile.terraforming[type]) {
+	if (
+		type != 'remove_fungus' && type != 'plant_fungus' &&
+		#is_defined(tile.terraforming[type]) && tile.terraforming[type]
+	) {
 		return 'Tile already has this improvement';
 	}
 	if (
@@ -247,7 +275,29 @@ const get_unavailable_reason = (tile, player, type) => {
 			if (nearby.terraforming.borehole) {
 				return 'Thermal Boreholes cannot be built in adjacent squares';
 			}
+			if (
+				#is_defined(nearby.is_water) && !nearby.is_water &&
+				#is_defined(nearby.elevation) && nearby.elevation < tile.elevation
+			) {
+				return 'Thermal Boreholes cannot be built on slopes';
+			}
 		}
+	}
+	if (type == 'aquifer') {
+		if (tile.features.river) {
+			return 'This square already contains a river';
+		}
+		if (tile.terraforming.borehole) {
+			return 'Aquifers cannot be drilled through Thermal Boreholes';
+		}
+		for (nearby of tile.get_surrounding_tiles()) {
+			if (nearby.features.river) {
+				return 'Aquifers cannot be drilled adjacent to rivers';
+			}
+		}
+	}
+	if (type == 'level_terrain' && tile.rockiness <= 1) {
+		return 'This square is already flat';
 	}
 	return null;
 };
@@ -270,6 +320,9 @@ const advance_order = (unit) => {
 	}
 	if (#is_defined(order.feature_changes)) {
 		tile.update_features(order.feature_changes);
+	}
+	if (#is_defined(order.rockiness_delta)) {
+		tile.set_rockiness(tile.rockiness + order.rockiness_delta);
 	}
 	unit.set_terraforming_order('none', 0);
 	return false;

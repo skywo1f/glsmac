@@ -1735,6 +1735,10 @@ const move_former = (game, player, unit, all_bases) => {
 		return false;
 	}
 	const tm = game.get_tm();
+	const get_project_effects = game.get('f_project_get_player_effects');
+	const project_effects = #is_defined(get_project_effects)
+		? get_project_effects(player)
+		: {advanced_terraforming: false};
 	let strategic_targets = {};
 	let strategic_target_count = 0;
 	const consider_target = (candidate, pending_growth, prioritize_nutrients, is_worked) => {
@@ -1755,7 +1759,12 @@ const move_former = (game, player, unit, all_bases) => {
 		if (has_other_former(candidate, unit)) {
 			return;
 		}
-		const order = terraforming.get_order(candidate, prioritize_nutrients, player);
+		const order = terraforming.get_order(
+			candidate,
+			prioritize_nutrients,
+			player,
+			project_effects
+		);
 		if (order == null) {
 			return;
 		}
@@ -1807,14 +1816,14 @@ const move_former = (game, player, unit, all_bases) => {
 			return true;
 		}
 	}
-	const local_order = terraforming.get_order(tile, false, player);
+	const local_order = terraforming.get_order(tile, false, player, project_effects);
 	if (local_order != null && !has_other_active_former(tile, unit)) {
 		game.event_as(player.id, 'terraform_tile', {unit: unit, type: local_order});
 		return true;
 	}
 	const is_candidate = (candidate) => {
 		return can_enter(unit, candidate) &&
-			terraforming.get_order(candidate, false, player) != null &&
+			terraforming.get_order(candidate, false, player, project_effects) != null &&
 			!has_other_former(candidate, unit);
 	};
 	const target = choose_tile(tile.get_surrounding_tiles(), (candidate) => {

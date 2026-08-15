@@ -2,9 +2,9 @@ const orders = #include('../../units/terraforming');
 
 const WORKED_TILE_BONUS = 2000;
 
-const get_order = (tile, prioritize_nutrients, player) => {
+const get_order = (tile, prioritize_nutrients, player, project_effects) => {
 	const is_available = (type) => {
-		return orders.get_unavailable_reason(tile, player, type) == null;
+		return orders.get_unavailable_reason(tile, player, type, project_effects) == null;
 	};
 	if (tile.features.xenofungus) {
 		return is_available('remove_fungus') ? 'remove_fungus' : null;

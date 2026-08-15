@@ -10,6 +10,7 @@ let tile_state = {
 	nearby_tiles: [],
 	updates: 0,
 	feature_updates: 0,
+	rockiness_updates: 0,
 };
 
 let known_technologies = {};
@@ -27,6 +28,7 @@ tile = {
 		monolith: false,
 		xenofungus: false,
 		volcano: false,
+		river: false,
 	},
 	terraforming: {
 		road: false,
@@ -39,6 +41,8 @@ tile = {
 		condenser: false,
 		mirror: false,
 		borehole: false,
+		aquifer: false,
+		level_terrain: false,
 		sensor: false,
 		bunker: false,
 		airbase: false,
@@ -70,6 +74,10 @@ tile = {
 			tile.features[type] = changes[type];
 		}
 		tile_state.feature_updates = tile_state.feature_updates + 1;
+	},
+	set_rockiness: (value) => {
+		tile.rockiness = value;
+		tile_state.rockiness_updates = tile_state.rockiness_updates + 1;
 	},
 };
 
@@ -106,6 +114,7 @@ unit = {
 let turn_complete = false;
 let terraforming_rate_multiplier = 1.0;
 let fungus_terraforming_rate_multiplier = 1.0;
+let advanced_terraforming = false;
 const event = {
 	caller: 1,
 	data: {
@@ -122,6 +131,7 @@ const event = {
 				test.assert(owner.id == 1);
 				return {
 					terraforming_rate_multiplier: terraforming_rate_multiplier,
+					advanced_terraforming: advanced_terraforming,
 					fungus_terraforming_rate_multiplier:
 						fungus_terraforming_rate_multiplier,
 				};
@@ -177,6 +187,9 @@ tile_state.other_units = [];
 
 event.data.type = 'condenser';
 test.assert(#is_defined(terraform_tile.validate(event)));
+advanced_terraforming = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+advanced_terraforming = false;
 known_technologies.EcologicalEngineering = true;
 test.assert(!#is_defined(terraform_tile.validate(event)));
 known_technologies = {};
@@ -218,11 +231,46 @@ known_technologies = {};
 
 event.data.type = 'borehole';
 known_technologies.EcologicalEngineering = true;
-tile_state.nearby_tiles = [{terraforming: {borehole: true}}];
+tile_state.nearby_tiles = [{
+	terraforming: {borehole: true},
+	features: {river: false},
+	is_water: false,
+	elevation: 0,
+}];
 test.assert(#is_defined(terraform_tile.validate(event)));
+tile_state.nearby_tiles = [{
+	terraforming: {borehole: false},
+	features: {river: false},
+	is_water: false,
+	elevation: 0,
+}];
+tile.elevation = 1000;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.elevation = 0;
 tile_state.nearby_tiles = [];
 test.assert(!#is_defined(terraform_tile.validate(event)));
 known_technologies = {};
+
+event.data.type = 'aquifer';
+test.assert(#is_defined(terraform_tile.validate(event)));
+known_technologies.EcologicalEngineering = true;
+test.assert(!#is_defined(terraform_tile.validate(event)));
+tile.features.river = true;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.features.river = false;
+tile_state.nearby_tiles = [{features: {river: true}}];
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile_state.nearby_tiles = [];
+tile.terraforming.borehole = true;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.terraforming.borehole = false;
+known_technologies = {};
+
+event.data.type = 'level_terrain';
+tile.rockiness = 1;
+test.assert(#is_defined(terraform_tile.validate(event)));
+tile.rockiness = 3;
+test.assert(!#is_defined(terraform_tile.validate(event)));
 
 event.data.type = 'remove_fungus';
 test.assert(#is_defined(terraform_tile.validate(event)));
@@ -342,6 +390,22 @@ unit.set_terraforming_order('borehole', 1);
 test.assert(!terraforming.advance_order(unit));
 test.assert(tile.terraforming.borehole);
 test.assert(tile_state.updates == 7);
+
+tile.features.river = false;
+unit.set_terraforming_order('aquifer', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.features.river);
+test.assert(tile_state.feature_updates == 3);
+
+tile.rockiness = 3;
+unit.set_terraforming_order('level_terrain', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.rockiness == 2);
+test.assert(tile_state.rockiness_updates == 1);
+unit.set_terraforming_order('level_terrain', 1);
+test.assert(!terraforming.advance_order(unit));
+test.assert(tile.rockiness == 1);
+test.assert(tile_state.rockiness_updates == 2);
 
 unit.set_terraforming_order('solar', 2);
 unit.movement = 0.0;
