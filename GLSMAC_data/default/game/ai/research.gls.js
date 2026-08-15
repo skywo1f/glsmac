@@ -11,6 +11,42 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		? technology.commerce_bonus
 		: 0;
 	score += commerce_bonus * (2000 + development_priority * 40);
+	if (
+		#is_defined(technology.free_technology_for_first_discoverer) &&
+		technology.free_technology_for_first_discoverer
+	) {
+		score += 20000 + development_priority * 100;
+	}
+	const military_priority = get_priority(
+		context,
+		'military',
+		context.needs_military ? 100 : 0
+	);
+	score += (#is_defined(technology.probe_morale_bonus)
+		? technology.probe_morale_bonus : 0) * (3000 + military_priority * 80);
+	if (#is_defined(technology.reveals_map) && technology.reveals_map) {
+		score += 5000 + get_priority(context, 'expansion', 0) * 100;
+	}
+	if (
+		#is_defined(technology.allows_genetic_warfare) &&
+		technology.allows_genetic_warfare
+	) {
+		score += 3000 + military_priority * 100;
+	}
+	score += (#is_defined(technology.genetic_warfare_defense_bonus)
+		? technology.genetic_warfare_defense_bonus : 0) *
+		(1000 + development_priority * 40);
+	const fungus_bonus =
+		(#is_defined(technology.fungus_nutrient_bonus)
+			? technology.fungus_nutrient_bonus : 0) +
+		(#is_defined(technology.fungus_mineral_bonus)
+			? technology.fungus_mineral_bonus : 0) +
+		(#is_defined(technology.fungus_energy_bonus)
+			? technology.fungus_energy_bonus : 0);
+	score += fungus_bonus * (
+		2000 + get_priority(context, 'terraforming', 0) * 50 +
+		development_priority * 30
+	);
 	for (def of unit_defs) {
 		if (def.required_technology != technology.id) {
 			continue;
@@ -30,11 +66,7 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 			) * 450;
 		}
 		if (def.offense > 0) {
-			score += 5000 + get_priority(
-				context,
-				'military',
-				context.needs_military ? 100 : 0
-			) * 250;
+			score += 5000 + military_priority * 250;
 			score += def.offense * 1000 + def.defense * 500;
 			score += #round(def.movement_per_turn * 100.0);
 		}
@@ -101,7 +133,7 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 			def.unit_morale_water_bonus + def.unit_morale_air_bonus +
 			def.native_lifecycle_bonus
 		) * (
-			5000 + get_priority(context, 'military', context.needs_military ? 100 : 0) * 250
+			5000 + military_priority * 250
 		);
 		score += (#is_defined(def.defender_morale_minimum)
 			? def.defender_morale_minimum

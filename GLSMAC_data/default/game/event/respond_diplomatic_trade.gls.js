@@ -81,8 +81,19 @@ return {
 			player.set_energy_credits(
 				player.get_energy_credits() - terms.request_energy + terms.offer_energy
 			);
-			e.game.get('f_diplomacy_grant_technology')(player, terms.offer_technology);
-			e.game.get('f_diplomacy_grant_technology')(proposer, terms.request_technology);
+			for (grant of [
+				e.game.get('f_diplomacy_grant_technology')(player, terms.offer_technology),
+				e.game.get('f_diplomacy_grant_technology')(
+					proposer,
+					terms.request_technology
+				),
+			]) {
+				if (#typeof(grant) == 'Object') {
+					for (map_reveal of grant.map_reveals) {
+						snapshot.maps :+map_reveal;
+					}
+				}
+			}
 			for (contact of [
 				e.game.get('f_diplomacy_grant_contact')(player, terms.offer_contact),
 				e.game.get('f_diplomacy_grant_contact')(proposer, terms.request_contact),
@@ -192,6 +203,9 @@ return {
 		proposer.set_energy_credits(e.applied.proposer_energy);
 		player.set_research_state(e.applied.player_research);
 		proposer.set_research_state(e.applied.proposer_research);
+		for (let map_index = #sizeof(e.applied.maps) - 1; map_index >= 0; map_index--) {
+			e.game.get('f_exploration_rollback_reveal')(e.applied.maps[map_index]);
+		}
 		if (military_request) {
 			e.game.get('f_diplomacy_restore_pair')(player, proposer, e.applied.pair);
 			if (e.applied.military_target != null && e.applied.military_pair != null) {
@@ -226,9 +240,6 @@ return {
 		}
 		for (let i = #sizeof(e.applied.contacts) - 1; i >= 0; i--) {
 			e.game.get('f_diplomacy_restore_contact')(e.applied.contacts[i]);
-		}
-		for (let map_index = #sizeof(e.applied.maps) - 1; map_index >= 0; map_index--) {
-			e.game.get('f_exploration_rollback_reveal')(e.applied.maps[map_index]);
 		}
 		for (let base_index = #sizeof(e.applied.bases) - 1; base_index >= 0; base_index--) {
 			e.game.get('f_diplomacy_restore_base_transfer')(e.applied.bases[base_index]);

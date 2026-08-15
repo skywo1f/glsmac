@@ -4,6 +4,7 @@ const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
 const GENETIC_PLAGUE_KEY = 'probe_genetic_plague_introduced';
 const FORMER_OWNER_KEY = 'former_owner_id';
 const NERVE_STAPLING_TURNS_KEY = 'nerve_stapling_turns';
+const technologies = #include('../content/base_technologies');
 const DIFFICULTY_LEVELS = {
 	Citizen: 0,
 	Specialist: 1,
@@ -19,21 +20,17 @@ const FRAMEABLE_OPERATIONS = {
 	incite_drone_riots: true,
 	assassinate_researchers: true,
 };
-const PROBE_MORALE_TECHNOLOGIES = [
-	'PolymorphicSoftware',
-	'PreSentientAlgorithms',
-	'DigitalSentience',
-	'SelfAwareMachines',
-	'MindMachineInterface',
-];
-const GENETIC_DEFENSE_TECHNOLOGIES = [
-	'Biogenetics',
-	'GeneSplicing',
-	'BioEngineering',
-	'Biomachinery',
-	'MatterEditation',
-	'RetroviralEngineering',
-];
+let PROBE_MORALE_TECHNOLOGIES = [];
+let GENETIC_DEFENSE_TECHNOLOGIES = [];
+for (technology_id of technologies.order) {
+	const definition = technologies.definitions[technology_id];
+	if (definition.probe_morale_bonus > 0) {
+		PROBE_MORALE_TECHNOLOGIES :+technology_id;
+	}
+	if (definition.genetic_warfare_defense_bonus > 0) {
+		GENETIC_DEFENSE_TECHNOLOGIES :+technology_id;
+	}
+}
 
 const operations = {
 	infiltrate: {name: 'Infiltrate Datalinks', target: 'base', difficulty: 0, cost: false},

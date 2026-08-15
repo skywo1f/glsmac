@@ -1,4 +1,5 @@
 const technologies = #include('../default/technologies');
+const technology_acquisition = #include('../default/game/technology_acquisition');
 const initialize_research = #include('../default/game/event/initialize_player_research');
 const process_research = #include('../default/game/event/process_player_research');
 
@@ -7,9 +8,93 @@ test.assert(biogenetics == {
 	id: 'Biogenetics',
 	name: 'Biogenetics',
 	cost: 30,
+	free_technology_for_first_discoverer: false,
+	probe_morale_bonus: 0,
 	commerce_bonus: 0,
+	reveals_map: false,
+	allows_genetic_warfare: false,
+	genetic_warfare_defense_bonus: 1,
+	fungus_energy_bonus: 0,
+	fungus_mineral_bonus: 0,
+	fungus_nutrient_bonus: 0,
 	prerequisites: [],
 });
+test.assert(
+	technologies.get_definition('SecretsHumanBrain').free_technology_for_first_discoverer
+);
+test.assert(technologies.get_definition('PolymorphicSoftware').probe_morale_bonus == 1);
+test.assert(technologies.get_definition('IndustrialEconomics').commerce_bonus == 1);
+test.assert(technologies.get_definition('SecretsOfAlphaCentauri').reveals_map);
+test.assert(technologies.get_definition('RetroviralEngineering').allows_genetic_warfare);
+test.assert(
+	technologies.get_definition('RetroviralEngineering').genetic_warfare_defense_bonus == 1
+);
+test.assert(technologies.get_definition('TemporalMechanics').fungus_energy_bonus == 1);
+test.assert(
+	technologies.get_definition('ThresholdOfTranscendence').fungus_mineral_bonus == 1
+);
+test.assert(technologies.get_definition('CentauriPsi').fungus_nutrient_bonus == 1);
+
+const get_flagged_technologies = (field) => {
+	let result = [];
+	for (id of technologies.order) {
+		const definition = technologies.get_definition(id);
+		const value = definition[field];
+		if (
+			(#typeof(value) == 'Bool' && value) ||
+			(#typeof(value) == 'Int' && value > 0)
+		) {
+			result :+id;
+		}
+	}
+	return result;
+};
+test.assert(get_flagged_technologies('free_technology_for_first_discoverer') == [
+	'SecretsHumanBrain',
+	'SecretsOfAlphaCentauri',
+	'SecretsOfCreation',
+]);
+test.assert(get_flagged_technologies('probe_morale_bonus') == [
+	'PolymorphicSoftware',
+	'PreSentientAlgorithms',
+	'DigitalSentience',
+	'SelfAwareMachines',
+	'MindMachineInterface',
+]);
+test.assert(get_flagged_technologies('commerce_bonus') == [
+	'IndustrialEconomics',
+	'IndustrialAutomation',
+	'EnvironmentalEconomics',
+	'PlanetaryEconomics',
+	'IndustrialNanorobotics',
+	'SentientEconometrics',
+]);
+test.assert(get_flagged_technologies('reveals_map') == ['SecretsOfAlphaCentauri']);
+test.assert(get_flagged_technologies('allows_genetic_warfare') == [
+	'RetroviralEngineering',
+]);
+test.assert(get_flagged_technologies('genetic_warfare_defense_bonus') == [
+	'Biogenetics',
+	'GeneSplicing',
+	'BioEngineering',
+	'Biomachinery',
+	'MatterEditation',
+	'RetroviralEngineering',
+]);
+test.assert(get_flagged_technologies('fungus_energy_bonus') == [
+	'TemporalMechanics',
+	'CentauriMeditation',
+	'SecretsOfAlphaCentauri',
+]);
+test.assert(get_flagged_technologies('fungus_mineral_bonus') == [
+	'ThresholdOfTranscendence',
+	'MatterTransmission',
+	'CentauriGenetics',
+]);
+test.assert(get_flagged_technologies('fungus_nutrient_bonus') == [
+	'CentauriEcology',
+	'CentauriPsi',
+]);
 test.assert(technologies.get_definition('CentauriEcology').prerequisites == []);
 test.assert(technologies.get_definition('DoctrineMobility').prerequisites == []);
 test.assert(technologies.get_definition('InformationNetworks').prerequisites == []);
@@ -180,11 +265,31 @@ const player = {
 	name: 'Researcher',
 	get_research_state: () => { return clone_state(research_state); },
 	set_research_state: (state) => { research_state = clone_state(state); },
+	has_technology: (id) => {
+		for (known of research_state.technologies) {
+			if (known == id) { return true; }
+		}
+		return false;
+	},
+};
+let rival_technologies = [];
+const rival = {
+	id: 2,
+	has_technology: (id) => {
+		for (known of rival_technologies) {
+			if (known == id) { return true; }
+		}
+		return false;
+	},
 };
 let triggers = [];
 let messages = [];
 let datalinks_queues = 0;
+let map_reveals = 0;
+let map_rollbacks = 0;
+const map_tiles = [{x: 0, y: 0}, {x: 2, y: 0}];
 const game = {
+	get_players: () => { return [player, rival]; },
 	trigger: (name, data) => {
 		triggers :+name;
 		test.assert(data.player == player);
@@ -202,6 +307,22 @@ const game = {
 		}
 		if (key == 'f_project_queue_planetary_datalinks') {
 			return () => { datalinks_queues++; };
+		}
+		if (key == 'f_exploration_get_all_tiles') {
+			return () => { return map_tiles; };
+		}
+		if (key == 'f_exploration_apply_reveal') {
+			return (target, tiles) => {
+				test.assert(target == player && tiles == map_tiles);
+				map_reveals++;
+				return {player: target, tiles: tiles};
+			};
+		}
+		if (key == 'f_exploration_rollback_reveal') {
+			return (snapshot) => {
+				test.assert(snapshot.player == player && snapshot.tiles == map_tiles);
+				map_rollbacks++;
+			};
 		}
 		throw Error('Unknown game value: ' + key);
 	},
@@ -292,3 +413,90 @@ test.assert(research_state == {technologies: [], target: 'Biogenetics', progress
 
 event.data.technology = {id: 'WrongTarget', name: 'Wrong Target', cost: 20};
 test.assert(#is_defined(process_research.validate(event)));
+
+const secrets = technologies.get_definition('SecretsOfAlphaCentauri');
+rival_technologies = [];
+messages = [];
+triggers = [];
+datalinks_queues = 0;
+map_reveals = 0;
+map_rollbacks = 0;
+research_state = {
+	technologies: [],
+	target: secrets.id,
+	progress: secrets.cost - 1,
+};
+event = {
+	caller: 0,
+	game: game,
+	data: {player: player, technology: secrets, labs: 1},
+};
+event.applied = process_research.apply(event);
+test.assert(event.applied.completed_count == 1);
+test.assert(event.applied.bonus_technologies.completed_count == 1);
+test.assert(event.applied.bonus_technologies.completed_ids == ['Biogenetics']);
+test.assert(research_state == {
+	technologies: ['SecretsOfAlphaCentauri', 'Biogenetics'],
+	target: 'IndustrialBase',
+	progress: 0,
+});
+test.assert(map_reveals == 1 && map_rollbacks == 0);
+test.assert(datalinks_queues == 2);
+test.assert(messages == [
+	'Researcher has discovered Secrets of Alpha Centauri.',
+	'Researcher has gained Biogenetics as the first discoverer.',
+]);
+process_research.rollback(event);
+test.assert(research_state == {
+	technologies: [],
+	target: 'SecretsOfAlphaCentauri',
+	progress: secrets.cost - 1,
+});
+test.assert(map_reveals == 1 && map_rollbacks == 1);
+
+rival_technologies = ['SecretsOfAlphaCentauri'];
+messages = [];
+datalinks_queues = 0;
+map_reveals = 0;
+map_rollbacks = 0;
+research_state = {
+	technologies: [],
+	target: secrets.id,
+	progress: secrets.cost - 1,
+};
+event.applied = process_research.apply(event);
+test.assert(!#is_defined(event.applied.bonus_technologies));
+test.assert(research_state == {
+	technologies: ['SecretsOfAlphaCentauri'],
+	target: 'Biogenetics',
+	progress: 0,
+});
+test.assert(map_reveals == 1 && datalinks_queues == 1);
+test.assert(messages == ['Researcher has discovered Secrets of Alpha Centauri.']);
+process_research.rollback(event);
+test.assert(map_reveals == 1 && map_rollbacks == 1);
+
+rival_technologies = [];
+datalinks_queues = 0;
+map_reveals = 0;
+map_rollbacks = 0;
+research_state = {
+	technologies: [],
+	target: secrets.id,
+	progress: 7,
+};
+const free_acquisition = technology_acquisition.apply(game, player, 1);
+test.assert(free_acquisition.completed_ids == ['SecretsOfAlphaCentauri', 'Biogenetics']);
+test.assert(research_state == {
+	technologies: ['SecretsOfAlphaCentauri', 'Biogenetics'],
+	target: 'IndustrialBase',
+	progress: 7,
+});
+test.assert(map_reveals == 1 && datalinks_queues == 1);
+technology_acquisition.rollback(game, free_acquisition);
+test.assert(research_state == {
+	technologies: [],
+	target: 'SecretsOfAlphaCentauri',
+	progress: 7,
+});
+test.assert(map_reveals == 1 && map_rollbacks == 1);

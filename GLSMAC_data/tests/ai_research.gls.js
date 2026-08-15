@@ -151,3 +151,23 @@ strategic_context.priorities.terraforming = 100;
 test.assert(
 	research.choose([expansion, ecology], [colony, former], [], strategic_context) == ecology
 );
+
+const ordinary_special = technology('OrdinarySpecial', 80);
+const first_discovery = technology('FirstDiscovery', 80);
+first_discovery.free_technology_for_first_discoverer = true;
+test.assert(
+	research.score_technology(first_discovery, [], [], development_context) >
+	research.score_technology(ordinary_special, [], [], development_context)
+);
+const probe_advance = technology('ProbeAdvance', 80);
+probe_advance.probe_morale_bonus = 1;
+test.assert(
+	research.score_technology(probe_advance, [], [], military_context) >
+	research.score_technology(probe_advance, [], [], low_military_context)
+);
+const fungus_advance = technology('FungusAdvance', 80);
+fungus_advance.fungus_energy_bonus = 1;
+test.assert(
+	research.score_technology(fungus_advance, [], [], strategic_context) >
+	research.score_technology(ordinary_special, [], [], strategic_context)
+);

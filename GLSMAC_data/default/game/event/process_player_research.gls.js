@@ -1,3 +1,6 @@
+const technology_acquisition = #include('../technology_acquisition');
+const technology_effects = #include('../technology_effects');
+
 return {
 
 	validate: (e) => {
@@ -38,10 +41,22 @@ return {
 		let progress = previous.progress + e.data.labs;
 		let technology = e.data.technology;
 		let completed_names = [];
+		let completed_ids = [];
+		let free_technology_count = 0;
 		while (target != '' && progress >= technology.cost) {
 			progress -= technology.cost;
+			if (
+				technology_effects.grants_first_discoverer_technology(
+					e.game,
+					e.data.player,
+					technology.id
+				)
+			) {
+				free_technology_count++;
+			}
 			technologies :+technology.id;
 			completed_names :+technology.name;
+			completed_ids :+technology.id;
 			target = e.game.get('f_technology_get_next_target')(technologies, e.data.player);
 			if (target != '') {
 				technology = e.game.get('f_technology_get_definition')(target);
@@ -58,6 +73,14 @@ return {
 			target: target,
 			progress: progress,
 		});
+		const map_reveals = technology_effects.apply_map_reveals(
+			e.game,
+			e.data.player,
+			completed_ids
+		);
+		const bonus_technologies = free_technology_count > 0
+			? technology_acquisition.apply(e.game, e.data.player, free_technology_count)
+			: #undefined;
 		e.game.trigger('research_updated', {
 			player: e.data.player,
 		});
@@ -66,6 +89,15 @@ return {
 				e.data.player,
 				e.data.player.name + ' has discovered ' + name + '.'
 			);
+		}
+		if (#is_defined(bonus_technologies)) {
+			for (name of bonus_technologies.completed_names) {
+				e.game.get('f_message_to_contacts')(
+					e.data.player,
+					e.data.player.name + ' has gained ' + name +
+						' as the first discoverer.'
+				);
+			}
 		}
 		if (#sizeof(completed_names) > 0) {
 			e.game.trigger('research_selection_requested', {
@@ -80,10 +112,16 @@ return {
 			state: previous,
 			completed: #sizeof(completed_names) > 0,
 			completed_count: #sizeof(completed_names),
+			bonus_technologies: bonus_technologies,
+			map_reveals: map_reveals,
 		};
 	},
 
 	rollback: (e) => {
+		if (#is_defined(e.applied.bonus_technologies)) {
+			technology_acquisition.rollback(e.game, e.applied.bonus_technologies);
+		}
+		technology_effects.rollback_map_reveals(e.game, e.applied.map_reveals);
 		e.data.player.set_research_state(e.applied.state);
 		e.game.trigger('research_updated', {
 			player: e.data.player,

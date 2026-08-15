@@ -21,8 +21,22 @@ test.assert(content.validator.validate(invalid).errors == [
 const cyclic = content.validator.validate({
 	technologies: {
 		definitions: {
-			Alpha: {id: 'Alpha', name: 'Alpha', cost: 10, commerce_bonus: 0, prerequisites: ['Beta']},
-			Beta: {id: 'Beta', name: 'Beta', cost: 10, commerce_bonus: 0, prerequisites: ['Alpha']},
+			Alpha: {
+				id: 'Alpha', name: 'Alpha', cost: 10,
+				free_technology_for_first_discoverer: false,
+				probe_morale_bonus: 0, commerce_bonus: 0, reveals_map: false,
+				allows_genetic_warfare: false, genetic_warfare_defense_bonus: 0,
+				fungus_energy_bonus: 0, fungus_mineral_bonus: 0,
+				fungus_nutrient_bonus: 0, prerequisites: ['Beta'],
+			},
+			Beta: {
+				id: 'Beta', name: 'Beta', cost: 10,
+				free_technology_for_first_discoverer: false,
+				probe_morale_bonus: 0, commerce_bonus: 0, reveals_map: false,
+				allows_genetic_warfare: false, genetic_warfare_defense_bonus: 0,
+				fungus_energy_bonus: 0, fungus_mineral_bonus: 0,
+				fungus_nutrient_bonus: 0, prerequisites: ['Alpha'],
+			},
 		},
 		order: ['Alpha', 'Beta'],
 	},

@@ -1,5 +1,6 @@
 const base_capture = #include('../base_capture');
 const snapshots = #include('../entity_snapshots');
+const technology_effects = #include('../technology_effects');
 const snapshot_unit = snapshots.snapshot_unit;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
@@ -696,6 +697,11 @@ return {
 					target: target,
 					progress: progress,
 				});
+				applied.technology_map_reveals = technology_effects.apply_map_reveals(
+					e.game,
+					actor,
+					[e.resolved.technology_id]
+				);
 				e.game.trigger('research_updated', {player: actor});
 				const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
 				if (#is_defined(queue_datalinks)) {
@@ -949,6 +955,10 @@ return {
 			restore_pop_types(e.applied.pop_types);
 		}
 		if (#is_defined(e.applied.research)) {
+			technology_effects.rollback_map_reveals(
+				e.game,
+				e.applied.technology_map_reveals
+			);
 			actor.set_research_state(e.applied.research);
 			e.game.trigger('research_updated', {player: actor});
 		}

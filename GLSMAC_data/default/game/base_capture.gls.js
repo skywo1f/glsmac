@@ -1,6 +1,7 @@
 const project_acquisition = #include('./project_acquisition');
 const economic_victory = #include('./economic_victory_rules');
 const game_rules = #include('./game_rules');
+const technology_effects = #include('./technology_effects');
 const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
@@ -73,7 +74,11 @@ const apply_spoils_of_war = (game, winner, loser) => {
 		return #undefined;
 	}
 	const state = winner.get_research_state();
-	if (!grant(winner, technology)) {
+	const granted = grant(winner, technology);
+	if (
+		!#is_defined(granted) ||
+		(#typeof(granted) == 'Bool' && !granted)
+	) {
 		return #undefined;
 	}
 	game.trigger('research_updated', {player: winner});
@@ -88,13 +93,18 @@ const apply_spoils_of_war = (game, winner, loser) => {
 		winner_name + ' captured research data for ' +
 		(definition == null ? technology : definition.name) + '.'
 	);
-	return {player: winner, state: state};
+	return {
+		player: winner,
+		state: state,
+		map_reveals: #typeof(granted) == 'Object' ? granted.map_reveals : [],
+	};
 };
 
 const rollback_spoils_of_war = (game, snapshot) => {
 	if (!#is_defined(snapshot)) {
 		return;
 	}
+	technology_effects.rollback_map_reveals(game, snapshot.map_reveals);
 	snapshot.player.set_research_state(snapshot.state);
 	game.trigger('research_updated', {player: snapshot.player});
 };

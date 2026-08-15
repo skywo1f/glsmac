@@ -193,6 +193,7 @@ return (game) => {
 	game.on('start', (e) => {
 		game.set('f_exploration_get_tiles_in_radius', get_tiles_in_radius);
 		game.set('f_exploration_get_unexplored_tiles', get_unexplored_tiles);
+		game.set('f_exploration_get_all_tiles', () => { return get_all_tiles(game.get_tm()); });
 		game.set('f_exploration_apply_reveal', (player, tiles) => {
 			return apply_reveal(game, player, tiles);
 		});

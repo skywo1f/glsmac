@@ -12,6 +12,23 @@ const define = (game, id, coords) => {
 };
 
 const rules = #include('content/resource_rules');
+const technologies = #include('content/base_technologies');
+let fungus_technology_bonuses = [];
+for (technology_id of technologies.order) {
+	const definition = technologies.definitions[technology_id];
+	if (
+		definition.fungus_nutrient_bonus > 0 ||
+		definition.fungus_mineral_bonus > 0 ||
+		definition.fungus_energy_bonus > 0
+	) {
+		fungus_technology_bonuses :+{
+			technology: technology_id,
+			nutrients: definition.fungus_nutrient_bonus,
+			minerals: definition.fungus_mineral_bonus,
+			energy: definition.fungus_energy_bonus,
+		};
+	}
+}
 
 const empty_yields = () => {
 	return {NUTRIENTS: 0, MINERALS: 0, ENERGY: 0};
@@ -40,9 +57,11 @@ const has_technology = (player, id) => {
 };
 
 const add_fungus_yields = (result, player) => {
-	for (bonus of rules.fungus_technology_bonuses) {
+	for (bonus of fungus_technology_bonuses) {
 		if (has_technology(player, bonus.technology)) {
-			result[bonus.resource] = result[bonus.resource] + bonus.amount;
+			result.NUTRIENTS = result.NUTRIENTS + bonus.nutrients;
+			result.MINERALS = result.MINERALS + bonus.minerals;
+			result.ENERGY = result.ENERGY + bonus.energy;
 		}
 	}
 	if (!#is_defined(player) || !#is_defined(player.get_faction)) {

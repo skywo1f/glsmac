@@ -28,6 +28,18 @@ TECHNOLOGY_COST_OVERRIDES = {
     "SecretsHumanBrain": 80,
 }
 
+TECHNOLOGY_FLAG_FIELDS = (
+    ("free_technology_for_first_discoverer", 0),
+    ("probe_morale_bonus", 1),
+    ("commerce_bonus", 2),
+    ("reveals_map", 3),
+    ("allows_genetic_warfare", 4),
+    ("genetic_warfare_defense_bonus", 5),
+    ("fungus_energy_bonus", 6),
+    ("fungus_mineral_bonus", 7),
+    ("fungus_nutrient_bonus", 8),
+)
+
 
 @dataclass(frozen=True)
 class TechnologyRow:
@@ -305,7 +317,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
 
     prerequisites: dict[str, tuple[str, ...]] = {}
     names: dict[str, str] = {}
-    commerce_bonuses: dict[str, int] = {}
+    flags: dict[str, int] = {}
     order: list[str] = []
     for row in rows:
         technology_id = code_to_id[row.code]
@@ -319,7 +331,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
             ) from exc
         prerequisites[technology_id] = prerequisite_ids
         names[technology_id] = row.name
-        commerce_bonuses[technology_id] = 1 if row.flags & (1 << 2) else 0
+        flags[technology_id] = row.flags
         order.append(technology_id)
 
     tiers: dict[str, int] = {}
@@ -362,7 +374,18 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
                 f"\t\tid: {quote(technology_id)},",
                 f"\t\tname: {quote(names[technology_id])},",
                 f"\t\tcost: {cost},",
-                f"\t\tcommerce_bonus: {commerce_bonuses[technology_id]},",
+                *(
+                    f"\t\t{field}: " + (
+                        str(1 if flags[technology_id] & (1 << bit) else 0)
+                        if field.endswith("_bonus")
+                        else (
+                            "true"
+                            if flags[technology_id] & (1 << bit)
+                            else "false"
+                        )
+                    ) + ","
+                    for field, bit in TECHNOLOGY_FLAG_FIELDS
+                ),
                 f"\t\tprerequisites: [{prerequisite_list}],",
                 "\t},",
             ]

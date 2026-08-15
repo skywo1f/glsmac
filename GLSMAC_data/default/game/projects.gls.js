@@ -1,5 +1,6 @@
 const project_acquisition = #include('./project_acquisition');
 const technology_acquisition = #include('./technology_acquisition');
+const technology_effects = #include('./technology_effects');
 
 const empty_effects = () => {
 	return {
@@ -278,8 +279,9 @@ return (game) => {
 				const key = 'p' + #to_string(player.id);
 				const previous = player.get_research_state();
 				if (!#is_defined(snapshotted[key])) {
-					snapshots :+{player: player, state: previous};
-					snapshotted[key] = true;
+					const snapshot = {player: player, state: previous, map_reveals: []};
+					snapshots :+snapshot;
+					snapshotted[key] = snapshot;
 				}
 				let technologies = [];
 				for (id of previous.technologies) {
@@ -309,6 +311,14 @@ return (game) => {
 					target: target,
 					progress: progress,
 				});
+				const map_reveals = technology_effects.apply_map_reveals(
+					game,
+					player,
+					grant.technologies
+				);
+				for (map_reveal of map_reveals) {
+					snapshotted[key].map_reveals :+map_reveal;
+				}
 				updated[key] = player;
 			}
 		}
@@ -320,6 +330,7 @@ return (game) => {
 	const rollback_planetary_datalinks = (applied) => {
 		planetary_datalinks_pending = false;
 		for (snapshot of applied.players) {
+			technology_effects.rollback_map_reveals(game, snapshot.map_reveals);
 			snapshot.player.set_research_state(snapshot.state);
 			game.trigger('research_updated', {player: snapshot.player});
 		}

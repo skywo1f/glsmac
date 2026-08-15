@@ -1,4 +1,5 @@
 const diplomatic_base_transfer = #include('./diplomatic_base_transfer');
+const technology_effects = #include('./technology_effects');
 
 const is_player = (player) => {
 	return (
@@ -667,11 +668,12 @@ const grant_technology = (game, player, id) => {
 		target: target,
 		progress: progress,
 	});
+	const map_reveals = technology_effects.apply_map_reveals(game, player, [id]);
 	const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
 	if (#is_defined(queue_datalinks)) {
 		queue_datalinks();
 	}
-	return true;
+	return {player: player, technology_id: id, map_reveals: map_reveals};
 };
 
 const get_loan_parties = (proposer, recipient, terms) => {

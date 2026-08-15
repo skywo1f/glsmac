@@ -4,7 +4,15 @@ const technology_fields = {
 	id: true,
 	name: true,
 	cost: true,
+	free_technology_for_first_discoverer: true,
+	probe_morale_bonus: true,
 	commerce_bonus: true,
+	reveals_map: true,
+	allows_genetic_warfare: true,
+	genetic_warfare_defense_bonus: true,
+	fungus_energy_bonus: true,
+	fungus_mineral_bonus: true,
+	fungus_nutrient_bonus: true,
 	prerequisites: true,
 };
 
@@ -372,7 +380,29 @@ const validate_technologies = (definitions, order, errors) => {
 		}
 		validate_string(definition, 'name', path, errors, true);
 		validate_int(definition, 'cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
+		validate_bool(
+			definition,
+			'free_technology_for_first_discoverer',
+			path,
+			errors,
+			true
+		);
+		validate_int(definition, 'probe_morale_bonus', path, errors, true, 0, 1);
 		validate_int(definition, 'commerce_bonus', path, errors, true, 0, MAX_DEFINITION_VALUE);
+		validate_bool(definition, 'reveals_map', path, errors, true);
+		validate_bool(definition, 'allows_genetic_warfare', path, errors, true);
+		validate_int(
+			definition,
+			'genetic_warfare_defense_bonus',
+			path,
+			errors,
+			true,
+			0,
+			1
+		);
+		validate_int(definition, 'fungus_energy_bonus', path, errors, true, 0, 1);
+		validate_int(definition, 'fungus_mineral_bonus', path, errors, true, 0, 1);
+		validate_int(definition, 'fungus_nutrient_bonus', path, errors, true, 0, 1);
 		if (#typeof(definition.prerequisites) != 'Array') {
 			add_error(errors, path + '.prerequisites', 'must be an array');
 			graph_is_valid = false;

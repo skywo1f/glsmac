@@ -1,3 +1,5 @@
+const technology_effects = #include('technology_effects');
+
 const clone_state = (state) => {
 	let technologies = [];
 	for (id of state.technologies) {
@@ -30,7 +32,9 @@ const apply = (game, player, count) => {
 	let target = previous.target;
 	let progress = previous.progress;
 	let completed_names = [];
-	for (let i = 0; i < count; i++) {
+	let completed_ids = [];
+	let remaining = count;
+	while (remaining > 0) {
 		target = get_next_target(game, player, technologies, target);
 		if (target == '') {
 			break;
@@ -39,8 +43,13 @@ const apply = (game, player, count) => {
 		if (definition == null) {
 			throw Error('Unknown free technology target: ' + target);
 		}
+		remaining--;
+		if (technology_effects.grants_first_discoverer_technology(game, player, target)) {
+			remaining++;
+		}
 		technologies :+target;
 		completed_names :+definition.name;
+		completed_ids :+target;
 		target = game.get('f_technology_get_next_target')(technologies, player);
 	}
 	if (#sizeof(completed_names) == 0) {
@@ -54,6 +63,7 @@ const apply = (game, player, count) => {
 		target: target,
 		progress: progress,
 	});
+	const map_reveals = technology_effects.apply_map_reveals(game, player, completed_ids);
 	game.trigger('research_updated', {player: player});
 	const queue_datalinks = game.get('f_project_queue_planetary_datalinks');
 	if (#is_defined(queue_datalinks)) {
@@ -63,11 +73,14 @@ const apply = (game, player, count) => {
 		player: player,
 		state: previous,
 		completed_names: completed_names,
+		completed_ids: completed_ids,
 		completed_count: #sizeof(completed_names),
+		map_reveals: map_reveals,
 	};
 };
 
 const rollback = (game, applied) => {
+	technology_effects.rollback_map_reveals(game, applied.map_reveals);
 	applied.player.set_research_state(applied.state);
 	game.trigger('research_updated', {player: applied.player});
 };

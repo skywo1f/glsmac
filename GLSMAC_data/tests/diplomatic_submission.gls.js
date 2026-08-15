@@ -147,15 +147,31 @@ victor.set_research_state({
 	technologies: ['CentauriEcology'], target: 'IndustrialBase', progress: 12,
 });
 defeated.set_research_state({
-	technologies: ['IndustrialBase'], target: 'Biogenetics', progress: 9,
+	technologies: ['IndustrialBase', 'SecretsOfAlphaCentauri'],
+	target: 'Biogenetics',
+	progress: 9,
 });
 const victor_tile = {x: 2, y: 2};
 const defeated_tile = {x: 4, y: 2};
+const hidden_tile = {x: 6, y: 2};
 victor.set_explored(victor_tile, true);
 defeated.set_explored(defeated_tile, true);
 
 values.f_technology_get_next_target = (known, player) => { return 'Biogenetics'; };
 values.f_project_queue_planetary_datalinks = () => {};
+values.f_exploration_get_all_tiles = () => {
+	return [victor_tile, defeated_tile, hidden_tile];
+};
+values.f_exploration_apply_reveal = (player, tiles) => {
+	let added = [];
+	for (tile of tiles) {
+		if (!player.has_explored(tile)) {
+			player.set_explored(tile, true);
+			added :+tile;
+		}
+	}
+	return {player: player, tiles: added};
+};
 values.f_exploration_apply_map_share = (source, recipient) => {
 	let added = [];
 	for (tile of source.get_explored_tiles()) {
@@ -208,8 +224,11 @@ test.assert(defeated.get_diplomatic_relation(victor) == 'pact');
 test.assert(victor.get_energy_credits() == 105);
 test.assert(defeated.get_energy_credits() == 0);
 test.assert(victor.has_technology('IndustrialBase'));
+test.assert(victor.has_technology('SecretsOfAlphaCentauri'));
 test.assert(victor.has_explored(defeated_tile));
+test.assert(victor.has_explored(hidden_tile));
 test.assert(defeated.has_explored(victor_tile));
+test.assert(defeated.has_explored(hidden_tile));
 test.assert(defeated.get_diplomatic_loan(victor) == null);
 test.assert(values.f_diplomacy_is_submission_pair(victor, defeated));
 test.assert(values.f_diplomacy_get_submission_master(defeated) == victor);
@@ -233,8 +252,11 @@ test.assert(defeated.get_diplomatic_relation(victor) == 'vendetta');
 test.assert(victor.get_energy_credits() == 25);
 test.assert(defeated.get_energy_credits() == 80);
 test.assert(!victor.has_technology('IndustrialBase'));
+test.assert(!victor.has_technology('SecretsOfAlphaCentauri'));
 test.assert(!victor.has_explored(defeated_tile));
+test.assert(!victor.has_explored(hidden_tile));
 test.assert(!defeated.has_explored(victor_tile));
+test.assert(!defeated.has_explored(hidden_tile));
 test.assert(defeated.get_diplomatic_loan(victor) == {balance: 50, payment: 5});
 
 response.data.accept = false;

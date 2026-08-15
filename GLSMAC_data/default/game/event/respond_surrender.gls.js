@@ -53,7 +53,15 @@ return {
 			proposer.set_energy_credits(0);
 			for (technology_id of proposer.get_research_state().technologies) {
 				if (!player.has_technology(technology_id)) {
-					e.game.get('f_diplomacy_grant_technology')(player, technology_id);
+					const grant = e.game.get('f_diplomacy_grant_technology')(
+						player,
+						technology_id
+					);
+					if (#typeof(grant) == 'Object') {
+						for (map_reveal of grant.map_reveals) {
+							snapshot.maps :+map_reveal;
+						}
+					}
 				}
 			}
 			e.game.get('f_diplomacy_set_bilateral_relation')(player, proposer, 'pact');
@@ -62,10 +70,8 @@ return {
 			proposer.clear_diplomatic_loan(player);
 			const share_map = e.game.get('f_exploration_apply_map_share');
 			if (#is_defined(share_map)) {
-				snapshot.maps = [
-					share_map(player, proposer),
-					share_map(proposer, player),
-				];
+				snapshot.maps :+share_map(player, proposer);
+				snapshot.maps :+share_map(proposer, player);
 			}
 			e.game.trigger('economy_updated', {player: player});
 			e.game.trigger('economy_updated', {player: proposer});

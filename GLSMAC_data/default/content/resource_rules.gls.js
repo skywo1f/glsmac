@@ -4,16 +4,6 @@ return {
 		MINERALS: {limit: 2, technology: 'EcologicalEngineering', bonus_key: 'minerals'},
 		ENERGY: {limit: 2, technology: 'EnvironmentalEconomics', bonus_key: 'energy'},
 	},
-	fungus_technology_bonuses: [
-		{technology: 'CentauriEcology', resource: 'NUTRIENTS', amount: 1},
-		{technology: 'CentauriPsi', resource: 'NUTRIENTS', amount: 1},
-		{technology: 'CentauriGenetics', resource: 'MINERALS', amount: 1},
-		{technology: 'MatterTransmission', resource: 'MINERALS', amount: 1},
-		{technology: 'ThresholdOfTranscendence', resource: 'MINERALS', amount: 1},
-		{technology: 'CentauriMeditation', resource: 'ENERGY', amount: 1},
-		{technology: 'SecretsOfAlphaCentauri', resource: 'ENERGY', amount: 1},
-		{technology: 'TemporalMechanics', resource: 'ENERGY', amount: 1},
-	],
 	fungus_faction_bonuses: {
 		GAIANS: {NUTRIENTS: 1, MINERALS: 0, ENERGY: 0},
 	},
