@@ -148,6 +148,47 @@ void AddGSETests( task::gsetests::GSETests* task ) {
 	);
 
 	task->AddTest(
+		"object references are reused only within one accumulation pass",
+		GT() {
+			auto* const gc_space = gse->GetGCSpace();
+			value::Object* object = nullptr;
+			Value* first_ref = nullptr;
+			bool same_key_reused = false;
+			bool different_keys_distinct = false;
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					ExecutionPointer ep;
+					const si_t si = {};
+					object = VALUEEXT( value::Object, GSE_CALL, value::object_properties_t{
+						{ "value", VALUE( value::Int, , 7 ) },
+					} );
+					gse->AddRootObject( object );
+					first_ref = object->GetRef( "value" );
+					same_key_reused = first_ref == object->GetRef( "value" );
+					different_keys_distinct = first_ref != object->GetRef( "other" );
+				}
+			);
+			GT_ASSERT( same_key_reused, "object reference was recreated within one pass" );
+			GT_ASSERT( different_keys_distinct, "different object properties shared a reference" );
+
+			g_engine->GetGC()->CollectNow();
+			bool next_pass_ref_is_valid = false;
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					auto* const value = object->GetRef( "value" )->Clone();
+					next_pass_ref_is_valid = value->type == VT_INT && ( (value::Int*)value )->value == 7;
+				}
+			);
+			GT_ASSERT( next_pass_ref_is_valid, "object reference cache retained a collected reference" );
+			gse->RemoveRootObject( object );
+			g_engine->GetGC()->CollectNow();
+			GT_OK();
+		}
+	);
+
+	task->AddTest(
 		"garbage collection traverses deep object graphs iteratively",
 		GT() {
 			auto* const gc_space = gse->GetGCSpace();

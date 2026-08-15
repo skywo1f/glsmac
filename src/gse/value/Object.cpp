@@ -108,7 +108,19 @@ Value* const Object::GetRef( const object_key_t& key ) {
 			return v;
 		}
 	}
-	return VALUEEXT( ObjectRef, m_gc_space, this, key );
+	const auto pass = m_gc_space->GetAccumulationPass();
+	ASSERT( pass != 0, "cannot cache an object reference outside accumulation" );
+	if ( m_ref_cache_pass != pass ) {
+		m_ref_cache_pass = pass;
+		m_ref_cache.clear();
+	}
+	const auto existing = m_ref_cache.find( key );
+	if ( existing != m_ref_cache.end() ) {
+		return existing->second;
+	}
+	auto* const result = VALUEEXT( ObjectRef, m_gc_space, this, key );
+	m_ref_cache.emplace( key, result );
+	return result;
 }
 
 void Object::Unlink() {

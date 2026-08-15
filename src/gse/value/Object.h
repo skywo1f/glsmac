@@ -3,6 +3,7 @@
 #include <map>
 #include <string>
 #include <functional>
+#include <unordered_map>
 #include <unordered_set>
 
 #include "gse/Value.h"
@@ -22,6 +23,8 @@ class ChildContext;
 }
 
 namespace value {
+
+class ObjectRef;
 
 class Object : public Value {
 public:
@@ -62,6 +65,8 @@ public:
 
 private:
 	object_properties_t m_value = {};
+	uint64_t m_ref_cache_pass = 0;
+	std::unordered_map< object_key_t, ObjectRef* > m_ref_cache = {};
 
 };
 
