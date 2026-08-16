@@ -5,7 +5,7 @@
 #include "tmp/last_commit.h"
 
 #else
-#define GLSMAC_LAST_COMMIT "???????"
+#define GLSMAC_LAST_COMMIT "unknown"
 #endif
 
 #define GLSMAC_VERSION "v0.3"

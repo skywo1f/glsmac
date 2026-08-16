@@ -1464,5 +1464,11 @@ seconds. This materially reduces the collector-dominated turn stalls, but manual
 play and longer campaign coverage still need to confirm that perceived AI-turn
 latency remains acceptable.
 
+Windows builds now generate the same source-revision header as other platforms
+without shell redirection, and source archives without Git metadata report an
+explicit `unknown` revision. The RelWithDebInfo executable reports
+`GLSMAC v0.3-f79cc9f9`; an immediate repeat build left the executable untouched,
+confirming that an unchanged revision does not trigger recompilation.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
