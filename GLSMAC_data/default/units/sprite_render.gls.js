@@ -45,10 +45,20 @@ const get = (chassis_id, armor_id, weapon_id) => {
 		throw Error('Unknown unit sprite chassis: ' + chassis_id);
 	}
 	const fallback = get_fallback(weapon_id);
-	if (chassis_id == 'Infantry' && armor_id == 'NoArmor' && weapon_id == 'HandWeapons') {
+	let cvr_file = '';
+	if (chassis_id == 'Infantry' && armor_id == 'NoArmor') {
+		if (weapon_id == 'HandWeapons') {
+			cvr_file = 'VI.cvr';
+		} else if (weapon_id == 'ColonyModule') {
+			cvr_file = 'Drop.cvr';
+		} else if (weapon_id == 'TerraformingUnit') {
+			cvr_file = 'VT.cvr';
+		}
+	}
+	if (cvr_file != '') {
 		return {
 			type: 'cvr',
-			files: ['VI.cvr'],
+			files: [cvr_file],
 			w: 100,
 			h: 75,
 			cx: 50,

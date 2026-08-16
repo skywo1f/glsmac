@@ -163,7 +163,7 @@ const special_unit = (
 };
 
 const predefined_units = [
-	// Role icons stand in for conventional CVR composition, which is not implemented yet.
+	// Self-contained classic CVRs are used where available; layered designs retain role icons.
 	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
 	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
 	conventional_unit('Former', 'Former', 20, 0, 1, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),

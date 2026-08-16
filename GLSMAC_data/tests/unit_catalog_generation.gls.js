@@ -41,17 +41,29 @@ test.assert(
 	scout.data.render.fallback.x == 518 && scout.data.render.fallback.y == 82
 );
 test.assert(
-	colony.data.render.file == 'newicons.pcx' &&
-	colony.data.render.x == 518 && colony.data.render.y == 235
+	colony.data.render.type == 'cvr' && colony.data.render.files == ['Drop.cvr'] &&
+	colony.data.render.fallback.file == 'newicons.pcx' &&
+	colony.data.render.fallback.x == 518 && colony.data.render.fallback.y == 235
 );
 test.assert(
-	former.data.render.file == 'newicons.pcx' &&
-	former.data.render.x == 518 && former.data.render.y == 158
+	former.data.render.type == 'cvr' && former.data.render.files == ['VT.cvr'] &&
+	former.data.render.fallback.file == 'newicons.pcx' &&
+	former.data.render.fallback.x == 518 && former.data.render.fallback.y == 158
 );
 const recon = get_unit('ReconRover');
 const probe = get_unit('ProbeTeam');
 test.assert(recon.data.render.x == 518 && recon.data.render.y == 82);
 test.assert(probe.data.render.x == 518 && probe.data.render.y == 158);
+
+const get_expected_cvr_file = (data) => {
+	if (data.chassis != 'Infantry' || data.armor != 'NoArmor') {
+		return '';
+	}
+	if (data.weapon == 'HandWeapons') { return 'VI.cvr'; }
+	if (data.weapon == 'ColonyModule') { return 'Drop.cvr'; }
+	if (data.weapon == 'TerraformingUnit') { return 'VT.cvr'; }
+	return '';
+};
 
 const unity_rover = get_unit('UnityRover');
 const unity_chopper = get_unit('UnityScoutChopper');
@@ -123,13 +135,14 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
+	const expected_cvr_file = get_expected_cvr_file(data);
 	if (data.render.type == 'cvr') {
 		test.assert(
-			data.chassis == 'Infantry' && data.armor == 'NoArmor' &&
-			data.weapon == 'HandWeapons' && data.render.files == ['VI.cvr'] &&
+			expected_cvr_file != '' && data.render.files == [expected_cvr_file] &&
 			data.render.fallback.file == 'newicons.pcx'
 		);
 	} else {
+		test.assert(expected_cvr_file == '');
 		test.assert(data.render.type == 'sprite');
 		test.assert(data.render.file == (data.is_native ? 'units.pcx' : 'newicons.pcx'));
 	}
