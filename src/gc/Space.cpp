@@ -239,7 +239,7 @@ const bool Space::Collect() {
 
 	size_t removed_count = 0;
 	size_t retained_count = 0;
-	size_t reachable_count = 0;
+	const size_t reachable_count = Object::GetReachableCount();
 	{
 		std::lock_guard guard3( m_accumulations_mutex ); // prevent collection during accumulation // TODO: improve
 
@@ -248,9 +248,9 @@ const bool Space::Collect() {
 
 			g_engine->GetGraphics()->NoRender( // tmp: prevent race conditions with render thread
 #if defined( GLSMAC_TESTING )
-				[ this, &removed_count, &retained_count, &removed_type_samples ]() {
+				[ this, &removed_count, &retained_count, reachable_count, &removed_type_samples ]() {
 #else
-				[ this, &removed_count, &retained_count ]() {
+				[ this, &removed_count, &retained_count, reachable_count ]() {
 #endif
 					for ( auto* const object : m_objects ) {
 						if ( !object->IsReachable() ) {
@@ -273,11 +273,10 @@ const bool Space::Collect() {
 						}
 					}
 					m_objects.resize( retained_count );
-					GC_LOG( "Kept " + std::to_string( m_reachable_objects_tmp.size() ) + " reachable objects, removed " + std::to_string( removed_count ) + " unreachable" );
+					GC_LOG( "Kept " + std::to_string( reachable_count ) + " reachable objects, removed " + std::to_string( removed_count ) + " unreachable" );
 				}
 			);
 
-			reachable_count = m_reachable_objects_tmp.size();
 			m_reachable_objects_tmp.clear();
 		}
 	}

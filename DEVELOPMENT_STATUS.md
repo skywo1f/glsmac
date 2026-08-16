@@ -1380,5 +1380,17 @@ The focused asset and native repeat-playback tests passed, and a sound-enabled
 Windows run initialized the real SDL audio device, loaded the ambience, and
 shut the mixer down cleanly.
 
+GC reachability now relies on the existing per-object generation mark for
+uniqueness instead of also inserting every live object into a temporary hash
+set twice per collection. A dedicated 20-turn, seven-faction, all-contact
+diplomacy stress scenario passed in 193.37 seconds versus the immediately prior
+199.65-second baseline; its largest observed collection fell from 4.48 seconds
+to 4.05 seconds while retaining the same roughly 200,000-250,000-object live
+set. All 136 native and script GSE tests passed, followed by ten startup,
+diplomacy, research, visibility, base-action, AI, seven-player, frontend, and
+save/load runtime checks in 82.25 seconds. Object deletion still dominates the
+longest collector pauses, so this is a measured reduction rather than a claim
+that turn-time stalls are solved.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

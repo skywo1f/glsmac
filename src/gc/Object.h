@@ -55,6 +55,7 @@ protected:
 private:
 	static void BeginReachabilityPass();
 	static void DrainReachabilityQueue( std::unordered_set< Object* >& reachable_objects );
+	static const size_t GetReachableCount();
 	uint64_t m_reachability_pass = 0;
 	mutable std::mutex m_persisted_objects_mutex;
 	std::unordered_map< Object*, size_t > m_persisted_objects = {};

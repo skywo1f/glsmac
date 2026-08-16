@@ -9,6 +9,7 @@ namespace gc {
 
 static std::atomic< uint64_t > s_next_reachability_pass = 1;
 thread_local static uint64_t s_reachability_pass = 0;
+thread_local static size_t s_reachable_count = 0;
 thread_local static std::vector< Object* > s_reachability_queue = {};
 
 Object::Object( gc::Space* const gc_space ) {
@@ -22,7 +23,6 @@ void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objec
 
 	ASSERT( IsReachable(), "object was visited without being queued" );
 	GC_DEBUG( "this", this );
-	reachable_objects.insert( this );
 
 	{
 		std::lock_guard guard( m_persisted_objects_mutex );
@@ -42,6 +42,7 @@ void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objec
 
 void Object::BeginReachabilityPass() {
 	s_reachability_queue.clear();
+	s_reachable_count = 0;
 	s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
 	if ( s_reachability_pass == 0 ) {
 		s_reachability_pass = s_next_reachability_pass.fetch_add( 1 );
@@ -50,7 +51,7 @@ void Object::BeginReachabilityPass() {
 
 const bool Object::QueueReachable(
 	Object* const object,
-	std::unordered_set< Object* >& reachable_objects
+	std::unordered_set< Object* >&
 ) {
 	ASSERT( object, "cannot queue null reachable object" );
 	ASSERT( s_reachability_pass != 0, "reachability pass not started" );
@@ -58,7 +59,7 @@ const bool Object::QueueReachable(
 		return false;
 	}
 	object->m_reachability_pass = s_reachability_pass;
-	reachable_objects.insert( object );
+	s_reachable_count++;
 	s_reachability_queue.push_back( object );
 	return true;
 }
@@ -69,6 +70,10 @@ void Object::DrainReachabilityQueue( std::unordered_set< Object* >& reachable_ob
 		s_reachability_queue.pop_back();
 		object->GetReachableObjects( reachable_objects );
 	}
+}
+
+const size_t Object::GetReachableCount() {
+	return s_reachable_count;
 }
 
 const bool Object::IsReachable() const {
