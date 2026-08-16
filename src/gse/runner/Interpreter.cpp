@@ -46,6 +46,7 @@
 #include "gse/ExecutionPointer.h"
 
 #include "gc/Space.h"
+#include "util/FinallyGuard.h"
 #if defined( DEBUG ) || defined ( FASTDEBUG )
 #include "engine/Engine.h"
 #include "config/Config.h"
@@ -203,18 +204,18 @@ gse::Value* const Interpreter::EvaluateConditional( context::Context* ctx, Execu
 				case ForCondition::FCT_IN_OF: {
 					const auto* condition = (ForConditionInOf*)c->condition;
 					const auto target = Deref( ctx, condition->m_si, ep, EvaluateExpression( ctx, ep, condition->expression ) );
-					ctx->ForkAndExecute(
-						m_gc_space, ctx, condition->m_si, ep, false, [ this, &gc_space, &target, &condition, &result, &ep, &c, &need_break, &need_clear, &returnflag ]( gse::context::ChildContext* const subctx ) {
-
+					const auto& run_loop = [ this, &gc_space, &target, &condition, &result, &ep, &c, &need_break, &need_clear, &returnflag ]( gse::context::Context* const loop_ctx ) {
 							switch ( target->type ) {
 								case gse::VT_ARRAY: {
 									const auto* arr = (value::Array*)target;
 									switch ( condition->for_inof_type ) {
 										case ForConditionInOf::FIC_IN: {
 											for ( size_t i = 0 ; i < arr->value.size() ; i++ ) {
-												subctx->CreateConst( condition->variable->name, VALUE( Int, , i ), condition->m_si, ep );
-												result = EvaluateScope( subctx, ep, c->body, returnflag );
-												subctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+												loop_ctx->CreateConst( condition->variable->name, VALUE( Int, , i ), condition->m_si, ep );
+												util::FinallyGuard cleanup( [ &loop_ctx, &condition, &ep ]() {
+													loop_ctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+												} );
+												result = EvaluateScope( loop_ctx, ep, c->body, returnflag );
 												CheckBreakCondition( result, &need_break, &need_clear, returnflag );
 												if ( need_break || ( returnflag && *returnflag ) ) {
 													if ( need_clear ) {
@@ -227,9 +228,11 @@ gse::Value* const Interpreter::EvaluateConditional( context::Context* ctx, Execu
 										}
 										case ForConditionInOf::FIC_OF: {
 											for ( const auto& v : arr->value ) {
-												subctx->CreateConst( condition->variable->name, v, condition->m_si, ep );
-												result = EvaluateScope( subctx, ep, c->body, returnflag );
-												subctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+												loop_ctx->CreateConst( condition->variable->name, v, condition->m_si, ep );
+												util::FinallyGuard cleanup( [ &loop_ctx, &condition, &ep ]() {
+													loop_ctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+												} );
+												result = EvaluateScope( loop_ctx, ep, c->body, returnflag );
 												CheckBreakCondition( result, &need_break, &need_clear, returnflag );
 												if ( need_break || ( returnflag && *returnflag ) ) {
 													if ( need_clear ) {
@@ -251,13 +254,15 @@ gse::Value* const Interpreter::EvaluateConditional( context::Context* ctx, Execu
 										THROW( "unexpected for in_of condition type: " + std::to_string( condition->for_inof_type ) );
 									}
 									for ( const auto& v : obj->value ) {
-										subctx->CreateConst(
+										loop_ctx->CreateConst(
 											condition->variable->name, condition->for_inof_type == ForConditionInOf::FIC_IN
 												? VALUE( String, , v.first )
 												: v.second, condition->m_si, ep
 										);
-										result = EvaluateScope( subctx, ep, c->body, returnflag );
-										subctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+										util::FinallyGuard cleanup( [ &loop_ctx, &condition, &ep ]() {
+											loop_ctx->DestroyVariable( condition->variable->name, condition->m_si, ep );
+										} );
+										result = EvaluateScope( loop_ctx, ep, c->body, returnflag );
 										if ( returnflag && *returnflag ) {
 											break;
 										}
@@ -267,8 +272,18 @@ gse::Value* const Interpreter::EvaluateConditional( context::Context* ctx, Execu
 								default:
 									THROW( "unexpected type for iteration (" + target->GetTypeString() + "): " + target->ToString() );
 							}
-						}
-					);
+					};
+					if ( !ctx->HasVariable( condition->variable->name ) ) {
+						run_loop( ctx );
+					}
+					else {
+						ctx->ForkAndExecute(
+							m_gc_space, ctx, condition->m_si, ep, false,
+							[ &run_loop ]( gse::context::ChildContext* const subctx ) {
+								run_loop( subctx );
+							}
+						);
+					}
 					break;
 				}
 				default:

@@ -38,7 +38,8 @@ const bool Context::HasVariable( const std::string& name ) {
 	}
 	const auto ref_it = m_ref_contexts.find( name );
 	if ( ref_it != m_ref_contexts.end() ) {
-		return true;
+		ASSERT( ref_it->second != this, "unexpected ref context recursion (was this context freed while in use?)" );
+		return ref_it->second->HasVariable( name );
 	}
 	return false;
 }
