@@ -1442,5 +1442,14 @@ The deterministic six-AI economy soak still required 318.19 seconds and spent
 149.23 seconds in 127 logged collections, so this removes avoidable event work
 without resolving the collector-dominated long-turn pauses.
 
+Collector timing now separates time spent waiting for an active script
+accumulation from reachability and destruction work. In the same deterministic
+six-AI economy soak, the previous aggregate 147.78-second "collection" figure
+contained 57.28 seconds of gameplay-lock wait, 5.77 seconds of reachability
+marking, and 84.62 seconds of sweeping 32.21 million temporary objects. The run
+completed in 321.25 seconds. This corrects the performance diagnostics but also
+confirms that both long script events and temporary-object destruction remain
+real blockers; it does not claim that either pause source is fixed.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

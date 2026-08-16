@@ -210,6 +210,7 @@ const bool Space::Collect() {
 	const auto collection_started = std::chrono::steady_clock::now();
 	std::lock_guard guard2( m_pending_accumulations_mutex );
 	std::lock_guard guard( m_collect_mutex ); // allow only one collection at same space at same time
+	const auto collection_locked = std::chrono::steady_clock::now();
 
 #if defined( GLSMAC_TESTING )
 	static const bool s_profile_gc = g_engine->GetConfig()->HasDebugFlag( config::Config::DF_PROFILE_GC );
@@ -236,10 +237,13 @@ const bool Space::Collect() {
 	}
 	Object::DrainReachabilityQueue( m_reachable_objects_tmp );
 	GC_DEBUG_UNLOCK();
+	const auto reachability_finished = std::chrono::steady_clock::now();
 
 	size_t removed_count = 0;
 	size_t retained_count = 0;
 	const size_t reachable_count = Object::GetReachableCount();
+	auto sweep_started = reachability_finished;
+	auto sweep_finished = reachability_finished;
 	{
 		std::lock_guard guard3( m_accumulations_mutex ); // prevent collection during accumulation // TODO: improve
 
@@ -248,10 +252,11 @@ const bool Space::Collect() {
 
 			g_engine->GetGraphics()->NoRender( // tmp: prevent race conditions with render thread
 #if defined( GLSMAC_TESTING )
-				[ this, &removed_count, &retained_count, reachable_count, &removed_type_samples ]() {
+				[ this, &removed_count, &retained_count, reachable_count, &removed_type_samples, &sweep_started, &sweep_finished ]() {
 #else
-				[ this, &removed_count, &retained_count, reachable_count ]() {
+				[ this, &removed_count, &retained_count, reachable_count, &sweep_started, &sweep_finished ]() {
 #endif
+					sweep_started = std::chrono::steady_clock::now();
 					for ( auto* const object : m_objects ) {
 						if ( !object->IsReachable() ) {
 #if defined( GLSMAC_TESTING )
@@ -273,6 +278,7 @@ const bool Space::Collect() {
 						}
 					}
 					m_objects.resize( retained_count );
+					sweep_finished = std::chrono::steady_clock::now();
 					GC_LOG( "Kept " + std::to_string( reachable_count ) + " reachable objects, removed " + std::to_string( removed_count ) + " unreachable" );
 				}
 			);
@@ -280,15 +286,24 @@ const bool Space::Collect() {
 			m_reachable_objects_tmp.clear();
 		}
 	}
-	const auto collection_elapsed = std::chrono::duration_cast< std::chrono::milliseconds >(
-		std::chrono::steady_clock::now() - collection_started
-	).count();
-	if ( collection_elapsed >= 50 ) {
+	const auto collection_finished = std::chrono::steady_clock::now();
+	const auto elapsed_ms = []( const auto& from, const auto& to ) {
+		return std::chrono::duration_cast< std::chrono::milliseconds >( to - from ).count();
+	};
+	const auto collection_wait = elapsed_ms( collection_started, collection_locked );
+	const auto collection_elapsed = elapsed_ms( collection_locked, collection_finished );
+	if ( collection_elapsed >= 50 || collection_wait >= 50 ) {
 		Log(
-			"Slow collection: " + std::to_string( collection_elapsed ) + " ms, " +
+			"Slow collection: " + std::to_string( collection_elapsed ) + " ms active after " +
+			std::to_string( collection_wait ) + " ms wait, " +
 			std::to_string( reachable_count ) + " reachable, " +
 			std::to_string( retained_count ) + " retained, " +
-			std::to_string( removed_count ) + " removed"
+			std::to_string( removed_count ) + " removed; phases: lock " +
+			std::to_string( elapsed_ms( collection_started, collection_locked ) ) + " ms, mark " +
+			std::to_string( elapsed_ms( collection_locked, reachability_finished ) ) + " ms, sweep-wait " +
+			std::to_string( elapsed_ms( reachability_finished, sweep_started ) ) + " ms, sweep " +
+			std::to_string( elapsed_ms( sweep_started, sweep_finished ) ) + " ms, finish " +
+			std::to_string( elapsed_ms( sweep_finished, collection_finished ) ) + " ms"
 		);
 	}
 	m_has_collected = true;
