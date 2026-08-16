@@ -2361,7 +2361,7 @@ void Game::Initialize(
 							m_map_control.left_down_time_ms = util::Time::Now();
 							m_map_control.left_down_position = { c.x, c.y };
 							const auto* selected_unit = m_um->GetSelectedUnit();
-							m_map_control.left_down_unit_id = selected_unit
+							m_map_control.left_down_unit_id = selected_unit && selected_unit->IsActive()
 								? selected_unit->GetId()
 								: 0;
 							break;
@@ -2399,14 +2399,17 @@ void Game::Initialize(
 						m_map_control.left_down_time_ms > 0
 					) {
 						static constexpr uint64_t GOTO_HOLD_MS = 350;
-						static constexpr ssize_t GOTO_DRAG_TOLERANCE = 8;
+						static constexpr ssize_t GOTO_DRAG_THRESHOLD = 8;
 						const auto elapsed = util::Time::Now() - m_map_control.left_down_time_ms;
 						const auto delta_x = std::abs( c.x - m_map_control.left_down_position.x );
 						const auto delta_y = std::abs( c.y - m_map_control.left_down_position.y );
+						// SMAC's map gesture is press-and-drag; retain long-press for stationary destinations.
+						const bool was_held = elapsed >= GOTO_HOLD_MS;
+						const bool was_dragged =
+							delta_x > GOTO_DRAG_THRESHOLD || delta_y > GOTO_DRAG_THRESHOLD;
 						const bool is_goto =
-							elapsed >= GOTO_HOLD_MS &&
-							delta_x <= GOTO_DRAG_TOLERANCE && delta_y <= GOTO_DRAG_TOLERANCE &&
-							m_map_control.left_down_unit_id > 0;
+							m_map_control.left_down_unit_id > 0 &&
+							( was_held || was_dragged );
 						if ( is_goto ) {
 							m_move_target_unit_id = m_map_control.left_down_unit_id;
 							SelectTileAtPoint( backend::TQP_MOVE_TARGET, c.x, c.y );
