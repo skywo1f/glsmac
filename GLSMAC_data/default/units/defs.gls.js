@@ -113,7 +113,7 @@ const conventional_unit = (
 			operational_range: 0,
 			is_missile: false,
 			cargo_capacity: 0,
-			render: sprite_render.get(chassis, armor, weapon),
+			render: sprite_render.get(chassis, armor, weapon, 'FissionPlant'),
 		},
 	};
 };
@@ -157,13 +157,13 @@ const special_unit = (
 			operational_range: operational_range,
 			is_missile: false,
 			cargo_capacity: cargo_capacity,
-			render: sprite_render.get(chassis, armor, weapon),
+			render: sprite_render.get(chassis, armor, weapon, 'FissionPlant'),
 		},
 	};
 };
 
 const predefined_units = [
-	// Self-contained classic CVRs are used where available; layered designs retain role icons.
+	// Classic CVRs are used for self-contained units and verified layered vehicle families.
 	conventional_unit('ScoutPatrol', 'Scout Patrol', 10, 1, 1, false, false, '', 1, 'Infantry', 'HandWeapons', 'NoArmor'),
 	conventional_unit('ColonyPod', 'Colony Pod', 30, 0, 1, true, false, '', 1, 'Infantry', 'ColonyModule', 'NoArmor'),
 	conventional_unit('Former', 'Former', 20, 0, 1, false, true, 'CentauriEcology', 1, 'Infantry', 'TerraformingUnit', 'NoArmor'),

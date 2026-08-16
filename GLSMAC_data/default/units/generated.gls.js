@@ -212,7 +212,7 @@ const make_definition = (
 			operational_range: chassis.range,
 			is_missile: chassis.missile,
 			cargo_capacity: cargo_capacity,
-			render: sprite_render.get(chassis.id, armor.id, weapon.id),
+			render: sprite_render.get(chassis.id, armor.id, weapon.id, reactor.id),
 		},
 	};
 };

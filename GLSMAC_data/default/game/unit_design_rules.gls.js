@@ -348,7 +348,8 @@ const get_definition = (player, selection, name) => {
 			render: sprite_render.get(
 				components.chassis.id,
 				components.armor.id,
-				components.weapon.id
+				components.weapon.id,
+				components.reactor.id
 			),
 		},
 	};

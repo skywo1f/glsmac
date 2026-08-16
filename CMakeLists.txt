@@ -210,6 +210,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( CVR_COMPONENT_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/cvr-component-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${CVR_COMPONENT_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME cvr_components_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${CVR_COMPONENT_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_cvr_components_runtime_smoke"
+			--quickstart
+			--quickstart-ai "1"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( cvr_components_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "CVR_COMPONENT_RUNTIME_FAIL;CVR_RENDER_FALLBACK;Event rejected"
+			PASS_REGULAR_EXPRESSION "CVR_COMPONENT_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 180
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( DIPLOMACY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/diplomacy-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${DIPLOMACY_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME diplomacy_runtime_smoke COMMAND

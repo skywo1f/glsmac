@@ -52,17 +52,59 @@ test.assert(
 );
 const recon = get_unit('ReconRover');
 const probe = get_unit('ProbeTeam');
-test.assert(recon.data.render.x == 518 && recon.data.render.y == 82);
-test.assert(probe.data.render.x == 518 && probe.data.render.y == 158);
+test.assert(
+	recon.data.render.type == 'cvr' &&
+	recon.data.render.files == [
+		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Vw00.cvr'
+	]
+);
+test.assert(
+	probe.data.render.type == 'cvr' &&
+	probe.data.render.files == [
+		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Ptmod.cvr'
+	] && probe.data.render.fallback.y == 158
+);
 
-const get_expected_cvr_file = (data) => {
-	if (data.chassis != 'Infantry' || data.armor != 'NoArmor') {
-		return '';
+const get_expected_cvr_files = (data) => {
+	if (data.chassis == 'Infantry' && data.armor == 'NoArmor') {
+		if (data.weapon == 'HandWeapons') { return ['VI.cvr']; }
+		if (data.weapon == 'ColonyModule') { return ['Drop.cvr']; }
+		if (data.weapon == 'TerraformingUnit') { return ['VT.cvr']; }
 	}
-	if (data.weapon == 'HandWeapons') { return 'VI.cvr'; }
-	if (data.weapon == 'ColonyModule') { return 'Drop.cvr'; }
-	if (data.weapon == 'TerraformingUnit') { return 'VT.cvr'; }
-	return '';
+	const chassis_files = {
+		Speeder: ['VGMC.cvr', 'VSP.cvr'],
+		Foil: ['VFL.cvr'],
+	};
+	const weapon_files = {
+		HandWeapons: 'Vw00.cvr', Laser: 'VW01.cvr',
+		ParticleImpactor: 'VW02.cvr', GatlingLaser: 'Vw03.cvr',
+		MissileLauncher: 'VW04.cvr', ChaosGun: 'VW05.cvr',
+		FusionLaser: 'VW06.cvr', TachyonBolt: 'VW07.cvr',
+		PlasmaShard: 'Vw08.cvr', QuantumLaser: 'Vw09.cvr',
+		GravitonGun: 'VW10.cvr', SingularityLaser: 'VW11.cvr',
+		ColonyModule: 'Droplet.cvr', TerraformingUnit: 'Vwntu.cvr',
+		TroopTransport: 'VWNTT.cvr', SupplyTransport: 'VWNST.cvr',
+		ProbeTeam: 'Ptmod.cvr', AlienArtifact: 'VWNAA.cvr',
+	};
+	const reactor_suffixes = {
+		FissionPlant: '00', FusionReactor: '01',
+		QuantumChamber: '02', SingularityEngine: '03',
+	};
+	if (
+		!#is_defined(chassis_files[data.chassis]) ||
+		!#is_defined(weapon_files[data.weapon]) ||
+		!#is_defined(reactor_suffixes[data.reactor])
+	) {
+		return [];
+	}
+	let result = [];
+	for (file of chassis_files[data.chassis]) { result :+file; }
+	const suffix = reactor_suffixes[data.reactor];
+	result :+('vr' + suffix + '.cvr');
+	result :+('VRCP' + suffix + '.cvr');
+	if (data.armor != 'NoArmor') { result :+'VA01.cvr'; }
+	result :+weapon_files[data.weapon];
+	return result;
 };
 
 const unity_rover = get_unit('UnityRover');
@@ -135,14 +177,14 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
-	const expected_cvr_file = get_expected_cvr_file(data);
+	const expected_cvr_files = get_expected_cvr_files(data);
 	if (data.render.type == 'cvr') {
 		test.assert(
-			expected_cvr_file != '' && data.render.files == [expected_cvr_file] &&
+			#sizeof(expected_cvr_files) > 0 && data.render.files == expected_cvr_files &&
 			data.render.fallback.file == 'newicons.pcx'
 		);
 	} else {
-		test.assert(expected_cvr_file == '');
+		test.assert(#sizeof(expected_cvr_files) == 0);
 		test.assert(data.render.type == 'sprite');
 		test.assert(data.render.file == (data.is_native ? 'units.pcx' : 'newicons.pcx'));
 	}
