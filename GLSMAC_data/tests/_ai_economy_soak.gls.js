@@ -299,6 +299,26 @@
 
 	glsmac.on('configure_game', (e) => {
 		game = e.game;
+		const settings = game.get_settings();
+		settings.global.rules.random_events = false;
+		game.set('f_ui_should_auto_open_diplomacy', () => { return false; });
+		game.register_event('ai_economy_soak_peace', {
+			validate: (e) => {
+				if (e.caller != 0) {
+					return 'Only the local commander may prepare the economy soak';
+				}
+			},
+			apply: (e) => {
+				const players = e.game.get_players();
+				for (let i = 0; i < #sizeof(players); i++) {
+					for (let j = i + 1; j < #sizeof(players); j++) {
+						players[i].set_diplomatic_relation(players[j], 'treaty');
+						players[j].set_diplomatic_relation(players[i], 'treaty');
+					}
+				}
+			},
+			rollback: (e) => {},
+		});
 		game.set('f_ai_profile', (sample) => {
 			#print(
 				'AI_ECONOMY_PROFILE: turn=' + #to_string(current_turn) +
@@ -333,9 +353,37 @@
 		});
 
 		game.on('start_ui', (e) => {
-			ui_started = true;
-			#async(100, monitor_turn_progress);
-			#async(250, complete_human_turn);
+			if (
+				settings.global.map.native_lifeforms != 0.0 ||
+				settings.global.rules.random_events
+			) {
+				fail('could not configure deterministic economy conditions');
+				return;
+			}
+			game.event('ai_economy_soak_peace', {});
+			let peace_wait_ticks = 0;
+			#async(50, () => {
+				const players = game.get_players();
+				for (let i = 0; i < #sizeof(players); i++) {
+					for (let j = i + 1; j < #sizeof(players); j++) {
+						if (
+							players[i].get_diplomatic_relation(players[j]) != 'treaty' ||
+							players[j].get_diplomatic_relation(players[i]) != 'treaty'
+						) {
+							peace_wait_ticks++;
+							if (peace_wait_ticks >= 100) {
+								fail('could not establish peaceful economy conditions');
+								return false;
+							}
+							return true;
+						}
+					}
+				}
+				ui_started = true;
+				#async(100, monitor_turn_progress);
+				#async(250, complete_human_turn);
+				return false;
+			});
 		});
 
 		game.on('turn', (e) => {

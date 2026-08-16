@@ -770,6 +770,7 @@ IF ( BUILD_TESTING )
 			--quickstart
 			--quickstart-ai "6"
 			--quickstart-mapsize "88x44"
+			--quickstart-map-lifeforms "0"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"
 			--nosound

@@ -130,6 +130,38 @@ test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy])
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [near_enemy, second_enemy, far_enemy]) == 3);
 test.assert(combat.get_required_garrison(tm, home_base, player_id, [friendly, colony, far_enemy]) == 1);
+let diplomatic_relation = 'treaty';
+const diplomatic_game = {
+	get_player: (id) => {
+		return {
+			id: id,
+			get_diplomatic_relation: (other) => { return diplomatic_relation; },
+		};
+	},
+};
+test.assert(combat.get_required_garrison(
+	tm,
+	home_base,
+	player_id,
+	[near_enemy],
+	diplomatic_game
+) == 1);
+diplomatic_relation = 'pact';
+test.assert(combat.get_required_garrison(
+	tm,
+	home_base,
+	player_id,
+	[near_enemy],
+	diplomatic_game
+) == 1);
+diplomatic_relation = 'vendetta';
+test.assert(combat.get_required_garrison(
+	tm,
+	home_base,
+	player_id,
+	[near_enemy],
+	diplomatic_game
+) == 2);
 test.assert(combat.get_garrison_count(home_base, player_id) == 0);
 
 const immovable_threat = make_combat_unit(other_player_id, near_enemy_tile, 3);

@@ -68,12 +68,22 @@ const can_threaten_tile = (unit, tile, definition) => {
 	return combat_rules.is_artillery(def) || !is_triad_blocked(unit, tile);
 };
 
+const is_protected_partner = (game, player_id, other_player_id) => {
+	if (!#is_defined(game)) {
+		return false;
+	}
+	const player = game.get_player(player_id);
+	const relation = player.get_diplomatic_relation(game.get_player(other_player_id));
+	return relation == 'treaty' || relation == 'pact';
+};
+
 const get_required_garrison = (tm, base, player_id, units, game) => {
 	let result = 1;
 	const tile = base.get_tile();
 	for (unit of units) {
 		if (
 			unit.owner != player_id &&
+			!is_protected_partner(game, player_id, unit.owner) &&
 			tm.get_distance(tile, unit.get_tile()) <= THREAT_DISTANCE &&
 			can_threaten_tile(unit, tile) &&
 			(!#is_defined(game) || visibility_rules.is_detected(game, player_id, unit))
