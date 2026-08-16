@@ -253,13 +253,23 @@
 						return false;
 					}
 					p.root.trigger('keydown', {code: 'A', modifiers: {}});
-					p.root.trigger('keydown', {code: 'ENTER', modifiers: {}});
+					p.modules.bottom_bar.pp.sections.objects_list.frame.trigger(
+						'keydown',
+						{code: 'ENTER', modifiers: {}}
+					);
 					phase = 'turn_confirmation';
 					phase_ticks = 0;
 					return true;
 				}
 
 				if (phase == 'turn_confirmation') {
+					if (
+						p.modules.popup.popup != null &&
+						p.modules.popup.popup.id != 'turn_confirmation'
+					) {
+						fail('Enter opened ' + p.modules.popup.popup.id + ' instead of end-turn confirmation');
+						return false;
+					}
 					if (
 						p.modules.popup.popup == null ||
 						p.modules.popup.popup.id != 'turn_confirmation'

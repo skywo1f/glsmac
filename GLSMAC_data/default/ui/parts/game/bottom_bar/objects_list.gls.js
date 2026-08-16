@@ -277,9 +277,6 @@ return {
 			}
 		});
 
-		this.frame.listen(p.game, 'turn_status', (e) => {
-			this.is_turn_active = e.status == 'active';
-		});
 		this.frame.listen(p.game, 'map_visibility_updated', (e) => {
 			if (this.selected_tile != null) {
 				this.update_tile(this.selected_tile);
@@ -292,26 +289,12 @@ return {
 				(#is_defined(e.modifiers.shift) && e.modifiers.shift) ||
 				(#is_defined(e.modifiers.alt) && e.modifiers.alt);
 			if (
-				!this.p.modules.popup.is_shown() && // TODO: make universal key overrides in popups
-				this.is_turn_active && // TODO: override by turn complete button
+				!this.p.modules.popup.is_shown() &&
 				!has_modifiers &&
-				e.code == 'ENTER'
+				e.code == 'ENTER' &&
+				#typeof(this.p.request_turn_action) == 'Callable'
 			) {
-				// open base screen if base is present
-				for (base of this.bases) {
-					this.set_active_item(null);
-					this.p.game.select_base(base.object);
-					return true;
-				}
-				if (this.selected_object == null) {
-					// select first unit if nothing is selected
-					for (unit of this.units) {
-						this.set_active_item(null);
-						this.p.game.select_unit(unit.object);
-						return true;
-					}
-				}
-				return false;
+				return this.p.request_turn_action();
 			}
 			return false;
 		});
