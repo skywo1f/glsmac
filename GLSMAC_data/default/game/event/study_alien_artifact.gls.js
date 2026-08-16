@@ -1,6 +1,7 @@
 const artifact_rules = #include('../artifact_rules');
 const technology_acquisition = #include('../technology_acquisition');
 const snapshots = #include('../entity_snapshots');
+const messages = #include('../message_rules');
 const snapshot_unit = snapshots.snapshot_unit;
 
 const restore_unit = (game, snapshot) => {
@@ -39,8 +40,11 @@ return {
 		const backup = snapshot_unit(unit);
 		e.game.um.despawn_unit(unit);
 		for (name of acquired.completed_names) {
-			e.game.message(
-				base.get_owner().name + ' has decoded ' + name +
+			const owner = base.get_owner();
+			messages.to_contacts(
+				e.game,
+				owner,
+				owner.name + ' has decoded ' + name +
 					' from an Alien Artifact.'
 			);
 		}

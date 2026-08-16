@@ -8,6 +8,7 @@ const visibility_rules = #include('../visibility_rules');
 const native_capture = #include('../native_capture');
 const entity_snapshots = #include('../entity_snapshots');
 const probe_interception = #include('../probe_interception');
+const message_rules = #include('../message_rules');
 const snapshot_unit = entity_snapshots.snapshot_unit;
 
 const is_un_charter_active = (game) => {
@@ -488,7 +489,9 @@ return {
 				player: attacker_owner,
 				unit_ids: applied.native_capture.unit_ids,
 			});
-			e.game.message(
+			message_rules.to_player(
+				e.game,
+				attacker_owner,
 				attacker_owner.name + ' captured ' + captured_name +
 					' through its affinity with Planet.'
 			);
@@ -499,7 +502,7 @@ return {
 			defender.native_capture_attempted = true;
 		}
 		if (capture != null && capture.attempted) {
-			e.game.message(capture.reason == 'agitated'
+			message_rules.to_player(e.game, attacker_owner, capture.reason == 'agitated'
 				? 'The native life is too agitated by ecological damage to be captured.'
 				: 'The attempt to capture the native life failed.');
 		}
@@ -593,7 +596,9 @@ return {
 							[{id: base.id}],
 							defender.id
 						);
-					e.game.message(
+					message_rules.to_players(
+						e.game,
+						[attacker_owner, defender_owner],
 						applied.nerve_gas.base_name + ' was destroyed by nerve gas.'
 					);
 				} else {
@@ -605,7 +610,9 @@ return {
 					);
 					refresh_base_psych(e.game, base);
 					e.game.trigger('update_base', {base: base});
-					e.game.message(
+					message_rules.to_players(
+						e.game,
+						[attacker_owner, defender_owner],
 						base.name + ' lost ' + #to_string(population_loss) +
 						' population to nerve gas.'
 					);

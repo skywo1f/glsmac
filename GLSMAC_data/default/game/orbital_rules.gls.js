@@ -1,3 +1,5 @@
+const messages = #include('./message_rules');
+
 const is_orbital = (definition) => {
 	return #is_defined(definition) && (
 		(
@@ -206,12 +208,12 @@ const apply_launch = (game, base, definition) => {
 	const player = base.get_owner();
 	const count = player.get_orbital_facility_count(definition.id);
 	player.set_orbital_facility_count(definition.id, count + 1);
-	if (#is_defined(game.message)) {
-		game.message(
-			player.name + ' launched ' + definition.name + ' (' +
-			#to_string(count + 1) + ' in orbit).'
-		);
-	}
+	messages.to_player(
+		game,
+		player,
+		player.name + ' launched ' + definition.name + ' (' +
+		#to_string(count + 1) + ' in orbit).'
+	);
 	return {player: player, id: definition.id, count: count};
 };
 

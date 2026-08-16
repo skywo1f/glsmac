@@ -1,4 +1,5 @@
 const entity_snapshots = #include('../entity_snapshots');
+const messages = #include('../message_rules');
 const MAX_SEA_LEVEL_CHANGE = 1000;
 const PRESSURE_DOME = 'PressureDome';
 
@@ -233,18 +234,38 @@ return {
 		);
 
 		for (base of applied.bases) {
+			const owner = e.game.get_player(base.owner_id);
 			if (base.destroyed) {
-				e.game.message(base.name + ' was submerged and lost.');
+				messages.to_player(
+					e.game,
+					owner,
+					base.name + ' was submerged and lost.'
+				);
 			} else {
-				e.game.message(
+				messages.to_player(
+					e.game,
+					owner,
 					base.name + ' suffered ' + #to_string(base.casualties) +
 					' population casualties before an emergency Pressure Dome was erected.'
 				);
 			}
 		}
-		if (#sizeof(applied.units) > 0) {
-			e.game.message(
-				#to_string(#sizeof(applied.units)) + ' units were lost to changing coastlines.'
+		let lost_unit_counts = {};
+		for (unit of applied.units) {
+			const key = player_key(unit.owner);
+			const previous_loss = lost_unit_counts[key];
+			lost_unit_counts[key] = {
+				owner_id: unit.owner,
+				count: #is_defined(previous_loss) ? previous_loss.count + 1 : 1,
+			};
+		}
+		for (key in lost_unit_counts) {
+			const loss = lost_unit_counts[key];
+			messages.to_player(
+				e.game,
+				e.game.get_player(loss.owner_id),
+				#to_string(loss.count) + (loss.count == 1 ? ' unit was' : ' units were') +
+					' lost to changing coastlines.'
 			);
 		}
 		if (#typeof(e.game.is_master) != 'Callable' || e.game.is_master()) {

@@ -10,6 +10,7 @@ const values = {};
 let players = [];
 let triggers = [];
 let messages = [];
+let global_messages = [];
 const game = {
 	on: (name, callback) => { callbacks[name] = callback; },
 	set: (name, value) => { values[name] = value; },
@@ -18,7 +19,10 @@ const game = {
 	is_master: () => { return true; },
 	is_turn_complete: (player_id) => { return false; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
-	message: (text) => { messages :+text; },
+	message: (text) => { global_messages :+text; },
+};
+values.f_message_to_players = (text, targets) => {
+	messages :+{text: text, targets: targets};
 };
 
 const make_player = (id, name, type) => {
@@ -230,6 +234,9 @@ test.assert(victor.has_explored(hidden_tile));
 test.assert(defeated.has_explored(victor_tile));
 test.assert(defeated.has_explored(hidden_tile));
 test.assert(defeated.get_diplomatic_loan(victor) == null);
+test.assert(messages[#sizeof(messages) - 1].targets[0].id == victor.id);
+test.assert(messages[#sizeof(messages) - 1].targets[1].id == defeated.id);
+test.assert(global_messages == []);
 test.assert(values.f_diplomacy_is_submission_pair(victor, defeated));
 test.assert(values.f_diplomacy_get_submission_master(defeated) == victor);
 test.assert(#sizeof(messages) == 1);

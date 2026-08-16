@@ -1300,6 +1300,12 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			return id == attacker_player.id ? attacker_player : defender_player;
 		},
 		get: (name) => {
+			if (name == 'f_message_to_player') {
+				return (player, text) => {};
+			}
+			if (name == 'f_message_to_players') {
+				return (text, players) => {};
+			}
 			if (name == 'f_council_is_un_charter_repealed') {
 				return () => { return false; };
 			}

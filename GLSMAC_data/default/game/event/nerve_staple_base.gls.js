@@ -1,6 +1,7 @@
 const TURNS_KEY = 'nerve_stapling_turns';
 const ATTEMPTS_KEY = 'nerve_stapling_count';
 const MAX_STATE_VALUE = 1000000;
+const message_rules = #include('../message_rules');
 
 const snapshot_base_value = (base, key) => {
 	return {
@@ -107,11 +108,15 @@ return {
 				turns + e.game.get('f_nerve_stapling_turns_per_success')()
 			));
 			refresh_psych(e.game, base);
-			e.game.message(
+			message_rules.to_player(
+				e.game,
+				actor,
 				base.name + ' has been nerve stapled for 10 years.'
 			);
 		} else {
-			e.game.message(
+			message_rules.to_player(
+				e.game,
+				actor,
 				'Nerve stapling failed to pacify the population of ' + base.name + '.'
 			);
 		}

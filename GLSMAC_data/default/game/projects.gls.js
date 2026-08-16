@@ -1,6 +1,7 @@
 const project_acquisition = #include('./project_acquisition');
 const technology_acquisition = #include('./technology_acquisition');
 const technology_effects = #include('./technology_effects');
+const message_rules = #include('./message_rules');
 
 const empty_effects = () => {
 	return {
@@ -250,7 +251,9 @@ return (game) => {
 			return #undefined;
 		}
 		for (name of acquired.completed_names) {
-			game.message(
+			message_rules.to_contacts(
+				game,
+				player,
 				player.name + ' has acquired ' + name +
 					' through The Universal Translator.'
 			);
@@ -300,7 +303,9 @@ return (game) => {
 				for (id of grant.technologies) {
 					technologies :+id;
 					const definition = game.get('f_technology_get_definition')(id);
-					game.message(
+					message_rules.to_contacts(
+						game,
+						player,
 						player.name + ' has acquired ' + definition.name +
 						' through The Planetary Datalinks.'
 					);

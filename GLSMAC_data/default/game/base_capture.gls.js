@@ -2,6 +2,7 @@ const project_acquisition = #include('./project_acquisition');
 const economic_victory = #include('./economic_victory_rules');
 const game_rules = #include('./game_rules');
 const technology_effects = #include('./technology_effects');
+const messages = #include('./message_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
 const HEADQUARTERS_EVACUATION_COST = 1000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
@@ -89,7 +90,9 @@ const apply_spoils_of_war = (game, winner, loser) => {
 	const winner_name = #typeof(winner.get_faction) == 'Callable'
 		? winner.get_faction().name
 		: winner.name;
-	game.message(
+	messages.to_contacts(
+		game,
+		winner,
 		winner_name + ' captured research data for ' +
 		(definition == null ? technology : definition.name) + '.'
 	);
@@ -328,7 +331,9 @@ const capture_base = (game, base, new_owner) => {
 	base.set_owner(new_owner);
 	const spoils_of_war = apply_spoils_of_war(game, new_owner, old_owner);
 	if (headquarters_evacuation != null) {
-		game.message(
+		messages.to_players(
+			game,
+			[old_owner, new_owner],
 			old_owner.get_faction().name + ' has safely evacuated its Headquarters to ' +
 			headquarters_evacuation.destination.name + ' for ' +
 			#to_string(headquarters_evacuation.cost) + ' energy credits.'

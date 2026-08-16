@@ -40,11 +40,17 @@ const base = {
 	get_workable_tiles: () => { return [tile]; },
 };
 let messages = [];
+let scoped_messages = [];
 let triggers = [];
 const event = {
 	caller: 0,
 	data: {base: base, tile: tile, damage: 17},
 	game: {
+		get: (name) => {
+			return name == 'f_message_to_player'
+				? (player, text) => { scoped_messages :+{player: player, text: text}; }
+				: #undefined;
+		},
 		trigger: (name, data) => { triggers :+name; },
 		message: (message) => { messages :+message; },
 	},
@@ -73,7 +79,8 @@ for (id of ['forest', 'farm', 'soil_enricher', 'mine', 'solar', 'condenser', 'mi
 test.assert(terraforming.road);
 test.assert(terraforming.mag_tube);
 test.assert(ecological_damage_events == 3);
-test.assert(#sizeof(messages) == 1);
+test.assert(#sizeof(messages) == 0);
+test.assert(#sizeof(scoped_messages) == 1 && scoped_messages[0].player == owner);
 test.assert(#sizeof(triggers) == 2);
 
 fungal_bloom.rollback(event);

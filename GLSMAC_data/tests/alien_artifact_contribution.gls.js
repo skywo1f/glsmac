@@ -52,10 +52,16 @@ let despawned = null;
 let spawned_data = null;
 let restored_unit = null;
 let messages = [];
+let global_messages = [];
 const game = {
 	is_turn_complete: (id) => { return turn_complete; },
 	get_player: (id) => { return player; },
-	message: (value) => { messages :+value; },
+	get: (name) => {
+		return name == 'f_message_to_player'
+			? (target, value) => { test.assert(target == player); messages :+value; }
+			: #undefined;
+	},
+	message: (value) => { global_messages :+value; },
 	um: {
 		despawn_unit: (unit) => { despawned = unit; },
 		spawn_unit: (data) => {
@@ -81,6 +87,7 @@ test.assert(despawned == artifact);
 test.assert(messages == [
 	'The University has applied an Alien Artifact to The Weather Paradigm.',
 ]);
+test.assert(global_messages == []);
 
 contribute.rollback(event);
 test.assert(minerals == 17);

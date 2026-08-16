@@ -178,10 +178,17 @@ test.assert(rules.get_damage(singularity) == 0.26);
 		cargo_tile = tile;
 	};
 	let active_carrier = carrier;
+	let scoped_messages = 0;
+	let global_messages = 0;
 	const event = {
 		caller: owner.id,
 		game: {
 			get_player: (id) => { return owner; },
+			get: (name) => {
+				return name == 'f_message_to_player'
+					? (target, text) => { test.assert(target == owner); scoped_messages++; }
+					: #undefined;
+			},
 			get_um: () => {
 				return {
 					has_unit: (id) => { return id == active_carrier.id || id == cargo.id; },
@@ -190,7 +197,7 @@ test.assert(rules.get_damage(singularity) == 0.26);
 			},
 			get_tm: () => { return {get_tile: (x, y) => { return source; }}; },
 			trigger: (name, data) => {},
-			message: (text) => {},
+			message: (text) => { global_messages++; },
 			is_master: () => { return false; },
 		},
 		data: {unit: carrier, destination: destination},
@@ -202,6 +209,7 @@ test.assert(rules.get_damage(singularity) == 0.26);
 	test.assert(!#is_defined(event.resolved.units[0].id));
 	test.assert(!#is_defined(event.resolved.units[1].id));
 	event.applied = event_rules.apply(event);
+	test.assert(scoped_messages == 1 && global_messages == 0);
 	test.assert(carrier_tile == destination && cargo_tile == destination);
 	test.assert(active_carrier.health > 0.799 && active_carrier.health < 0.801);
 	test.assert(cargo.health > 0.639 && cargo.health < 0.641);
@@ -229,6 +237,11 @@ test.assert(rules.get_damage(singularity) == 0.26);
 		caller: owner.id,
 		game: {
 			get_player: (id) => { return owner; },
+			get: (name) => {
+				return name == 'f_message_to_player'
+					? (target, text) => { test.assert(target == owner); }
+					: #undefined;
+			},
 			get_um: () => { return {has_unit: (id) => { return true; }}; },
 			trigger: (name, data) => {},
 			message: (text) => {},

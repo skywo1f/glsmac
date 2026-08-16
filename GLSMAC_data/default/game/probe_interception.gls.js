@@ -1,3 +1,5 @@
+const messages = #include('./message_rules');
+
 const get_base_manager = (game) => {
 	return #typeof(game.get_bm) == 'Callable' ? game.get_bm() : game.bm;
 };
@@ -154,7 +156,9 @@ const apply = (game, interceptor, resolved) => {
 		unit: probe,
 		base: return_base,
 	});
-	game.message(
+	messages.to_players(
+		game,
+		[interceptor_owner, probe_owner],
 		interceptor_owner.name + ' interrogated and repatriated a ' +
 		probe_owner.name + ' Probe Team to ' + return_base.name + '.'
 	);

@@ -60,6 +60,8 @@ let space_elevator = false;
 let turn_complete = false;
 let game_over = false;
 let forced_allies = false;
+let scoped_message = '';
+let global_message = '';
 const make_base = (id, owner, size, aerospace) => {
 	return {
 		id: id,
@@ -79,6 +81,9 @@ const game = {
 	is_turn_complete: (id) => { return id == player.id && turn_complete; },
 	is_game_over: () => { return game_over; },
 	get: (key) => {
+		if (key == 'f_message_to_player') {
+			return (target, text) => { test.assert(target == player); scoped_message = text; };
+		}
 		if (key == 'f_project_has') {
 			return (candidate, id) => {
 				return candidate == player && id == 'TheSpaceElevator' && space_elevator;
@@ -95,6 +100,7 @@ const game = {
 			get_facility_defs: () => { return definitions; },
 		};
 	},
+	message: (text) => { global_message = text; },
 };
 
 test.assert(rules.is_orbital(sky));
@@ -162,5 +168,7 @@ test.assert(counts.SkyHydroponicsLab == 1);
 test.assert(applied.player == player);
 test.assert(applied.id == 'SkyHydroponicsLab');
 test.assert(applied.count == 0);
+test.assert(scoped_message == 'University launched Sky Hydroponics Lab (1 in orbit).');
+test.assert(global_message == '');
 rules.rollback_launch(applied);
 test.assert(!#is_defined(counts.SkyHydroponicsLab));

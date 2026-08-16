@@ -1,4 +1,5 @@
 const MAX_ENERGY_CREDITS = 1000000000;
+const message_rules = #include('../message_rules');
 
 return {
 
@@ -49,7 +50,11 @@ return {
 		}
 		if (balance == 0) {
 			borrower.clear_diplomatic_loan(lender);
-			e.game.message(borrower.name + ' completed its loan payments to ' + lender.name + '.');
+			message_rules.to_players(
+				e.game,
+				[borrower, lender],
+				borrower.name + ' completed its loan payments to ' + lender.name + '.'
+			);
 		} else {
 			borrower.set_diplomatic_loan(lender, {
 				balance: balance,

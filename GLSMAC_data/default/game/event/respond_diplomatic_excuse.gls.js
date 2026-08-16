@@ -1,3 +1,5 @@
+const message_rules = #include('../message_rules');
+
 return {
 
 	validate: (e) => {
@@ -53,13 +55,18 @@ return {
 				target: target,
 				relation: relation,
 			});
-			e.game.message(previous_relation == 'pact' || previous_relation == 'treaty'
+			message_rules.to_players(e.game, [player, target],
+				previous_relation == 'pact' || previous_relation == 'treaty'
 				? player.name + ' used an exposed framing attempt to renounce the ' +
 					previous_relation + ' with ' + target.name + '.'
 				: player.name + ' used an exposed framing attempt to declare vendetta on ' +
 					target.name + '.');
 		} else {
-			e.game.message(player.name + ' overlooked ' + target.name + '\'s framing attempt.');
+			message_rules.to_players(
+				e.game,
+				[player, target],
+				player.name + ' overlooked ' + target.name + '\'s framing attempt.'
+			);
 		}
 		e.game.trigger('diplomatic_excuse_updated', {
 			player: player,

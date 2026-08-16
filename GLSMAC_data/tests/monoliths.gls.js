@@ -1,13 +1,23 @@
 const monoliths = #include('../default/game/monoliths');
 
 let messages = [];
-const game = {message: (text) => { messages :+text; }};
+let global_messages = [];
+const owner = {id: 1};
+const game = {
+	get: (name) => {
+		return name == 'f_message_to_player'
+			? (player, text) => { test.assert(player == owner); messages :+text; }
+			: #undefined;
+	},
+	message: (text) => { global_messages :+text; },
+};
 
 let military = #undefined;
 military = {
 	health: 0.4,
 	morale: 2,
 	monolith_upgraded: false,
+	get_owner: () => { return owner; },
 	get_def: () => { return {name: 'Scout Patrol', offense: 1}; },
 };
 const first = monoliths.apply(game, military);
@@ -33,6 +43,7 @@ const civilian = {
 	health: 0.5,
 	morale: 1,
 	monolith_upgraded: false,
+	get_owner: () => { return owner; },
 	get_def: () => { return {name: 'Colony Pod', offense: 0}; },
 };
 const civilian_visit = monoliths.apply(game, civilian);
@@ -44,9 +55,11 @@ const native = {
 	health: 1.0,
 	morale: 4,
 	monolith_upgraded: false,
+	get_owner: () => { return owner; },
 	get_def: () => { return {name: 'Mind Worms', offense: 0 - 1}; },
 };
 const native_visit = monoliths.apply(game, native);
 test.assert(native.morale == 5 && native.monolith_upgraded);
 monoliths.rollback(native_visit, native);
 test.assert(native.morale == 4 && !native.monolith_upgraded);
+test.assert(global_messages == []);

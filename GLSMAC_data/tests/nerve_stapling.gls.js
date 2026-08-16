@@ -9,6 +9,7 @@ let turn_complete = false;
 let charter_repealed = false;
 let random_value = 1;
 let messages = [];
+let scoped_messages = [];
 let triggers = [];
 
 const make_player = (id, name) => {
@@ -100,6 +101,9 @@ values.f_diplomacy_add_grievance = (victim, offender, revenge, atrocity, major) 
 values.f_diplomacy_restore_pair = (victim, offender, snapshot) => {
 	victim.set_diplomatic_grievance(offender, snapshot.grievance);
 };
+values.f_message_to_player = (player, text) => {
+	scoped_messages :+{player: player, text: text};
+};
 
 define_nerve_stapling(game);
 callbacks.start({});
@@ -129,6 +133,8 @@ test.assert(base.get('nerve_stapling_turns') == 10);
 test.assert(pops[0].get_type() == 'WORKER' && pops[1].get_type() == 'WORKER');
 test.assert(pops[2].get_type() == 'DOCTOR');
 test.assert(actor.get_major_atrocities() == 1 && actor.get_sanction_turns() == 10);
+test.assert(#sizeof(messages) == 1);
+test.assert(#sizeof(scoped_messages) == 1 && scoped_messages[0].player.id == actor.id);
 const former_grievance = former_owner.get_diplomatic_grievance(actor);
 test.assert(former_grievance.wants_revenge && former_grievance.atrocity_victim);
 test.assert(!former_grievance.major_atrocity_victim);

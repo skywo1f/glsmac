@@ -1,3 +1,5 @@
+const message_rules = #include('../message_rules');
+
 return {
 
 	validate: (e) => {
@@ -52,7 +54,9 @@ return {
 			});
 			e.game.trigger('economy_updated', {player: parties.lender});
 			e.game.trigger('economy_updated', {player: parties.borrower});
-			e.game.message(
+			message_rules.to_players(
+				e.game,
+				[parties.lender, parties.borrower],
 				parties.lender.name + ' loaned ' + #to_string(terms.principal) +
 				' energy credits to ' + parties.borrower.name + '.'
 			);

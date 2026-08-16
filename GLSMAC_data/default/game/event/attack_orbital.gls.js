@@ -9,6 +9,8 @@ const get_definition = (game, id) => {
 	return null;
 };
 
+const message_rules = #include('../message_rules');
+
 return {
 	player_visibility: 'private',
 
@@ -73,12 +75,16 @@ return {
 		e.game.trigger('orbital_state_updated', {player: player, target: target});
 
 		if (e.resolved.success) {
-			e.game.message(
+			message_rules.to_players(
+				e.game,
+				[player, target],
 				player.name + ' destroyed a ' + definition.name +
 				' belonging to ' + target.name + '.'
 			);
 		} else {
-			e.game.message(
+			message_rules.to_players(
+				e.game,
+				[player, target],
 				player.name + ' failed to destroy a ' + definition.name +
 				' belonging to ' + target.name +
 				'; the attacking Orbital Defense Pod was lost.'

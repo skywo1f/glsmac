@@ -1,4 +1,5 @@
 const technology_effects = #include('../technology_effects');
+const message_rules = #include('../message_rules');
 
 return {
 
@@ -90,7 +91,9 @@ return {
 				relation: 'pact',
 			});
 			e.game.trigger('submission_updated', {player: proposer, master: player});
-			e.game.message(
+			message_rules.to_players(
+				e.game,
+				[player, proposer],
 				proposer.name + ' surrendered to ' + player.name +
 				' and swore a permanent Pact of Submission.'
 			);

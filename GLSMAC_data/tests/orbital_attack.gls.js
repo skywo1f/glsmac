@@ -37,6 +37,7 @@ let forced_allies = false;
 let random_result = 0;
 let messages = [];
 let triggers = [];
+let message_targets = [];
 let game = null;
 game = {
 	random: {get_int: (minimum, maximum) => { return random_result; }},
@@ -51,6 +52,12 @@ game = {
 		};
 	},
 	get: (key) => {
+		if (key == 'f_message_to_players') {
+			return (text, targets) => {
+				messages :+text;
+				message_targets = targets;
+			};
+		}
 		if (key == 'f_orbital_get_attack_error') {
 			return (player, other, facility_id) => {
 				return rules.get_attack_error(game, player, other, facility_id);
@@ -126,6 +133,7 @@ test.assert(target.get_orbital_facility_count('SkyHydroponicsLab') == 1);
 test.assert(relation_state.p1 == 'vendetta' && relation_state.p2 == 'vendetta');
 test.assert(integrity_state.p1 == 1);
 test.assert(#sizeof(messages) == 1 && #sizeof(triggers) >= 4);
+test.assert(message_targets[0].id == actor.id && message_targets[1].id == target.id);
 attack_orbital.rollback(event);
 test.assert(actor.get_orbital_facility_count('OrbitalDefensePod') == 3);
 test.assert(actor.get_orbital_defense_deployments() == 1);

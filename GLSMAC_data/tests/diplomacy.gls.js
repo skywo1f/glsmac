@@ -18,6 +18,7 @@ const callbacks = {};
 const values = {};
 let triggers = [];
 let messages = [];
+let global_messages = [];
 let datalinks_queues = 0;
 let players = [];
 let bases = [];
@@ -41,7 +42,7 @@ const game = {
 	get_turn: () => { return turn; },
 	event: (name, data) => { event_calls :+{name: name, data: data}; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
-	message: (text) => { messages :+text; },
+	message: (text) => { global_messages :+text; },
 };
 define_diplomacy(game);
 callbacks.start({});
@@ -71,6 +72,12 @@ values.f_technology_get_next_target = (known, player) => {
 	return '';
 };
 values.f_project_queue_planetary_datalinks = () => { datalinks_queues++; };
+values.f_message_to_players = (text, targets) => {
+	messages :+{kind: 'players', text: text, targets: targets};
+};
+values.f_message_to_contacts = (target, text) => {
+	messages :+{kind: 'contacts', text: text, target: target};
+};
 
 const make_player = (id, name) => {
 	let relations = {};
@@ -318,6 +325,12 @@ let contact = {
 test.assert(!#is_defined(establish_contact.validate(contact)));
 contact.applied = establish_contact.apply(contact);
 test.assert(alpha.has_contact(beta) && beta.has_contact(alpha));
+test.assert(messages == [{
+	kind: 'players',
+	text: 'Alpha established contact with Beta.',
+	targets: [alpha, beta],
+}]);
+test.assert(global_messages == []);
 establish_contact.rollback(contact);
 test.assert(!alpha.has_contact(beta) && !beta.has_contact(alpha));
 contact.applied = establish_contact.apply(contact);
@@ -440,6 +453,10 @@ test.assert(alpha.get_diplomatic_relation(beta) == 'neutral');
 test.assert(beta.get_diplomatic_relation(alpha) == 'neutral');
 test.assert(alpha.get_integrity_blemishes() == 0);
 test.assert(alpha.get_diplomatic_excuse_turn(beta) == 0 - 1);
+test.assert(messages[#sizeof(messages) - 1].kind == 'players');
+test.assert(messages[#sizeof(messages) - 1].targets[0].id == alpha.id);
+test.assert(messages[#sizeof(messages) - 1].targets[1].id == beta.id);
+test.assert(global_messages == []);
 respond_excuse.rollback(excuse_response);
 test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
 test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
@@ -538,6 +555,10 @@ let trade_response = {
 test.assert(!#is_defined(respond_trade.validate(trade_response)));
 trade_response.applied = respond_trade.apply(trade_response);
 test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(messages[#sizeof(messages) - 1].kind == 'players');
+test.assert(messages[#sizeof(messages) - 1].targets[0].id == beta.id);
+test.assert(messages[#sizeof(messages) - 1].targets[1].id == alpha.id);
+test.assert(global_messages == []);
 test.assert(#sizeof(trade_response.applied.bases) == 2);
 test.assert(alpha.energy_credits == 80);
 test.assert(beta.energy_credits == 70);

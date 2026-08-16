@@ -1,3 +1,5 @@
+const messages = #include('message_rules');
+
 const can_upgrade = (unit) => {
 	const def = unit.get_def();
 	return (
@@ -21,11 +23,23 @@ const apply = (game, unit) => {
 		unit.monolith_upgraded = true;
 	}
 	if (upgraded && repaired) {
-		game.message('The monolith repaired and upgraded ' + unit.get_def().name + '.');
+		messages.to_player(
+			game,
+			unit.get_owner(),
+			'The monolith repaired and upgraded ' + unit.get_def().name + '.'
+		);
 	} else if (upgraded) {
-		game.message('The monolith upgraded ' + unit.get_def().name + '.');
+		messages.to_player(
+			game,
+			unit.get_owner(),
+			'The monolith upgraded ' + unit.get_def().name + '.'
+		);
 	} else if (repaired) {
-		game.message('The monolith repaired ' + unit.get_def().name + '.');
+		messages.to_player(
+			game,
+			unit.get_owner(),
+			'The monolith repaired ' + unit.get_def().name + '.'
+		);
 	}
 	return snapshot;
 };

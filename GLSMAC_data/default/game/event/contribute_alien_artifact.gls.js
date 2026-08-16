@@ -1,5 +1,6 @@
 const artifact_rules = #include('../artifact_rules');
 const snapshots = #include('../entity_snapshots');
+const messages = #include('../message_rules');
 const snapshot_unit = snapshots.snapshot_unit;
 
 const restore_unit = (game, snapshot) => {
@@ -29,8 +30,11 @@ return {
 			old_minerals + artifact_rules.contribution_minerals
 		);
 		e.game.um.despawn_unit(unit);
-		e.game.message(
-			base.get_owner().name + ' has applied an Alien Artifact to ' +
+		const owner = base.get_owner();
+		messages.to_player(
+			e.game,
+			owner,
+			owner.name + ' has applied an Alien Artifact to ' +
 			target.production.name + '.'
 		);
 		return {

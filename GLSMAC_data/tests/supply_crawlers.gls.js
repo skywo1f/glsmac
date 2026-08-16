@@ -91,12 +91,18 @@ let turn_complete = false;
 let despawned = null;
 let spawned_data = null;
 let messages = [];
+let global_messages = [];
 const game = {
 	is_turn_complete: (id) => { return turn_complete; },
 	get_player: (id) => { return id == player.id ? player : other_player; },
 	get_bm: () => { return {get_bases: () => { return [base_a, base_b]; }}; },
 	get_um: () => { return {get_units: () => { return units; }}; },
-	message: (value) => { messages :+value; },
+	get: (name) => {
+		return name == 'f_message_to_player'
+			? (target, value) => { test.assert(target == player); messages :+value; }
+			: #undefined;
+	},
+	message: (value) => { global_messages :+value; },
 	um: {
 		despawn_unit: (unit) => { despawned = unit; },
 		spawn_unit: (data) => {
@@ -181,6 +187,7 @@ test.assert(messages == [
 	'The University has disbanded Supply Crawler for 30 minerals toward ' +
 	'The Weather Paradigm.',
 ]);
+test.assert(global_messages == []);
 
 contribute.rollback(event);
 test.assert(base_b_minerals == 20);

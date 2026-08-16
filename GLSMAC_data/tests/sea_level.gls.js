@@ -141,9 +141,14 @@ const make_world = () => {
 			return 2;
 		}},
 		get_player: get_player,
+		get: (name) => {
+			return name == 'f_message_to_player'
+				? (player, text) => { messages :+{player: player, text: text}; }
+				: #undefined;
+		},
 		is_master: () => { return true; },
 		event: (name, data) => { queued_events :+{name: name, data: data}; },
-		message: (message) => { messages :+message; },
+		message: (message) => { messages :+{player: null, text: message}; },
 		trigger: (name, data) => { triggers :+{name: name, data: data}; },
 	};
 	game.tm = {
@@ -311,7 +316,10 @@ test.assert(
 );
 test.assert(#sizeof(event.applied.units) == 3);
 test.assert(#sizeof(event.applied.bases) == 3);
-test.assert(#sizeof(world.get_messages()) == 4);
+test.assert(#sizeof(world.get_messages()) == 5);
+for (message of world.get_messages()) {
+	test.assert(message.player != null);
+}
 test.assert(#sizeof(world.get_triggers()) == 0);
 test.assert(#sizeof(world.get_queued_events()) == 1);
 const queued_events = world.get_queued_events();
@@ -329,7 +337,12 @@ test.assert(
 announcement_event.caller = 0;
 test.assert(!#is_defined(announce_sea_level_change.validate(announcement_event)));
 announce_sea_level_change.apply(announcement_event);
-test.assert(#sizeof(world.get_messages()) == 5);
+test.assert(#sizeof(world.get_messages()) == 6);
+const final_messages = world.get_messages();
+test.assert(final_messages[5] == {
+	player: null,
+	text: 'Sea levels rose by 100 metres.',
+});
 test.assert(#sizeof(world.get_triggers()) == 1);
 const triggers = world.get_triggers();
 test.assert(triggers[0] == {

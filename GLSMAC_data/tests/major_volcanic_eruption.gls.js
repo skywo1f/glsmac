@@ -13,6 +13,7 @@ let terrain_restored = false;
 let dust_duration = 3;
 let current_year = 2200;
 let messages = [];
+let scoped_messages = [];
 let triggers = [];
 
 const owner = {
@@ -146,6 +147,11 @@ const get_base_list = () => {
 const game = {
 	get_year: () => { return current_year; },
 	get_player: (id) => { return owner; },
+	get: (name) => {
+		return name == 'f_message_to_contacts'
+			? (player, text) => { scoped_messages :+{player: player, text: text}; }
+			: #undefined;
+	},
 	message: (message) => { messages :+message; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
 };
@@ -255,7 +261,8 @@ event.resolved = eruption.resolve(event);
 event.applied = eruption.apply(event);
 test.assert(terrain_applied);
 test.assert(dust_duration == 10);
-test.assert(#sizeof(messages) == 2);
+test.assert(#sizeof(messages) == 1);
+test.assert(#sizeof(scoped_messages) == 1 && scoped_messages[0].player.id == owner.id);
 test.assert(#sizeof(triggers) == 1);
 test.assert(triggers[0].name == 'major_volcanic_eruption');
 test.assert(game.um.has_unit(doomed_unit.id) == false);

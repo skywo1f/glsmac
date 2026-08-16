@@ -1,6 +1,7 @@
 const rules = #include('../airdrop_rules');
 const snapshots = #include('../entity_snapshots');
 const monoliths = #include('../monoliths');
+const messages = #include('../message_rules');
 
 const collect_group = (unit, result) => {
 	result :+unit;
@@ -84,8 +85,11 @@ return {
 			unit: e.data.unit,
 			destination: e.data.destination,
 		});
-		e.game.message(
-			e.game.get_player(e.caller).name + ' air-dropped ' +
+		const player = e.game.get_player(e.caller);
+		messages.to_player(
+			e.game,
+			player,
+			player.name + ' air-dropped ' +
 			e.data.unit.get_def().name + ' to (' +
 			#to_string(e.data.destination.x) + ', ' +
 			#to_string(e.data.destination.y) + ').'

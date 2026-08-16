@@ -80,6 +80,7 @@ const loser = {
 };
 let research_updates = 0;
 let message = '';
+let global_message = '';
 const spoils_game = rules_game({spoils_of_war: true});
 spoils_game.get = (name) => {
 	if (name == 'f_diplomacy_grant_technology') {
@@ -93,16 +94,20 @@ spoils_game.get = (name) => {
 	if (name == 'f_technology_get_definition') {
 		return (id) => { return {name: 'Applied Physics'}; };
 	}
+	if (name == 'f_message_to_contacts') {
+		return (player, value) => { test.assert(player == winner); message = value; };
+	}
 	return #undefined;
 };
 spoils_game.trigger = (name, data) => { research_updates++; };
-spoils_game.message = (value) => { message = value; };
+spoils_game.message = (value) => { global_message = value; };
 
 const spoils = base_capture.apply_spoils_of_war(spoils_game, winner, loser);
 test.assert(#is_defined(spoils));
 test.assert(winner.has_technology('AppliedPhysics'));
 test.assert(research_updates == 1);
 test.assert(message == 'Gaians captured research data for Applied Physics.');
+test.assert(global_message == '');
 base_capture.rollback_spoils_of_war(spoils_game, spoils);
 test.assert(!winner.has_technology('AppliedPhysics'));
 test.assert(winner_state.target == 'IndustrialBase');

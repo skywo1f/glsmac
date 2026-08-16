@@ -1,4 +1,5 @@
 const entity_snapshots = #include('../entity_snapshots');
+const message_rules = #include('../message_rules');
 const ERUPTION_RADIUS = 4;
 const ELIGIBILITY_DISTANCE = 5;
 const MINIMUM_YEAR = 2175;
@@ -131,6 +132,7 @@ return {
 		const center = e.data.base.get_tile();
 		const selected_base_id = e.data.base.id;
 		const selected_base_name = '' + e.data.base.name;
+		const selected_owner = e.data.base.get_owner();
 		const affected = get_tiles_with_distance(
 			e.game.get_tm(),
 			center,
@@ -203,7 +205,9 @@ return {
 		}
 
 		e.game.get_tm().set_dust_cloud_duration(DUST_CLOUD_YEARS);
-		e.game.message(
+		message_rules.to_contacts(
+			e.game,
+			selected_owner,
 			'Mount Planet has erupted, devastating ' + selected_base_name +
 			' and surrounding territory.'
 		);

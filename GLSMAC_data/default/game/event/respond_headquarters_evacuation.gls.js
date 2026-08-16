@@ -1,4 +1,5 @@
 const economic_victory = #include('../economic_victory_rules');
+const message_rules = #include('../message_rules');
 
 const get_pending = (game, base) => {
 	const getter = game.get('f_headquarters_get_evacuation');
@@ -100,7 +101,9 @@ return {
 			);
 			e.game.trigger('economic_victory_updated', {player: offer.player});
 		}
-		e.game.message(
+		message_rules.to_player(
+			e.game,
+			offer.player,
 			offer.player.get_faction().name + ' has safely evacuated its Headquarters to ' +
 			offer.destination.name + ' for ' + #to_string(offer.cost) +
 			' energy credits.'

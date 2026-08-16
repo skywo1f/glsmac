@@ -1,6 +1,7 @@
 const diplomatic_base_transfer = #include('./diplomatic_base_transfer');
 const technology_acquisition = #include('./technology_acquisition');
 const technology_effects = #include('./technology_effects');
+const messages = #include('./message_rules');
 
 const is_player = (player) => {
 	return (
@@ -242,7 +243,9 @@ const record_betrayal = (game, player, other) => {
 		blemishes: updated,
 		integrity: get_integrity_name(updated),
 	});
-	game.message(
+	messages.to_contacts(
+		game,
+		player,
 		player.name + ' broke a ' + relation + ' with ' + other.name +
 		'; diplomatic integrity is now ' + get_integrity_name(updated) + '.'
 	);

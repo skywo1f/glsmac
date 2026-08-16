@@ -1,3 +1,5 @@
+const messages = #include('../message_rules');
+
 return {
 
 	validate: (e) => {
@@ -24,7 +26,11 @@ return {
 				player: player,
 				target: target,
 			});
-			e.game.message(player.name + ' established contact with ' + target.name + '.');
+			messages.to_players(
+				e.game,
+				[player, target],
+				player.name + ' established contact with ' + target.name + '.'
+			);
 		}
 		return snapshot;
 	},

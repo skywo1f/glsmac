@@ -71,6 +71,7 @@ let spawned_data = null;
 let restored_unit = null;
 let triggers = [];
 let messages = [];
+let global_messages = [];
 let datalinks_queues = 0;
 const game = {
 	is_turn_complete: (id) => { return turn_complete; },
@@ -98,10 +99,13 @@ const game = {
 		if (key == 'f_project_queue_planetary_datalinks') {
 			return () => { datalinks_queues++; };
 		}
+		if (key == 'f_message_to_contacts') {
+			return (target, value) => { test.assert(target == player); messages :+value; };
+		}
 		return #undefined;
 	},
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
-	message: (value) => { messages :+value; },
+	message: (value) => { global_messages :+value; },
 	get_player: (id) => { return player; },
 	um: {
 		despawn_unit: (unit) => { despawned = unit; },
@@ -128,6 +132,7 @@ test.assert(state == {
 });
 test.assert(despawned == artifact);
 test.assert(messages == ['The University has decoded Alpha from an Alien Artifact.']);
+test.assert(global_messages == []);
 test.assert(datalinks_queues == 1);
 test.assert(#is_defined(study_alien_artifact.validate(event)));
 

@@ -1,4 +1,5 @@
 const technology_effects = #include('../technology_effects');
+const message_rules = #include('../message_rules');
 
 return {
 
@@ -161,7 +162,7 @@ return {
 					true
 				);
 			}
-			e.game.message(military_request
+			message_rules.to_players(e.game, [player, proposer], military_request
 				? player.name + ' joined ' + proposer.name + '\'s vendetta against ' +
 					military_target.name + '.'
 				: (ultimatum
@@ -169,7 +170,11 @@ return {
 					: proposer.name + ' and ' + player.name + ' completed a diplomatic trade.'));
 		} else if (#is_defined(e.data.counter_terms)) {
 			proposer.set_diplomatic_trade(player, e.data.counter_terms);
-			e.game.message(player.name + ' made a diplomatic counteroffer to ' + proposer.name + '.');
+			message_rules.to_players(
+				e.game,
+				[player, proposer],
+				player.name + ' made a diplomatic counteroffer to ' + proposer.name + '.'
+			);
 		} else if (ultimatum) {
 			if (proposer.get_diplomatic_relation(player) == 'neutral') {
 				e.game.get('f_diplomacy_set_bilateral_relation')(
@@ -179,9 +184,17 @@ return {
 					false
 				);
 			}
-			e.game.message(player.name + ' refused ' + proposer.name + '\'s ultimatum.');
+			message_rules.to_players(
+				e.game,
+				[player, proposer],
+				player.name + ' refused ' + proposer.name + '\'s ultimatum.'
+			);
 		} else if (military_request) {
-			e.game.message(player.name + ' declined ' + proposer.name + '\'s joint vendetta request.');
+			message_rules.to_players(
+				e.game,
+				[player, proposer],
+				player.name + ' declined ' + proposer.name + '\'s joint vendetta request.'
+			);
 		}
 		const resolved_event_name = military_request
 			? 'diplomatic_military_request_resolved'

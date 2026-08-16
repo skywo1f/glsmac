@@ -1,5 +1,6 @@
 const terraforming = #include('../../units/terraforming');
 const native_life = #include('../native_life');
+const message_rules = #include('../message_rules');
 
 return {
 
@@ -109,7 +110,9 @@ return {
 			warming_triggered: climate != null && climate.warming_triggered,
 		});
 		e.game.trigger('update_base', {base: e.data.base});
-		e.game.message(
+		message_rules.to_player(
+			e.game,
+			owner,
 			'Uncontrolled xenofungus has erupted near ' + e.data.base.name + '.'
 		);
 		if (climate != null && climate.warming_triggered) {

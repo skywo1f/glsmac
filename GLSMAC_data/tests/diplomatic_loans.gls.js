@@ -8,6 +8,7 @@ const callbacks = {};
 const values = {};
 let triggers = [];
 let messages = [];
+let global_messages = [];
 let event_calls = [];
 let players = [];
 const game = {
@@ -19,10 +20,13 @@ const game = {
 	get_players: () => { return players; },
 	event: (name, data) => { event_calls :+{name: name, data: data}; },
 	trigger: (name, data) => { triggers :+{name: name, data: data}; },
-	message: (text) => { messages :+text; },
+	message: (text) => { global_messages :+text; },
 };
 define_diplomacy(game);
 callbacks.start({});
+values.f_message_to_players = (text, targets) => {
+	messages :+{text: text, targets: targets};
+};
 
 const make_player = (id, name, energy, stale_energy_property) => {
 	let relations = {};
@@ -148,6 +152,9 @@ let response = {
 test.assert(!#is_defined(respond_loan.validate(response)));
 response.applied = respond_loan.apply(response);
 test.assert(beta.get_diplomatic_loan_offer(alpha) == null);
+test.assert(messages[#sizeof(messages) - 1].targets[0].id == beta.id);
+test.assert(messages[#sizeof(messages) - 1].targets[1].id == alpha.id);
+test.assert(global_messages == []);
 test.assert(alpha.energy_credits == 120);
 test.assert(beta.energy_credits == 100);
 test.assert(alpha.get_diplomatic_loan(beta).balance == 120);
@@ -251,6 +258,9 @@ payment.applied = process_payment.apply(payment);
 test.assert(alpha.energy_credits == 6);
 test.assert(beta.energy_credits == 104);
 test.assert(alpha.get_diplomatic_loan(beta) == null);
+test.assert(messages[#sizeof(messages) - 1].targets[0].id == alpha.id);
+test.assert(messages[#sizeof(messages) - 1].targets[1].id == beta.id);
+test.assert(global_messages == []);
 process_payment.rollback(payment);
 test.assert(alpha.energy_credits == 10);
 test.assert(beta.energy_credits == 100);

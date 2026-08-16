@@ -312,6 +312,8 @@ const make_fixture = (charter_repealed, framed_type) => {
 	const bm = {get_bases: () => { return bases; }};
 	let random_values = [];
 	let random_index = 0;
+	let message_player_ids = [];
+	let global_message_count = 0;
 	const game = {
 		um: um,
 		tm: tm,
@@ -341,7 +343,10 @@ const make_fixture = (charter_repealed, framed_type) => {
 		get_turn: () => { return 40; },
 		is_turn_complete: (id) => { return false; },
 		trigger: (name, data) => { triggers :+{name: name, data: data}; },
-		message: (text) => { last_message = text; },
+		message: (text) => {
+			last_message = text;
+			global_message_count++;
+		},
 	};
 	values.f_social_get_ratings = (player) => { return {probe: player.probe_rating}; };
 	values.f_technology_get_next_target = (known, player) => { return ''; };
@@ -364,6 +369,13 @@ const make_fixture = (charter_repealed, framed_type) => {
 	define_probes(game);
 	define_diplomacy(game);
 	for (callback of callbacks.start) { callback({}); }
+	values.f_message_to_players = (text, targets) => {
+		last_message = text;
+		message_player_ids = [];
+		for (target of targets) {
+			message_player_ids :+target.id;
+		}
+	};
 
 	const probe = um.spawn_unit({
 		id: 1, def: 'ProbeTeam', owner: actor, tile: probe_tile,
@@ -378,6 +390,8 @@ const make_fixture = (charter_repealed, framed_type) => {
 		framed_player: framed_player, target_base: target_base,
 		probe: probe, defender: defender, nearby_tile: nearby_tile, um: um,
 		read_message: () => { return last_message; },
+		read_message_player_ids: () => { return message_player_ids; },
+		read_global_message_count: () => { return global_message_count; },
 		read_triggers: () => { return triggers; },
 		read_datalinks_queues: () => { return datalinks_queues; },
 		read_map_shares: () => { return map_shares; },
@@ -426,6 +440,8 @@ test.assert(f.target_player.get_integrity_blemishes() == 0);
 test.assert(f.target_player.get_diplomatic_excuse_turn(f.actor) == 0 - 1);
 test.assert(e.data.unit.morale == 3 && e.data.unit.movement == 0.0);
 test.assert(f.read_message() == 'Datalinks infiltrated. The operation was detected.');
+test.assert(f.read_message_player_ids() == [f.actor.id, f.target_player.id]);
+test.assert(f.read_global_message_count() == 0);
 probe_operation.rollback(e);
 test.assert(!f.actor.has_infiltrated(f.target_player));
 test.assert(f.actor.get_diplomatic_relation(f.target_player) == 'treaty');
@@ -438,6 +454,8 @@ e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'steal_technology
 e.resolved = result(true, false, true);
 e.resolved.technology_id = 'PlanetaryNetworks';
 e.applied = probe_operation.apply(e);
+test.assert(f.read_message_player_ids() == [f.actor.id]);
+test.assert(f.read_global_message_count() == 0);
 test.assert(f.actor.get_research_state().technologies == ['PlanetaryNetworks']);
 test.assert(f.actor.get_research_state().target == '');
 test.assert(f.read_datalinks_queues() == 1);

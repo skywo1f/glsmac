@@ -88,6 +88,7 @@ let territory_owner = actor;
 let notified = false;
 let prompted = false;
 let message = '';
+let global_message = '';
 const distances = {t4: 2, t5: 5};
 const um = {
 	has_unit: (id) => { return id == probe.id; },
@@ -101,6 +102,12 @@ const tm = {
 };
 const game = {
 	get: (name) => {
+		if (name == 'f_message_to_players') {
+			return (text, players) => {
+				test.assert(players == [actor, target_player]);
+				message = text;
+			};
+		}
 		if (name == 'f_territory_get_owner') {
 			return (tile) => { return territory_owner; };
 		}
@@ -122,7 +129,7 @@ const game = {
 				data.unit == probe && data.base == near_base;
 		}
 	},
-	message: (text) => { message = text; },
+	message: (text) => { global_message = text; },
 };
 
 let interception = interception_rules.get_interception(game, interceptor, probe);
@@ -169,6 +176,7 @@ test.assert(
 	message ==
 	'Peacekeepers interrogated and repatriated a University Probe Team to Academy Park.'
 );
+test.assert(global_message == '');
 attack_unit.rollback(event);
 test.assert(probe_tile == target);
 test.assert(probe.movement == 2.0);

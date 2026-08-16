@@ -2,6 +2,7 @@ const base_capture = #include('../base_capture');
 const snapshots = #include('../entity_snapshots');
 const technology_acquisition = #include('../technology_acquisition');
 const technology_effects = #include('../technology_effects');
+const message_rules = #include('../message_rules');
 const snapshot_unit = snapshots.snapshot_unit;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
@@ -652,7 +653,7 @@ return {
 			if (e.resolved.probe_combat.defender_dead) {
 				e.game.um.despawn_unit(defender);
 			}
-			e.game.message(attacker_won
+			message_rules.to_players(e.game, [actor, target_player], attacker_won
 				? 'Infiltrating Probe Team defeated the resident Probe Team. Operation delayed.'
 				: 'Resident Probe Team defeated the infiltrating Probe Team. Operation aborted.'
 			);
@@ -874,7 +875,9 @@ return {
 						expiry_turn: expiry_turn,
 						used: false,
 					});
-					e.game.message(
+					message_rules.to_players(
+						e.game,
+						[actor, target_player, framed_player],
 						framed_player.name + ' has cause against ' + actor.name +
 						' after the exposed framing attempt.'
 					);
@@ -920,7 +923,11 @@ return {
 			framing_exposed: frame_player_id >= 0 && !e.resolved.success,
 			atrocity: operation == 'genetic_plague' && e.resolved.success,
 		});
-		e.game.message(result_message);
+		let result_players = [actor];
+		if (e.resolved.detected) {
+			result_players :+target_player;
+		}
+		message_rules.to_players(e.game, result_players, result_message);
 		return applied;
 	},
 

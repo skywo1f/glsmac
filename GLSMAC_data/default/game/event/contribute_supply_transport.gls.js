@@ -1,5 +1,6 @@
 const supply_rules = #include('../supply_rules');
 const snapshots = #include('../entity_snapshots');
+const messages = #include('../message_rules');
 
 return {
 	unit_visibility: 'private',
@@ -26,8 +27,11 @@ return {
 		const unit_name = unit.get_def().name;
 		base.set_accumulated_minerals(old_minerals + e.resolved.minerals);
 		e.game.um.despawn_unit(unit);
-		e.game.message(
-			base.get_owner().name + ' has disbanded ' + unit_name +
+		const owner = base.get_owner();
+		messages.to_player(
+			e.game,
+			owner,
+			owner.name + ' has disbanded ' + unit_name +
 			' for ' + #to_string(e.resolved.minerals) + ' minerals toward ' +
 			target.production.name + '.'
 		);
