@@ -10,6 +10,7 @@ const rules_game = (changes) => {
 		allow_conquest_victory: true,
 		allow_diplomatic_victory: true,
 		allow_economic_victory: true,
+		allow_cooperative_victory: false,
 		tech_stagnation: false,
 		spoils_of_war: true,
 		unity_survey: false,

@@ -1,4 +1,5 @@
 const REPEATABLE_TECHNOLOGY_ID = 'TranscendentThought';
+const victory_rules = #include('victory_rules');
 
 const get_population = (game, player) => {
 	let result = 0;
@@ -17,7 +18,7 @@ const is_pact = (player, other) => {
 
 const get_victory_population = (game, player, victory) => {
 	if (
-		victory.winner != player.id ||
+		!victory_rules.is_victory_winner(game, player, victory) ||
 		(victory.type != 'diplomatic' && victory.type != 'economic')
 	) {
 		return 0;
@@ -97,8 +98,16 @@ const get_secret_projects = (game, player) => {
 	return result;
 };
 
-const get_victory_bonus = (player, victory) => {
-	if (victory.winner != player.id) {
+const get_victory_bonus = (game, player, victory) => {
+	const winners = victory_rules.get_victory_winners(game, victory);
+	let is_winner = false;
+	for (winner of winners) {
+		if (winner.id == player.id) {
+			is_winner = true;
+			break;
+		}
+	}
+	if (!is_winner) {
 		return 0;
 	}
 	let maximum = 0;
@@ -109,7 +118,26 @@ const get_victory_bonus = (player, victory) => {
 	} else if (victory.type == 'transcendence') {
 		maximum = 2000;
 	}
-	return #max(0, maximum - victory.turn * 2);
+	const bonus = #max(0, maximum - victory.turn * 2);
+	if (#sizeof(winners) <= 1) {
+		return bonus;
+	}
+	if (victory.type == 'diplomatic' || victory.type == 'economic') {
+		return player.id == victory.winner
+			? bonus
+			: #floor(#to_float(bonus) / 2.0);
+	}
+	let total_population = 0;
+	for (winner of winners) {
+		total_population += victory_rules.get_population(game, winner);
+	}
+	if (total_population <= 0) {
+		return player.id == victory.winner ? bonus : 0;
+	}
+	return #floor(
+		#to_float(bonus * victory_rules.get_population(game, player)) /
+		#to_float(total_population)
+	);
 };
 
 const get_breakdown = (game, player) => {
@@ -123,8 +151,10 @@ const get_breakdown = (game, player) => {
 	const technology = get_technology_score(player);
 	const transcendent_thought = get_transcendent_thoughts(player) * 10;
 	const secret_projects = get_secret_projects(game, player) * 25;
-	const victory_bonus = get_victory_bonus(player, victory);
+	const victory_bonus = get_victory_bonus(game, player, victory);
+	const is_victory_winner = victory_rules.is_victory_winner(game, player, victory);
 	return {
+		is_victory_winner: is_victory_winner,
 		population: population,
 		victory_population: victory_population,
 		surrendered_population: surrendered_population,

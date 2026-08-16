@@ -9,6 +9,7 @@ let callbacks = {};
 let shown_popup = '';
 let closed = 0;
 let buttons = [];
+let local_shares_victory = false;
 
 const make_button = (properties) => {
 	let handlers = {};
@@ -29,7 +30,10 @@ const game = {
 	get_player: (id) => { return #is_defined(id) ? players[id] : players[0]; },
 	get: (name) => {
 		return name == 'f_score_get_breakdown'
-			? (player) => { return {total: player.id == 0 ? 321 : 123}; }
+			? (player) => { return {
+				total: player.id == 0 ? 321 : 123,
+				is_victory_winner: player.id == 0 && local_shares_victory,
+			}; }
 			: #undefined;
 	},
 	on: (name, callback) => { callbacks[name] = callback; },
@@ -71,6 +75,9 @@ test.assert(shown_popup == 'victory');
 test.assert(victory_popup.status_text.text == 'Gaia\'s Stepdaughters has won the game.');
 test.assert(victory_popup.detail_text.text == 'Economic Victory in M.Y. 2142.');
 test.assert(victory_popup.score_text.text == 'Alpha Centauri Score: 321');
+local_shares_victory = true;
+victory_popup.refresh();
+test.assert(victory_popup.status_text.text == 'You share in the victory.');
 
 victory_state = {type: 'transcendence', winner: 0, turn: 130};
 victory_popup.refresh();

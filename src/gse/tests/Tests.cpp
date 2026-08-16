@@ -282,6 +282,32 @@ void AddTests( task::gsetests::GSETests* task ) {
 					rejected_invalid_mode = true;
 				}
 				GT_ASSERT( rejected_invalid_mode, "invalid local game mode accepted" );
+
+				types::Buffer legacy_rules;
+				legacy_rules.WriteInt( 1 );
+				legacy_rules.WriteBool( true );
+				legacy_rules.WriteBool( true );
+				legacy_rules.WriteBool( true );
+				legacy_rules.WriteBool( true );
+				legacy_rules.WriteBool( false );
+				legacy_rules.WriteBool( true );
+				legacy_rules.WriteBool( false );
+				legacy_rules.WriteBool( true );
+				game::backend::rules::Default migrated_rules;
+				migrated_rules.Deserialize( legacy_rules );
+				GT_ASSERT(
+					!migrated_rules.allow_cooperative_victory,
+					"legacy rules enabled cooperative victory"
+				);
+
+				game::backend::rules::Default current_rules;
+				current_rules.allow_cooperative_victory = true;
+				game::backend::rules::Default roundtrip_rules;
+				roundtrip_rules.Deserialize( current_rules.Serialize() );
+				GT_ASSERT(
+					roundtrip_rules.allow_cooperative_victory,
+					"cooperative victory rule was not serialized"
+				);
 				GT_OK();
 			}
 		);

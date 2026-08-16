@@ -214,6 +214,31 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( COOPERATIVE_VICTORY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/cooperative-victory-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${COOPERATIVE_VICTORY_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME cooperative_victory_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${COOPERATIVE_VICTORY_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_cooperative_victory_runtime_smoke"
+			--quickstart
+			--quickstart-ai "2"
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( cooperative_victory_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "COOPERATIVE_VICTORY_RUNTIME_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "COOPERATIVE_VICTORY_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 120
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( DIPLOMACY_UI_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/diplomacy-ui-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${DIPLOMACY_UI_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME diplomacy_ui_runtime_smoke COMMAND

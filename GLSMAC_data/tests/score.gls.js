@@ -6,6 +6,7 @@ const make_player = (id, technologies, thoughts) => {
 	let submissive_to_id = -1;
 	return {
 		id: id,
+		get_faction: () => { return {id: 'FACTION_' + #to_string(id), is_native: false}; },
 		get_research_state: () => { return {technologies: technologies}; },
 		get_transcendent_thoughts: () => { return thoughts; },
 		get_diplomatic_relation: (other) => {
@@ -34,6 +35,7 @@ const bases = [
 	{get_owner: () => { return rival; }, get_size: () => { return 3; }, get_facilities: () => { return []; }},
 ];
 let victory = {type: 'diplomatic', winner: local.id, turn: 100};
+let allow_cooperative_victory = false;
 let callbacks = {};
 let values = {
 	f_economy_get_player_commerce: (game, player) => { return player.id == local.id ? 4 : 0; },
@@ -43,6 +45,17 @@ let values = {
 };
 const game = {
 	get_bm: () => { return {get_bases: () => { return bases; }}; },
+	get_um: () => { return {get_units: (include_hidden) => { return []; }}; },
+	get_players: () => { return [local, surrendered, rival]; },
+	get_player: (id) => {
+		for (player of [local, surrendered, rival]) {
+			if (player.id == id) { return player; }
+		}
+		return null;
+	},
+	get_settings: () => {
+		return {global: {rules: {allow_cooperative_victory: allow_cooperative_victory}}};
+	},
 	get_victory_state: () => { return victory; },
 	get: (name) => { return values[name]; },
 	set: (name, value) => { values[name] = value; },
@@ -58,6 +71,7 @@ test.assert(score.technology == 2);
 test.assert(score.transcendent_thought == 30);
 test.assert(score.secret_projects == 50);
 test.assert(score.victory_bonus == 1000);
+test.assert(score.is_victory_winner);
 test.assert(score.total == 1104);
 
 score = rules.get_breakdown(game, surrendered);
@@ -65,6 +79,7 @@ test.assert(score.population == 5);
 test.assert(score.victory_population == 0);
 test.assert(score.surrendered_population == 0);
 test.assert(score.victory_bonus == 0);
+test.assert(!score.is_victory_winner);
 
 victory = {type: 'conquest', winner: local.id, turn: 600};
 score = rules.get_breakdown(game, local);
@@ -80,3 +95,27 @@ configure_score(game);
 callbacks.start({});
 test.assert(#typeof(values.f_score_get_breakdown) == 'Callable');
 test.assert(values.f_score_get_breakdown(local).total == 1104);
+
+allow_cooperative_victory = true;
+local.set_relation(rival, 'pact');
+rival.set_relation(local, 'pact');
+victory = {type: 'diplomatic', winner: local.id, turn: 100};
+score = rules.get_breakdown(game, local);
+test.assert(score.victory_population == 8);
+test.assert(score.victory_bonus == 1000);
+score = rules.get_breakdown(game, rival);
+test.assert(score.is_victory_winner);
+test.assert(score.victory_population == 9);
+test.assert(score.victory_bonus == 500);
+test.assert(score.total == 512);
+test.assert(!rules.get_breakdown(game, surrendered).is_victory_winner);
+
+victory = {type: 'conquest', winner: local.id, turn: 100};
+test.assert(rules.get_breakdown(game, local).victory_bonus == 560);
+test.assert(rules.get_breakdown(game, rival).victory_bonus == 240);
+victory = {type: 'transcendence', winner: local.id, turn: 100};
+test.assert(rules.get_breakdown(game, local).victory_bonus == 1260);
+test.assert(rules.get_breakdown(game, rival).victory_bonus == 540);
+victory = {type: 'economic', winner: local.id, turn: 100};
+test.assert(rules.get_breakdown(game, local).victory_bonus == 1000);
+test.assert(rules.get_breakdown(game, rival).victory_bonus == 500);

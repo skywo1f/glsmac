@@ -66,15 +66,21 @@ return {
 		const victory_name = #is_defined(victory_names[victory.type])
 			? victory_names[victory.type]
 			: 'Victory';
-		this.status_text.text = winner.id == local_player.id
-			? 'You have won the game.'
-			: winner.get_faction().name + ' has won the game.';
-		this.detail_text.text = victory_name + ' in M.Y. ' +
-			#to_string(victory.turn + 2100) + '.';
 		const score_resolver = #typeof(this.p.game.get) == 'Callable'
 			? this.p.game.get('f_score_get_breakdown') : #undefined;
-		this.score_text.text = #typeof(score_resolver) == 'Callable'
-			? 'Alpha Centauri Score: ' + #to_string(score_resolver(local_player).total)
+		const score = #typeof(score_resolver) == 'Callable'
+			? score_resolver(local_player) : null;
+		this.status_text.text = winner.id == local_player.id
+			? 'You have won the game.'
+			: (
+				score != null && score.is_victory_winner
+					? 'You share in the victory.'
+					: winner.get_faction().name + ' has won the game.'
+			);
+		this.detail_text.text = victory_name + ' in M.Y. ' +
+			#to_string(victory.turn + 2100) + '.';
+		this.score_text.text = score != null
+			? 'Alpha Centauri Score: ' + #to_string(score.total)
 			: '';
 	},
 

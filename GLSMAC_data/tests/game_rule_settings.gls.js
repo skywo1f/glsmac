@@ -3,8 +3,9 @@ const game_settings = #include('../default/game/event/game_settings');
 const select_rules = #include('../default/ui/parts/mainmenu/steps/select_rules');
 const customize_rules = #include('../default/ui/parts/mainmenu/steps/customize_rules');
 
-test.assert(#sizeof(game_rules.definitions) == 8);
+test.assert(#sizeof(game_rules.definitions) == 9);
 test.assert(game_rules.defaults.allow_conquest_victory);
+test.assert(!game_rules.defaults.allow_cooperative_victory);
 test.assert(game_rules.defaults.spoils_of_war);
 test.assert(!game_rules.defaults.tech_stagnation);
 test.assert(!game_rules.defaults.unity_survey);
@@ -26,6 +27,7 @@ const settings = {
 			allow_conquest_victory: true,
 			allow_diplomatic_victory: true,
 			allow_economic_victory: true,
+			allow_cooperative_victory: false,
 			tech_stagnation: false,
 			spoils_of_war: true,
 			unity_survey: false,
@@ -85,6 +87,7 @@ const ui = {
 };
 settings.global.rules.tech_stagnation = true;
 settings.global.rules.random_events = false;
+settings.global.rules.allow_cooperative_victory = true;
 select_rules(ui);
 test.assert(menu.title == 'Game rules');
 menu.entries[1][1]();
@@ -94,6 +97,7 @@ select_rules(ui);
 menu.entries[0][1]();
 test.assert(!ui.settings.global.rules.tech_stagnation);
 test.assert(ui.settings.global.rules.random_events);
+test.assert(!ui.settings.global.rules.allow_cooperative_victory);
 test.assert(faction_selections == 2);
 select_rules(ui);
 menu.entries[2][1]();
@@ -101,9 +105,10 @@ test.assert(customizations == 1);
 
 customize_rules(ui);
 test.assert(menu.title == 'Customize Game Rules');
-test.assert(#sizeof(menu.entries) == 9);
-test.assert(menu.entries[4][0] == '[ ] Tech Stagnation');
-menu.entries[4][1]();
-test.assert(menu.entries[4][0] == '[X] Tech Stagnation');
-menu.entries[8][1]();
+test.assert(#sizeof(menu.entries) == 10);
+test.assert(menu.entries[4][0] == '[ ] One for All: Cooperative Victory');
+test.assert(menu.entries[5][0] == '[ ] Tech Stagnation');
+menu.entries[5][1]();
+test.assert(menu.entries[5][0] == '[X] Tech Stagnation');
+menu.entries[9][1]();
 test.assert(faction_selections == 3);

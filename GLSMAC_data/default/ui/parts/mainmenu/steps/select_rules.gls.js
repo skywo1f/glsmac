@@ -13,6 +13,8 @@ return (i) => {
 					game_rules.defaults.allow_diplomatic_victory;
 				i.settings.global.rules.allow_economic_victory =
 					game_rules.defaults.allow_economic_victory;
+				i.settings.global.rules.allow_cooperative_victory =
+					game_rules.defaults.allow_cooperative_victory;
 				i.settings.global.rules.tech_stagnation = game_rules.defaults.tech_stagnation;
 				i.settings.global.rules.spoils_of_war = game_rules.defaults.spoils_of_war;
 				i.settings.global.rules.unity_survey = game_rules.defaults.unity_survey;

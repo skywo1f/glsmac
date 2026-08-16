@@ -25,6 +25,7 @@ CLASS2( Rules, types::Serializable, gse::Wrappable )
 	bool allow_conquest_victory = true;
 	bool allow_diplomatic_victory = true;
 	bool allow_economic_victory = true;
+	bool allow_cooperative_victory = false;
 	bool tech_stagnation = false;
 	bool spoils_of_war = true;
 	bool unity_survey = false;

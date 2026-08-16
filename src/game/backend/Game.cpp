@@ -1868,8 +1868,55 @@ Player* Game::GetConquestWinner() const {
 		claimant_slots.insert( claimant_slot );
 	}
 
-	if ( claimant_slots.size() != 1 ) {
+	if ( claimant_slots.empty() ) {
 		return nullptr;
+	}
+	if ( claimant_slots.size() != 1 ) {
+		const auto& rules = m_state->m_settings.global.rules;
+		if ( !rules.allow_cooperative_victory || claimant_slots.size() > 3 ) {
+			return nullptr;
+		}
+		std::vector< size_t > eligible_winner_slots = {};
+		for ( const auto claimant_slot : claimant_slots ) {
+			if ( claimant_slot >= slots.size() ) {
+				return nullptr;
+			}
+			const auto& claimant = slots.at( claimant_slot );
+			if ( claimant.GetState() != slot::Slot::SS_PLAYER || !claimant.GetPlayer() ) {
+				return nullptr;
+			}
+			bool is_eligible_winner = true;
+			for ( const auto other_slot : claimant_slots ) {
+				if ( other_slot == claimant_slot ) {
+					continue;
+				}
+				if ( other_slot >= slots.size() ) {
+					return nullptr;
+				}
+				const auto& other = slots.at( other_slot );
+				if (
+					other.GetState() != slot::Slot::SS_PLAYER || !other.GetPlayer() ||
+					claimant.GetPlayer()->GetDiplomaticRelation( other_slot ) != Player::DR_PACT ||
+					other.GetPlayer()->GetDiplomaticRelation( claimant_slot ) != Player::DR_PACT
+				) {
+					is_eligible_winner = false;
+					break;
+				}
+			}
+			if ( is_eligible_winner ) {
+				eligible_winner_slots.push_back( claimant_slot );
+			}
+		}
+		if ( eligible_winner_slots.empty() ) {
+			return nullptr;
+		}
+		const auto winner_slot = *std::min_element(
+			eligible_winner_slots.begin(), eligible_winner_slots.end()
+		);
+		const auto& winner = slots.at( winner_slot );
+		return winner.GetState() == slot::Slot::SS_PLAYER
+			? winner.GetPlayer()
+			: nullptr;
 	}
 	const auto winner_slot = *claimant_slots.begin();
 	if ( winner_slot >= slots.size() ) {
