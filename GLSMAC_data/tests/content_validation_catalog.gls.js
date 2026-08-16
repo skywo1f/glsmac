@@ -92,6 +92,11 @@ for (faction of catalog.factions) {
 	}
 }
 test.assert(planet != null && planet.data.is_native);
+for (unit of catalog.units) {
+	test.assert(unit.id != 'FungalTower');
+	test.assert(unit.id != 'SeaLurk');
+	test.assert(unit.id != 'SporeLauncher');
+}
 test.assert(result.counts == {
 	technologies: 77,
 	facilities: 38,

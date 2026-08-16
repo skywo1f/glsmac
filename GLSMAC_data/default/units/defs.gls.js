@@ -175,12 +175,9 @@ const predefined_units = [
 	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),
 	special_unit('UnityScoutChopper', 'Unity Scout Chopper', 0, 1, 1, 'air', 8, 1, 0, 'Copter', 'HandWeapons', 'NoArmor', ''),
 	special_unit('UnityFoil', 'Unity Foil', 0, 0, 1, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', ''),
-	native_lifeform('FungalTower', 'Fungal Tower', 0, 'immovable', 0, 79, [], 0, ''),
 	native_lifeform('MindWorms', 'Mind Worms', 50, 'land', 1, 233, [], 0, 'CentauriEmpathy'),
 	native_lifeform('IsleOfTheDeep', 'Isle of the Deep', 80, 'water', 4, 310, [], 4, 'CentauriMeditation'),
 	native_lifeform('LocustsOfChiron', 'Locusts of Chiron', 100, 'air', 8, 387, [], 0, 'CentauriGenetics'),
-	native_lifeform('SeaLurk', 'Sea Lurk', 40, 'water', 4, 310, [], 0, ''),
-	native_lifeform('SporeLauncher', 'Spore Launcher', 50, 'land', 1, 387, ['HeavyArtillery'], 0, ''),
 ];
 
 let units = [];

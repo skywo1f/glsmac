@@ -123,8 +123,7 @@ const can_target = (game, player_id, attacker, target) => {
 		return false;
 	}
 	const attacker_def = attacker.get_def();
-	const is_artillery = unit_abilities.has(attacker_def, 'HeavyArtillery') ||
-		attacker_def.id == 'SporeLauncher';
+	const is_artillery = unit_abilities.has(attacker_def, 'HeavyArtillery');
 	return !is_artillery && attacker.get_tile().is_adjactent_to(target.get_tile());
 };
 

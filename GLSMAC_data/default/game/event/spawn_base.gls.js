@@ -23,7 +23,7 @@ return {
 		let info = {
 			production: #is_defined(e.data.production)
 				? e.data.production
-				: (e.data.tile.is_water ? 'SeaLurk' : 'ScoutPatrol'),
+				: 'ScoutPatrol',
 		};
 		if (#is_defined(e.data.name)) {
 			info.name = e.data.name;

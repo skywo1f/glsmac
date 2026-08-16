@@ -244,7 +244,7 @@ validation_event.data.name = #undefined;
 		sea_scout.id
 	);
 	production_game.um.get_unit_defs = () => { return [sea_laser, sea_colony]; };
-	test.assert(found_base.get_initial_production(production_game, production_owner, site) == 'SeaLurk');
+	test.assert(found_base.get_initial_production(production_game, production_owner, site) == 'ScoutPatrol');
 	site.is_water = false;
 }
 

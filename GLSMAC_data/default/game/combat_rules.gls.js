@@ -2,7 +2,9 @@ const unit_abilities = #include('unit_abilities');
 const visibility_rules = #include('visibility_rules');
 
 const is_artillery = (def) => {
-	return #is_defined(def.is_artillery) ? def.is_artillery : def.id == 'SporeLauncher';
+	return #is_defined(def.is_artillery)
+		? def.is_artillery
+		: unit_abilities.has(def, 'HeavyArtillery');
 };
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };

@@ -25,8 +25,9 @@ const native_def = {
 	morale_set: 'NATIVE',
 };
 const artillery_def = {
-	id: 'SporeLauncher',
+	id: 'HeavyArtilleryUnit',
 	is_native: true,
+	abilities: ['HeavyArtillery'],
 	offense: 4,
 	defense: 1,
 	morale_set: 'NATIVE',

@@ -77,15 +77,11 @@ return (game) => {
 		});
 		tiles_with_bases :+tile;
 
-		// spawn scout patrol (naval starts keep a sea-native stand-in for now)
-		let type = 'ScoutPatrol';
-		if (faction.is_naval) {
-			type = 'SeaLurk';
-		}
+		// Base SMAC factions all begin on land with a Scout Patrol.
 		game.event('spawn_unit', {
 			owner: player,
 			tile: tile,
-			type: type,
+			type: 'ScoutPatrol',
 			health: 1.0,
 			morale: 1,
 			home_base_at_tile: true,

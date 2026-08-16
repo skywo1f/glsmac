@@ -3,7 +3,6 @@ const snapshots = #include('./entity_snapshots');
 const CAPTURE_MOVE_COST = 1.0;
 const EXCLUDED_DEFINITIONS = {
 	AlienArtifact: true,
-	FungalTower: true,
 };
 
 const get_planet_rating = (game, player) => {
@@ -97,7 +96,7 @@ const resolve = (game, attacker, target) => {
 	const target_owner = target.get_owner();
 	if (
 		player.type == 'native' || target_owner.type != 'native' ||
-		attacker.is_air || attacker_def.is_artillery || attacker_def.id == 'SporeLauncher' ||
+		attacker.is_air || attacker_def.is_artillery ||
 		!target_def.is_native || #is_defined(EXCLUDED_DEFINITIONS[target_def.id])
 	) {
 		return no_attempt();

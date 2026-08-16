@@ -28,7 +28,7 @@ const get_initial_production = (game, owner, tile) => {
 			best = def;
 		}
 	}
-	return best == null ? 'SeaLurk' : best.id;
+	return best == null ? 'ScoutPatrol' : best.id;
 };
 
 return {

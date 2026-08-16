@@ -149,7 +149,7 @@ const bool StaticDef::HasAbility( const std::string& id ) const {
 }
 
 const bool StaticDef::IsArtillery() const {
-	return HasAbility( "HeavyArtillery" ) || m_id == "SporeLauncher";
+	return HasAbility( "HeavyArtillery" );
 }
 
 const bool StaticDef::IsPsiAttack() const {

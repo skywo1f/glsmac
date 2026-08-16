@@ -1,13 +1,14 @@
 const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 const manifest = #include('../default/content/base_units');
+const PREDEFINED_COUNT = 14;
 
 units.ensure_full_catalog();
 
 test.assert(units.generated_count > 92);
-test.assert(#sizeof(units.predefined_definitions) == 17);
+test.assert(#sizeof(units.predefined_definitions) == PREDEFINED_COUNT);
 test.assert(#sizeof(units.generated_definitions) == units.generated_count);
-test.assert(#sizeof(units.definitions) == units.generated_count + 17);
+test.assert(#sizeof(units.definitions) == units.generated_count + PREDEFINED_COUNT);
 
 const get_unit = (id) => {
 	for (unit of units.definitions) {
@@ -31,6 +32,9 @@ const artifact = get_unit('AlienArtifact');
 test.assert(artifact != null);
 test.assert(!artifact.data.buildable);
 test.assert(artifact.data.weapon == 'AlienArtifact');
+test.assert(get_unit('FungalTower') == null);
+test.assert(get_unit('SeaLurk') == null);
+test.assert(get_unit('SporeLauncher') == null);
 
 const scout = get_unit('ScoutPatrol');
 const colony = get_unit('ColonyPod');
@@ -309,7 +313,7 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 		test.assert(data.movement_per_turn == 2);
 		found_probe_team = true;
 	}
-	if (i < 17) {
+	if (i < PREDEFINED_COUNT) {
 		test.assert(data.reactor == 'FissionPlant');
 		continue;
 	}

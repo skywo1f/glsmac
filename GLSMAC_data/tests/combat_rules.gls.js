@@ -281,7 +281,11 @@ conventional_psi_defender.get_def = () => {
 test.assert(combat_rules.get_combat_powers(attacker, conventional_psi_defender).defence == 2.5);
 
 test.assert(combat_rules.is_artillery({id: 'TestArtillery', is_artillery: true}));
-test.assert(!combat_rules.is_artillery({id: 'SporeLauncher', is_artillery: false}));
+test.assert(!combat_rules.is_artillery({id: 'TestUnit', is_artillery: false}));
+test.assert(combat_rules.is_artillery({
+	id: 'AbilityArtillery',
+	abilities: ['HeavyArtillery'],
+}));
 const artillery_attacker = make_unit(attack_tile, 1, 2, 1, false, 'land');
 artillery_attacker.get_def = () => {
 	return {id: 'TestArtillery', is_artillery: true, offense: 2, defense: 1};

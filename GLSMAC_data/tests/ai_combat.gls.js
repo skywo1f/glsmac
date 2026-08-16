@@ -169,7 +169,15 @@ immovable_threat.is_immovable = true;
 const sea_threat = make_combat_unit(other_player_id, near_enemy_tile, 3);
 sea_threat.is_land = false;
 sea_threat.is_water = true;
-const artillery_threat = make_combat_unit(other_player_id, near_enemy_tile, 3, 1, 1.0, 2, 'SporeLauncher');
+const artillery_threat = make_combat_unit(other_player_id, near_enemy_tile, 3);
+artillery_threat.get_def = () => { return {
+	id: 'TestArtillery',
+	is_native: false,
+	is_artillery: true,
+	offense: 3,
+	defense: 1,
+	movement_per_turn: 1.0,
+}; };
 artillery_threat.is_land = false;
 artillery_threat.is_water = true;
 test.assert(!combat.can_threaten_tile(immovable_threat, home_tile));

@@ -91,8 +91,8 @@ const planet_buster_unit = unit('PlanetBuster', 99, 1, 12.0, 225, false, false);
 planet_buster_unit.weapon = 'PlanetBuster';
 const sea_colony = unit('SeaColony', 0, 1, 4.0, 70, true, false);
 sea_colony.is_water = true;
-const sea_lurk = unit('SeaLurk', 1, 1, 4.0, 40, false, false);
-sea_lurk.is_water = true;
+const sea_scout = unit('SeaScout', 1, 1, 4.0, 40, false, false);
+sea_scout.is_water = true;
 const recycling = facility('Recycling', 1, 1, 1, 0, 0.0, 0, 40);
 const headquarters = facility('Headquarters', 0, 0, 1, 0, 0.0, 0, 50);
 const network = facility('Network', 0, 0, 0, 0, 0.5, 1, 80);
@@ -164,7 +164,7 @@ const context = (garrison, needs_former, needs_colony, needs_psych, energy) => {
 };
 
 test.assert(production.choose(base, all_units, all_facilities, context(true, true, true, true, 10)).id == 'Defender');
-test.assert(production.choose(base, [sea_lurk, scout], [], context(true, false, false, false, 10)).id == 'Scout');
+test.assert(production.choose(base, [sea_scout, scout], [], context(true, false, false, false, 10)).id == 'Scout');
 test.assert(production.choose(base, all_units, all_facilities, context(false, true, true, true, 10)).id == 'Former');
 let sea_former_context = context(false, true, false, false, 10);
 sea_former_context.base_is_water = true;

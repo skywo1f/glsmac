@@ -39,9 +39,22 @@
 		let handled_turns = {};
 
 		const get_snapshot_production_ids = (base) => {
-			return base.get_tile().is_water
-				? ['SeaLurk', 'SeaLurk']
-				: ['SporeLauncher', 'MindWorms'];
+			let result = [];
+			for (def of game.get_um().get_unit_defs()) {
+				if (base.can_set_production('unit', def.id)) {
+					result :+def.id;
+					if (#sizeof(result) == 2) {
+						break;
+					}
+				}
+			}
+			if (#sizeof(result) == 0) {
+				throw Error('Reconnect fixture base has no available unit production');
+			}
+			if (#sizeof(result) == 1) {
+				result :+result[0];
+			}
+			return result;
 		};
 
 		const find_base_for_player = (player_id) => {

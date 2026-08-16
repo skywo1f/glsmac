@@ -38,9 +38,9 @@ const mind_worms = {
 	is_native: true,
 	morale_set: 'NATIVE',
 };
-const spore_launcher = {
-	id: 'SporeLauncher',
-	name: 'Spore Launcher',
+const heavy_artillery_unit = {
+	id: 'HeavyArtilleryUnit',
+	name: 'Heavy Artillery Unit',
 	production_kind: 'unit',
 	mineral_cost: 50,
 	can_found_base: false,
@@ -248,7 +248,7 @@ const sky_hydroponics = {
 };
 const definitions = [
 	mind_worms,
-	spore_launcher,
+	heavy_artillery_unit,
 	colony_pod,
 	land_patrol,
 	trained_land_patrol,
@@ -733,7 +733,7 @@ game = {
 	},
 };
 
-production_queue = [mind_worms, spore_launcher];
+production_queue = [mind_worms, heavy_artillery_unit];
 let event = {
 	caller: owner.id,
 	game: game,
@@ -757,15 +757,15 @@ event.data.id = 1;
 test.assert(#is_defined(set_base_production.validate(event)));
 event.data.id = 'RecyclingTanks';
 event.data.kind = 'unit';
-event.data.id = 'FungalTower';
+event.data.id = 'ImmobileUnit';
 test.assert(#is_defined(set_base_production.validate(event)));
 event.data.kind = 'facility';
 event.data.id = 'RecyclingTanks';
 
 event.applied = set_base_production.apply(event);
-test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:HeavyArtilleryUnit']);
 set_base_production.rollback(event);
-test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:MindWorms', 'unit:HeavyArtilleryUnit']);
 
 production_queue = [];
 event.applied = set_base_production.apply(event);
@@ -780,7 +780,7 @@ event = {
 	data: {
 		base: base,
 		kind: 'unit',
-		id: 'SporeLauncher',
+		id: 'HeavyArtilleryUnit',
 	},
 };
 test.assert(!#is_defined(queue_base_production.validate(event)));
@@ -795,10 +795,10 @@ test.assert(#is_defined(queue_base_production.validate(event)));
 event.data.kind = 'unit';
 event.data.id = 1;
 test.assert(#is_defined(queue_base_production.validate(event)));
-event.data.id = 'SporeLauncher';
+event.data.id = 'HeavyArtilleryUnit';
 
 event.applied = queue_base_production.apply(event);
-test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:MindWorms', 'unit:HeavyArtilleryUnit']);
 queue_base_production.rollback(event);
 test.assert(get_queue_state() == ['unit:MindWorms']);
 
@@ -808,10 +808,10 @@ event.data.id = 'RecyclingTanks';
 test.assert(#is_defined(queue_base_production.validate(event)));
 production_queue = [mind_worms, mind_worms, mind_worms, mind_worms, mind_worms, mind_worms, mind_worms, mind_worms];
 event.data.kind = 'unit';
-event.data.id = 'SporeLauncher';
+event.data.id = 'HeavyArtilleryUnit';
 test.assert(#is_defined(queue_base_production.validate(event)));
 
-production_queue = [mind_worms, recycling_tanks, spore_launcher];
+production_queue = [mind_worms, recycling_tanks, heavy_artillery_unit];
 event = {
 	caller: owner.id,
 	game: game,
@@ -838,11 +838,11 @@ test.assert(#is_defined(remove_base_production.validate(event)));
 event.data.index = 1;
 
 event.applied = remove_base_production.apply(event);
-test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:MindWorms', 'unit:HeavyArtilleryUnit']);
 remove_base_production.rollback(event);
-test.assert(get_queue_state() == ['unit:MindWorms', 'facility:RecyclingTanks', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:MindWorms', 'facility:RecyclingTanks', 'unit:HeavyArtilleryUnit']);
 
-production_queue = [mind_worms, spore_launcher];
+production_queue = [mind_worms, heavy_artillery_unit];
 built_facilities = ['CommandCenter'];
 accumulated_minerals = 25;
 spawned_unit = #undefined;
@@ -862,7 +862,7 @@ event.caller = 0;
 
 event.applied = process_base_production.apply(event);
 test.assert(accumulated_minerals == 2);
-test.assert(get_queue_state() == ['unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:HeavyArtilleryUnit']);
 test.assert(#is_defined(spawned_unit));
 test.assert(spawn_data.def == mind_worms.id);
 test.assert(spawn_data.owner == owner);
@@ -872,7 +872,7 @@ test.assert(spawn_data.health == 1.0);
 test.assert(spawn_data.home_base_id == base.id);
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 25);
-test.assert(get_queue_state() == ['unit:MindWorms', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:MindWorms', 'unit:HeavyArtilleryUnit']);
 test.assert(!#is_defined(spawned_unit));
 test.assert(despawned_unit.id == 17);
 built_facilities = [];
@@ -951,18 +951,18 @@ test.assert(accumulated_minerals == 10);
 test.assert(get_queue_state() == ['unit:MindWorms']);
 test.assert(!#is_defined(despawned_unit));
 
-production_queue = [recycling_tanks, spore_launcher];
+production_queue = [recycling_tanks, heavy_artillery_unit];
 built_facilities = [];
 accumulated_minerals = 35;
 spawn_data = #undefined;
 event.applied = process_base_production.apply(event);
 test.assert(accumulated_minerals == 2);
-test.assert(get_queue_state() == ['unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:HeavyArtilleryUnit']);
 test.assert(has_facility('RecyclingTanks'));
 test.assert(!#is_defined(spawn_data));
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 35);
-test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['facility:RecyclingTanks', 'unit:HeavyArtilleryUnit']);
 test.assert(!has_facility('RecyclingTanks'));
 
 production_queue = [centauri_preserve];
@@ -980,21 +980,21 @@ process_base_production.rollback(event);
 test.assert(!has_facility('CentauriPreserve'));
 test.assert(ecology_completion_rollbacks == ['CentauriPreserve']);
 
-production_queue = [human_genome_project, spore_launcher];
+production_queue = [human_genome_project, heavy_artillery_unit];
 competing_production_queue = [land_patrol, human_genome_project, sea_patrol];
 built_facilities = [];
 completed_project_base = #undefined;
 accumulated_minerals = 195;
 event.applied = process_base_production.apply(event);
 test.assert(accumulated_minerals == 2);
-test.assert(get_queue_state() == ['unit:SporeLauncher']);
+test.assert(get_queue_state() == ['unit:HeavyArtilleryUnit']);
 test.assert(has_facility('TheHumanGenomeProject'));
 test.assert(completed_project_base == owner);
 test.assert(#sizeof(event.applied.cancelled_project_queues) == 1);
 test.assert(competing_production_queue == [land_patrol, sea_patrol]);
 process_base_production.rollback(event);
 test.assert(accumulated_minerals == 195);
-test.assert(get_queue_state() == ['project:TheHumanGenomeProject', 'unit:SporeLauncher']);
+test.assert(get_queue_state() == ['project:TheHumanGenomeProject', 'unit:HeavyArtilleryUnit']);
 test.assert(competing_production_queue == [land_patrol, human_genome_project, sea_patrol]);
 test.assert(!has_facility('TheHumanGenomeProject'));
 test.assert(!#is_defined(completed_project_base));

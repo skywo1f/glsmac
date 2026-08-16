@@ -179,10 +179,6 @@ const tamed_target = make_unit(30, rival, 'MindWorms', true, target_tile);
 result = capture.resolve(game, attacker, tamed_target);
 test.assert(!result.attempted);
 
-const tower = make_unit(31, planet, 'FungalTower', true, target_tile);
-result = capture.resolve(game, attacker, tower);
-test.assert(!result.attempted);
-
 let stored = {};
 const key = (id) => { return 'u' + #to_string(id); };
 let transfer_tile = null;

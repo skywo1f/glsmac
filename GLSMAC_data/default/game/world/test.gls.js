@@ -79,57 +79,20 @@ return (game) => {
 					let units_count = game.random.get_int(1, 2);
 					for (let i = 0; i < units_count; i++) {
 						if (tile.is_land) {
-							if (game.random.get_int(0, 4) != 0) {
+							game.event('spawn_unit', {
+								type: 'MindWorms',
+								owner: owner,
+								tile: tile,
+								morale: random_morale(),
+								health: random_health(),
+							});
 
-								game.event('spawn_unit', {
-									type: 'MindWorms',
-									owner: owner,
-									tile: tile,
-									morale: random_morale(),
-									health: random_health(),
-								});
-
-								units_spawned++;
-							} else {
-								if (tile.features.xenofungus && game.random.get_int(0, 3) == 0) {
-									// morale depends on count of fungus tiles around
-									let morale = 1;
-									for (neighbour of tile.get_surrounding_tiles()) {
-										if (morale >= 6) {
-											break;
-										}
-										if (neighbour.features.xenofungus) {
-											morale++;
-										}
-									}
-
-									game.event('spawn_unit', {
-										type: 'FungalTower',
-										owner: owner,
-										tile: tile,
-										morale: morale,
-										health: random_health(),
-									});
-
-									units_spawned++;
-								} else {
-
-									game.event('spawn_unit', {
-										type: 'SporeLauncher',
-										owner: owner,
-										tile: tile,
-										morale: random_morale(),
-										health: random_health(),
-									});
-
-									units_spawned++;
-								}
-							}
+							units_spawned++;
 						} else {
 							if (game.random.get_int(0, 3) == 0) {
 
 								game.event('spawn_unit', {
-									type: 'SeaLurk',
+									type: 'IsleOfTheDeep',
 									owner: owner,
 									tile: tile,
 									morale: random_morale(),

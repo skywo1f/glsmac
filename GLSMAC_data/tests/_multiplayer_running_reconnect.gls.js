@@ -893,9 +893,22 @@
 		};
 
 		const get_snapshot_production_ids = (base) => {
-			return base.get_tile().is_water
-				? ['SeaLurk', 'SeaLurk']
-				: ['SporeLauncher', 'ScoutPatrol'];
+			let result = [];
+			for (def of game.get_um().get_unit_defs()) {
+				if (base.can_set_production('unit', def.id)) {
+					result :+def.id;
+					if (#sizeof(result) == 2) {
+						break;
+					}
+				}
+			}
+			if (#sizeof(result) == 0) {
+				throw Error('Reconnect fixture base has no available unit production');
+			}
+			if (#sizeof(result) == 1) {
+				result :+result[0];
+			}
+			return result;
 		};
 
 		const get_production_state_error = (base) => {

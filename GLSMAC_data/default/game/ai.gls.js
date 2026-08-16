@@ -1986,7 +1986,7 @@ const move_combat = (
 		finish_combat_phase('attack_ms');
 		return 1000;
 	}
-	if (unit.get_def().id == 'SporeLauncher') {
+	if (unit.get_def().is_artillery) {
 		let ranged_tiles = [];
 		for (nearby of tile.get_surrounding_tiles()) {
 			for (ranged of nearby.get_surrounding_tiles()) {
