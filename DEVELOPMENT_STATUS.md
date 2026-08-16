@@ -1524,12 +1524,19 @@ reactor tiers. Layered Infantry configurations that are not one of the three
 self-contained stock roles still use role-specific fallback icons. A dedicated
 installed-asset gate registered the complete generated unit catalog and rendered
 all 516 generated definitions without `CVR_RENDER_FALLBACK` in 5.58 seconds.
-The current parser projects static voxel geometry but does not yet apply every
-original animated-part transform, so some rover wheel, needlejet, and copter
-subcomponents can be offset. An automated foreground-window capture also still
-presented a black OpenGL client area despite the runtime log reaching the
-selected composed rover and completed minimap textures. This is broad asset and
-parser coverage, not a claim of complete manual visual approval.
+The parser now decodes each part's frame-zero visibility, translation, and 3x3
+matrix, applies Caviar's `z/x/y` vector order and half-unit translation scale,
+and then projects the transformed voxels. Offline reference renders align the
+rover wheels and the hover, foil, needlejet, and copter subcomponents that were
+previously piled at their local origins. The complete 139-test native/script
+suite passed in 199.38 seconds, and the installed-asset catalog gate plus Unit
+Workshop and small-map frontend smokes passed afterward. Unit icons still use a
+static frame rather than playing the original animations, and the renderer does
+not yet reproduce Caviar normals, source lighting, or faction tinting. An
+automated foreground-window capture also still presented a black OpenGL client
+area despite the runtime log reaching the selected composed rover and completed
+minimap textures. This is broad asset and parser coverage, not a claim of
+complete manual visual approval.
 
 AI action and animation completion polling now runs every 50 ms instead of
 every 100 ms while retaining pending-event checks, nearby tile-lock guards,

@@ -4,6 +4,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <limits>
 
 #include "engine/Engine.h"
@@ -21,6 +22,8 @@ namespace {
 
 static constexpr size_t MAX_PARTS = 2048;
 static constexpr size_t MAX_VOXELS = 4000000;
+static constexpr size_t MAX_FRAMES = 65536;
+static constexpr float TRANSLATION_TO_VOXELS = 0.5f;
 
 struct color_t {
 	uint8_t red;
@@ -29,16 +32,16 @@ struct color_t {
 };
 
 struct voxel_t {
-	int32_t x;
-	int32_t y;
-	int32_t z;
+	float x;
+	float y;
+	float z;
 	color_t color;
 };
 
 struct projected_voxel_t {
 	float x;
 	float y;
-	int64_t depth;
+	float depth;
 	color_t color;
 };
 
@@ -93,6 +96,29 @@ static uint32_t ReadU32( const std::vector< unsigned char >& data, const size_t 
 static int16_t ReadI16( const std::vector< unsigned char >& data, const size_t pos ) {
 	RequireBytes( data, pos, 2 );
 	return (int16_t)( (uint16_t)data[ pos ] | (uint16_t)data[ pos + 1 ] << 8 );
+}
+
+static float ReadF32( const std::vector< unsigned char >& data, const size_t pos ) {
+	const uint32_t bits = ReadU32( data, pos );
+	float value = 0.0f;
+	static_assert( sizeof( value ) == sizeof( bits ), "unexpected float size" );
+	std::memcpy( &value, &bits, sizeof( value ) );
+	Require( std::isfinite( value ), "non-finite transform value" );
+	return value;
+}
+
+static void RequireMarker(
+	const std::vector< unsigned char >& data,
+	const size_t pos,
+	const std::array< uint8_t, 4 >& marker,
+	const std::string& name
+) {
+	RequireBytes( data, pos, marker.size() );
+	Require(
+		data[ pos ] == marker[ 0 ] && data[ pos + 1 ] == marker[ 1 ] &&
+		data[ pos + 2 ] == marker[ 2 ] && data[ pos + 3 ] == marker[ 3 ],
+		name + " marker mismatch"
+	);
 }
 
 static size_t FindAfter(
@@ -188,9 +214,11 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 	const size_t part_count = ReadU32( data, pos + 3 );
 	Require( part_count <= MAX_PARTS, "part count is too large" );
 	pos = FindAfter( data, pos, { 0x00, 0x03, 0x04, 0x0C } );
-	ReadU32( data, pos + 3 );
+	const size_t frame_count = ReadU32( data, pos + 3 );
+	Require( frame_count > 0 && frame_count <= MAX_FRAMES, "invalid frame count" );
 
 	for ( size_t part = 0 ; part < part_count ; part++ ) {
+		const size_t first_part_voxel = voxels.size();
 		pos = FindAfter( data, pos, { 0x00, 0x01, 0x04, 0x04 } );
 		RequireBytes( data, pos, 4 );
 		Require( data[ pos ] >= 8, "invalid part name length" );
@@ -215,9 +243,9 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 
 		size_t consumed = 0;
 		size_t mesh_count = 0;
-		int32_t x = x0;
-		int32_t y = y0;
-		int32_t z = z0;
+		float x = (float)x0;
+		float y = (float)y0;
+		float z = (float)z0;
 		while ( consumed < total_voxels ) {
 			mesh_count++;
 			size_t section_voxels = total_voxels - consumed;
@@ -240,9 +268,9 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 					", consumed=" + std::to_string( consumed ) +
 					", total=" + std::to_string( total_voxels ) + ")"
 				);
-				x = x1 + x2;
-				y = y1 + y2;
-				z = z1 + z2;
+				x = (float)( x1 + x2 );
+				y = (float)( y1 + y2 );
+				z = (float)( z1 + z2 );
 			}
 
 			RequireBytes( data, pos, section_voxels * 3 );
@@ -264,6 +292,63 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 				consumed <= total_voxels + mesh_count,
 				"multimesh contains more than one terminal record per section"
 			);
+		}
+
+		const size_t transform_data_pos = FindAfter( data, pos, { 0x00, 0x03, 0x04, 0x04 } );
+		const size_t transform_pos = transform_data_pos - 4;
+		const size_t transform_length = ReadU32( data, transform_data_pos );
+		Require( transform_length >= 8, "invalid transform block length" );
+		RequireBytes( data, transform_pos, transform_length );
+		const size_t transform_end = transform_pos + transform_length;
+
+		const size_t visibility_pos = transform_pos + 8;
+		RequireMarker( data, visibility_pos, { 0x01, 0x03, 0x04, 0x04 }, "visibility" );
+		const size_t visibility_length = ReadU32( data, visibility_pos + 4 );
+		Require( visibility_length == 8 + frame_count, "visibility frame count mismatch" );
+		RequireBytes( data, visibility_pos, visibility_length );
+		const bool is_visible = data[ visibility_pos + 8 ] == 0;
+
+		const size_t translation_pos = visibility_pos + visibility_length;
+		RequireMarker( data, translation_pos, { 0x02, 0x03, 0x04, 0x04 }, "translation" );
+		const size_t translation_length = ReadU32( data, translation_pos + 4 );
+		Require( translation_length == 8 + frame_count * 12, "translation frame count mismatch" );
+		RequireBytes( data, translation_pos, translation_length );
+		const std::array< float, 3 > translation = {
+			ReadF32( data, translation_pos + 8 ),
+			ReadF32( data, translation_pos + 12 ),
+			ReadF32( data, translation_pos + 16 ),
+		};
+
+		const size_t matrix_pos = translation_pos + translation_length;
+		RequireMarker( data, matrix_pos, { 0x03, 0x03, 0x04, 0x04 }, "matrix" );
+		const size_t matrix_length = ReadU32( data, matrix_pos + 4 );
+		Require( matrix_length == 8 + frame_count * 36, "matrix frame count mismatch" );
+		RequireBytes( data, matrix_pos, matrix_length );
+		std::array< float, 9 > matrix = {};
+		for ( size_t i = 0 ; i < matrix.size() ; i++ ) {
+			matrix[ i ] = ReadF32( data, matrix_pos + 8 + i * 4 );
+		}
+		Require( matrix_pos + matrix_length == transform_end, "transform block length mismatch" );
+		pos = transform_end;
+
+		if ( !is_visible ) {
+			voxels.resize( first_part_voxel );
+			continue;
+		}
+		for ( size_t i = first_part_voxel ; i < voxels.size() ; i++ ) {
+			auto& voxel = voxels[ i ];
+			// Caviar stores vectors in z/x/y order and translations in half-voxel units.
+			const std::array< float, 3 > source = { voxel.z, voxel.x, voxel.y };
+			std::array< float, 3 > transformed = {};
+			for ( size_t row = 0 ; row < transformed.size() ; row++ ) {
+				transformed[ row ] = translation[ row ] * TRANSLATION_TO_VOXELS;
+				for ( size_t column = 0 ; column < source.size() ; column++ ) {
+					transformed[ row ] += matrix[ row * 3 + column ] * source[ column ];
+				}
+			}
+			voxel.x = transformed[ 1 ];
+			voxel.y = transformed[ 2 ];
+			voxel.z = transformed[ 0 ];
 		}
 	}
 }
@@ -293,7 +378,7 @@ types::texture::Texture* CVRRenderer::Render(
 	for ( const auto& voxel : voxels ) {
 		const float x = (float)voxel.x - voxel.z;
 		const float y = ( (float)voxel.x + voxel.z ) * 0.52f - voxel.y;
-		projected.push_back( { x, y, (int64_t)voxel.x + voxel.y + voxel.z, voxel.color } );
+		projected.push_back( { x, y, voxel.x + voxel.y + voxel.z, voxel.color } );
 		min_x = std::min( min_x, x );
 		max_x = std::max( max_x, x );
 		min_y = std::min( min_y, y );
