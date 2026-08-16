@@ -18,7 +18,9 @@ const armored_foil = sprite_render.get('Foil', 'PlasmaSteelArmor', 'Laser');
 test.assert(armored_foil.x == 518 && armored_foil.y == 82);
 
 const former = sprite_render.get('Infantry', 'NoArmor', 'TerraformingUnit');
-test.assert(former.x == 518 && former.y == 158);
+test.assert(former.type == 'cvr');
+test.assert(former.files == ['VT.cvr']);
+test.assert(former.fallback.x == 518 && former.fallback.y == 158);
 
 const probe = sprite_render.get('Speeder', 'NoArmor', 'ProbeTeam');
 test.assert(probe.x == 518 && probe.y == 158);
@@ -27,7 +29,9 @@ const gravship = sprite_render.get('Gravship', 'StasisGenerator', 'SingularityLa
 test.assert(gravship.x == 518 && gravship.y == 82);
 
 const colony = sprite_render.get('Infantry', 'NoArmor', 'ColonyModule');
-test.assert(colony.y == 235);
+test.assert(colony.type == 'cvr');
+test.assert(colony.files == ['Drop.cvr']);
+test.assert(colony.fallback.x == 518 && colony.fallback.y == 235);
 
 const artifact = sprite_render.get('Infantry', 'NoArmor', 'AlienArtifact');
 test.assert(artifact.y == 312);
