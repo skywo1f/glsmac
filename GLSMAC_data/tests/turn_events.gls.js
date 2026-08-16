@@ -2,6 +2,7 @@ const complete_turn = #include('../default/game/event/complete_turn');
 const uncomplete_turn = #include('../default/game/event/uncomplete_turn');
 const advance_turn = #include('../default/game/event/advance_turn');
 const unit_skip_turn = #include('../default/game/event/unit_skip_turn');
+const set_unit_order = #include('../default/game/event/set_unit_order');
 
 let completed = [false, false];
 let emitted_events = [];
@@ -173,11 +174,18 @@ current_turn = 1;
 test.assert(!#is_defined(advance_turn.validate(advance_event)));
 
 let movement = 0.75;
-const unit = {
+let unit = null;
+unit = {
 	owner: 1,
 	movement: movement,
 	health: 1.0,
 	terraforming: 'none',
+	transport_id: 0,
+	convoy_resource: 'none',
+	order: 'none',
+	set_order: (order) => {
+		unit.order = order;
+	},
 	get_tile: () => {
 		return {
 			is_locked: () => {
@@ -197,3 +205,31 @@ test.assert(!#is_defined(unit_skip_turn.validate(skip_event)));
 skip_event.applied = unit_skip_turn.apply(skip_event);
 test.assert(skip_event.applied.original_movement == 0.75);
 unit_skip_turn.rollback(skip_event);
+test.assert(unit.movement == 0.75);
+
+const hold_event = {
+	caller: 1,
+	game: game,
+	data: {
+		unit: unit,
+		order: 'hold',
+	},
+};
+test.assert(!#is_defined(set_unit_order.validate(hold_event)));
+hold_event.resolved = set_unit_order.resolve(hold_event);
+hold_event.applied = set_unit_order.apply(hold_event);
+test.assert(unit.order == 'hold');
+test.assert(unit.movement == 0.75);
+skip_event.data.unit = unit;
+test.assert(#is_defined(unit_skip_turn.validate(skip_event)));
+set_unit_order.rollback(hold_event);
+test.assert(unit.order == 'none');
+test.assert(unit.movement == 0.75);
+
+hold_event.data.order = 'wake';
+test.assert(#is_defined(set_unit_order.validate(hold_event)));
+hold_event.data.order = 'hold';
+unit.transport_id = 7;
+hold_event.data.unit = unit;
+test.assert(#is_defined(set_unit_order.validate(hold_event)));
+unit.transport_id = 0;

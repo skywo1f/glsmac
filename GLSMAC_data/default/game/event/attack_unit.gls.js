@@ -10,6 +10,7 @@ const entity_snapshots = #include('../entity_snapshots');
 const probe_interception = #include('../probe_interception');
 const message_rules = #include('../message_rules');
 const movement_rules = #include('../movement_rules');
+const unit_order_rules = #include('../unit_order_rules');
 const snapshot_unit = entity_snapshots.snapshot_unit;
 
 const is_un_charter_active = (game) => {
@@ -84,6 +85,10 @@ return {
 	unit_visibility: 'private',
 
 	validate: (e) => {
+		const order_error = unit_order_rules.get_unavailable_reason(e.data.attacker);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (e.data.attacker.owner != e.caller) {
 			return 'Unit can only be ordered to attack by its owner';
 		}

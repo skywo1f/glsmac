@@ -40,6 +40,7 @@
 			let phase_ticks = 0;
 			let worker_target = null;
 			let moving_unit = null;
+			let held_movement = 0.0;
 			let move_target = null;
 			let move_start_turn = 0;
 			let economy_credits_before = 0;
@@ -247,12 +248,51 @@
 					) {
 						return true;
 					}
-					p.root.trigger('keydown', {code: 'A', modifiers: {}});
-					if (!preview.actions_menu_open || preview.actions_menu.height < 36) {
-						fail('unit actions menu did not open from the A hotkey');
+					preview.action_button.trigger('click');
+					if (!preview.actions_menu_open || preview.actions_menu.height < 54) {
+						fail('unit actions menu did not expose go-to, hold, and skip commands');
 						return false;
 					}
+					preview.action_button.trigger('click');
+					held_movement = moving_unit.movement + 0.0;
+					p.root.trigger('keydown', {code: 'H', modifiers: {}});
+					phase = 'unit_held';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'unit_held') {
+					const live_unit = game.get_um().get_unit(moving_unit.id);
+					if (live_unit.order != 'hold') {
+						return true;
+					}
+					if (live_unit.movement != held_movement) {
+						fail('Hold Position consumed the unit\'s remaining movement');
+						return false;
+					}
+					const preview = p.modules.bottom_bar.pp.sections.object_preview;
+					preview.show(live_unit);
+					preview.action_button.trigger('click');
+					if (!preview.actions_menu_open || preview.actions_menu.height != 18) {
+						fail('held unit actions menu did not expose only Activate');
+						return false;
+					}
+					preview.action_button.trigger('click');
 					p.root.trigger('keydown', {code: 'A', modifiers: {}});
+					phase = 'unit_activated';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'unit_activated') {
+					const live_unit = game.get_um().get_unit(moving_unit.id);
+					if (live_unit.order != 'none') {
+						return true;
+					}
+					if (live_unit.movement != held_movement) {
+						fail('Activate changed the unit\'s remaining movement');
+						return false;
+					}
 					p.modules.bottom_bar.pp.sections.objects_list.frame.trigger(
 						'keydown',
 						{code: 'ENTER', modifiers: {}}

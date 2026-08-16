@@ -26,6 +26,12 @@ enum convoy_resource_t {
 	CR_ENERGY,
 };
 
+enum order_t {
+	UO_INVALID = -1,
+	UO_NONE,
+	UO_HOLD,
+};
+
 typedef float movement_t;
 
 typedef float health_t;

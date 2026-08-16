@@ -7,7 +7,8 @@ const has_state_changed = (unit, attempt) => {
 		unit.movement != attempt.movement ||
 		unit.health != attempt.health ||
 		unit.moved_this_turn != attempt.moved_this_turn ||
-		unit.terraforming != attempt.terraforming
+		unit.terraforming != attempt.terraforming ||
+		(#is_defined(unit.order) ? unit.order : 'none') != attempt.order
 	);
 };
 
@@ -18,7 +19,8 @@ const can_attempt_action = (unit, action_attempts) => {
 		(!#is_defined(attempt) || (attempt.count < MAX_ACTION_ATTEMPTS_PER_UNIT && !attempt.pending)) &&
 		unit.movement > 0.0 &&
 		!unit.is_immovable &&
-		unit.terraforming == 'none'
+		unit.terraforming == 'none' &&
+		(!#is_defined(unit.order) || unit.order == 'none')
 	);
 };
 
@@ -34,6 +36,7 @@ const record_action_attempt = (unit, action_attempts) => {
 		health: unit.health + 0.0,
 		moved_this_turn: unit.moved_this_turn == true,
 		terraforming: '' + unit.terraforming,
+		order: #is_defined(unit.order) ? '' + unit.order : 'none',
 	};
 };
 

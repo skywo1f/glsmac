@@ -1222,7 +1222,8 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				d.morale,
 				*d.morale_string,
 				d.health,
-				d.embarked
+				d.embarked,
+				d.active
 			);
 			break;
 		}
@@ -1238,6 +1239,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			unit->SetMorale( d.morale, *d.morale_string );
 			unit->SetHealth( d.health );
 			unit->SetEmbarked( d.embarked );
+			unit->SetAvailableForOrders( d.active );
 			const auto& c = unit->GetTile()->GetCoords();
 			if ( d.tile_coords.x != c.x || d.tile_coords.y != c.y ) {
 				if ( !d.embarked ) {

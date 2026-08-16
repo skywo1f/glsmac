@@ -3,6 +3,7 @@ const snapshots = #include('../entity_snapshots');
 const technology_acquisition = #include('../technology_acquisition');
 const technology_effects = #include('../technology_effects');
 const message_rules = #include('../message_rules');
+const unit_order_rules = #include('../unit_order_rules');
 const snapshot_unit = snapshots.snapshot_unit;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
@@ -340,6 +341,10 @@ return {
 		const probe = e.data.unit;
 		if (#typeof(probe) != 'Object' || #typeof(probe.get_def) != 'Callable') {
 			return 'Probe operation requires a unit';
+		}
+		const order_error = unit_order_rules.get_unavailable_reason(probe);
+		if (order_error != null) {
+			return order_error;
 		}
 		if (probe.owner != e.caller) {
 			return 'Probe Team can only be ordered by its owner';

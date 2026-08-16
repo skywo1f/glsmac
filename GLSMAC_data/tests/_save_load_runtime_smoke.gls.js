@@ -14,6 +14,7 @@
 	let restored_move_unit_id = 0;
 	let restored_move_target_x = 0;
 	let restored_move_target_y = 0;
+	let restored_hold_unit_id = 0;
 
 	const fail = (message) => {
 		#print('SAVE_LOAD_RUNTIME_FAIL: ' + message);
@@ -63,6 +64,7 @@
 				}
 				let move_unit = null;
 				let move_target = null;
+				let hold_unit = null;
 				for (candidate of e.game.get_um().get_units()) {
 					if (
 						candidate.owner != player.id || candidate.is_immovable ||
@@ -97,6 +99,29 @@
 				if (move_unit == null || move_target == null) {
 					throw Error('Save/load fixture has no legal unit move target');
 				}
+				for (candidate of e.game.get_um().get_units()) {
+					if (
+						candidate.id != move_unit.id && candidate.owner == player.id &&
+						candidate.transport_id == 0 && !candidate.is_immovable &&
+						candidate.terraforming == 'none' && candidate.convoy_resource == 'none' &&
+						candidate.movement > 0.0
+					) {
+						hold_unit = candidate;
+						break;
+					}
+				}
+				let hold_spawned = false;
+				if (hold_unit == null) {
+					hold_unit = e.game.get_um().spawn_unit({
+						def: 'ScoutPatrol',
+						owner: player,
+						tile: base.get_tile(),
+						morale: 2,
+						health: 1.0,
+						home_base_id: base.id,
+					});
+					hold_spawned = true;
+				}
 				const previous_move_target = move_unit.get_move_target();
 				const previous = {
 					energy: player.energy_credits,
@@ -112,6 +137,9 @@
 					move_target: previous_move_target == null
 						? null
 						: {x: previous_move_target.x + 0, y: previous_move_target.y + 0},
+					hold_unit_id: hold_unit.id + 0,
+					hold_order: '' + hold_unit.order,
+					hold_spawned: hold_spawned,
 				};
 				player.set_energy_credits(energy_stamp);
 				base.set('accumulated_nutrients', nutrient_stamp);
@@ -120,6 +148,7 @@
 				base.set('governor_enabled', true);
 				base.set('governor_priority', 'discover');
 				move_unit.set_move_target(move_target);
+				hold_unit.set_order('hold');
 				player.set_contact(opponent, true);
 				opponent.set_contact(player, true);
 				player.set_diplomatic_relation(opponent, 'vendetta');
@@ -150,6 +179,14 @@
 							e.applied.move_target.x,
 							e.applied.move_target.y
 						));
+					}
+				}
+				if (e.game.get_um().has_unit(e.applied.hold_unit_id)) {
+					const hold_unit = e.game.get_um().get_unit(e.applied.hold_unit_id);
+					if (e.applied.hold_spawned) {
+						e.game.get_um().despawn_unit(hold_unit);
+					} else {
+						hold_unit.set_order(e.applied.hold_order);
 					}
 				}
 				player.clear_diplomatic_trade(opponent);
@@ -236,6 +273,21 @@
 					return 'restored unit did not complete its saved move order';
 				}
 			}
+			let held_unit = null;
+			for (candidate of game.get_um().get_units()) {
+				if (candidate.owner == game.get_player().id && candidate.order == 'hold') {
+					held_unit = candidate;
+					break;
+				}
+			}
+			if (held_unit == null) {
+				return 'Hold Position order was not restored';
+			}
+			if (restored_hold_unit_id == 0) {
+				restored_hold_unit_id = held_unit.id + 0;
+			} else if (held_unit.id != restored_hold_unit_id) {
+				return 'restored held unit identity changed';
+			}
 			const peace_trade = game.get_player().get_diplomatic_trade(opponent);
 			if (
 				peace_trade == null || peace_trade.offer_energy != 10 ||
@@ -270,7 +322,7 @@
 				}
 				#print('SAVE_LOAD_RUNTIME_RESUME_PASS');
 				exit_scheduled = true;
-				#async(0, () => { glsmac.exit(); });
+				glsmac.exit();
 			});
 		});
 
@@ -309,7 +361,7 @@
 					#print('SAVE_LOAD_RUNTIME_LOAD_PASS');
 					#print('SAVE_LOAD_RUNTIME_RANDOM_' + #to_string(game.random.get_int(0, 1000000)));
 					exit_scheduled = true;
-					#async(0, () => { glsmac.exit(); });
+					glsmac.exit();
 				}
 				else {
 					fail('saved game restored an unexpected turn');
@@ -347,7 +399,7 @@
 					}
 					#print('SAVE_LOAD_RUNTIME_SAVE_PASS');
 					exit_scheduled = true;
-					#async(0, () => { glsmac.exit(); });
+					glsmac.exit();
 					return false;
 				}
 				if (ticks >= 200) {

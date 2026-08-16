@@ -43,6 +43,9 @@ return {
 		if (#is_defined(e.data.monolith_upgraded)) {
 			data.monolith_upgraded = e.data.monolith_upgraded;
 		}
+		if (#is_defined(e.data.order)) {
+			data.order = e.data.order;
+		}
 		const unit = e.game.um.spawn_unit(data);
 		if (#is_defined(e.data.movement)) {
 			unit.movement = e.data.movement;

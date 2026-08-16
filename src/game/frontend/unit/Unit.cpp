@@ -32,7 +32,8 @@ Unit::Unit(
 	const backend::unit::morale_t morale,
 	const std::string& morale_string,
 	const backend::unit::health_t health,
-	const bool embarked
+	const bool embarked,
+	const bool active
 )
 	: TileObject( TOT_UNIT, tile )
 	, m_um( um )
@@ -55,7 +56,8 @@ Unit::Unit(
 	, m_morale( morale )
 	, m_morale_string( morale_string )
 	, m_health( health )
-	, m_is_embarked( embarked ) {
+	, m_is_embarked( embarked )
+	, m_is_available_for_orders( active ) {
 	m_is_active = ShouldBeActive();
 	m_render.badge.def = m_slot_badges->GetUnitBadgeSprite( m_morale, m_is_active );
 	m_render.badge.healthbar.def = m_badge_defs->GetBadgeHealthbarSprite( m_health );
@@ -412,6 +414,13 @@ void Unit::SetEmbarked( const bool embarked ) {
 	}
 }
 
+void Unit::SetAvailableForOrders( const bool active ) {
+	if ( m_is_available_for_orders != active ) {
+		m_is_available_for_orders = active;
+		m_need_refresh = true;
+	}
+}
+
 void Unit::MoveToTile( tile::Tile* dst_tile ) {
 	m_mover.Stop(); //ASSERT( !m_mover.IsRunning(), "unit already moving" );
 	//ASSERT( m_tile != dst_tile, "can't move to same tile" );
@@ -436,7 +445,7 @@ const Unit::render_data_t& Unit::GetRenderData() const {
 }
 
 const bool Unit::ShouldBeActive() const {
-	return m_is_owned && CanMove();
+	return m_is_owned && m_is_available_for_orders;
 }
 
 void Unit::UpdateMeshTex( meshtex_t& meshtex, const sprite::InstancedSprite* sprite ) {

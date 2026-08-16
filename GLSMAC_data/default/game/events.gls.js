@@ -24,6 +24,7 @@ return (game) => {
 		'planet_buster',
 		'attack_orbital',
 		'advance_unit_after_combat',
+		'set_unit_order',
 		'unit_skip_turn',
 		'terraform_tile',
 		'cancel_terraform',

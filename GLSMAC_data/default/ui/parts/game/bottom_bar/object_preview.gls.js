@@ -21,6 +21,10 @@ return {
 		return #to_string(#to_float(#round(movement * 100.0)) / 100.0);
 	},
 
+	get_order: (unit) => {
+		return #is_defined(unit.order) ? '' + unit.order : 'none';
+	},
+
 	get_upgrade_targets: (unit) => {
 		const resolver = this.p.game.get('f_unit_upgrade_get_targets');
 		return #is_defined(resolver)
@@ -77,7 +81,10 @@ return {
 	},
 
 	start_goto: () => {
-		if (this.action_unit == null || this.action_unit.movement <= 0.0) {
+		if (
+			this.action_unit == null || this.action_unit.movement <= 0.0 ||
+			this.get_order(this.action_unit) != 'none'
+		) {
 			return false;
 		}
 		this.goto_unit = this.action_unit;
@@ -89,10 +96,36 @@ return {
 	},
 
 	skip_unit: () => {
-		if (this.action_unit == null || this.action_unit.movement <= 0.0) {
+		if (
+			this.action_unit == null || this.action_unit.movement <= 0.0 ||
+			this.get_order(this.action_unit) != 'none'
+		) {
 			return false;
 		}
 		this.p.game.event('unit_skip_turn', {unit: this.action_unit});
+		this.close_actions_menu();
+		return true;
+	},
+
+	hold_unit: () => {
+		if (
+			this.action_unit == null || this.action_unit.movement <= 0.0 ||
+			this.get_order(this.action_unit) != 'none'
+		) {
+			return false;
+		}
+		const unit_id = this.action_unit.id + 0;
+		this.p.game.event('set_unit_order', {unit_id: unit_id, order: 'hold'});
+		this.close_actions_menu();
+		return true;
+	},
+
+	activate_unit: () => {
+		if (this.action_unit == null || this.get_order(this.action_unit) == 'none') {
+			return false;
+		}
+		const unit_id = this.action_unit.id + 0;
+		this.p.game.event('set_unit_order', {unit_id: unit_id, order: 'none'});
 		this.close_actions_menu();
 		return true;
 	},
@@ -151,9 +184,15 @@ return {
 			});
 			top += 18;
 		};
-		add_action('GO TO (G)', this.start_goto);
-		add_action('HOLD (H)', this.skip_unit);
-		if (this.action_mode != null) {
+		const order = this.get_order(this.action_unit);
+		if (order == 'none') {
+			add_action('GO TO (G)', this.start_goto);
+			add_action('HOLD POSITION (H)', this.hold_unit);
+			add_action('SKIP TURN (SPACE)', this.skip_unit);
+		} else {
+			add_action('ACTIVATE (A)', this.activate_unit);
+		}
+		if (order == 'none' && this.action_mode != null) {
 			let label = 'SPECIAL ACTION';
 			if (this.action_mode == 'found_base') {
 				label = 'BUILD BASE (B)';
@@ -418,6 +457,9 @@ return {
 				if (#is_defined(object.convoy_resource) && object.convoy_resource != 'none') {
 					f_line('Convoy: ' + object.convoy_resource, 14, 'left');
 				}
+				if (this.get_order(object) == 'hold') {
+					f_line('Order: Hold Position', 14, 'left');
+				}
 
 				if (
 					is_owned && object.transport_id == 0 &&
@@ -627,21 +669,13 @@ return {
 			) {
 				return false;
 			}
-			if (e.code == 'A') {
-				if (this.actions_menu_open) {
-					this.close_actions_menu();
-				} else {
-					this.refresh_actions_menu();
-					this.actions_menu.show();
-					this.actions_menu_open = true;
-					this.action_button.active = true;
-				}
+			if (e.code == 'A' && this.activate_unit()) {
 				return true;
 			}
 			if (e.code == 'G' && this.start_goto()) {
 				return true;
 			}
-			if (e.code == 'H' && this.skip_unit()) {
+			if (e.code == 'H' && this.hold_unit()) {
 				return true;
 			}
 			if (e.code == 'B' && this.action_mode == 'found_base') {

@@ -1,4 +1,5 @@
 const artifact_rules = #include('./artifact_rules');
+const unit_order_rules = #include('./unit_order_rules');
 
 const RESOURCE_TYPES = ['NUTRIENTS', 'MINERALS', 'ENERGY'];
 const INTERBASE_TRANSFER = 1;
@@ -32,6 +33,10 @@ const get_home_base = (game, unit) => {
 };
 
 const get_common_usage_error = (game, unit, caller) => {
+	const order_error = unit_order_rules.get_unavailable_reason(unit);
+	if (order_error != null) {
+		return order_error;
+	}
 	if (unit.owner != caller) {
 		return 'Supply Transport can only be used by its owner';
 	}

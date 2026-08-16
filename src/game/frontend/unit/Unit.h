@@ -59,7 +59,8 @@ public:
 		const backend::unit::morale_t morale,
 		const std::string& morale_string,
 		const backend::unit::health_t health,
-		const bool embarked
+		const bool embarked,
+		const bool active
 	);
 	~Unit();
 
@@ -111,6 +112,7 @@ public:
 	void SetMorale( const backend::unit::morale_t morale, const std::string& morale_string );
 	void SetHealth( const backend::unit::health_t health );
 	void SetEmbarked( const bool embarked );
+	void SetAvailableForOrders( const bool active );
 	const bool CanMove() const;
 
 	void SetTile( tile::Tile* dst_tile, const bool update_render = true );
@@ -169,6 +171,7 @@ private:
 	std::string m_morale_string = "";
 	backend::unit::health_t m_health = 0;
 	bool m_is_embarked = false;
+	bool m_is_available_for_orders = false;
 
 	bool m_need_refresh = true;
 	uint8_t m_fake_badge_offset = 0;

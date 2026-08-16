@@ -20,6 +20,7 @@ const snapshot_unit = (unit) => {
 		fuel: #is_defined(unit.fuel) ? unit.fuel + 0 : 0,
 		transport_id: #is_defined(unit.transport_id) ? unit.transport_id + 0 : 0,
 		convoy_resource: #is_defined(unit.convoy_resource) ? '' + unit.convoy_resource : 'none',
+		order: #is_defined(unit.order) ? '' + unit.order : 'none',
 		native_capture_attempted: #is_defined(unit.native_capture_attempted)
 			? unit.native_capture_attempted == true : false,
 		airdropped_this_turn: #is_defined(unit.airdropped_this_turn)
@@ -47,6 +48,7 @@ const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 		transport_id: snapshot.transport_id,
 		convoy_resource: transferred || !#is_defined(snapshot.convoy_resource)
 			? 'none' : snapshot.convoy_resource,
+		order: transferred || !#is_defined(snapshot.order) ? 'none' : snapshot.order,
 		airdropped_this_turn: transferred || !#is_defined(snapshot.airdropped_this_turn)
 			? false : snapshot.airdropped_this_turn,
 		monolith_upgraded: #is_defined(snapshot.monolith_upgraded)

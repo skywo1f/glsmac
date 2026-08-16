@@ -105,7 +105,8 @@ void UnitManager::SpawnUnit(
 	const backend::unit::morale_t morale,
 	const std::string& morale_string,
 	const backend::unit::health_t health,
-	const bool embarked
+	const bool embarked,
+	const bool active
 ) {
 
 	ASSERT( m_unitdefs.find( unitdef_id ) != m_unitdefs.end(), "unitdef not found" );
@@ -139,7 +140,8 @@ void UnitManager::SpawnUnit(
 				morale,
 				morale_string,
 				health,
-				embarked
+				embarked,
+				active
 			)
 		}
 	).first->second;

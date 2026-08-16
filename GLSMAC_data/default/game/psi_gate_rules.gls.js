@@ -1,4 +1,5 @@
 const USED_TURN_KEY = 'psi_gate_used_turn';
+const unit_order_rules = #include('unit_order_rules');
 
 const get_base_used_turn = (base) => {
 	return base.has(USED_TURN_KEY) ? base.get(USED_TURN_KEY) : 0;
@@ -9,6 +10,10 @@ const is_available = (game, base) => {
 };
 
 const get_teleport_error = (game, unit, caller, destination) => {
+	const order_error = unit_order_rules.get_unavailable_reason(unit);
+	if (order_error != null) {
+		return order_error;
+	}
 	if (unit.owner != caller) {
 		return 'Unit can only be teleported by its owner';
 	}

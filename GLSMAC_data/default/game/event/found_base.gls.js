@@ -1,6 +1,7 @@
 const MAX_BASE_NAME_LENGTH = 64;
 const snapshots = #include('../entity_snapshots');
 const snapshot_unit = snapshots.snapshot_unit;
+const unit_order_rules = #include('../unit_order_rules');
 
 const restore_unit = (e, backup) => {
 	snapshots.spawn_unit_snapshot(e.game, backup);
@@ -37,6 +38,10 @@ return {
 
 	validate: (e) => {
 		const unit = e.data.unit;
+		const order_error = unit_order_rules.get_unavailable_reason(unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (#is_defined(e.data.name)) {
 			if (#typeof(e.data.name) != 'String' || e.data.name == '') {
 				return 'Base name must be a non-empty string';

@@ -106,7 +106,8 @@ Unit::Unit(
 	const bool monolith_upgraded,
 	const bool has_move_target,
 	const size_t move_target_x,
-	const size_t move_target_y
+	const size_t move_target_y,
+	const order_t order
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -128,7 +129,8 @@ Unit::Unit(
 	, m_monolith_upgraded( monolith_upgraded )
 	, m_has_move_target( has_move_target )
 	, m_move_target_x( move_target_x )
-	, m_move_target_y( move_target_y ) {
+	, m_move_target_y( move_target_y )
+	, m_order( order ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -152,6 +154,19 @@ Unit::Unit(
 		)
 	) {
 		THROW( "invalid unit move target" );
+	}
+	if (
+		m_order < UO_NONE || m_order > UO_HOLD ||
+		(
+			m_order != UO_NONE && (
+				m_terraforming != map::tile::TERRAFORMING_NONE ||
+				m_convoy_resource != CR_NONE ||
+				m_transport_id != 0 ||
+				m_has_move_target
+			)
+		)
+	) {
+		THROW( "invalid unit order" );
 	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
@@ -191,6 +206,28 @@ const convoy_resource_t Unit::GetConvoyResourceFromString( const std::string& re
 	return CR_INVALID;
 }
 
+const std::string& Unit::GetOrderString( const order_t order ) {
+	static const std::string invalid = "invalid";
+	static const std::string none = "none";
+	static const std::string hold = "hold";
+	switch ( order ) {
+		case UO_NONE: return none;
+		case UO_HOLD: return hold;
+		default: return invalid;
+	}
+}
+
+const order_t Unit::GetOrderFromString( const std::string& order ) {
+	const auto normalized = util::String::GetLowerCase( order );
+	if ( normalized == "none" ) {
+		return UO_NONE;
+	}
+	if ( normalized == "hold" ) {
+		return UO_HOLD;
+	}
+	return UO_INVALID;
+}
+
 Unit::~Unit() {
 	if ( !m_is_registered && m_tile ) {
 		const auto it = m_tile->units.find( m_id );
@@ -204,7 +241,12 @@ const movement_t Unit::MINIMUM_MOVEMENT_TO_KEEP = 0.025f;
 const movement_t Unit::MINIMUM_HEALTH_TO_KEEP = 0.025f;
 
 const bool Unit::HasMovesLeft() const {
-	return m_movement >= unit::Unit::MINIMUM_MOVEMENT_TO_KEEP;
+	return
+		m_movement >= unit::Unit::MINIMUM_MOVEMENT_TO_KEEP &&
+		m_order == UO_NONE &&
+		m_terraforming == map::tile::TERRAFORMING_NONE &&
+		m_convoy_resource == CR_NONE &&
+		m_transport_id == 0;
 }
 
 const std::string& Unit::GetMoraleString() const {
@@ -239,6 +281,9 @@ void Unit::SetMoveTarget( GSE_CALLABLE, map::tile::Tile* tile ) {
 	) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Move target does not belong to the active map" );
 	}
+	if ( tile && m_order != UO_NONE ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Activate the unit before assigning a move target" );
+	}
 	const bool has_move_target = tile != nullptr;
 	const size_t move_target_x = has_move_target ? tile->coord.x : 0;
 	const size_t move_target_y = has_move_target ? tile->coord.y : 0;
@@ -254,6 +299,36 @@ void Unit::SetMoveTarget( GSE_CALLABLE, map::tile::Tile* tile ) {
 	}
 }
 
+void Unit::SetOrder( GSE_CALLABLE, const order_t order ) {
+	m_um->m_game->CheckRW( GSE_CALL );
+	if ( order < UO_NONE || order > UO_HOLD ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit order" );
+	}
+	if (
+		order != UO_NONE && (
+			m_terraforming != map::tile::TERRAFORMING_NONE ||
+			m_convoy_resource != CR_NONE ||
+			m_transport_id != 0 ||
+			m_has_move_target
+		)
+	) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Unit already has an incompatible order" );
+	}
+	if ( m_order != order ) {
+		m_order = order;
+		{
+			std::lock_guard guard( m_wrapobjs_mutex );
+			for ( auto* const wrapobj : m_wrapobjs ) {
+				const auto it = wrapobj->value.find( "order" );
+				ASSERT( it != wrapobj->value.end(), "unit wrapper has no order property" );
+				ASSERT( it->second->type == gse::VT_STRING, "unit order property is not a string" );
+				( (gse::value::String*)it->second )->value = GetOrderString( m_order );
+			}
+		}
+		m_um->RefreshUnit( GSE_CALL, this );
+	}
+}
+
 void Unit::SetTerraformingOrder(
 	GSE_CALLABLE,
 	const map::tile::terraforming_t terraforming,
@@ -265,6 +340,9 @@ void Unit::SetTerraformingOrder(
 	}
 	if ( !IsValidConvoyOrder( m_def, terraforming, m_transport_id, m_convoy_resource ) ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Terraforming would conflict with the unit convoy order" );
+	}
+	if ( terraforming != map::tile::TERRAFORMING_NONE && m_order != UO_NONE ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Activate the unit before assigning a terraforming order" );
 	}
 	if ( m_terraforming != terraforming || m_terraforming_turns_remaining != turns_remaining ) {
 		m_terraforming = terraforming;
@@ -304,6 +382,7 @@ void Unit::SetTransportId( const size_t transport_id ) {
 	m_transport_id = transport_id;
 	if ( transport_id != 0 ) {
 		m_convoy_resource = CR_NONE;
+		m_order = UO_NONE;
 	}
 	std::lock_guard guard( m_wrapobjs_mutex );
 	for ( auto* const wrapobj : m_wrapobjs ) {
@@ -321,6 +400,11 @@ void Unit::SetTransportId( const size_t transport_id ) {
 		ASSERT( convoy_it != wrapobj->value.end(), "unit wrapper has no convoy_resource property" );
 		ASSERT( convoy_it->second->type == gse::VT_STRING, "unit convoy_resource property is not a string" );
 		( (gse::value::String*)convoy_it->second )->value = GetConvoyResourceString( m_convoy_resource );
+
+		const auto order_it = wrapobj->value.find( "order" );
+		ASSERT( order_it != wrapobj->value.end(), "unit wrapper has no order property" );
+		ASSERT( order_it->second->type == gse::VT_STRING, "unit order property is not a string" );
+		( (gse::value::String*)order_it->second )->value = GetOrderString( m_order );
 	}
 }
 
@@ -328,6 +412,9 @@ void Unit::SetConvoyResource( GSE_CALLABLE, const convoy_resource_t resource ) {
 	m_um->m_game->CheckRW( GSE_CALL );
 	if ( !IsValidConvoyOrder( m_def, m_terraforming, m_transport_id, resource ) ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit convoy order" );
+	}
+	if ( resource != CR_NONE && m_order != UO_NONE ) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Activate the unit before assigning a convoy order" );
 	}
 	if ( m_convoy_resource != resource ) {
 		m_convoy_resource = resource;
@@ -360,6 +447,7 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 		buf.WriteInt( unit->m_move_target_x );
 		buf.WriteInt( unit->m_move_target_y );
 	}
+	buf.WriteInt( unit->m_order );
 	return buf;
 }
 
@@ -436,6 +524,9 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto move_target_y = has_move_target
 		? buf.ReadInt< size_t >( "unit move target y" )
 		: 0;
+	const auto order = buf.GetRemaining() > 0
+		? static_cast< order_t >( buf.ReadInt< int32_t >( "unit order" ) )
+		: UO_NONE;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -473,6 +564,19 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	) {
 		THROW( "invalid serialized unit move target" );
 	}
+	if (
+		order < UO_NONE || order > UO_HOLD ||
+		(
+			order != UO_NONE && (
+				terraforming != map::tile::TERRAFORMING_NONE ||
+				convoy_resource != CR_NONE ||
+				transport_id != 0 ||
+				has_move_target
+			)
+		)
+	) {
+		THROW( "invalid serialized unit order" );
+	}
 	return new Unit(
 		GSE_CALL,
 		um,
@@ -495,7 +599,8 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		monolith_upgraded,
 		has_move_target,
 		move_target_x,
-		move_target_y
+		move_target_y,
+		order
 	);
 }
 
@@ -556,6 +661,7 @@ void Unit::ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf ) {
 	m_has_move_target = snapshot->m_has_move_target;
 	m_move_target_x = snapshot->m_move_target_x;
 	m_move_target_y = snapshot->m_move_target_y;
+	m_order = snapshot->m_order;
 
 	{
 		std::lock_guard guard( m_wrapobjs_mutex );
@@ -603,6 +709,7 @@ void Unit::ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf ) {
 			set_int( "fuel", m_fuel );
 			set_int( "transport_id", m_transport_id );
 			set_string( "convoy_resource", GetConvoyResourceString( m_convoy_resource ) );
+			set_string( "order", GetOrderString( m_order ) );
 			set_bool( "is_embarked", m_transport_id != 0 );
 			set_bool( "is_immovable", m_def->GetMovementType() == MT_IMMOVABLE );
 			set_bool( "is_land", m_def->GetMovementType() == MT_LAND );
@@ -651,6 +758,7 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_GET_CUSTOM( "transport_id", Int, m_transport_id )
 	WRAPIMPL_GET_PTR( "native_capture_attempted", m_native_capture_attempted )
 	WRAPIMPL_GET_CUSTOM( "convoy_resource", String, GetConvoyResourceString( m_convoy_resource ) )
+	WRAPIMPL_GET_CUSTOM( "order", String, GetOrderString( m_order ) )
 	WRAPIMPL_GET_PTR( "airdropped_this_turn", m_airdropped_this_turn )
 	WRAPIMPL_GET_PTR( "monolith_upgraded", m_monolith_upgraded )
 	WRAPIMPL_GET_BOOL( "is_embarked", m_transport_id != 0 )
@@ -685,6 +793,19 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 		NATIVE_METHOD( "clear_move_target", this ) {
 			N_EXPECT_ARGS( 0 );
 			SetMoveTarget( GSE_CALL, nullptr );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"set_order",
+		NATIVE_METHOD( "set_order", this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE( order_name, 0, String );
+			const auto order = GetOrderFromString( order_name );
+			if ( order == UO_INVALID ) {
+				GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit order" );
+			}
+			SetOrder( GSE_CALL, order );
 			return VALUE( gse::value::Undefined );
 		} )
 	},

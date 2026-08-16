@@ -349,6 +349,7 @@ void UnitManager::PushUpdates() {
 				NEW( fr.data.unit_spawn.morale_string, std::string, unit->GetMoraleString() );
 				fr.data.unit_spawn.health = unit->m_health;
 				fr.data.unit_spawn.embarked = unit->m_transport_id != 0;
+				fr.data.unit_spawn.active = unit->HasMovesLeft();
 				m_game->AddFrontendRequest( fr );
 			}
 			if ( uu.ops & UUO_REPLACE ) {
@@ -362,6 +363,7 @@ void UnitManager::PushUpdates() {
 				NEW( fr.data.unit_update.morale_string, std::string, unit->GetMoraleString() );
 				fr.data.unit_update.health = unit->m_health;
 				fr.data.unit_update.embarked = unit->m_transport_id != 0;
+				fr.data.unit_update.active = unit->HasMovesLeft();
 				const auto* tile = unit->GetTile();
 				fr.data.unit_update.tile_coords = {
 					tile->coord.x,
@@ -852,6 +854,7 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP_OPT( std::string, convoy_resource_name, obj, "convoy_resource", String, "none" );
 				N_GETPROP_OPT( bool, airdropped_this_turn, obj, "airdropped_this_turn", Bool, false );
 				N_GETPROP_OPT( bool, monolith_upgraded, obj, "monolith_upgraded", Bool, false );
+				N_GETPROP_OPT( std::string, order_name, obj, "order", String, "none" );
 				if ( home_base_id > 0 && m_game->IsRunning() ) {
 					auto* const home_base = m_game->GetBM()->GetBase( home_base_id );
 					if ( !home_base ) {
@@ -891,6 +894,10 @@ WRAPIMPL_BEGIN( UnitManager )
 				if ( convoy_resource == unit::CR_INVALID ) {
 					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit convoy resource" );
 				}
+				const auto order = unit::Unit::GetOrderFromString( order_name );
+				if ( order == unit::UO_INVALID ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Invalid unit order" );
+				}
 				auto unit = std::make_unique< unit::Unit >(
 					GSE_CALL,
 					this,
@@ -910,7 +917,11 @@ WRAPIMPL_BEGIN( UnitManager )
 					false,
 					convoy_resource,
 					airdropped_this_turn,
-					monolith_upgraded
+					monolith_upgraded,
+					false,
+					0,
+					0,
+					order
 				);
 				if ( transport_id > 0 ) {
 					auto* const transport = GetUnit( transport_id );

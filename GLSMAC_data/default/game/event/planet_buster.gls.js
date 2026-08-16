@@ -4,6 +4,7 @@ const SANCTION_YEARS = 20;
 const MAX_MAJOR_ATROCITIES = 1000000;
 const MAX_REACTOR_POWER = 4;
 const entity_snapshots = #include('../entity_snapshots');
+const unit_order_rules = #include('../unit_order_rules');
 const snapshot_unit = entity_snapshots.snapshot_unit;
 const spawn_unit_snapshot = entity_snapshots.spawn_unit_snapshot;
 const despawn_unit_snapshots = entity_snapshots.despawn_unit_snapshots;
@@ -147,6 +148,10 @@ return {
 	validate: (e) => {
 		const unit = e.data.unit;
 		const target = e.data.tile;
+		const order_error = unit_order_rules.get_unavailable_reason(unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (unit.owner != e.caller) {
 			return 'Planet Buster can only be launched by its owner';
 		}

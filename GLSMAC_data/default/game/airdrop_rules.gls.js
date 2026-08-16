@@ -1,5 +1,6 @@
 const unit_abilities = #include('unit_abilities');
 const orbital_rules = #include('orbital_rules');
+const unit_order_rules = #include('unit_order_rules');
 
 const NORMAL_RANGE = 8;
 
@@ -24,6 +25,10 @@ const has_orbital_insertion = (game, player) => {
 };
 
 const get_source_error = (game, unit, caller) => {
+	const order_error = unit_order_rules.get_unavailable_reason(unit);
+	if (order_error != null) {
+		return order_error;
+	}
 	if (unit.owner != caller) {
 		return 'Unit can only be air-dropped by its owner';
 	}

@@ -3,6 +3,7 @@ const base_capture = #include('../base_capture');
 const unity_pods = #include('../unity_pods');
 const monoliths = #include('../monoliths');
 const unit_abilities = #include('../unit_abilities');
+const unit_order_rules = #include('../unit_order_rules');
 
 const get_transport_id = (unit) => {
 	return #is_defined(unit.transport_id) ? unit.transport_id : 0;
@@ -112,6 +113,10 @@ return {
 
 	validate: (e) => {
 
+		const order_error = unit_order_rules.get_unavailable_reason(e.data.unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (e.data.unit.owner != e.caller) {
 			return 'Unit can only be moved by it\'s owner';
 		}

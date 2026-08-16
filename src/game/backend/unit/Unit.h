@@ -53,7 +53,8 @@ public:
 		const bool monolith_upgraded = false,
 		const bool has_move_target = false,
 		const size_t move_target_x = 0,
-		const size_t move_target_y = 0
+		const size_t move_target_y = 0,
+		const order_t order = UO_NONE
 	);
 	virtual ~Unit();
 
@@ -77,6 +78,7 @@ public:
 	bool m_has_move_target;
 	size_t m_move_target_x;
 	size_t m_move_target_y;
+	order_t m_order;
 	bool m_is_registered = false;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
@@ -99,9 +101,12 @@ public:
 	void SetConvoyResource( GSE_CALLABLE, const convoy_resource_t resource );
 	map::tile::Tile* GetMoveTarget() const;
 	void SetMoveTarget( GSE_CALLABLE, map::tile::Tile* tile );
+	void SetOrder( GSE_CALLABLE, const order_t order );
 
 	static const std::string& GetConvoyResourceString( const convoy_resource_t resource );
 	static const convoy_resource_t GetConvoyResourceFromString( const std::string& resource );
+	static const std::string& GetOrderString( const order_t order );
+	static const order_t GetOrderFromString( const std::string& order );
 
 	static const types::Buffer Serialize( const Unit* unit );
 	static Unit* Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um );

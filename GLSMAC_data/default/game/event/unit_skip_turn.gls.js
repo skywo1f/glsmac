@@ -1,10 +1,15 @@
 const movement_rules = #include('../movement_rules');
+const unit_order_rules = #include('../unit_order_rules');
 
 return {
 	unit_visibility: 'private',
 
 	validate: (e) => {
 		const unit = e.data.unit;
+		const order_error = unit_order_rules.get_unavailable_reason(unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (unit.owner != e.caller) {
 			return 'Unit can only be moved by it\'s owner';
 		}

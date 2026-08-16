@@ -47,6 +47,7 @@ return {
 				fuel: u.fuel,
 				transport_id: u.transport_id,
 				convoy_resource: u.convoy_resource,
+				order: #is_defined(u.order) ? u.order : 'none',
 				airdropped_this_turn: u.airdropped_this_turn,
 			});
 			unit.movement = u.movement;

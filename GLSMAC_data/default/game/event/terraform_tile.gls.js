@@ -1,11 +1,16 @@
 const terraforming = #include('../../units/terraforming');
 const movement_rules = #include('../movement_rules');
+const unit_order_rules = #include('../unit_order_rules');
 
 return {
 	unit_visibility: 'private',
 
 	validate: (e) => {
 		const unit = e.data.unit;
+		const order_error = unit_order_rules.get_unavailable_reason(unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (#typeof(e.data.type) != 'String') {
 			return 'Terraforming order must be identified by name';
 		}

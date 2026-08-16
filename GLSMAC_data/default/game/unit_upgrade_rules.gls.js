@@ -1,5 +1,6 @@
 const manifest = #include('../content/base_units');
 const prototype_rules = #include('prototype_rules');
+const unit_order_rules = #include('unit_order_rules');
 
 const index_components = (entries) => {
 	let result = {};
@@ -231,6 +232,10 @@ const get_bulk_error = (game, caller, source_id, target_id) => {
 const get_unit_error = (game, unit, caller) => {
 	if (#typeof(unit) != 'Object' || #typeof(unit.get_def) != 'Callable') {
 		return 'Unit upgrade requires a unit';
+	}
+	const order_error = unit_order_rules.get_unavailable_reason(unit);
+	if (order_error != null) {
+		return order_error;
 	}
 	if (unit.owner != caller) {
 		return 'A unit can only be upgraded by its owner';

@@ -1,6 +1,7 @@
 const pathfinding = #include('../ai/pathfinding');
 const movement_rules = #include('../movement_rules');
 const combat_rules = #include('../combat_rules');
+const unit_order_rules = #include('../unit_order_rules');
 
 const get_attack_target = (unit, tile) => {
 	let result = null;
@@ -45,6 +46,10 @@ return {
 	unit_visibility: 'private',
 
 	validate: (e) => {
+		const order_error = unit_order_rules.get_unavailable_reason(e.data.unit);
+		if (order_error != null) {
+			return order_error;
+		}
 		if (e.data.unit.owner != e.caller) {
 			return 'Unit can only be ordered by its owner';
 		}

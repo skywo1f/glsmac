@@ -2,6 +2,7 @@ const LINKED_KEY = 'network_node_artifact_linked';
 const CONTRIBUTION_MINERALS = 50;
 const technology_acquisition = #include('./technology_acquisition');
 const prototype_rules = #include('./prototype_rules');
+const unit_order_rules = #include('./unit_order_rules');
 
 const is_node_linked = (base) => {
 	const value = base.get(LINKED_KEY);
@@ -19,6 +20,10 @@ const get_study_method = (base) => {
 };
 
 const get_usage_error = (game, unit, caller) => {
+	const order_error = unit_order_rules.get_unavailable_reason(unit);
+	if (order_error != null) {
+		return order_error;
+	}
 	if (unit.owner != caller) {
 		return 'Alien Artifact can only be used by its owner';
 	}
