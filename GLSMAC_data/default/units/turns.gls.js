@@ -152,6 +152,33 @@ const result = {
 			if (!def.is_immovable && !is_still_terraforming && unit_survived_terraforming) {
 				e.unit.movement = get_movement(e.unit, def, project_effects);
 			}
+			if (
+				#typeof(game.is_master) == 'Callable' && game.is_master() &&
+				unit_survived_terraforming &&
+				#typeof(e.unit.get_move_target) == 'Callable' &&
+				e.unit.get_move_target() != null
+			) {
+				const unit_id = e.unit.id + 0;
+				#async(0, () => {
+					if (!um.has_unit(unit_id)) {
+						return false;
+					}
+					const unit = um.get_unit(unit_id);
+					const target = unit.get_move_target();
+					if (
+						target != null && unit.health > 0.0 && unit.movement > 0.0 &&
+						unit.terraforming == 'none' &&
+						!game.is_turn_complete(unit.owner)
+					) {
+						game.event_for(unit.owner, 'move_unit_to', {
+							unit: unit,
+							tile: target,
+							continuation: true,
+						});
+					}
+					return false;
+				});
+			}
 		});
 
 	},

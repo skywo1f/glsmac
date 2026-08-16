@@ -301,6 +301,7 @@ return {
 				convoy_resource: #is_defined(unit.convoy_resource)
 					? '' + unit.convoy_resource : 'none',
 				base_owner: dst_base == null ? null : dst_base.get_owner(),
+				move_target: movement_rules.get_move_target_snapshot(unit),
 			},
 			movement_started: e.resolved.is_movement_successful && !is_gate,
 			gate_teleport: e.resolved.is_movement_successful && is_gate,
@@ -309,6 +310,12 @@ return {
 			unity_pod: null,
 			monolith_visit: null,
 		};
+		if (
+			!#is_defined(e.data.preserve_move_target) ||
+			!e.data.preserve_move_target
+		) {
+			movement_rules.clear_move_target(unit);
+		}
 		if (#is_defined(e.resolved.is_no_op) && e.resolved.is_no_op) {
 			return result;
 		}
@@ -328,11 +335,44 @@ return {
 				unit.movement = 0.0;
 			}
 			unit.moved_this_turn = true;
+			if (
+				#is_defined(e.data.preserve_move_target) && e.data.preserve_move_target &&
+				#typeof(unit.get_move_target) == 'Callable'
+			) {
+				const target = unit.get_move_target();
+				if (
+					target != null && target.x == dst_tile.x && target.y == dst_tile.y
+				) {
+					movement_rules.clear_move_target(unit);
+				}
+			}
+		};
+		const continue_move_order = () => {
+			if (
+				!#is_defined(e.game) ||
+				#typeof(e.game.is_master) != 'Callable' || !e.game.is_master() ||
+				!#is_defined(e.data.preserve_move_target) ||
+				!e.data.preserve_move_target ||
+				#typeof(unit.get_move_target) != 'Callable'
+			) {
+				return;
+			}
+			const target = unit.get_move_target();
+			if (
+				target != null && unit.health > 0.0 && unit.movement > 0.0 &&
+				unit.terraforming == 'none' && !e.game.is_turn_complete(unit.owner)
+			) {
+				e.game.event_for(unit.owner, 'move_unit_to', {
+					unit: unit,
+					tile: target,
+					continuation: true,
+				});
+			}
 		};
 
 		if (e.resolved.is_movement_successful) {
 			if (!is_gate) {
-				unit.move_to_tile(dst_tile, () => {});
+				unit.move_to_tile(dst_tile, continue_move_order);
 			}
 			if (#is_defined(e.resolved.transport_id) && e.resolved.transport_id > 0) {
 				unit.embark(e.game.um.get_unit(e.resolved.transport_id));
@@ -413,6 +453,7 @@ return {
 		if (#is_defined(unit.set_convoy_resource)) {
 			unit.set_convoy_resource(orig.convoy_resource);
 		}
+		movement_rules.restore_move_target(unit, e.game, orig.move_target);
 	},
 
 };

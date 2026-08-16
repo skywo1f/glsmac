@@ -50,7 +50,10 @@ public:
 		const bool native_capture_attempted = false,
 		const convoy_resource_t convoy_resource = CR_NONE,
 		const bool airdropped_this_turn = false,
-		const bool monolith_upgraded = false
+		const bool monolith_upgraded = false,
+		const bool has_move_target = false,
+		const size_t move_target_x = 0,
+		const size_t move_target_y = 0
 	);
 	virtual ~Unit();
 
@@ -71,6 +74,9 @@ public:
 	convoy_resource_t m_convoy_resource;
 	bool m_airdropped_this_turn;
 	bool m_monolith_upgraded;
+	bool m_has_move_target;
+	size_t m_move_target_x;
+	size_t m_move_target_y;
 	bool m_is_registered = false;
 	static constexpr uint16_t MAX_TERRAFORMING_TURNS = 255;
 
@@ -91,6 +97,8 @@ public:
 	void SetFuel( GSE_CALLABLE, const uint16_t fuel );
 	void SetTransportId( const size_t transport_id );
 	void SetConvoyResource( GSE_CALLABLE, const convoy_resource_t resource );
+	map::tile::Tile* GetMoveTarget() const;
+	void SetMoveTarget( GSE_CALLABLE, map::tile::Tile* tile );
 
 	static const std::string& GetConvoyResourceString( const convoy_resource_t resource );
 	static const convoy_resource_t GetConvoyResourceFromString( const std::string& resource );

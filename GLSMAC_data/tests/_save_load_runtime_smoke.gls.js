@@ -11,6 +11,9 @@
 	let resume_turn_requested = false;
 	let resume_save_requested = false;
 	let exit_scheduled = false;
+	let restored_move_unit_id = 0;
+	let restored_move_target_x = 0;
+	let restored_move_target_y = 0;
 
 	const fail = (message) => {
 		#print('SAVE_LOAD_RUNTIME_FAIL: ' + message);
@@ -58,6 +61,43 @@
 				if (base == null || opponent == null) {
 					throw Error('Save/load fixture is missing a player or base');
 				}
+				let move_unit = null;
+				let move_target = null;
+				for (candidate of e.game.get_um().get_units()) {
+					if (
+						candidate.owner != player.id || candidate.is_immovable ||
+						candidate.terraforming != 'none'
+					) {
+						continue;
+					}
+					for (tile of candidate.get_tile().get_surrounding_tiles()) {
+						if (
+							tile.is_locked() ||
+							(candidate.is_land && tile.is_water) ||
+							(candidate.is_water && tile.is_land && tile.get_base() == null)
+						) {
+							continue;
+						}
+						let blocked = false;
+						for (other of tile.get_units()) {
+							if (other.owner != player.id) {
+								blocked = true;
+							}
+						}
+						if (!blocked) {
+							move_unit = candidate;
+							move_target = tile;
+							break;
+						}
+					}
+					if (move_unit != null) {
+						break;
+					}
+				}
+				if (move_unit == null || move_target == null) {
+					throw Error('Save/load fixture has no legal unit move target');
+				}
+				const previous_move_target = move_unit.get_move_target();
 				const previous = {
 					energy: player.energy_credits,
 					nutrients: base.get('accumulated_nutrients'),
@@ -68,6 +108,10 @@
 					governor_priority: base.has('governor_priority')
 						? base.get('governor_priority')
 						: #undefined,
+					move_unit_id: move_unit.id + 0,
+					move_target: previous_move_target == null
+						? null
+						: {x: previous_move_target.x + 0, y: previous_move_target.y + 0},
 				};
 				player.set_energy_credits(energy_stamp);
 				base.set('accumulated_nutrients', nutrient_stamp);
@@ -75,6 +119,7 @@
 				base.set('network_node_artifact_linked', true);
 				base.set('governor_enabled', true);
 				base.set('governor_priority', 'discover');
+				move_unit.set_move_target(move_target);
 				player.set_contact(opponent, true);
 				opponent.set_contact(player, true);
 				player.set_diplomatic_relation(opponent, 'vendetta');
@@ -96,6 +141,17 @@
 				base.set('accumulated_nutrients', e.applied.nutrients);
 				base.set_accumulated_minerals(e.applied.minerals);
 				base.set('network_node_artifact_linked', false);
+				if (e.game.get_um().has_unit(e.applied.move_unit_id)) {
+					const move_unit = e.game.get_um().get_unit(e.applied.move_unit_id);
+					if (e.applied.move_target == null) {
+						move_unit.clear_move_target();
+					} else {
+						move_unit.set_move_target(e.game.get_tm().get_tile(
+							e.applied.move_target.x,
+							e.applied.move_target.y
+						));
+					}
+				}
 				player.clear_diplomatic_trade(opponent);
 				player.set_diplomatic_offer(opponent, '');
 				player.set_diplomatic_relation(opponent, 'neutral');
@@ -145,6 +201,40 @@
 				base.get('governor_priority') != 'discover'
 			) {
 				return 'base state was not restored';
+			}
+			if (expected_turn == 1) {
+				let restored_unit = null;
+				let restored_target = null;
+				for (candidate of game.get_um().get_units()) {
+					if (candidate.owner != game.get_player().id) {
+						continue;
+					}
+					const target = candidate.get_move_target();
+					if (target != null) {
+						restored_unit = candidate;
+						restored_target = target;
+						break;
+					}
+				}
+				if (restored_unit == null || restored_target == null) {
+					return 'unit move target was not restored';
+				}
+				restored_move_unit_id = restored_unit.id + 0;
+				restored_move_target_x = restored_target.x + 0;
+				restored_move_target_y = restored_target.y + 0;
+			} else if (restored_move_unit_id > 0) {
+				if (!game.get_um().has_unit(restored_move_unit_id)) {
+					return 'restored move-order unit disappeared';
+				}
+				const move_unit = game.get_um().get_unit(restored_move_unit_id);
+				const move_target = move_unit.get_move_target();
+				const move_tile = move_unit.get_tile();
+				if (
+					move_target != null || move_tile.x != restored_move_target_x ||
+					move_tile.y != restored_move_target_y
+				) {
+					return 'restored unit did not complete its saved move order';
+				}
 			}
 			const peace_trade = game.get_player().get_diplomatic_trade(opponent);
 			if (

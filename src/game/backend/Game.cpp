@@ -1290,6 +1290,43 @@ WRAPIMPL_BEGIN( Game )
 			} )
 		},
 		{
+			"event_for",
+			NATIVE_METHOD_AUTO( this ) {
+				N_EXPECT_ARGS( 3 );
+				if ( !m_state->IsMaster() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Only the game master can submit automated player events" );
+				}
+				N_GETVALUE( caller, 0, Int );
+				if ( caller < 0 || static_cast< size_t >( caller ) >= m_state->m_slots->GetCount() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Automated event caller is out of bounds" );
+				}
+				auto& caller_slot = m_state->m_slots->GetSlot( static_cast< size_t >( caller ) );
+				if ( caller_slot.GetState() != slot::Slot::SS_PLAYER || !caller_slot.GetPlayer() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Automated events require an active player caller" );
+				}
+				N_GETVALUE( name, 1, String );
+				{
+					std::lock_guard guard( m_event_handlers_mutex );
+					if ( m_event_handlers.find( name ) == m_event_handlers.end() ) {
+						GSE_ERROR( gse::EC.INVALID_HANDLER, "Unknown event: " + name );
+					}
+				}
+				N_GET( args, 2, Object );
+				if ( !args->object_class.empty() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Invalid event data - expected primitive object" );
+				}
+				AddEvent( new event::Event(
+					this,
+					event::Event::ES_LOCAL,
+					static_cast< size_t >( caller ),
+					GSE_CALL,
+					name,
+					args->value
+				) );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
 			"get_fm",
 			NATIVE_METHOD_AUTO( this ) {
 				N_EXPECT_ARGS( 0 );

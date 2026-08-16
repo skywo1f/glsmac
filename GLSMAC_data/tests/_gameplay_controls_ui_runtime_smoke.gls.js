@@ -41,14 +41,36 @@
 			let worker_target = null;
 			let moving_unit = null;
 			let move_target = null;
+			let move_start_turn = 0;
+			let economy_credits_before = 0;
+			let economy_income_before = 0;
+			let economy_update_count = 0;
+			game.on('economy_updated', (event) => {
+				if (event.player.id == player.id) {
+					economy_update_count++;
+				}
+			});
 
 			#async(50, () => {
 				if (finished) {
 					return false;
 				}
 				phase_ticks++;
-				if (phase_ticks >= 160) {
-					fail('timed out in phase ' + phase);
+				if (phase_ticks >= 300) {
+					if (phase == 'goto_first_leg' && moving_unit != null) {
+						const live_unit = game.get_um().get_unit(moving_unit.id);
+						const tile = live_unit.get_tile();
+						const target = live_unit.get_move_target();
+						fail(
+							'timed out in phase ' + phase + '; unit=' +
+							#to_string(tile.x) + ',' + #to_string(tile.y) +
+							' movement=' + #to_string(live_unit.movement) +
+							' pending=' + (target == null ? 'none' :
+								#to_string(target.x) + ',' + #to_string(target.y))
+						);
+					} else {
+						fail('timed out in phase ' + phase);
+					}
 					return false;
 				}
 
@@ -261,8 +283,22 @@
 						fail('G hotkey did not start destination selection');
 						return false;
 					}
-					for (candidate of moving_unit.get_tile().get_surrounding_tiles()) {
-						if (candidate.is_land && !candidate.is_locked()) {
+					const source = moving_unit.get_tile();
+					for (first of source.get_surrounding_tiles()) {
+						if (
+							!first.is_land || first.is_locked() ||
+							first.features.xenofungus
+						) {
+							continue;
+						}
+						for (candidate of first.get_surrounding_tiles()) {
+							if (
+								!candidate.is_land || candidate.is_locked() ||
+								candidate.features.xenofungus ||
+								game.get_tm().get_distance(source, candidate) <= 1
+							) {
+								continue;
+							}
 							let has_foreign = false;
 							for (other of candidate.get_units()) {
 								if (other.owner != player.id) {
@@ -274,21 +310,102 @@
 								break;
 							}
 						}
+						if (move_target != null) {
+							break;
+						}
 					}
 					if (move_target == null) {
-						fail('no legal adjacent go-to destination was found');
+						fail('no legal two-step go-to destination was found');
 						return false;
 					}
+					moving_unit.movement = 1.0;
+					move_start_turn = game.get_turn();
 					game.select_tile(move_target);
-					phase = 'moved';
+					phase = 'goto_first_leg';
 					phase_ticks = 0;
 					return true;
 				}
 
-				if (phase == 'moved') {
-					const tile = moving_unit.get_tile();
+				if (phase == 'goto_first_leg') {
+					const live_unit = game.get_um().get_unit(moving_unit.id);
+					const tile = live_unit.get_tile();
+					const pending_target = live_unit.get_move_target();
+					if (
+						phase_ticks >= 20 && live_unit.movement > 0.0 &&
+						pending_target == null
+					) {
+						fail(
+							'go-to order was not accepted or no route was found; unit=' +
+							#to_string(tile.x) + ',' + #to_string(tile.y) + ' target=' +
+							#to_string(move_target.x) + ',' + #to_string(move_target.y) +
+							' movement=' + #to_string(live_unit.movement)
+						);
+						return false;
+					}
+					if (
+						turn_rules.has_pending_owned_animation(game, player.id) ||
+						live_unit.movement > 0.0
+					) {
+						return true;
+					}
+					if (tile.x == move_target.x && tile.y == move_target.y) {
+						fail('go-to ignored the forced one-step movement limit');
+						return false;
+					}
+					const persisted = moving_unit.get_move_target();
+					if (
+						persisted == null || persisted.x != move_target.x ||
+						persisted.y != move_target.y
+					) {
+						fail('go-to destination was not retained after movement ran out');
+						return false;
+					}
+					const live_player = game.get_player();
+					economy_credits_before = live_player.get_energy_credits();
+					economy_income_before = game.get('f_economy_get_player')(
+						game,
+						live_player
+					);
+					economy_update_count = 0;
+					game.event('complete_turn', {});
+					phase = 'goto_next_turn';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'goto_next_turn') {
+					if (
+						game.get_turn() <= move_start_turn ||
+						turn_rules.has_pending_owned_animation(game, player.id)
+					) {
+						return true;
+					}
+					const live_unit = game.get_um().get_unit(moving_unit.id);
+					const tile = live_unit.get_tile();
 					if (tile.x != move_target.x || tile.y != move_target.y) {
 						return true;
+					}
+					if (live_unit.get_move_target() != null) {
+						fail('completed go-to retained a stale destination');
+						return false;
+					}
+					const expected_credits = #min(
+						1000000000,
+						#max(0, economy_credits_before + economy_income_before)
+					);
+					const actual_credits = game.get_player().get_energy_credits();
+					if (economy_update_count == 0) {
+						fail('turn advance did not settle the human economy');
+						return false;
+					}
+					if (actual_credits != expected_credits) {
+						fail(
+							'economy settlement mismatch; before=' +
+							#to_string(economy_credits_before) + ' income=' +
+							#to_string(economy_income_before) + ' actual=' +
+							#to_string(actual_credits)
+						);
+						return false;
 					}
 					finished = true;
 					#print(
@@ -296,7 +413,10 @@
 						#to_string(p.modules.popup.popup_defs.base_production.available_count) +
 						' worker=' + #to_string(worker_target.x) + ',' +
 						#to_string(worker_target.y) + ' goto=' + #to_string(move_target.x) +
-						',' + #to_string(move_target.y)
+						',' + #to_string(move_target.y) + ' credits=' +
+						#to_string(economy_credits_before) + '+' +
+						#to_string(economy_income_before) + '=' +
+						#to_string(actual_credits)
 					);
 					glsmac.exit();
 					return false;

@@ -103,7 +103,10 @@ Unit::Unit(
 	const bool native_capture_attempted,
 	const convoy_resource_t convoy_resource,
 	const bool airdropped_this_turn,
-	const bool monolith_upgraded
+	const bool monolith_upgraded,
+	const bool has_move_target,
+	const size_t move_target_x,
+	const size_t move_target_y
 )
 	: MapObject( um->GetMap(), tile )
 	, m_um( um )
@@ -122,7 +125,10 @@ Unit::Unit(
 	, m_native_capture_attempted( native_capture_attempted )
 	, m_convoy_resource( convoy_resource )
 	, m_airdropped_this_turn( airdropped_this_turn )
-	, m_monolith_upgraded( monolith_upgraded ) {
+	, m_monolith_upgraded( monolith_upgraded )
+	, m_has_move_target( has_move_target )
+	, m_move_target_x( move_target_x )
+	, m_move_target_y( move_target_y ) {
 	if ( !IsValidTerraformingOrder( def, tile, terraforming, terraforming_turns_remaining ) ) {
 		THROW( "invalid unit terraforming order" );
 	}
@@ -137,6 +143,15 @@ Unit::Unit(
 	}
 	if ( !IsValidConvoyOrder( def, terraforming, transport_id, convoy_resource ) ) {
 		THROW( "invalid unit convoy order" );
+	}
+	if (
+		m_has_move_target && (
+			m_move_target_x >= um->GetMap()->GetWidth() ||
+			m_move_target_y >= um->GetMap()->GetHeight() ||
+			m_move_target_x % 2 != m_move_target_y % 2
+		)
+	) {
+		THROW( "invalid unit move target" );
 	}
 	if ( next_id <= id ) {
 		next_id = id + 1;
@@ -208,6 +223,35 @@ void Unit::SetTile( GSE_CALLABLE, map::tile::Tile* tile ) {
 		}
 	);
 	m_tile = tile;
+}
+
+map::tile::Tile* Unit::GetMoveTarget() const {
+	return m_has_move_target
+		? m_um->GetMap()->GetTile( m_move_target_x, m_move_target_y )
+		: nullptr;
+}
+
+void Unit::SetMoveTarget( GSE_CALLABLE, map::tile::Tile* tile ) {
+	m_um->m_game->CheckRW( GSE_CALL );
+	if (
+		tile &&
+		m_um->GetMap()->GetTile( tile->coord.x, tile->coord.y ) != tile
+	) {
+		GSE_ERROR( gse::EC.INVALID_CALL, "Move target does not belong to the active map" );
+	}
+	const bool has_move_target = tile != nullptr;
+	const size_t move_target_x = has_move_target ? tile->coord.x : 0;
+	const size_t move_target_y = has_move_target ? tile->coord.y : 0;
+	if (
+		m_has_move_target != has_move_target ||
+		m_move_target_x != move_target_x ||
+		m_move_target_y != move_target_y
+	) {
+		m_has_move_target = has_move_target;
+		m_move_target_x = move_target_x;
+		m_move_target_y = move_target_y;
+		m_um->RefreshUnit( GSE_CALL, this );
+	}
 }
 
 void Unit::SetTerraformingOrder(
@@ -311,6 +355,11 @@ const types::Buffer Unit::Serialize( const Unit* unit ) {
 	buf.WriteInt( unit->m_convoy_resource );
 	buf.WriteBool( unit->m_airdropped_this_turn );
 	buf.WriteBool( unit->m_monolith_upgraded );
+	buf.WriteBool( unit->m_has_move_target );
+	if ( unit->m_has_move_target ) {
+		buf.WriteInt( unit->m_move_target_x );
+		buf.WriteInt( unit->m_move_target_y );
+	}
 	return buf;
 }
 
@@ -378,6 +427,15 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	const auto monolith_upgraded = buf.GetRemaining() > 0
 		? buf.ReadBool()
 		: false;
+	const auto has_move_target = buf.GetRemaining() > 0
+		? buf.ReadBool()
+		: false;
+	const auto move_target_x = has_move_target
+		? buf.ReadInt< size_t >( "unit move target x" )
+		: 0;
+	const auto move_target_y = has_move_target
+		? buf.ReadInt< size_t >( "unit move target y" )
+		: 0;
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized unit" );
 	}
@@ -406,6 +464,15 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 	if ( !IsValidConvoyOrder( def, terraforming, transport_id, convoy_resource ) ) {
 		THROW( "invalid serialized unit convoy order" );
 	}
+	if (
+		has_move_target && (
+			move_target_x >= um->GetMap()->GetWidth() ||
+			move_target_y >= um->GetMap()->GetHeight() ||
+			move_target_x % 2 != move_target_y % 2
+		)
+	) {
+		THROW( "invalid serialized unit move target" );
+	}
 	return new Unit(
 		GSE_CALL,
 		um,
@@ -425,7 +492,10 @@ Unit* Unit::Deserialize( GSE_CALLABLE, types::Buffer& buf, UnitManager* um ) {
 		native_capture_attempted,
 		convoy_resource,
 		airdropped_this_turn,
-		monolith_upgraded
+		monolith_upgraded,
+		has_move_target,
+		move_target_x,
+		move_target_y
 	);
 }
 
@@ -483,6 +553,9 @@ void Unit::ApplySerializedSnapshot( GSE_CALLABLE, types::Buffer& buf ) {
 	m_convoy_resource = snapshot->m_convoy_resource;
 	m_airdropped_this_turn = snapshot->m_airdropped_this_turn;
 	m_monolith_upgraded = snapshot->m_monolith_upgraded;
+	m_has_move_target = snapshot->m_has_move_target;
+	m_move_target_x = snapshot->m_move_target_x;
+	m_move_target_y = snapshot->m_move_target_y;
 
 	{
 		std::lock_guard guard( m_wrapobjs_mutex );
@@ -588,6 +661,33 @@ WRAPIMPL_DYNAMIC_GETTERS( Unit )
 	WRAPIMPL_LINK( "get_def", m_def )
 	WRAPIMPL_LINK( "get_owner", m_owner )
 	WRAPIMPL_LINK( "get_tile", m_tile )
+	{
+		"get_move_target",
+		NATIVE_METHOD( "get_move_target", this ) {
+			N_EXPECT_ARGS( 0 );
+			auto* const target = GetMoveTarget();
+			return target
+				? target->Wrap( GSE_CALL )
+				: VALUE( gse::value::Null );
+		} )
+	},
+	{
+		"set_move_target",
+		NATIVE_METHOD( "set_move_target", this ) {
+			N_EXPECT_ARGS( 1 );
+			N_GETVALUE_UNWRAP( tile, 0, map::tile::Tile );
+			SetMoveTarget( GSE_CALL, tile );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
+	{
+		"clear_move_target",
+		NATIVE_METHOD( "clear_move_target", this ) {
+			N_EXPECT_ARGS( 0 );
+			SetMoveTarget( GSE_CALL, nullptr );
+			return VALUE( gse::value::Undefined );
+		} )
+	},
 	{
 		"get_transport",
 		NATIVE_METHOD( "get_transport", this ) {

@@ -1,5 +1,8 @@
 const snapshot_unit = (unit) => {
 	const tile = unit.get_tile();
+	const move_target = #typeof(unit.get_move_target) == 'Callable'
+		? unit.get_move_target()
+		: null;
 	return {
 		id: unit.id + 0,
 		def: '' + unit.def,
@@ -23,6 +26,9 @@ const snapshot_unit = (unit) => {
 			? unit.airdropped_this_turn == true : false,
 		monolith_upgraded: #is_defined(unit.monolith_upgraded)
 			? unit.monolith_upgraded == true : false,
+		move_target: move_target == null
+			? null
+			: {x: move_target.x + 0, y: move_target.y + 0},
 	};
 };
 
@@ -50,6 +56,15 @@ const spawn_unit_snapshot_as = (game, snapshot, owner, transferred) => {
 	unit.moved_this_turn = transferred ? true : snapshot.moved_this_turn;
 	unit.native_capture_attempted = transferred || !#is_defined(snapshot.native_capture_attempted)
 		? false : snapshot.native_capture_attempted;
+	if (
+		!transferred && #is_defined(snapshot.move_target) &&
+		snapshot.move_target != null &&
+		#typeof(unit.set_move_target) == 'Callable'
+	) {
+		unit.set_move_target(
+			game.tm.get_tile(snapshot.move_target.x, snapshot.move_target.y)
+		);
+	}
 	return unit;
 };
 

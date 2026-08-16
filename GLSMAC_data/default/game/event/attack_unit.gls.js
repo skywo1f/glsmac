@@ -9,6 +9,7 @@ const native_capture = #include('../native_capture');
 const entity_snapshots = #include('../entity_snapshots');
 const probe_interception = #include('../probe_interception');
 const message_rules = #include('../message_rules');
+const movement_rules = #include('../movement_rules');
 const snapshot_unit = entity_snapshots.snapshot_unit;
 
 const is_un_charter_active = (game) => {
@@ -71,6 +72,7 @@ const restore_unit = (e, backup) => {
 	unit.airdropped_this_turn = backup.airdropped_this_turn;
 	unit.monolith_upgraded = #is_defined(backup.monolith_upgraded)
 		? backup.monolith_upgraded : false;
+	movement_rules.restore_move_target(unit, e.game, backup.move_target);
 };
 
 const promote_unit = (um, unit) => {
@@ -401,6 +403,7 @@ return {
 				defender: snapshot_unit(defender),
 			},
 		};
+		movement_rules.clear_move_target(attacker);
 		const attacker_owner = e.game.get_player(attacker.owner);
 		const defender_owner = e.game.get_player(defender.owner);
 		const local_player = e.game.get_player();

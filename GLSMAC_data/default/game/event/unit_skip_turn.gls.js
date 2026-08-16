@@ -1,3 +1,5 @@
+const movement_rules = #include('../movement_rules');
+
 return {
 	unit_visibility: 'private',
 
@@ -28,8 +30,10 @@ return {
 
 		const result = {
 			original_movement: unit.movement + 0.0,
+			move_target: movement_rules.get_move_target_snapshot(unit),
 		};
 
+		movement_rules.clear_move_target(unit);
 		unit.movement = 0.0;
 
 		return result;
@@ -38,6 +42,7 @@ return {
 	rollback: (e) => {
 		const unit = e.data.unit;
 		unit.movement = e.applied.original_movement;
+		movement_rules.restore_move_target(unit, e.game, e.applied.move_target);
 	},
 
 };

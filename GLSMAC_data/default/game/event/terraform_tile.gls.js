@@ -1,4 +1,5 @@
 const terraforming = #include('../../units/terraforming');
+const movement_rules = #include('../movement_rules');
 
 return {
 	unit_visibility: 'private',
@@ -93,7 +94,9 @@ return {
 			turns: unit.terraforming_turns_remaining + 0,
 			movement: unit.movement + 0.0,
 			moved_this_turn: unit.moved_this_turn == true,
+			move_target: movement_rules.get_move_target_snapshot(unit),
 		};
+		movement_rules.clear_move_target(unit);
 		const get_effects = #is_defined(e.game.get)
 			? e.game.get('f_project_get_player_effects')
 			: #undefined;
@@ -150,6 +153,7 @@ return {
 		unit.set_terraforming_order(e.applied.type, e.applied.turns);
 		unit.movement = e.applied.movement;
 		unit.moved_this_turn = e.applied.moved_this_turn;
+		movement_rules.restore_move_target(unit, e.game, e.applied.move_target);
 		if (#is_defined(e.applied.energy_credits)) {
 			unit.get_owner().set_energy_credits(e.applied.energy_credits);
 		}
