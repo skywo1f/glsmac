@@ -1489,5 +1489,28 @@ source data rather than original-renderer parity. All 139 native/script GSE
 tests passed, followed by the two installed-map runtimes, path preflight, and
 save/load runtime. Manual visual play on both canonical maps is still required.
 
+`for ... in/of` execution now reuses the current script context when its
+iterator does not shadow a live binding, while retaining a child context for
+shadowing and removing temporary bindings on normal and exceptional exits.
+Ancestor lookup now follows the same live-reference path as variable reads, and
+the opt-in GC profiler can attribute child-context creation to source sites. In
+the deterministic six-AI economy soak, estimated child contexts fell from 6.17
+million to 4.78 million and standalone runtime fell from 189.99 to 155.41
+seconds; a later complete runtime-matrix run completed the same soak in 182.00
+seconds, so the measured improvement has meaningful environmental variance.
+All 139 native/script GSE tests passed in 196.79 seconds, including new iterator
+leak, shadowing, nesting, and exception-cleanup regressions.
+
+Client event responses now retain the original serialized event and rehydrate
+invalidated references against the current projected object registry before an
+accepted apply or rollback. This closes a race where a base visibility snapshot
+could replace a base between two worker-assignment responses and leave the
+second event holding an invalid wrapper. The previously crashing multiplayer
+worker work/unwork path passed four consecutive focused host/client runs and
+passed again in the complete milestone matrix. All 45 content and installed-
+asset runtime tests then passed in 625.62 seconds, including multiplayer,
+running reconnect, save/load, research, Council, Diplomacy UI and GC stress,
+both original maps, seven-player startup, and the AI economy soak.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

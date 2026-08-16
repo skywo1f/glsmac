@@ -376,7 +376,19 @@ void Game::Iterate() {
 					std::lock_guard guard2( m_events_waiting_for_responses_mutex );
 					ASSERT( m_events_waiting_for_responses.find( it.event_id ) != m_events_waiting_for_responses.end(), "event for response not found" );
 					const auto& event_data = m_events_waiting_for_responses.at( it.event_id );
-					const auto* const event = event_data.event;
+					auto* event = event_data.event;
+					if ( event->HasInvalidatedReferences() && !event_data.serialized_event.empty() ) {
+						m_state->WithGSE(
+							this, [ this, &event_data, &event ]( GSE_CALLABLE ) {
+								event = event::Event::Deserialize(
+									this,
+									event::Event::ES_LOCAL,
+									GSE_CALL,
+									types::Buffer( event_data.serialized_event )
+								);
+							}
+						);
+					}
 					const bool was_event_applied = event_data.was_applied;
 					if ( !it.is_accepted ) {
 						if ( was_event_applied ) {
@@ -2708,6 +2720,7 @@ void Game::ProcessEvents() {
 									event->GetId(),
 									{
 										event,
+										pending.serialized_event,
 										rollback_data,
 										process_now
 									}

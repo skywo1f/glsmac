@@ -480,6 +480,7 @@ private:
 
 	struct event_waiting_for_response_t {
 		event::Event* event;
+		std::string serialized_event;
 		gse::Value* rollback_data;
 		bool was_applied = false;
 	};
