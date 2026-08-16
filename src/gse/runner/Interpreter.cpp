@@ -79,6 +79,9 @@ gse::Value* const Interpreter::ExecuteScopeInContext( context::Context* ctx, Exe
 
 gse::Value* const Interpreter::EvaluateScope( context::Context* ctx, ExecutionPointer& ep, const Scope* scope, bool* returnflag ) {
 	CHECKACCUM( m_gc_space );
+	if ( !scope->HasLocalBindings() ) {
+		return EvaluateScopeInContext( ctx, ep, scope, returnflag );
+	}
 	gse::Value* result = nullptr;
 
 	ctx->ForkAndExecute(

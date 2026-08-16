@@ -16,9 +16,13 @@ public:
 	~Scope();
 
 	const std::vector< const Control* > body;
+	const bool HasLocalBindings() const;
 
 	const std::string ToString() const override;
 	const std::string Dump( const size_t depth = 0 ) const override;
+
+private:
+	const bool m_has_local_bindings;
 };
 
 }

@@ -1451,5 +1451,18 @@ completed in 321.25 seconds. This corrects the performance diagnostics but also
 confirms that both long script events and temporary-object destruction remain
 real blockers; it does not claim that either pause source is fixed.
 
+Parsed scopes now record whether their immediate expressions or conditional
+headers can introduce a `let` or `const` binding. Binding-free blocks execute in
+their existing context, while declarations, loop state, function calls, and
+closure-captured locals retain the previous child-context path. All 138 native
+and script GSE tests passed in 193.19 seconds, a focused nested-closure regression
+passed, and the installed-asset save/load runtime passed in 17.62 seconds. In the
+same deterministic six-AI economy soak, runtime fell from 321.25 to 193.51
+seconds, collected temporaries from 32.21 million to 26.07 million, sweep time
+from 84.62 to 34.16 seconds, and the longest active collection from 6.46 to 1.30
+seconds. This materially reduces the collector-dominated turn stalls, but manual
+play and longer campaign coverage still need to confirm that perceived AI-turn
+latency remains acceptable.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
