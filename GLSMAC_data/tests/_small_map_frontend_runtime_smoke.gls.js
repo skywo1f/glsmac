@@ -168,6 +168,25 @@
 					return true;
 				}
 				if (refresh_started == 0) {
+					const initial_candidates =
+						ui_state.modules.popup.popup_defs.base_screen.sections.bottom_bar.candidates.set;
+					let has_former = false;
+					let has_weather_paradigm = false;
+					for (candidate of initial_candidates) {
+						if (candidate.production_kind == 'unit' && candidate.id == 'Former') {
+							has_former = true;
+						}
+						if (
+							candidate.production_kind == 'project' &&
+							candidate.id == 'TheWeatherParadigm'
+						) {
+							has_weather_paradigm = true;
+						}
+					}
+					if (!has_former || !has_weather_paradigm) {
+						fail('Gaian first-turn production omitted Former or The Weather Paradigm');
+						return false;
+					}
 					first_base_screen_set_ms = base_screen_total_ms;
 					first_base_screen_observed_ms = #monotonic_ms() - base_screen_started;
 					refresh_started = #monotonic_ms();
@@ -301,15 +320,29 @@
 				);
 				hurry_case_index++;
 				if (hurry_case_index >= #sizeof(hurry_cases)) {
-					#print(
-						'SMALL_MAP_FRONTEND_RUNTIME_PASS: first_set_ms=' +
-						#to_string(first_base_screen_set_ms) + ' first_observed_ms=' +
-						#to_string(first_base_screen_observed_ms) + ' refresh_set_ms=' +
-						#to_string(base_screen_total_ms) + ' refresh_observed_ms=' +
-						#to_string(refresh_observed_ms) + ' hurry_cases=' +
-						#to_string(#sizeof(hurry_cases))
-					);
-					glsmac.exit();
+					const base_screen = ui_state.modules.popup.popup_defs.base_screen;
+					base_screen.sections.buttons.btn_ok.trigger('click');
+					let close_wait_ticks = 0;
+					#async(50, () => {
+						close_wait_ticks++;
+						if (ui_state.modules.popup.popup != null) {
+							if (close_wait_ticks >= 100) {
+								fail('base screen OK did not close the popup');
+								return false;
+							}
+							return true;
+						}
+						#print(
+							'SMALL_MAP_FRONTEND_RUNTIME_PASS: first_set_ms=' +
+							#to_string(first_base_screen_set_ms) + ' first_observed_ms=' +
+							#to_string(first_base_screen_observed_ms) + ' refresh_set_ms=' +
+							#to_string(base_screen_total_ms) + ' refresh_observed_ms=' +
+							#to_string(refresh_observed_ms) + ' hurry_cases=' +
+							#to_string(#sizeof(hurry_cases))
+						);
+						glsmac.exit();
+						return false;
+					});
 					return false;
 				}
 				hurry_cost = 0;

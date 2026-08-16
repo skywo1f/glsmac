@@ -2,7 +2,6 @@ return {
 
 	init: (p) => {
 		this.p = p;
-		this.player = null;
 		this.targets = {};
 		this.target = '';
 
@@ -51,12 +50,14 @@ return {
 			});
 			this.begin_button.on('click', (e) => {
 				if (
-					this.player != null && this.target != '' &&
+					this.target != '' &&
 					#is_defined(this.targets[this.target])
 				) {
+					const player = p.game.get_player();
+					const target = this.target;
 					p.game.event('set_research_target', {
-						player: this.player,
-						target: this.target,
+						player: player,
+						target: target,
 					});
 					cb(true);
 				}
@@ -72,16 +73,15 @@ return {
 			return;
 		}
 		const definition = this.targets[this.target];
-		const state = this.player.get_research_state();
+		const state = this.p.game.get_player().get_research_state();
 		this.status.text = 'Research cost: ' + #to_string(definition.cost) +
 			' labs. Accumulated labs: ' + #to_string(state.progress) + '.';
 		this.begin_button.show();
 	},
 
 	on_show: () => {
-		this.player = this.p.game.get_player();
 		this.targets = {};
-		const state = this.player.get_research_state();
+		const state = this.p.game.get_player().get_research_state();
 		let items = [];
 		for (id of this.p.game.get('f_technology_get_available_targets')(
 			state.technologies
@@ -104,7 +104,6 @@ return {
 	},
 
 	on_hide: () => {
-		this.player = null;
 		this.targets = {};
 		this.target = '';
 	},

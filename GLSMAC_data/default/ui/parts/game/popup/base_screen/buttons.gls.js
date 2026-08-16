@@ -102,7 +102,7 @@ return {
 
 		this.btn_ok.on('click', (e) => {
 			p.hide();
-			return false;
+			return true;
 		});
 		this.btn_workshop.on('click', (e) => {
 			const base = this.get_live_base();
