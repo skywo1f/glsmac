@@ -214,6 +214,34 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( DIPLOMACY_GC_STRESS_PROFILE_DIR "${TEST_PROFILE_DIR}/diplomacy-gc-stress" )
+		FILE( MAKE_DIRECTORY "${DIPLOMACY_GC_STRESS_PROFILE_DIR}" )
+		ADD_TEST( NAME diplomacy_gc_stress_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${DIPLOMACY_GC_STRESS_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_diplomacy_gc_stress_runtime_smoke"
+			--quickstart
+			--quickstart-ai "6"
+			--quickstart-mapsize "88x44"
+			--quickstart-map-lifeforms "0"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--profile-gc
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( diplomacy_gc_stress_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "DIPLOMACY_GC_STRESS_FAIL;Event rejected"
+			PASS_REGULAR_EXPRESSION "DIPLOMACY_GC_STRESS_PASS"
+			LABELS runtime_long
+			RUN_SERIAL TRUE
+			TIMEOUT 420
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( COOPERATIVE_VICTORY_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/cooperative-victory-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${COOPERATIVE_VICTORY_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME cooperative_victory_runtime_smoke COMMAND

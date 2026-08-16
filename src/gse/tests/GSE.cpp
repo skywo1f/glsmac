@@ -148,6 +148,35 @@ void AddGSETests( task::gsetests::GSETests* task ) {
 	);
 
 	task->AddTest(
+		"global values survive garbage collection",
+		GT() {
+			auto* const gc_space = gse->GetGCSpace();
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					gse->SetGlobal(
+						"gc_rooted_global",
+						VALUE( value::String, , "still reachable" )
+					);
+				}
+			);
+			g_engine->GetGC()->CollectNow();
+
+			bool global_is_valid = false;
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					auto* const global = gse->GetGlobal( "gc_rooted_global" );
+					global_is_valid = global->type == VT_STRING &&
+						( (value::String*)global )->value == "still reachable";
+				}
+			);
+			GT_ASSERT( global_is_valid, "global value was collected while still registered" );
+			GT_OK();
+		}
+	);
+
+	task->AddTest(
 		"object references are reused only within one accumulation pass",
 		GT() {
 			auto* const gc_space = gse->GetGCSpace();

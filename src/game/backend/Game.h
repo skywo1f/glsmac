@@ -436,7 +436,7 @@ private:
 	util::crc32::crc_t m_turn_checksum = 0;
 	std::unordered_set< size_t > m_verified_turn_checksum_slots = {};
 
-	std::vector< FrontendRequest >* m_pending_frontend_requests = nullptr;
+	std::vector< FrontendRequest > m_pending_frontend_requests = {};
 	bool m_frontend_exploration_initialized = false;
 	std::set< std::pair< size_t, size_t > > m_frontend_explored_tiles = {};
 	void PushExplorationUpdate();

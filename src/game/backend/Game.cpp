@@ -151,8 +151,7 @@ void Game::Start() {
 	m_game_state = GS_NONE;
 	m_init_cancel = false;
 
-	ASSERT( !m_pending_frontend_requests, "frontend requests already set" );
-	NEW( m_pending_frontend_requests, std::vector< FrontendRequest > );
+	ASSERT( m_pending_frontend_requests.empty(), "frontend requests already set" );
 
 	NEW( m_random, Random, this );
 
@@ -178,8 +177,7 @@ void Game::Stop() {
 	m_bm = nullptr;
 	m_am = nullptr;
 
-	DELETE( m_pending_frontend_requests );
-	m_pending_frontend_requests = nullptr;
+	m_pending_frontend_requests.clear();
 
 	DELETE( m_random );
 	m_random = nullptr;
@@ -1614,10 +1612,10 @@ const MT_Response Game::ProcessRequest( const MT_Request& request, MT_CANCELABLE
 		}
 		case OP_GET_FRONTEND_REQUESTS: {
 			//MTModule::Log( "got events request" );
-			if ( !m_pending_frontend_requests->empty() ) {
-				//MTModule::Log( "Sending " + std::to_string( m_pending_frontend_requests->size() ) + " events to frontend" );
-				response.data.get_frontend_requests.requests = m_pending_frontend_requests; // will be destroyed in DestroyResponse
-				NEW( m_pending_frontend_requests, std::vector< FrontendRequest > ); // reset
+			if ( !m_pending_frontend_requests.empty() ) {
+				//MTModule::Log( "Sending " + std::to_string( m_pending_frontend_requests.size() ) + " events to frontend" );
+				NEW( response.data.get_frontend_requests.requests, std::vector< FrontendRequest > );
+				response.data.get_frontend_requests.requests->swap( m_pending_frontend_requests );
 			}
 			else {
 				response.data.get_frontend_requests.requests = nullptr;
@@ -2989,7 +2987,7 @@ void Game::SetSlotNum( const size_t slotnum ) {
 
 void Game::AddFrontendRequest( const FrontendRequest& request ) {
 	//MTModule::Log( "Sending frontend request (type=" + std::to_string( request.type ) + ")" ); // spammy
-	m_pending_frontend_requests->push_back( request );
+	m_pending_frontend_requests.push_back( request );
 }
 
 void Game::PushExplorationUpdate() {
@@ -3095,8 +3093,7 @@ void Game::InitGame( MT_Response& response, MT_CANCELABLE ) {
 		}; } );
 	});
 
-	ASSERT( m_pending_frontend_requests, "pending events not set" );
-	m_pending_frontend_requests->clear();
+	m_pending_frontend_requests.clear();
 
 	m_game_state = GS_PREPARING_MAP;
 	m_initialization_error = "";
@@ -3479,8 +3476,7 @@ void Game::ResetGame() {
 		m_map = nullptr;
 	}
 
-	ASSERT( m_pending_frontend_requests, "pending events not set" );
-	m_pending_frontend_requests->clear();
+	m_pending_frontend_requests.clear();
 
 	m_current_turn.Reset();
 	m_victory_state = {};

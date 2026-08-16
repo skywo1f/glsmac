@@ -348,6 +348,12 @@ void GSE::GetReachableObjects( std::unordered_set< Object* >& reachable_objects 
 	}
 	GC_DEBUG_END();
 
+	GC_DEBUG_BEGIN( "globals" );
+	for ( const auto& it : m_globals ) {
+		GC_REACHABLE( it.second );
+	}
+	GC_DEBUG_END();
+
 	GC_DEBUG_BEGIN( "include cache" );
 	for ( const auto& it : m_include_cache ) {
 		if ( it.second.result ) {
