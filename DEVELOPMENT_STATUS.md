@@ -8,8 +8,9 @@ Sid Meier's Alpha Centauri implementation. It is not a release announcement.
 - Original SMAC gameplay is the active compatibility target.
 - Alien Crossfire gameplay and content are not currently part of this effort.
 - Original game assets are still required at runtime.
-- Original executable, save-game, map, and network compatibility are not
-  promised.
+- Original executable, save-game, and network compatibility are not promised.
+- Base-game cylindrical `.MP` maps are supported within the current map limits;
+  flat maps and Alien Crossfire landmark records are rejected.
 
 ## Validated Foundations
 
@@ -33,6 +34,12 @@ scenarios, for:
   roster, faction, unit, base, animation, turn, victory, and random-state
   restoration; the current UI provides one rolling quicksave plus five manual
   save slots and does not claim compatibility with original SMAC saves;
+- direct loading of the original base game's 80x80 `planet.MP` and 128x128
+  `planetx.MP`, plus typed-path loading of `.gsm` and `.MP` files from the
+  single-player menu; imported moisture, rockiness, resources, improvements,
+  pods, rivers, fungus, and all eleven base-game landmark families retain their
+  source records, while center altitudes are projected onto GLSMAC's continuous
+  shared-corner mesh with exact source land/water classification;
 - all 16 original social models, original-faction rating modifiers and immunity,
   technology gating, the complete difficulty-scaled upheaval cost table, atomic
   energy accounting, cost-aware human selection UI, and strategy-weighted AI
@@ -1469,6 +1476,18 @@ without shell redirection, and source archives without Git metadata report an
 explicit `unknown` revision. The RelWithDebInfo executable reports
 `GLSMAC v0.3-f79cc9f9`; an immediate repeat build left the executable untouched,
 confirming that an unchanged revision does not trigger recompilation.
+
+Original base-game map loading now recognizes the `TERRANMAP` format, validates
+its header and tile records before game setup, and wires both canonical Planet
+maps plus a typed custom-file path into the single-player menu. Exact source
+water and landmark counts passed for both installed maps, and menu preflight
+rejects missing files, flat topology, malformed records, and Alien Crossfire
+landmark bits. SMAC stores independent center altitudes while GLSMAC renders a
+continuous shared-corner mesh, so imported heights use a bounded projection;
+tile identity is exact, but coastline geometry is an approximation of that
+source data rather than original-renderer parity. All 139 native/script GSE
+tests passed, followed by the two installed-map runtimes, path preflight, and
+save/load runtime. Manual visual play on both canonical maps is still required.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

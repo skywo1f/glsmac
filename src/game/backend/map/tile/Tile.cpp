@@ -103,6 +103,10 @@ void Tile::Update() {
 	const auto sea_level = tiles && tiles->GetMap()
 		? tiles->GetMap()->GetSeaLevel()
 		: ELEVATION_LEVEL_COAST;
+	if ( tiles && tiles->UsesCenterWaterClassification() ) {
+		is_water_tile = *elevation.center < sea_level;
+		return;
+	}
 	uint8_t corners_in_water = *elevation.center < sea_level
 		? 1
 		: 0;

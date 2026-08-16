@@ -1067,6 +1067,61 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		FOREACH ( ORIGINAL_MAP_VARIANT standard huge )
+			IF ( ORIGINAL_MAP_VARIANT STREQUAL "standard" )
+				SET( ORIGINAL_MAP_FILENAME "planet.MP" )
+				SET( ORIGINAL_MAP_WIDTH "80" )
+			ELSE ()
+				SET( ORIGINAL_MAP_FILENAME "planetx.MP" )
+				SET( ORIGINAL_MAP_WIDTH "128" )
+			ENDIF ()
+			SET( ORIGINAL_MAP_TEST_NAME "original_${ORIGINAL_MAP_VARIANT}_map_runtime_smoke" )
+			SET( ORIGINAL_MAP_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/${ORIGINAL_MAP_TEST_NAME}" )
+			FILE( MAKE_DIRECTORY "${ORIGINAL_MAP_TEST_PROFILE_DIR}" )
+			ADD_TEST( NAME "${ORIGINAL_MAP_TEST_NAME}" COMMAND
+				$<TARGET_FILE:${PROJECT_NAME}>
+				--prefix "${ORIGINAL_MAP_TEST_PROFILE_DIR}"
+				--smacpath "${GLSMAC_SMAC_PATH}"
+				--mainscript "../tests/_original_map_runtime_smoke"
+				--quickstart
+				--quickstart-mapfile "${GLSMAC_SMAC_PATH}/maps/${ORIGINAL_MAP_FILENAME}"
+				--quickstart-seed "1:2:3:4"
+				--quickstart-faction "GAIANS"
+				--nosound
+				--headless
+				--windowed
+				--window-size "1024x768"
+			)
+			SET_TESTS_PROPERTIES( "${ORIGINAL_MAP_TEST_NAME}" PROPERTIES
+				FAIL_REGULAR_EXPRESSION "ORIGINAL_MAP_RUNTIME_FAIL;Alien Crossfire;Event rejected"
+				PASS_REGULAR_EXPRESSION "ORIGINAL_MAP_RUNTIME_PASS: width=${ORIGINAL_MAP_WIDTH}"
+				RUN_SERIAL TRUE
+				TIMEOUT 240
+				WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+			)
+		ENDFOREACH ()
+
+		SET( MAP_FILE_PATH_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/map-file-path-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${MAP_FILE_PATH_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME map_file_path_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${MAP_FILE_PATH_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_map_file_path_runtime_smoke"
+			--skipintro
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( map_file_path_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "MAP_FILE_PATH_RUNTIME_FAIL;Unhandled exception"
+			PASS_REGULAR_EXPRESSION "MAP_FILE_PATH_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 60
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( SMALL_MAP_FRONTEND_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/small-map-frontend-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${SMALL_MAP_FRONTEND_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME small_map_frontend_runtime_smoke COMMAND

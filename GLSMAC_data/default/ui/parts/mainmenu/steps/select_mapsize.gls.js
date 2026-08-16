@@ -71,8 +71,8 @@ return (i) => {
 							i.popup.error('Width and height must be even numbers of at least 4.');
 							return true;
 						}
-						if (width * height > 180 * 90) {
-							i.popup.error('Custom map area cannot exceed Huge Planet (180x90).');
+						if (width * height > 128 * 128) {
+							i.popup.error('Custom map area cannot exceed 128x128.');
 							return true;
 						}
 						i.settings.global.map.size_x = width;

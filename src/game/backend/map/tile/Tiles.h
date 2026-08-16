@@ -48,6 +48,8 @@ CLASS( Tiles, types::Serializable )
 	const std::vector< Tile* > GetVector( MT_CANCELABLE );
 
 	Map* const GetMap() const;
+	void SetUseCenterWaterClassification( const bool value );
+	const bool UsesCenterWaterClassification() const;
 
 	const types::Buffer Serialize() const override;
 	void Deserialize( types::Buffer buf ) override;
@@ -65,8 +67,13 @@ private:
 	std::vector< Tile > m_data = {};
 
 	bool m_is_validated = false;
+	bool m_use_center_water_classification = false;
 
-	void ApplySerializedTiles( const std::vector< std::string >& serialized_tiles, const bool is_validated );
+	void ApplySerializedTiles(
+		const std::vector< std::string >& serialized_tiles,
+		const bool is_validated,
+		const bool use_center_water_classification
+	);
 
 };
 

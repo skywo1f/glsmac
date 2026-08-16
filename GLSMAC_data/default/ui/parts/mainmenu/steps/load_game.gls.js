@@ -20,7 +20,7 @@ return (i) => {
 		} catch {
 			: (e) => {
 				i.glsmac.deinit();
-				i.popup.error(e.message);
+				i.popup.error(e.reason);
 			}
 		}
 	};

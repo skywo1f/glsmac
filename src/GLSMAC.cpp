@@ -30,6 +30,7 @@
 #include "game/backend/faction/FactionManager.h"
 #include "game/backend/connection/Server.h"
 #include "game/backend/connection/Client.h"
+#include "game/backend/map/OriginalMapLoader.h"
 
 #include "game/frontend/Game.h"
 
@@ -309,6 +310,51 @@ WRAPIMPL_BEGIN( GLSMAC )
 				}
 				AddSinglePlayerSlot( faction );
 				return m_state->m_slots->GetSlot( 0 ).GetPlayer()->Wrap( GSE_CALL );
+			} )
+		},
+		{
+			"get_original_map_path",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( filename, 0, String );
+				if ( filename != "planet.MP" && filename != "planetx.MP" ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unknown base-game original map: " + filename );
+				}
+				return VALUE(
+					gse::value::String,,
+					g_engine->GetResourceManager()->GetCustomPath( "maps/" + filename )
+				);
+			} )
+		},
+		{
+			"get_map_file_path",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( path, 0, String );
+				const auto trimmed_path = util::String::TrimCopy( path );
+				if ( trimmed_path.empty() ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Enter a map file path" );
+				}
+				const auto normalized_path = util::FS::NormalizePath( trimmed_path );
+				if ( !util::FS::FileExists( normalized_path ) ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Map file not found: " + normalized_path );
+				}
+				const auto extension = util::String::GetLowerCase(
+					util::FS::GetExtension( normalized_path )
+				);
+				if ( extension != ".gsm" && extension != ".mp" ) {
+					GSE_ERROR( gse::EC.GAME_ERROR, "Map files must use the .gsm or .MP extension" );
+				}
+				if ( extension == ".mp" ) {
+					try {
+						const auto data = types::Buffer( util::FS::ReadTextFile( normalized_path ) );
+						game::backend::map::OriginalMapLoader::Validate( data );
+					}
+					catch ( const std::runtime_error& e ) {
+						GSE_ERROR( gse::EC.GAME_ERROR, "Invalid original SMAC map: " + std::string( e.what() ) );
+					}
+				}
+				return VALUE( gse::value::String,, normalized_path );
 			} )
 		},
 		{

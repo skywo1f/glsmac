@@ -175,7 +175,7 @@
 					glsmac.save_game(1);
 				} catch {
 					: (save_error) => {
-						fail(save_error.message);
+						fail(save_error.reason);
 					}
 				}
 				#print('SAVE_LOAD_RUNTIME_RESUME_PASS');
@@ -241,7 +241,7 @@
 					} catch {
 						: (e) => {
 							save_failed = true;
-							fail(e.message);
+							fail(e.reason);
 						}
 					}
 					if (save_failed) {
@@ -287,7 +287,7 @@
 			}
 		} catch {
 			: (e) => {
-				fail(e.message);
+				fail(e.reason);
 			}
 		}
 	});

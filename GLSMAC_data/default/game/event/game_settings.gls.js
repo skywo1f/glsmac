@@ -34,7 +34,7 @@ const validate_planet_size = (value) => {
 	}
 	const max_area = 180 * 90;
 	if (width > max_area || height > max_area || width * height > max_area) {
-		return 'Planet area cannot exceed Huge Planet (180x90)';
+		return 'Planet area cannot exceed 128x128';
 	}
 };
 

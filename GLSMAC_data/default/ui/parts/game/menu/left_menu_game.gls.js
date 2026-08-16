@@ -10,7 +10,7 @@ return {
 				}
 			} catch {
 				: (e) => {
-					p.game.message(e.message);
+					p.game.message(e.reason);
 				}
 			}
 			p.menu.close_all();

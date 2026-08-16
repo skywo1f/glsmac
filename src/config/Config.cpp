@@ -193,7 +193,7 @@ Config::Config( const std::string& path )
 		}
 	);
 	m_manager->AddRule(
-		"quickstart-mapfile", "MAP_FILE", "Load from existing map file (*.gsm)", AH( this, s_quickstart_argument_missing ) {
+		"quickstart-mapfile", "MAP_FILE", "Load from existing GLSMAC or original SMAC map file (*.gsm or *.MP)", AH( this, s_quickstart_argument_missing ) {
 			if ( !HasLaunchFlag( LF_QUICKSTART ) ) {
 				Error( s_quickstart_argument_missing );
 			}
@@ -218,7 +218,7 @@ Config::Config( const std::string& path )
 				m_quickstart_mapsize.y > game::backend::settings::MAP_MAX_AREA ||
 				m_quickstart_mapsize.x * m_quickstart_mapsize.y > game::backend::settings::MAP_MAX_AREA
 			) {
-				Error( "Quickstart map dimensions must be even numbers of at least 4 with area no larger than Huge Planet (180x90)" );
+				Error( "Quickstart map dimensions must be even numbers of at least 4 with area no larger than 128x128" );
 			}
 			m_launch_flags |= LF_QUICKSTART_MAP_SIZE;
 		}

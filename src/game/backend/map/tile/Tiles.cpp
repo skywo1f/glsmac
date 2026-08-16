@@ -17,6 +17,7 @@ struct serialized_tiles_state_t {
 	uint32_t height;
 	std::vector< std::string > tiles;
 	bool is_validated;
+	bool use_center_water_classification;
 };
 
 static const serialized_tiles_state_t ReadSerializedTiles( types::Buffer buf ) {
@@ -38,6 +39,9 @@ static const serialized_tiles_state_t ReadSerializedTiles( types::Buffer buf ) {
 		state.tiles.push_back( buf.ReadString() );
 	}
 	state.is_validated = buf.ReadBool();
+	state.use_center_water_classification = buf.GetRemaining() == 0
+		? false
+		: buf.ReadBool();
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized tiles" );
 	}
@@ -336,6 +340,14 @@ Map* const Tiles::GetMap() const {
 	return m_map;
 }
 
+void Tiles::SetUseCenterWaterClassification( const bool value ) {
+	m_use_center_water_classification = value;
+}
+
+const bool Tiles::UsesCenterWaterClassification() const {
+	return m_use_center_water_classification;
+}
+
 const types::Buffer Tiles::Serialize() const {
 	types::Buffer buf;
 
@@ -349,6 +361,7 @@ const types::Buffer Tiles::Serialize() const {
 	}
 
 	buf.WriteBool( m_is_validated );
+	buf.WriteBool( m_use_center_water_classification );
 
 	return buf;
 }
@@ -358,7 +371,11 @@ void Tiles::Deserialize( types::Buffer buf ) {
 
 	m_width = m_height = 0;
 	Resize( state.width, state.height );
-	ApplySerializedTiles( state.tiles, state.is_validated );
+	ApplySerializedTiles(
+		state.tiles,
+		state.is_validated,
+		state.use_center_water_classification
+	);
 }
 
 void Tiles::Restore( types::Buffer buf ) {
@@ -366,10 +383,19 @@ void Tiles::Restore( types::Buffer buf ) {
 	if ( state.width != m_width || state.height != m_height ) {
 		THROW( "serialized terrain snapshot dimensions do not match the active map" );
 	}
-	ApplySerializedTiles( state.tiles, state.is_validated );
+	ApplySerializedTiles(
+		state.tiles,
+		state.is_validated,
+		state.use_center_water_classification
+	);
 }
 
-void Tiles::ApplySerializedTiles( const std::vector< std::string >& serialized_tiles, const bool is_validated ) {
+void Tiles::ApplySerializedTiles(
+	const std::vector< std::string >& serialized_tiles,
+	const bool is_validated,
+	const bool use_center_water_classification
+) {
+	m_use_center_water_classification = use_center_water_classification;
 	size_t tile_index = 0;
 	for ( auto y = 0 ; y < m_height ; y++ ) {
 		for ( auto x = y & 1 ; x < m_width ; x += 2 ) {

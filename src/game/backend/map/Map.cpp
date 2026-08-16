@@ -30,6 +30,7 @@
 #include "types/mesh/Data.h"
 #include "game/backend/State.h"
 #include "MapState.h"
+#include "OriginalMapLoader.h"
 #include "game/backend/map/tile/Tiles.h"
 #include "Consts.h"
 
@@ -358,7 +359,7 @@ const std::string& Map::GetErrorString( const error_code_t& code ) {
 	static const std::unordered_map< error_code_t, const std::string > m_error_code_strings = {
 		{ EC_UNKNOWN,                "Unknown error" },
 		{ EC_MAPFILE_FORMAT_ERROR,   "Invalid map file format" },
-		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be even values of at least 4 with area no larger than Huge Planet (180x90)" },
+		{ EC_INVALID_MAP_DIMENSIONS, "Map dimensions must be even values of at least 4 with area no larger than 128x128" },
 		{ EC_INVALID_MAP_PARAMETERS, "Map generation values must be finite numbers from 0 to 1" }
 	};
 
@@ -1793,6 +1794,10 @@ const Map::error_code_t Map::LoadFromBuffer( types::Buffer& buffer ) {
 	}
 	NEW( m_tiles, tile::Tiles, this );
 	try {
+		if ( OriginalMapLoader::IsOriginalMap( buffer ) ) {
+			OriginalMapLoader::Load( m_tiles, buffer );
+			return EC_NONE;
+		}
 		static const std::string SNAPSHOT_MARKER = "GLSMAC_MAP_SNAPSHOT";
 		static constexpr int64_t SNAPSHOT_VERSION = 1;
 
