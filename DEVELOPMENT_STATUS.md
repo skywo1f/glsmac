@@ -1516,16 +1516,20 @@ Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
 
 The native frontend now renders the Scout Patrol, Colony Pod, and Former from
-their self-contained installed CVRs, and composes the original rover and foil
-chassis, reactor, cockpit, armor, conventional weapon, and equipment components
-for all four reactor tiers. Unsupported chassis families continue to use their
-role-specific icons instead of displaying malformed assemblies. A dedicated
+their self-contained installed CVRs. The original base-game component selection
+logic was recovered from the installed `terran.exe` filename table and assembly
+routine, then reproduced for Speeder, Hovertank, Foil, Cruiser, Needlejet,
+Copter, Gravship, conventional missiles, and Planet Busters across all four
+reactor tiers. Layered Infantry configurations that are not one of the three
+self-contained stock roles still use role-specific fallback icons. A dedicated
 installed-asset gate registered the complete generated unit catalog and rendered
-all 516 generated definitions without `CVR_RENDER_FALLBACK` in 5.53 seconds. An
-automated foreground-window capture still presented a black OpenGL client area
-despite the runtime log reaching the selected composed rover and completed
-minimap textures, so this is parser/runtime coverage rather than a claim of
-complete manual visual approval.
+all 516 generated definitions without `CVR_RENDER_FALLBACK` in 5.58 seconds.
+The current parser projects static voxel geometry but does not yet apply every
+original animated-part transform, so some rover wheel, needlejet, and copter
+subcomponents can be offset. An automated foreground-window capture also still
+presented a black OpenGL client area despite the runtime log reaching the
+selected composed rover and completed minimap textures. This is broad asset and
+parser coverage, not a claim of complete manual visual approval.
 
 AI action and animation completion polling now runs every 50 ms instead of
 every 100 ms while retaining pending-event checks, nearby tile-lock guards,

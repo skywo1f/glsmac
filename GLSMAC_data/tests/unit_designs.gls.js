@@ -59,7 +59,8 @@ test.assert(!#is_defined(preview.error));
 test.assert(preview.name == 'Foil Former');
 test.assert(preview.data.can_terraform && preview.data.movement_type == 'water');
 test.assert(preview.data.render.files == [
-	'VFL.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Vwntu.cvr',
+	'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+	'VFL.cvr', 'Vwntu.cvr', 'vr00.cvr',
 ]);
 
 known.DoctrineAirPower = true;
@@ -82,7 +83,9 @@ preview = rules.get_preview(game, player, antigrav_speeder);
 test.assert(!#is_defined(preview.error));
 test.assert(preview.data.movement_per_turn == 3);
 test.assert(preview.data.render.files == [
-	'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Vw00.cvr',
+	'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+	'VSP.cvr', 'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+	'Vw00.cvr', 'vr00.cvr',
 ]);
 
 known.CentauriPsi = true;

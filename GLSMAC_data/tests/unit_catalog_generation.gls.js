@@ -55,25 +55,81 @@ const probe = get_unit('ProbeTeam');
 test.assert(
 	recon.data.render.type == 'cvr' &&
 	recon.data.render.files == [
-		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Vw00.cvr'
+		'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+		'VSP.cvr', 'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+		'Vw00.cvr', 'vr00.cvr'
 	]
 );
 test.assert(
 	probe.data.render.type == 'cvr' &&
 	probe.data.render.files == [
-		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Ptmod.cvr'
+		'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+		'VSP.cvr', 'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+		'Ptmod.cvr', 'vr00.cvr'
 	] && probe.data.render.fallback.y == 158
 );
 
 const get_expected_cvr_files = (data) => {
+	if (data.is_native) { return []; }
 	if (data.chassis == 'Infantry' && data.armor == 'NoArmor') {
 		if (data.weapon == 'HandWeapons') { return ['VI.cvr']; }
 		if (data.weapon == 'ColonyModule') { return ['Drop.cvr']; }
 		if (data.weapon == 'TerraformingUnit') { return ['VT.cvr']; }
 	}
-	const chassis_files = {
-		Speeder: ['VGMC.cvr', 'VSP.cvr'],
-		Foil: ['VFL.cvr'],
+	const chassis_specs = {
+		Speeder: {
+			cockpit: true,
+			files: [
+				'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr', 'VSP.cvr',
+				'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+			],
+			armor_files: ['VA01.cvr', 'VSPA01.cvr'],
+		},
+		Hovertank: {
+			cockpit: false,
+			files: [
+				'VB.cvr', 'VHT-VBp.cvr', 'VHTp.cvr', 'VHTTp.cvr',
+				'VHTA00.cvr', 'VHTTA00.cvr', 'VLIGHTS.cvr',
+			],
+			armor_files: ['VHTA01.cvr', 'VHTTA01.cvr'],
+		},
+		Foil: {
+			cockpit: true,
+			files: ['VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr', 'VFL.cvr'],
+			armor_files: ['VA01.cvr'],
+		},
+		Cruiser: {
+			cockpit: false,
+			files: [
+				'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VCU.cvr',
+				'VCUP.cvr', 'VCUW.cvr', 'VCUA00.cvr',
+			],
+			armor_files: ['VCUA01.cvr'],
+		},
+		Needlejet: {
+			cockpit: true,
+			files: [
+				'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr',
+				'VJTP.cvr', 'VJT00.cvr',
+			],
+			armor_files: ['VA01.cvr', 'VJT01.cvr'],
+		},
+		Copter: {
+			cockpit: true,
+			files: [
+				'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VCT.cvr',
+				'VCTP.cvr', 'VCTB.cvr', 'VCT00.cvr',
+			],
+			armor_files: ['VA01.cvr', 'VCT01.cvr'],
+		},
+		Gravship: {
+			cockpit: true,
+			files: [
+				'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr',
+				'VGS.cvr', 'VGSP.cvr',
+			],
+			armor_files: ['VA01.cvr'],
+		},
 	};
 	const weapon_files = {
 		HandWeapons: 'Vw00.cvr', Laser: 'VW01.cvr',
@@ -82,6 +138,7 @@ const get_expected_cvr_files = (data) => {
 		FusionLaser: 'VW06.cvr', TachyonBolt: 'VW07.cvr',
 		PlasmaShard: 'Vw08.cvr', QuantumLaser: 'Vw09.cvr',
 		GravitonGun: 'VW10.cvr', SingularityLaser: 'VW11.cvr',
+		PsiAttack: 'VW12.cvr',
 		ColonyModule: 'Droplet.cvr', TerraformingUnit: 'Vwntu.cvr',
 		TroopTransport: 'VWNTT.cvr', SupplyTransport: 'VWNST.cvr',
 		ProbeTeam: 'Ptmod.cvr', AlienArtifact: 'VWNAA.cvr',
@@ -90,20 +147,30 @@ const get_expected_cvr_files = (data) => {
 		FissionPlant: '00', FusionReactor: '01',
 		QuantumChamber: '02', SingularityEngine: '03',
 	};
-	if (
-		!#is_defined(chassis_files[data.chassis]) ||
-		!#is_defined(weapon_files[data.weapon]) ||
-		!#is_defined(reactor_suffixes[data.reactor])
-	) {
+	if (!#is_defined(reactor_suffixes[data.reactor])) {
 		return [];
 	}
-	let result = [];
-	for (file of chassis_files[data.chassis]) { result :+file; }
 	const suffix = reactor_suffixes[data.reactor];
-	result :+('vr' + suffix + '.cvr');
-	result :+('VRCP' + suffix + '.cvr');
-	if (data.armor != 'NoArmor') { result :+'VA01.cvr'; }
+	if (data.chassis == 'Missile') {
+		let missile_file = '';
+		if (data.weapon == 'PlanetBuster') { missile_file = 'VW13.cvr'; }
+		if (data.weapon == 'ConventionalPayload') { missile_file = 'VM.cvr'; }
+		if (missile_file == '') { return []; }
+		return [missile_file, 'VB.cvr', 'VBP.cvr', 'vpbr' + suffix + '.cvr'];
+	}
+	if (
+		!#is_defined(chassis_specs[data.chassis]) ||
+		!#is_defined(weapon_files[data.weapon])
+	) { return []; }
+	const spec = chassis_specs[data.chassis];
+	let result = [];
+	if (spec.cockpit) { result :+('VRCP' + suffix + '.cvr'); }
+	for (file of spec.files) { result :+file; }
 	result :+weapon_files[data.weapon];
+	if (data.armor != 'NoArmor') {
+		for (file of spec.armor_files) { result :+file; }
+	}
+	result :+('vr' + suffix + '.cvr');
 	return result;
 };
 

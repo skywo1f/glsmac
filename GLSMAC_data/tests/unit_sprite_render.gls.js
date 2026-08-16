@@ -14,7 +14,9 @@ const rover = sprite_render.get('Speeder', 'NoArmor', 'HandWeapons', 'FissionPla
 test.assert(rover.type == 'cvr');
 test.assert(
 	rover.files == [
-		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Vw00.cvr'
+		'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+		'VSP.cvr', 'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+		'Vw00.cvr', 'vr00.cvr'
 	]
 );
 test.assert(rover.fallback.x == 518 && rover.fallback.y == 82);
@@ -33,7 +35,8 @@ const armored_foil = sprite_render.get(
 test.assert(armored_foil.type == 'cvr');
 test.assert(
 	armored_foil.files == [
-		'VFL.cvr', 'vr01.cvr', 'VRCP01.cvr', 'VA01.cvr', 'VW01.cvr'
+		'VRCP01.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+		'VFL.cvr', 'VW01.cvr', 'VA01.cvr', 'vr01.cvr'
 	]
 );
 
@@ -48,7 +51,9 @@ const probe = sprite_render.get('Speeder', 'NoArmor', 'ProbeTeam', 'FissionPlant
 test.assert(probe.type == 'cvr');
 test.assert(
 	probe.files == [
-		'VGMC.cvr', 'VSP.cvr', 'vr00.cvr', 'VRCP00.cvr', 'Ptmod.cvr'
+		'VRCP00.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VB.cvr', 'VBP.cvr',
+		'VSP.cvr', 'VSPTb.cvr', 'VSPTf.cvr', 'VLIGHTS.cvr',
+		'Ptmod.cvr', 'vr00.cvr'
 	]
 );
 test.assert(probe.fallback.x == 518 && probe.fallback.y == 158);
@@ -56,7 +61,64 @@ test.assert(probe.fallback.x == 518 && probe.fallback.y == 158);
 const gravship = sprite_render.get(
 	'Gravship', 'StasisGenerator', 'SingularityLaser', 'SingularityEngine'
 );
-test.assert(gravship.x == 518 && gravship.y == 82);
+test.assert(gravship.type == 'cvr');
+test.assert(gravship.files == [
+	'VRCP03.cvr', 'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr',
+	'VGS.cvr', 'VGSP.cvr', 'VW11.cvr', 'VA01.cvr', 'vr03.cvr',
+]);
+
+const hovertank = sprite_render.get(
+	'Hovertank', 'NoArmor', 'ChaosGun', 'FissionPlant'
+);
+test.assert(hovertank.type == 'cvr');
+test.assert(hovertank.files == [
+	'VB.cvr', 'VHT-VBp.cvr', 'VHTp.cvr', 'VHTTp.cvr',
+	'VHTA00.cvr', 'VHTTA00.cvr', 'VLIGHTS.cvr', 'VW05.cvr', 'vr00.cvr',
+]);
+
+const cruiser = sprite_render.get(
+	'Cruiser', 'SynthmetalArmor', 'TroopTransport', 'FusionReactor'
+);
+test.assert(cruiser.type == 'cvr');
+test.assert(cruiser.files == [
+	'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr', 'VCU.cvr',
+	'VCUP.cvr', 'VCUW.cvr', 'VCUA00.cvr', 'VWNTT.cvr',
+	'VCUA01.cvr', 'vr01.cvr',
+]);
+
+const needlejet = sprite_render.get(
+	'Needlejet', 'NoArmor', 'PsiAttack', 'QuantumChamber'
+);
+test.assert(needlejet.type == 'cvr');
+test.assert(needlejet.files == [
+	'VRCP02.cvr', 'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr',
+	'VJTP.cvr', 'VJT00.cvr', 'VW12.cvr', 'vr02.cvr',
+]);
+
+const copter = sprite_render.get(
+	'Copter', 'PlasmaSteelArmor', 'Laser', 'FissionPlant'
+);
+test.assert(copter.type == 'cvr');
+test.assert(copter.files == [
+	'VRCP00.cvr', 'VB.cvr', 'VBP.cvr', 'VGMC.cvr', 'VGMCP.cvr',
+	'VCT.cvr', 'VCTP.cvr', 'VCTB.cvr', 'VCT00.cvr', 'VW01.cvr',
+	'VA01.cvr', 'VCT01.cvr', 'vr00.cvr',
+]);
+
+const conventional_missile = sprite_render.get(
+	'Missile', 'NoArmor', 'ConventionalPayload', 'FusionReactor'
+);
+test.assert(conventional_missile.type == 'cvr');
+test.assert(conventional_missile.files == [
+	'VM.cvr', 'VB.cvr', 'VBP.cvr', 'vpbr01.cvr',
+]);
+const planet_buster = sprite_render.get(
+	'Missile', 'NoArmor', 'PlanetBuster', 'SingularityEngine'
+);
+test.assert(planet_buster.type == 'cvr');
+test.assert(planet_buster.files == [
+	'VW13.cvr', 'VB.cvr', 'VBP.cvr', 'vpbr03.cvr',
+]);
 
 const colony = sprite_render.get(
 	'Infantry', 'NoArmor', 'ColonyModule', 'FissionPlant'
