@@ -6,6 +6,9 @@ const LABS_ALLOCATION = 0.4;
 const STANDARD_MAP_AREA_ROOT = 56;
 const MAX_RESEARCH_COST = 99999999;
 const REPEATABLE_TECHNOLOGY_ID = 'TranscendentThought';
+const BONUS_STARTING_TECHNOLOGIES = {
+	UNIVERSITY: 1,
+};
 const DIFFICULTY_LEVELS = {
 	Citizen: 0,
 	Specialist: 1,
@@ -65,6 +68,43 @@ const get_available_targets = (known) => {
 const get_next_target = (known) => {
 	const available = get_available_targets(known);
 	return #sizeof(available) == 0 ? '' : available[0];
+};
+
+const get_bonus_starting_technology_count = (player) => {
+	if (#typeof(player.get_faction) != 'Callable') {
+		return 0;
+	}
+	const faction = player.get_faction();
+	if (!#is_defined(faction)) {
+		return 0;
+	}
+	return #is_defined(BONUS_STARTING_TECHNOLOGIES[faction.id])
+		? BONUS_STARTING_TECHNOLOGIES[faction.id]
+		: 0;
+};
+
+const add_bonus_starting_technologies = (player, known, choose_bonus) => {
+	const count = get_bonus_starting_technology_count(player);
+	for (let i = 0; i < count; i++) {
+		const available = get_available_targets(known);
+		if (#sizeof(available) == 0) {
+			break;
+		}
+		const selected = #is_defined(choose_bonus)
+			? choose_bonus(available)
+			: available[0];
+		let is_available = false;
+		for (id of available) {
+			if (id == selected) {
+				is_available = true;
+				break;
+			}
+		}
+		if (!is_available) {
+			throw Error('Invalid bonus starting technology: ' + selected);
+		}
+		known :+selected;
+	}
 };
 
 const get_acquired_technology_count = (player, known) => {
@@ -239,7 +279,7 @@ const get_total_commerce_bonus = () => {
 	return result;
 };
 
-const get_initial_state = (player, choose_target, calculate_cost) => {
+const get_initial_state = (player, choose_target, calculate_cost, choose_bonus) => {
 	let known = [];
 	for (id of player.get_faction().get_starting_technologies()) {
 		if (get_definition(id) == null) {
@@ -247,6 +287,7 @@ const get_initial_state = (player, choose_target, calculate_cost) => {
 		}
 		known :+id;
 	}
+	add_bonus_starting_technologies(player, known, choose_bonus);
 	const target = #is_defined(choose_target) ? choose_target(known) : get_next_target(known);
 	return {
 		technologies: known,
@@ -355,6 +396,7 @@ return {
 	get_definition: get_definition,
 	get_available_targets: get_available_targets,
 	get_next_target: get_next_target,
+	get_bonus_starting_technology_count: get_bonus_starting_technology_count,
 	get_acquired_technology_count: get_acquired_technology_count,
 	calculate_research_cost: calculate_research_cost,
 	get_state_cost: get_state_cost,
@@ -418,7 +460,11 @@ return {
 						state: get_initial_state(
 							player,
 							(known) => { return choose_next_target(known, player); },
-							(known) => { return calculate_research_cost(game, player, known); }
+							(known) => { return calculate_research_cost(game, player, known); },
+							(available) => {
+								const index = game.random.get_int(0, #sizeof(available) - 1);
+								return available[index];
+							}
 						),
 					});
 				}

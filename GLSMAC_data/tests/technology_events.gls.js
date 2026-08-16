@@ -307,10 +307,11 @@ const punished_labs = technologies.get_base_labs({
 });
 test.assert(punished_labs == {allocation: 0.4, value: 2, bonus: 0, total: 2});
 
-const make_initial_player = (starting_technologies) => {
+const make_initial_player = (starting_technologies, faction_id) => {
 	return {
 		get_faction: () => {
 			return {
+				id: #is_defined(faction_id) ? faction_id : 'GAIANS',
 				get_starting_technologies: () => { return starting_technologies; },
 			};
 		},
@@ -328,6 +329,27 @@ test.assert(technologies.get_initial_state(make_initial_player(['Biogenetics']))
 	progress: 0,
 	cost: 50,
 });
+const university = make_initial_player(['InformationNetworks'], 'UNIVERSITY');
+test.assert(technologies.get_bonus_starting_technology_count(university) == 1);
+test.assert(technologies.get_initial_state(university) == {
+	technologies: ['InformationNetworks', 'Biogenetics'],
+	target: 'IndustrialBase',
+	progress: 0,
+	cost: 50,
+});
+test.assert(
+	technologies.get_initial_state(
+		university,
+		#undefined,
+		#undefined,
+		(available) => { return 'CentauriEcology'; }
+	) == {
+		technologies: ['InformationNetworks', 'CentauriEcology'],
+		target: 'Biogenetics',
+		progress: 0,
+		cost: 30,
+	}
+);
 test.assert(technologies.get_initial_state(make_initial_player(every_technology)) == {
 	technologies: every_technology,
 	target: 'TranscendentThought',

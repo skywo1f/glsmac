@@ -130,6 +130,7 @@
 		let turn_completion_retry_started = false;
 		let post_victory_mutations = 0;
 		let victory_poll_started = false;
+		let initial_bonus_technologies = {};
 		#print('MULTIPLAYER_SMOKE_CONFIGURE_' + role);
 
 		const find_base_for_player = (player_id) => {
@@ -152,34 +153,107 @@
 
 		const get_research_state_error = (player, expect_progress, expect_spoils) => {
 			const starting_technologies = player.get_faction().get_starting_technologies();
-			let starts_with_ecology = false;
-			for (id of starting_technologies) {
-				if (id == 'CentauriEcology') {
-					starts_with_ecology = true;
-				}
-			}
 			const state = player.get_research_state();
 			let expected_technologies = [];
 			for (id of starting_technologies) {
 				expected_technologies :+id;
 			}
+			const bonus_count = technologies.get_bonus_starting_technology_count(player);
+			const player_key = #to_string(player.id);
+			for (let i = 0; i < bonus_count; i++) {
+				let bonus = '';
+				if (#is_defined(initial_bonus_technologies[player_key])) {
+					bonus = initial_bonus_technologies[player_key];
+				}
+				else {
+					for (available_id of technologies.get_available_targets(expected_technologies)) {
+						for (known_id of state.technologies) {
+							let already_expected = false;
+							for (expected_id of expected_technologies) {
+								if (expected_id == known_id) {
+									already_expected = true;
+									break;
+								}
+							}
+							if (!already_expected && known_id == available_id) {
+								bonus = known_id;
+								break;
+							}
+						}
+						if (bonus != '') {
+							break;
+						}
+					}
+					if (bonus != '') {
+						initial_bonus_technologies[player_key] = bonus;
+					}
+				}
+				if (bonus == '' || !player.has_technology(bonus)) {
+					return 'bonus faction starting technology is invalid';
+				}
+				expected_technologies :+bonus;
+			}
 			if (
 				#is_defined(expect_spoils) && expect_spoils &&
 				game.get_settings().global.rules.spoils_of_war
 			) {
-				let known = {};
-				for (id of starting_technologies) {
-					known[id] = true;
-				}
-				for (id of game.get_player(0).get_faction().get_starting_technologies()) {
-					if (!#is_defined(known[id])) {
-						expected_technologies :+id;
+				const donor = game.get_player(0);
+				const donor_fixed = donor.get_faction().get_starting_technologies();
+				const donor_bonus_count = technologies.get_bonus_starting_technology_count(donor);
+				for (known_id of state.technologies) {
+					let already_expected = false;
+					for (expected_id of expected_technologies) {
+						if (known_id == expected_id) {
+							already_expected = true;
+							break;
+						}
+					}
+					if (already_expected) {
+						continue;
+					}
+					let valid_spoils = false;
+					for (donor_id of donor_fixed) {
+						if (known_id == donor_id) {
+							valid_spoils = true;
+							break;
+						}
+					}
+					if (!valid_spoils && donor_bonus_count > 0) {
+						for (donor_id of technologies.get_available_targets(donor_fixed)) {
+							if (known_id == donor_id) {
+								valid_spoils = true;
+								break;
+							}
+						}
+					}
+					if (valid_spoils) {
+						expected_technologies :+known_id;
 						break;
 					}
 				}
 			}
-			if (state.technologies != expected_technologies) {
-				return 'faction starting technologies are invalid';
+			if (#sizeof(state.technologies) != #sizeof(expected_technologies)) {
+				let actual_ids = '';
+				for (id of state.technologies) {
+					actual_ids += (actual_ids == '' ? '' : ',') + id;
+				}
+				let expected_ids = '';
+				for (id of expected_technologies) {
+					expected_ids += (expected_ids == '' ? '' : ',') + id;
+				}
+				return 'faction technologies differ: actual=[' + actual_ids +
+					'] expected=[' + expected_ids + ']';
+			}
+			for (expected_id of expected_technologies) {
+				if (!player.has_technology(expected_id)) {
+					return 'faction technology is missing: ' + expected_id;
+				}
+			}
+			let starts_with_ecology = false;
+			for (id of state.technologies) {
+				if (id == 'CentauriEcology') {
+					starts_with_ecology = true;
+				}
 			}
 			let target_is_available = false;
 			for (available_id of technologies.get_available_targets(state.technologies)) {

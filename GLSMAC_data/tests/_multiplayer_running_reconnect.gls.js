@@ -373,15 +373,36 @@
 
 		const get_research_state_error = (player, expect_progress) => {
 			const starting_technologies = player.get_faction().get_starting_technologies();
-			let starts_with_ecology = false;
+			const state = player.get_research_state();
+			const bonus_count = technologies.get_bonus_starting_technology_count(player);
+			if (#sizeof(state.technologies) != #sizeof(starting_technologies) + bonus_count) {
+				return 'faction starting technologies are invalid';
+			}
+			let expected = [];
 			for (id of starting_technologies) {
+				if (!player.has_technology(id)) {
+					return 'fixed faction starting technologies are invalid';
+				}
+				expected :+id;
+			}
+			for (let i = 0; i < bonus_count; i++) {
+				let bonus = '';
+				for (available_id of technologies.get_available_targets(expected)) {
+					if (player.has_technology(available_id)) {
+						bonus = available_id;
+						break;
+					}
+				}
+				if (bonus == '') {
+					return 'bonus faction starting technology is invalid';
+				}
+				expected :+bonus;
+			}
+			let starts_with_ecology = false;
+			for (id of state.technologies) {
 				if (id == 'CentauriEcology') {
 					starts_with_ecology = true;
 				}
-			}
-			const state = player.get_research_state();
-			if (state.technologies != starting_technologies) {
-				return 'faction starting technologies are invalid';
 			}
 			let target_is_available = false;
 			for (available_id of technologies.get_available_targets(state.technologies)) {
