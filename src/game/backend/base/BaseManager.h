@@ -78,6 +78,7 @@ public:
 	void Deserialize( GSE_CALLABLE, types::Buffer& buf );
 
 	void RefreshBase( const base::Base* base );
+	void TouchProjectState( GSE_CALLABLE );
 
 	void AddUpdateTrigger( base::Base* base ); // TODO: combine with RefreshBase?
 

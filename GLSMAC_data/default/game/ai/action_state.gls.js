@@ -37,7 +37,10 @@ const record_action_attempt = (unit, action_attempts) => {
 	};
 };
 
-const refresh_pending_actions = (units, action_attempts) => {
+const refresh_pending_actions = (units, action_attempts, max_pending_checks) => {
+	const pending_check_limit = #is_defined(max_pending_checks)
+		? max_pending_checks
+		: MAX_PENDING_ACTION_CHECKS;
 	let waiting = false;
 	for (unit of units) {
 		const unit_key = #to_string(unit.id);
@@ -50,7 +53,7 @@ const refresh_pending_actions = (units, action_attempts) => {
 			attempt.pending_checks = 0;
 		} else {
 			attempt.pending_checks = attempt.pending_checks + 1;
-			if (attempt.pending_checks >= MAX_PENDING_ACTION_CHECKS) {
+			if (attempt.pending_checks >= pending_check_limit) {
 				attempt.pending = false;
 			} else {
 				waiting = true;

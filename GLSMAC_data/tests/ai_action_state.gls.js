@@ -26,6 +26,11 @@ test.assert(!action_state.refresh_pending_actions([unit], attempts));
 test.assert(action_state.can_attempt_action(unit, attempts));
 
 action_state.record_action_attempt(unit, attempts);
+test.assert(action_state.refresh_pending_actions([unit], attempts, 2));
+test.assert(!action_state.refresh_pending_actions([unit], attempts, 2));
+test.assert(action_state.can_attempt_action(unit, attempts));
+
+action_state.record_action_attempt(unit, attempts);
 tile = tile_b;
 test.assert(!action_state.refresh_pending_actions([unit], attempts));
 test.assert(action_state.can_attempt_action(unit, attempts));

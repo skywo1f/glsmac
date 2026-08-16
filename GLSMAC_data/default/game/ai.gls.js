@@ -1,4 +1,5 @@
-const MOVEMENT_ACTION_DELAY = 50;
+const MOVEMENT_ACTION_DELAY = 25;
+const PENDING_ACTION_CHECKS = 20;
 const TURN_COMPLETION_POLL_DELAY = 50;
 const TURN_COMPLETION_RETRY_CHECKS = 20;
 const AI_TURN_START_DELAY = 100;
@@ -2329,7 +2330,11 @@ const play_turn = (game, player, done) => {
 		const all_units = game.get_um().get_units();
 		const current_units = filter_owned_units(all_units, player);
 		const all_bases = game.get_bm().get_bases();
-		const waiting_for_action = action_state.refresh_pending_actions(current_units, action_attempts);
+		const waiting_for_action = action_state.refresh_pending_actions(
+			current_units,
+			action_attempts,
+			PENDING_ACTION_CHECKS
+		);
 		let action_started = false;
 		let action_delay = MOVEMENT_ACTION_DELAY;
 		let waiting_for_animation = false;

@@ -1551,3 +1551,34 @@ runtime variability remains material. This is a modest scheduler-latency
 reduction; collector pauses, occasional
 completion-acknowledgement outliers, and Colony Pod search spikes remain
 separate performance risks.
+
+AI movement polling now runs every 25 ms while retaining the previous 500 ms
+pending-action timeout through twenty checks. Territory ownership and
+faction-wide Secret Project effects now cache repeated base scans. Project
+cache invalidation is driven by base spawn/despawn, turn and social-policy
+changes, plus a wrapper-free native mutation event for project completion,
+removal, capture, transfer, and rollback. This avoids the transient native
+`Base` wrapper path that failed once in Diplomacy GC stress. The final seeded
+six-opponent soak completed in 199.06 seconds versus the 214.65-second
+pre-change baseline; other runs ranged from 165.13 to 202 seconds, so the
+performance improvement remains environmentally variable.
+
+The source embedder now emits chunked octal byte strings and constructs the
+same embedded-file vectors from contiguous ranges. This reduced the generated
+translation unit enough for the supported MSVC AddressSanitizer configuration
+to compile, while preserving every embedded script. The allocator-sensitive
+content dependency test now combines independent invalid cases into three
+catalog validation passes instead of five and passed in the complete suite.
+
+On the final RelWithDebInfo binary, all 139 native/script tests passed in
+201.76 seconds and all 45 content and installed-asset runtime tests passed in
+598.57 seconds. The latter includes research, Council, Diplomacy and live UI,
+CVR rendering, original maps, save/load and multiplayer paths, the six-AI soak,
+and the small-map frontend assertion that Gaians can select both a Former and
+The Weather Paradigm on the opening turn. The final wrapper-free Diplomacy GC
+stress implementation also passed three consecutive focused runs in
+121.83-126.19 seconds and again in the complete matrix at 127.21 seconds.
+These automated gates justify another manual-play candidate, not a shippable
+claim; campaign pacing, UI responsiveness, fog/resource presentation, Council
+interaction, hurry production, and composed unit visuals still require human
+regression play.

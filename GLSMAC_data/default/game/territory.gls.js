@@ -120,11 +120,24 @@ const get_manifold_nexus_tile = (game) => {
 
 return (game) => {
 	game.on('start', (e) => {
-		const get_base = (tile) => { return get_claiming_base(game, tile); };
+		let claim_cache = {};
+		const clear_claim_cache = () => { claim_cache = {}; };
+		const get_base = (tile) => {
+			const key = tile_key(tile);
+			if (!#is_defined(claim_cache[key])) {
+				claim_cache[key] = get_claiming_base(game, tile);
+			}
+			return claim_cache[key];
+		};
 		const get_owner = (tile) => {
 			const base = get_base(tile);
 			return base == null ? null : base.get_owner();
 		};
+		const bm = game.get_bm();
+		if (#typeof(bm.on) == 'Callable') {
+			bm.on('base_spawn', clear_claim_cache);
+			bm.on('base_despawn', clear_claim_cache);
+		}
 		game.set('f_territory_get_base', get_base);
 		game.set('f_territory_get_owner', get_owner);
 		game.set('f_territory_is_friendly', (player, tile) => {

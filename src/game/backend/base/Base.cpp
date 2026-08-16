@@ -121,6 +121,7 @@ void Base::SetOwner( GSE_CALLABLE, Player* owner ) {
 	}
 	if ( m_owner != owner_slot ) {
 		m_owner = owner_slot;
+		m_game->GetBM()->TouchProjectState( GSE_CALL );
 		m_game->GetBM()->RefreshBase( this );
 		TriggerUpdate();
 	}
@@ -382,12 +383,19 @@ void Base::AddFacility( GSE_CALLABLE, const std::string& id ) {
 	if ( !m_facilities.insert( id ).second ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Base already has facility: " + id );
 	}
+	if ( def->m_is_project ) {
+		m_game->GetBM()->TouchProjectState( GSE_CALL );
+	}
 	TriggerUpdate();
 }
 
 void Base::RemoveFacility( GSE_CALLABLE, const std::string& id ) {
+	const auto* const def = m_game->GetBM()->GetFacilityDef( id );
 	if ( m_facilities.erase( id ) == 0 ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Base does not have facility: " + id );
+	}
+	if ( def && def->m_is_project ) {
+		m_game->GetBM()->TouchProjectState( GSE_CALL );
 	}
 	TriggerUpdate();
 }

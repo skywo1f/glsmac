@@ -50,20 +50,28 @@ const rival_base = {
 };
 
 const values = {};
-const game = {
-	get_bm: () => {
-		return {
-			get_bases: () => { return [project_base, target_base, rival_base]; },
-			get_facility_def: (id) => {
-				test.assert(id == 'CommandCenter');
-				return command_center;
-			},
-		};
+const bm_callbacks = {};
+const game_callbacks = {};
+const bm = {
+	get_bases: () => { return [project_base, target_base, rival_base]; },
+	get_facility_def: (id) => {
+		test.assert(id == 'CommandCenter');
+		return command_center;
 	},
+	on: (name, callback) => { bm_callbacks[name] = callback; },
+};
+const game = {
+	get_bm: () => { return bm; },
+	on: (name, callback) => { game_callbacks[name] = callback; },
 	set: (key, value) => { values[key] = value; },
 };
 
 define_projects(game);
+const invalidate_projects = () => { bm_callbacks.project_state_update({}); };
+const update_economics = (value) => {
+	economics = value;
+	game_callbacks.social_engineering_updated({player: owner});
+};
 
 test.assert(values.f_project_get_owned(target_base) == [project]);
 test.assert(values.f_project_get_owned(rival_base) == []);
@@ -106,43 +114,50 @@ test.assert(values.f_base_get_effective_facilities(target_base) == [network_node
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);
 
 project.id = 'ThePholusMutagen';
+invalidate_projects();
 let effects = values.f_project_get_player_effects(owner);
 test.assert(effects.ecology_divisor_bonus == 1);
 test.assert(effects.native_fungus_combat);
 
 project.id = 'TheNanoFactory';
+invalidate_projects();
 test.assert(values.f_project_get_player_effects(owner).unit_upgrade_cost_multiplier == 0.5);
 
 project.id = 'TheSpaceElevator';
+invalidate_projects();
 effects = values.f_project_get_player_effects(owner);
 test.assert(effects.orbital_access);
 test.assert(effects.orbital_production_multiplier == 2.0);
 
 project.id = 'TheXenoempathyDome';
+invalidate_projects();
 effects = values.f_project_get_player_effects(owner);
 test.assert(effects.fungus_movement_as_road);
 test.assert(effects.fungus_terraforming_rate_multiplier == 2.0);
 
 project.id = 'TheCloningVats';
+invalidate_projects();
 effects = values.f_project_get_player_effects(owner);
 test.assert(effects.ignore_power_penalties);
 test.assert(effects.ignore_thought_control_penalties);
 test.assert(!effects.ignore_cybernetic_penalties);
 
 project.id = 'TheNetworkBackbone';
+invalidate_projects();
 effects = values.f_project_get_player_effects(owner);
 test.assert(!effects.ignore_power_penalties);
 test.assert(!effects.ignore_thought_control_penalties);
 test.assert(effects.ignore_cybernetic_penalties);
 
 project.id = 'TheLongevityVaccine';
-economics = 'Simple';
+invalidate_projects();
+update_economics('Simple');
 test.assert(values.f_project_get_player_effects(owner).drone_modifier == -1);
-economics = 'Green';
+update_economics('Green');
 test.assert(values.f_project_get_player_effects(owner).drone_modifier == -1);
-economics = 'Planned';
+update_economics('Planned');
 test.assert(values.f_project_get_player_effects(owner).drone_modifier == -2);
-economics = 'FreeMarket';
+update_economics('FreeMarket');
 test.assert(values.f_project_get_player_effects(owner).drone_modifier == 0);
 test.assert(values.f_project_get_effects(project_base).economy_multiplier == 0.5);
 test.assert(values.f_project_get_effects(target_base).economy_multiplier == 0.0);

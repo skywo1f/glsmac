@@ -105,9 +105,12 @@ const get_owned_projects = (game, base) => {
 	return get_player_projects(game, base.get_owner());
 };
 
-const get_player_effects = (game, player) => {
+const get_player_effects = (game, player, owned_projects) => {
 	const result = empty_effects();
-	for (project of get_player_projects(game, player)) {
+	const projects = #is_defined(owned_projects)
+		? owned_projects
+		: get_player_projects(game, player);
+	for (project of projects) {
 		result.talent_bonus = result.talent_bonus + project.global_talent_bonus;
 		result.growth_rating_bonus = result.growth_rating_bonus + project.global_growth_rating_bonus;
 		result.population_limit_bonus = result.population_limit_bonus + project.global_population_limit_bonus;
@@ -199,25 +202,35 @@ const get_player_effects = (game, player) => {
 	return result;
 };
 
-const get_effects = (game, base) => {
-	const result = get_player_effects(game, base.get_owner());
+const get_effects = (game, base, player_effects) => {
+	let result = #is_defined(player_effects)
+		? player_effects
+		: get_player_effects(game, base.get_owner());
 	if (
 		base.has_facility('TheLongevityVaccine') &&
 		base.get_owner().get_social_engineering().economics == 'FreeMarket'
 	) {
+		let local_effects = {};
+		for (key in result) {
+			local_effects[key] = result[key];
+		}
+		result = local_effects;
 		result.economy_multiplier = result.economy_multiplier + 0.5;
 	}
 	return result;
 };
 
-const get_effective_facilities = (game, base) => {
+const get_effective_facilities = (game, base, owned_projects) => {
 	let result = [];
 	let seen = {};
 	for (facility of base.get_facilities()) {
 		result :+facility;
 		seen[facility.id] = true;
 	}
-	for (project of get_owned_projects(game, base)) {
+	const projects = #is_defined(owned_projects)
+		? owned_projects
+		: get_owned_projects(game, base);
+	for (project of projects) {
 		if (project.granted_facility == '' || #is_defined(seen[project.granted_facility])) {
 			continue;
 		}
@@ -230,6 +243,36 @@ const get_effective_facilities = (game, base) => {
 
 return (game) => {
 	let planetary_datalinks_pending = false;
+	let player_projects_cache = {};
+	let player_effects_cache = {};
+	const clear_project_cache = () => {
+		player_projects_cache = {};
+		player_effects_cache = {};
+	};
+	const get_cached_player_projects = (player) => {
+		const key = 'p' + #to_string(player.id);
+		if (!#is_defined(player_projects_cache[key])) {
+			player_projects_cache[key] = get_player_projects(game, player);
+		}
+		return player_projects_cache[key];
+	};
+	const get_cached_player_effects = (player) => {
+		const key = 'p' + #to_string(player.id);
+		if (!#is_defined(player_effects_cache[key])) {
+			player_effects_cache[key] = get_player_effects(
+				game,
+				player,
+				get_cached_player_projects(player)
+			);
+		}
+		return player_effects_cache[key];
+	};
+	const bm = game.get_bm();
+	if (#typeof(bm.on) == 'Callable') {
+		bm.on('base_spawn', clear_project_cache);
+		bm.on('base_despawn', clear_project_cache);
+		bm.on('project_state_update', clear_project_cache);
+	}
 	const apply_completion_effects = (base, project_id) => {
 		if (project_id == 'TheEmpathGuild') {
 			const applied = project_acquisition.apply_empath_guild(game, base);
@@ -376,16 +419,34 @@ return (game) => {
 		return true;
 	};
 
-	game.set('f_project_get_owned', (base) => { return get_owned_projects(game, base); });
-	game.set('f_project_has', (player, id) => { return has_project(game, player, id); });
-	game.set('f_project_get_effects', (base) => { return get_effects(game, base); });
+	game.set(
+		'f_project_get_owned',
+		(base) => { return get_cached_player_projects(base.get_owner()); }
+	);
+	game.set('f_project_has', (player, id) => {
+		for (project of get_cached_player_projects(player)) {
+			if (project.id == id) {
+				return true;
+			}
+		}
+		return false;
+	});
+	game.set('f_project_get_effects', (base) => {
+		return get_effects(game, base, get_cached_player_effects(base.get_owner()));
+	});
 	game.set(
 		'f_project_get_player_effects',
-		(player) => { return get_player_effects(game, player); }
+		(player) => { return get_cached_player_effects(player); }
 	);
 	game.set(
 		'f_base_get_effective_facilities',
-		(base) => { return get_effective_facilities(game, base); }
+		(base) => {
+			return get_effective_facilities(
+				game,
+				base,
+				get_cached_player_projects(base.get_owner())
+			);
+		}
 	);
 	game.set(
 		'f_project_get_planetary_datalinks_candidates',
@@ -397,7 +458,9 @@ return (game) => {
 	game.set('f_project_apply_completion_effects', apply_completion_effects);
 	game.set('f_project_rollback_completion_effects', rollback_completion_effects);
 	if (#is_defined(game.on)) {
+		game.on('social_engineering_updated', clear_project_cache);
 		game.on('turn', (event) => {
+			clear_project_cache();
 			if (!#is_defined(event.initial) || !event.initial) {
 				queue_planetary_datalinks(event);
 			}

@@ -1112,6 +1112,10 @@ void BaseManager::RefreshBase( const base::Base* base ) {
 	QueueBaseUpdate( base, BUO_REFRESH );
 }
 
+void BaseManager::TouchProjectState( GSE_CALLABLE ) {
+	m_game->GetState()->TriggerObject( this, "project_state_update", {} );
+}
+
 void BaseManager::AddUpdateTrigger( base::Base* base ) {
 	std::lock_guard guard( m_updated_bases_mutex );
 	m_updated_bases.insert( base );

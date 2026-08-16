@@ -3,15 +3,23 @@
 #include <sstream>
 #include <algorithm>
 #include <filesystem>
+#include <iomanip>
+#include <vector>
 
-void Embed( std::ofstream& dst, const std::string& srcdir, const std::string& path ) {
+struct EmbeddedFile {
+	std::string key;
+	std::string data_name;
+	size_t size;
+};
+
+void Embed( std::ofstream& dst, std::vector< EmbeddedFile >& files, const std::string& srcdir, const std::string& path ) {
 
 	const auto full_path = (std::filesystem::path)srcdir / path;
 
 	if ( std::filesystem::is_directory( full_path ) ) {
 		for ( const auto& entry : std::filesystem::directory_iterator( full_path ) ) {
 			const auto relpath = entry.path().string().substr( srcdir.length() + 1 );
-			Embed( dst, srcdir, relpath );
+			Embed( dst, files, srcdir, relpath );
 		}
 	}
 	else if ( std::filesystem::is_regular_file( full_path ) ) {
@@ -29,8 +37,6 @@ void Embed( std::ofstream& dst, const std::string& srcdir, const std::string& pa
 			}
 		}
 
-		dst << "	{ \"" + key + "\", {";
-
 		std::ifstream in( full_path, std::ios::binary );
 		if ( !in.is_open() ) {
 			std::cout << "Could not open file for reading: " << full_path << std::endl;
@@ -45,19 +51,17 @@ void Embed( std::ofstream& dst, const std::string& srcdir, const std::string& pa
 		std::cout << "	Embedding " << path << " as " << key << " (" << std::to_string( str.size() ) << " bytes)" << std::endl;
 #endif
 
-		bool first = true;
-		for ( const auto& c : str ) {
-			if ( first ) {
-				first = false;
+		const auto data_name = "s_embedded_data_" + std::to_string( files.size() );
+		dst << "static const char " << data_name << "[] =\n\t\"";
+		for ( size_t i = 0 ; i < str.size() ; i++ ) {
+			if ( i > 0 && i % 2048 == 0 ) {
+				dst << "\"\n\t\"";
 			}
-			else {
-				dst << ",";
-			}
-			dst << " " << std::to_string( (unsigned char)c );
+			dst << '\\' << std::oct << std::setw( 3 ) << std::setfill( '0' )
+				<< static_cast< unsigned int >( static_cast< unsigned char >( str[ i ] ) );
 		}
-
-		dst << R"( } },
-)";
+		dst << "\";\n\n" << std::dec;
+		files.push_back( { key, data_name, str.size() } );
 
 	}
 	else {
@@ -96,20 +100,20 @@ int main( int argc, char* argv[] ) {
 #include <string>
 #include <vector>
 
-static const std::unordered_map< std::string, std::vector< unsigned char > > s_embedded_files = {
 )";
 
+	std::vector< EmbeddedFile > files = {};
 	for ( size_t i = 3 ; i < argc ; i++ ) {
-		Embed( out, srcdir.string(), argv[ i ] );
+		Embed( out, files, srcdir.string(), argv[ i ] );
 	}
 
-	out << R"(};
-
-	const std::unordered_map< std::string, std::vector< unsigned char > >& GetEmbeddedFiles() {
-		return s_embedded_files;
+	out << "const std::unordered_map< std::string, std::vector< unsigned char > >& GetEmbeddedFiles() {\n"
+		<< "\tstatic const std::unordered_map< std::string, std::vector< unsigned char > > files = {\n";
+	for ( const auto& file : files ) {
+		out << "\t\t{ \"" << file.key << "\", std::vector< unsigned char >( "
+			<< file.data_name << ", " << file.data_name << " + " << file.size << " ) },\n";
 	}
-
-)";
+	out << "\t};\n\treturn files;\n}\n\n";
 	out.close();
 	
 #ifdef DEBUG

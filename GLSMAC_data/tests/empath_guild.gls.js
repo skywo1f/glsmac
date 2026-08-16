@@ -45,9 +45,10 @@ const base = {
 };
 const values = {};
 let messages = [];
+const bm = {get_bases: () => { return [base]; }};
 const game = {
 	get_players: () => { return players; },
-	get_bm: () => { return game.bm; },
+	get_bm: () => { return bm; },
 	get: (key) => { return values[key]; },
 	set: (key, value) => { values[key] = value; },
 	is_master: () => { return true; },
@@ -55,7 +56,7 @@ const game = {
 	trigger: (name, data) => {},
 	message: (message) => { messages :+message; },
 	on: (name, callback) => {},
-	bm: {get_bases: () => { return [base]; }},
+	bm: bm,
 	um: {get_units: () => { return []; }},
 	tm: {get_distance: (source, destination) => { return 0; }},
 };
