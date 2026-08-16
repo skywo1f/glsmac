@@ -236,7 +236,11 @@ scenarios, for:
 - persistent structured energy, technology, commlink, world-map, and base trade
   offers; human players can build bundled gifts, purchases, and swaps and
   atomically replace an incoming offer with an editable reverse counteroffer,
-  with exact event rollback; Headquarters and last-base transfers are rejected,
+  attach a Treaty or Pact to either offer, and negotiate wartime concessions as
+  part of a peace treaty, with exact event rollback; relationship terms share
+  the existing persistent proposal state, cannot be answered separately from
+  their trade, and Pact packages retain automatic reciprocal map sharing;
+  Headquarters and last-base transfers are rejected,
   supported units are rehomed, production queues are revalidated, project
   acquisition effects are applied, and AI factions value, respond to, and
   originate base purchases, sales, and swaps alongside the other relation-,
@@ -452,10 +456,10 @@ not mean that the game is feature-complete or balanced.
 
 The following original-SMAC systems remain absent or materially incomplete:
 
-- deeper original diplomacy branches beyond the implemented relations, bundled
+- deeper original diplomacy branches beyond the implemented relationship-aware
   trade and counteroffers, loans, surrender, player-authored base exchange,
-  coercive demands, and joint Vendetta requests, including richer negotiated
-  packages and faction-specific dialogue behavior;
+  coercive demands, and joint Vendetta requests, especially multi-stage demands
+  and faction-specific dialogue behavior;
 - remaining multiplayer information-boundary audits for content handlers not
   yet exercised by adversarial multi-client coverage and extended soak testing;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
@@ -1416,6 +1420,17 @@ tests passed together in 4.89 seconds. The installed-asset save/load scenario
 also passed five consecutive fresh-process runs in 18.70-18.83 seconds; this
 did not reproduce the previously observed completion timeout, but longer soak
 coverage is still required before that intermittent risk can be closed.
+
+Diplomatic trades can now include a Treaty or Pact in the same accepted,
+rejected, countered, saved, and rolled-back transaction as energy, technology,
+commlink, map, or base terms. This includes concessions that end a Vendetta,
+automatic map sharing for accepted Pact packages, AI evaluation of both halves,
+and guards against splitting or crossing pending relation and trade proposals.
+The RelWithDebInfo rebuild passed, all 137 native/script GSE tests passed in
+212.26 seconds, and the installed-asset diplomacy backend, live Diplomacy UI,
+and save/load runtimes passed in 5.46, 4.46, and 16.72 seconds respectively;
+the final save/load fixture preserves a real pending wartime Treaty package
+through reload and the following turn.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.

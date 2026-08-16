@@ -643,6 +643,7 @@ diplomacy_popup.request_technology = {value: ''};
 diplomacy_popup.request_contact = {value: ''};
 diplomacy_popup.request_map = {value: ''};
 diplomacy_popup.request_base = {value: ''};
+diplomacy_popup.trade_relation = {value: ''};
 diplomacy_popup.trade_error = {text: ''};
 diplomacy_popup.begin_counter_trade();
 test.assert(diplomacy_popup.countering_trade);
@@ -717,6 +718,119 @@ bases = all_bases;
 
 beta.clear_diplomatic_trade(alpha);
 alpha.clear_diplomatic_trade(beta);
+beta.set_diplomatic_offer(alpha, '');
+alpha.set_diplomatic_offer(beta, '');
+alpha.set_diplomatic_relation(beta, 'vendetta');
+beta.set_diplomatic_relation(alpha, 'vendetta');
+alpha.energy_credits = 100;
+beta.energy_credits = 80;
+let peace_trade = {
+	caller: alpha.id,
+	game: game,
+	data: {
+		player: alpha,
+		target: beta,
+		terms: {
+			offer_energy: 20,
+			offer_technology: '',
+			request_energy: 0,
+			request_technology: '',
+			proposed_relation: 'treaty',
+		},
+	},
+};
+test.assert(!#is_defined(propose_trade.validate(peace_trade)));
+peace_trade.applied = propose_trade.apply(peace_trade);
+test.assert(beta.get_diplomatic_trade(alpha).offer_energy == 20);
+test.assert(beta.get_diplomatic_offer(alpha) == 'treaty');
+proposal.data.relation = 'treaty';
+test.assert(#is_defined(propose_relation.validate(proposal)));
+response.data.accept = true;
+test.assert(
+	respond_proposal.validate(response) == 'The diplomatic relation is part of a pending trade'
+);
+let peace_response = {
+	caller: beta.id,
+	game: game,
+	data: {player: beta, proposer: alpha, accept: true},
+};
+test.assert(!#is_defined(respond_trade.validate(peace_response)));
+peace_response.applied = respond_trade.apply(peace_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'treaty');
+test.assert(beta.get_diplomatic_relation(alpha) == 'treaty');
+test.assert(alpha.energy_credits == 80 && beta.energy_credits == 100);
+test.assert(beta.get_diplomatic_offer(alpha) == '');
+test.assert(
+	triggers[#sizeof(triggers) - 1].name == 'diplomatic_trade_resolved' &&
+	triggers[#sizeof(triggers) - 1].data.terms.proposed_relation == 'treaty'
+);
+respond_trade.rollback(peace_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
+test.assert(alpha.energy_credits == 100 && beta.energy_credits == 80);
+test.assert(beta.get_diplomatic_trade(alpha).offer_energy == 20);
+test.assert(beta.get_diplomatic_offer(alpha) == 'treaty');
+
+peace_response.data.accept = false;
+peace_response.applied = respond_trade.apply(peace_response);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(beta.get_diplomatic_offer(alpha) == '');
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+respond_trade.rollback(peace_response);
+
+peace_response.data.counter_terms = {
+	offer_energy: 0,
+	offer_technology: '',
+	request_energy: 10,
+	request_technology: '',
+	proposed_relation: 'treaty',
+};
+test.assert(!#is_defined(respond_trade.validate(peace_response)));
+peace_response.applied = respond_trade.apply(peace_response);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(beta.get_diplomatic_offer(alpha) == '');
+test.assert(alpha.get_diplomatic_trade(beta).request_energy == 10);
+test.assert(alpha.get_diplomatic_offer(beta) == 'treaty');
+respond_trade.rollback(peace_response);
+test.assert(alpha.get_diplomatic_trade(beta) == null);
+test.assert(alpha.get_diplomatic_offer(beta) == '');
+test.assert(beta.get_diplomatic_trade(alpha).offer_energy == 20);
+test.assert(beta.get_diplomatic_offer(alpha) == 'treaty');
+peace_response.data.counter_terms = #undefined;
+propose_trade.rollback(peace_trade);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(beta.get_diplomatic_offer(alpha) == '');
+
+alpha.set_diplomatic_relation(beta, 'treaty');
+beta.set_diplomatic_relation(alpha, 'treaty');
+const alpha_bundle_pact_tile = {x: 12, y: 2};
+const beta_bundle_pact_tile = {x: 14, y: 2};
+alpha.set_explored(alpha_bundle_pact_tile, true);
+beta.set_explored(beta_bundle_pact_tile, true);
+let pact_trade = #clone(peace_trade);
+pact_trade.data.terms.offer_energy = 10;
+pact_trade.data.terms.proposed_relation = 'pact';
+test.assert(!#is_defined(propose_trade.validate(pact_trade)));
+pact_trade.applied = propose_trade.apply(pact_trade);
+let pact_trade_response = {
+	caller: beta.id,
+	game: game,
+	data: {player: beta, proposer: alpha, accept: true},
+};
+test.assert(!#is_defined(respond_trade.validate(pact_trade_response)));
+pact_trade_response.applied = respond_trade.apply(pact_trade_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'pact');
+test.assert(beta.get_diplomatic_relation(alpha) == 'pact');
+test.assert(alpha.has_explored(beta_bundle_pact_tile));
+test.assert(beta.has_explored(alpha_bundle_pact_tile));
+respond_trade.rollback(pact_trade_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'treaty');
+test.assert(beta.get_diplomatic_relation(alpha) == 'treaty');
+test.assert(!alpha.has_explored(beta_bundle_pact_tile));
+test.assert(!beta.has_explored(alpha_bundle_pact_tile));
+test.assert(beta.get_diplomatic_offer(alpha) == 'pact');
+propose_trade.rollback(pact_trade);
+
 alpha.set_diplomatic_relation(beta, 'neutral');
 beta.set_diplomatic_relation(alpha, 'neutral');
 alpha.energy_credits = 100;

@@ -35,8 +35,20 @@ return {
 		if (e.data.relation == 'pact' && current != 'treaty') {
 			return 'A pact requires an existing treaty';
 		}
-		if (e.data.target.get_diplomatic_offer(e.data.player) != '') {
+		if (e.data.relation == 'treaty' && current == 'pact') {
+			return 'A treaty cannot replace an existing pact';
+		}
+		if (
+			e.data.target.get_diplomatic_offer(e.data.player) != '' ||
+			e.data.player.get_diplomatic_offer(e.data.target) != ''
+		) {
 			return 'A diplomatic proposal is already pending';
+		}
+		if (
+			e.data.target.get_diplomatic_trade(e.data.player) != null ||
+			e.data.player.get_diplomatic_trade(e.data.target) != null
+		) {
+			return 'The existing diplomatic trade must be answered first';
 		}
 	},
 

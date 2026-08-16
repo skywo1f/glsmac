@@ -26,6 +26,16 @@
 		return null;
 	};
 
+	const find_opponent = (game) => {
+		const player = game.get_player();
+		for (candidate of game.get_players()) {
+			if (candidate.id != player.id) {
+				return candidate;
+			}
+		}
+		return null;
+	};
+
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
 
@@ -37,6 +47,7 @@
 			},
 			apply: (e) => {
 				const player = e.game.get_player(e.caller);
+				const opponent = find_opponent(e.game);
 				let base = null;
 				for (candidate of e.game.get_bm().get_bases()) {
 					if (candidate.get_owner().id == player.id) {
@@ -44,8 +55,8 @@
 						break;
 					}
 				}
-				if (base == null) {
-					throw Error('Local base is missing');
+				if (base == null || opponent == null) {
+					throw Error('Save/load fixture is missing a player or base');
 				}
 				const previous = {
 					energy: player.energy_credits,
@@ -64,15 +75,33 @@
 				base.set('network_node_artifact_linked', true);
 				base.set('governor_enabled', true);
 				base.set('governor_priority', 'discover');
+				player.set_contact(opponent, true);
+				opponent.set_contact(player, true);
+				player.set_diplomatic_relation(opponent, 'vendetta');
+				opponent.set_diplomatic_relation(player, 'vendetta');
+				player.set_diplomatic_trade(opponent, {
+					offer_energy: 10,
+					offer_technology: '',
+					request_energy: 0,
+					request_technology: '',
+				});
+				player.set_diplomatic_offer(opponent, 'treaty');
 				return previous;
 			},
 			rollback: (e) => {
 				const player = e.game.get_player(e.caller);
 				const base = find_local_base(e.game);
+				const opponent = find_opponent(e.game);
 				player.set_energy_credits(e.applied.energy);
 				base.set('accumulated_nutrients', e.applied.nutrients);
 				base.set_accumulated_minerals(e.applied.minerals);
 				base.set('network_node_artifact_linked', false);
+				player.clear_diplomatic_trade(opponent);
+				player.set_diplomatic_offer(opponent, '');
+				player.set_diplomatic_relation(opponent, 'neutral');
+				opponent.set_diplomatic_relation(player, 'neutral');
+				player.set_contact(opponent, false);
+				opponent.set_contact(player, false);
 				if (#is_defined(e.applied.governor_enabled)) {
 					base.set('governor_enabled', e.applied.governor_enabled);
 				} else {
@@ -88,8 +117,9 @@
 
 		const verify_state = (expected_turn, expected_energy, expected_nutrients, expected_minerals) => {
 			const base = find_local_base(game);
-			if (base == null) {
-				return 'local base is missing';
+			const opponent = find_opponent(game);
+			if (base == null || opponent == null) {
+				return 'saved player or base is missing';
 			}
 			if (game.get_player().get_faction().id != 'GAIANS') {
 				return 'explicit single-player faction was not preserved';
@@ -115,6 +145,16 @@
 				base.get('governor_priority') != 'discover'
 			) {
 				return 'base state was not restored';
+			}
+			const peace_trade = game.get_player().get_diplomatic_trade(opponent);
+			if (
+				peace_trade == null || peace_trade.offer_energy != 10 ||
+				game.get_player().get_diplomatic_offer(opponent) != 'treaty' ||
+				game.get_player().get_diplomatic_relation(opponent) != 'vendetta' ||
+				opponent.get_diplomatic_relation(game.get_player()) != 'vendetta' ||
+				!game.get_player().has_contact(opponent) || !opponent.has_contact(game.get_player())
+			) {
+				return 'pending diplomatic peace package was not restored';
 			}
 			return '';
 		};

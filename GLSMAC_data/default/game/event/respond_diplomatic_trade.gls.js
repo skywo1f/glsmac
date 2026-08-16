@@ -35,6 +35,9 @@ return {
 			if (e.data.proposer.get_diplomatic_trade(e.data.player) != null) {
 				return 'A diplomatic counteroffer is already pending';
 			}
+			if (e.data.proposer.get_diplomatic_offer(e.data.player) != '') {
+				return 'A diplomatic counteroffer is already pending';
+			}
 			return e.game.get('f_diplomacy_validate_trade')(
 				e.data.player,
 				e.data.proposer,
@@ -42,10 +45,13 @@ return {
 			);
 		}
 		if (e.data.accept) {
+			const accepted_terms = #clone(terms);
+			accepted_terms.proposed_relation =
+				e.data.player.get_diplomatic_offer(e.data.proposer);
 			return e.game.get('f_diplomacy_validate_trade')(
 				e.data.proposer,
 				e.data.player,
-				terms
+				accepted_terms
 			);
 		}
 	},
@@ -54,6 +60,7 @@ return {
 		const player = e.data.player;
 		const proposer = e.data.proposer;
 		const terms = player.get_diplomatic_trade(proposer);
+		const proposed_relation = player.get_diplomatic_offer(proposer);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(terms);
 		const military_target = military_request
 			? e.game.get('f_diplomacy_find_player')(
@@ -78,6 +85,7 @@ return {
 		};
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(terms);
 		player.clear_diplomatic_trade(proposer);
+		player.set_diplomatic_offer(proposer, '');
 		if (e.data.accept) {
 			proposer.set_energy_credits(
 				proposer.get_energy_credits() - terms.offer_energy + terms.request_energy
@@ -141,6 +149,30 @@ return {
 			if (terms.request_technology != '') {
 				e.game.trigger('research_updated', {player: proposer});
 			}
+			if (proposed_relation != '') {
+				e.game.get('f_diplomacy_set_bilateral_relation')(
+					player,
+					proposer,
+					proposed_relation,
+					true
+				);
+				e.game.get('f_diplomacy_clear_relation_offers')(player, proposer);
+				if (proposed_relation == 'pact') {
+					snapshot.maps :+e.game.get('f_exploration_apply_map_share')(
+						player,
+						proposer
+					);
+					snapshot.maps :+e.game.get('f_exploration_apply_map_share')(
+						proposer,
+						player
+					);
+				}
+				e.game.trigger('diplomacy_updated', {
+					player: player,
+					target: proposer,
+					relation: proposed_relation,
+				});
+			}
 			if (military_request) {
 				e.game.get('f_diplomacy_set_bilateral_relation')(
 					player,
@@ -167,9 +199,15 @@ return {
 					military_target.name + '.'
 				: (ultimatum
 					? player.name + ' complied with ' + proposer.name + '\'s ultimatum.'
-					: proposer.name + ' and ' + player.name + ' completed a diplomatic trade.'));
+					: proposer.name + ' and ' + player.name + ' completed a diplomatic trade' +
+						(proposed_relation == '' ? '.' : ' and established a ' +
+							(proposed_relation == 'pact' ? 'Pact' : 'Treaty') + '.')));
 		} else if (#is_defined(e.data.counter_terms)) {
 			proposer.set_diplomatic_trade(player, e.data.counter_terms);
+			proposer.set_diplomatic_offer(
+				player,
+				e.game.get('f_diplomacy_get_proposed_relation')(e.data.counter_terms)
+			);
 			message_rules.to_players(
 				e.game,
 				[player, proposer],
@@ -199,10 +237,12 @@ return {
 		const resolved_event_name = military_request
 			? 'diplomatic_military_request_resolved'
 			: (ultimatum ? 'diplomatic_ultimatum_resolved' : 'diplomatic_trade_resolved');
+		const resolved_terms = #clone(terms);
+		resolved_terms.proposed_relation = proposed_relation;
 		e.game.trigger(resolved_event_name, {
 			player: player,
 			proposer: proposer,
-			terms: terms,
+			terms: resolved_terms,
 			accepted: e.data.accept,
 		});
 		if (#is_defined(e.data.counter_terms)) {
@@ -266,12 +306,7 @@ return {
 		for (let base_index = #sizeof(e.applied.bases) - 1; base_index >= 0; base_index--) {
 			e.game.get('f_diplomacy_restore_base_transfer')(e.applied.bases[base_index]);
 		}
-		if (e.applied.previous_counter == null) {
-			proposer.clear_diplomatic_trade(player);
-		} else {
-			proposer.set_diplomatic_trade(player, e.applied.previous_counter);
-		}
-		player.set_diplomatic_trade(proposer, e.applied.terms);
+		e.game.get('f_diplomacy_restore_pair')(player, proposer, e.applied.pair);
 		e.game.trigger('economy_updated', {player: player});
 		e.game.trigger('economy_updated', {player: proposer});
 		e.game.trigger('research_updated', {player: player});
@@ -280,6 +315,13 @@ return {
 			player: proposer,
 			target: player,
 		});
+		if (e.applied.pair.player_offer != '') {
+			e.game.trigger('diplomacy_updated', {
+				player: player,
+				target: proposer,
+				relation: e.applied.pair.player_relation,
+			});
+		}
 		if (#is_defined(e.data.counter_terms)) {
 			e.game.trigger('diplomatic_trade_updated', {
 				player: player,

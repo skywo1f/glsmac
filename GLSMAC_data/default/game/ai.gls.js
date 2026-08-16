@@ -202,7 +202,7 @@ const update_diplomacy = (game, player) => {
 			continue;
 		}
 		const offer = player.get_diplomatic_offer(other);
-		if (offer != '') {
+		if (offer != '' && player.get_diplomatic_trade(other) == null) {
 			game.event_as(player.id, 'respond_diplomatic_proposal', {
 				player: player,
 				proposer: other,
@@ -225,6 +225,19 @@ const update_diplomacy = (game, player) => {
 		}
 		const trade = player.get_diplomatic_trade(other);
 		if (trade != null) {
+			const current_relation = player.get_diplomatic_relation(other);
+			const proposed_relation = player.get_diplomatic_offer(other);
+			const effective_trade_relation = proposed_relation == ''
+				? current_relation : proposed_relation;
+			const relation_acceptable = proposed_relation == '' || diplomacy.should_accept({
+				offer: proposed_relation,
+				relation: current_relation,
+				own_power: own_power,
+				other_power: get_player_power(game, other),
+				own_bases: own_bases,
+				other_bases: get_player_base_count(game, other),
+				other_integrity_blemishes: other.get_integrity_blemishes(),
+			});
 			const military_target = diplomacy.is_military_request(trade)
 				? game.get_player(trade.request_vendetta_player) : null;
 			const offer_definition = trade.offer_technology == ''
@@ -280,9 +293,10 @@ const update_diplomacy = (game, player) => {
 							? 0 : request_definition.cost,
 						terms: trade,
 					}) >= 0.0
-					: player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
+					: relation_acceptable &&
+						player.get_sanction_turns() == 0 && other.get_sanction_turns() == 0 &&
 						diplomacy.get_trade_acceptance_score({
-						relation: player.get_diplomatic_relation(other),
+						relation: effective_trade_relation,
 						own_power: own_power,
 					other_power: get_player_power(game, other),
 					terms: trade,
@@ -426,7 +440,9 @@ const update_diplomacy = (game, player) => {
 			other.id == player.id ||
 			!player.has_contact(other) ||
 			other.get_diplomatic_offer(player) != '' ||
-			player.get_diplomatic_offer(other) != ''
+			player.get_diplomatic_offer(other) != '' ||
+			other.get_diplomatic_trade(player) != null ||
+			player.get_diplomatic_trade(other) != null
 		) {
 			continue;
 		}

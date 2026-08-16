@@ -17,6 +17,9 @@ return {
 		if (e.data.player.get_diplomatic_offer(e.data.proposer) == '') {
 			return 'No diplomatic proposal is pending';
 		}
+		if (e.data.player.get_diplomatic_trade(e.data.proposer) != null) {
+			return 'The diplomatic relation is part of a pending trade';
+		}
 	},
 
 	apply: (e) => {

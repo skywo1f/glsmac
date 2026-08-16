@@ -25,11 +25,26 @@ return {
 		if (e.data.player.get_diplomatic_trade(e.data.target) != null) {
 			return 'The existing diplomatic proposal must be answered first';
 		}
+		if (
+			e.data.target.get_diplomatic_offer(e.data.player) != '' ||
+			e.data.player.get_diplomatic_offer(e.data.target) != ''
+		) {
+			return 'The existing diplomatic proposal must be answered first';
+		}
 	},
 
 	apply: (e) => {
-		const previous = e.data.target.get_diplomatic_trade(e.data.player);
+		const previous = {
+			trade: e.data.target.get_diplomatic_trade(e.data.player),
+			offer: e.data.target.get_diplomatic_offer(e.data.player),
+		};
 		e.data.target.set_diplomatic_trade(e.data.player, e.data.terms);
+		const proposed_relation = e.game.get('f_diplomacy_get_proposed_relation')(
+			e.data.terms
+		);
+		if (proposed_relation != '') {
+			e.data.target.set_diplomatic_offer(e.data.player, proposed_relation);
+		}
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
 		const event_name = military_request
@@ -44,11 +59,12 @@ return {
 	},
 
 	rollback: (e) => {
-		if (e.applied == null) {
+		if (e.applied.trade == null) {
 			e.data.target.clear_diplomatic_trade(e.data.player);
 		} else {
-			e.data.target.set_diplomatic_trade(e.data.player, e.applied);
+			e.data.target.set_diplomatic_trade(e.data.player, e.applied.trade);
 		}
+		e.data.target.set_diplomatic_offer(e.data.player, e.applied.offer);
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
 		const event_name = military_request

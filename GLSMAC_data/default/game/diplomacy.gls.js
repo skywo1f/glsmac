@@ -329,6 +329,10 @@ const get_request_vendetta_player = (terms) => {
 		? terms.request_vendetta_player : 0 - 1;
 };
 
+const get_proposed_relation = (terms) => {
+	return #typeof(terms.proposed_relation) == 'String' ? terms.proposed_relation : '';
+};
+
 const is_military_request = (terms) => {
 	return get_request_vendetta_player(terms) >= 0;
 };
@@ -382,7 +386,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(#is_defined(terms.request_base) && #typeof(terms.request_base) != 'Int') ||
 		(#is_defined(terms.request_vendetta_player) &&
 			#typeof(terms.request_vendetta_player) != 'Int') ||
-		(#is_defined(terms.is_ultimatum) && #typeof(terms.is_ultimatum) != 'Bool')
+		(#is_defined(terms.is_ultimatum) && #typeof(terms.is_ultimatum) != 'Bool') ||
+		(#is_defined(terms.proposed_relation) && #typeof(terms.proposed_relation) != 'String')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
 	}
@@ -402,8 +407,15 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	const offer_base = get_offer_base(terms);
 	const request_base = get_request_base(terms);
 	const request_vendetta_player = get_request_vendetta_player(terms);
+	const proposed_relation = get_proposed_relation(terms);
 	const military_request = request_vendetta_player >= 0;
 	const ultimatum = is_ultimatum(terms);
+	if (
+		proposed_relation != '' &&
+		proposed_relation != 'treaty' && proposed_relation != 'pact'
+	) {
+		return 'A trade agreement must be a treaty or pact';
+	}
 	if (
 		offer_contact < -1 || offer_contact >= 64 ||
 		request_contact < -1 || request_contact >= 64
@@ -428,7 +440,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 			terms.offer_energy != 0 || terms.offer_technology != '' ||
 			terms.request_energy != 0 || terms.request_technology != '' ||
 			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
-			offer_base >= 0 || request_base >= 0 || ultimatum
+			offer_base >= 0 || request_base >= 0 || ultimatum || proposed_relation != ''
 		)
 	) {
 		return 'A military request cannot contain trade terms';
@@ -438,7 +450,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(
 			terms.offer_energy != 0 || terms.offer_technology != '' ||
 			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
-			offer_base >= 0 || request_base >= 0 ||
+			offer_base >= 0 || request_base >= 0 || proposed_relation != '' ||
 			(terms.request_energy > 0) == (terms.request_technology != '')
 		)
 	) {
@@ -460,7 +472,31 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		return 'Diplomatic trade cannot exchange a technology for itself';
 	}
 	const relation = proposer.get_diplomatic_relation(recipient);
-	if (!ultimatum && !military_request && relation == 'vendetta') {
+	if (proposed_relation != '') {
+		if (is_submission_pair(game, proposer, recipient)) {
+			return 'A Pact of Submission is permanent';
+		}
+		const forced_relation = game.get('f_council_get_forced_relation');
+		if (
+			#typeof(forced_relation) == 'Callable' &&
+			forced_relation(proposer, recipient) == 'vendetta'
+		) {
+			return 'Defiant and loyal factions must remain at vendetta';
+		}
+		if (proposed_relation == relation) {
+			return 'Players already have that diplomatic relation';
+		}
+		if (proposed_relation == 'treaty' && relation == 'pact') {
+			return 'A treaty cannot replace an existing pact';
+		}
+		if (proposed_relation == 'pact' && relation != 'treaty') {
+			return 'A pact requires an existing treaty';
+		}
+	}
+	if (
+		!ultimatum && !military_request && relation == 'vendetta' &&
+		proposed_relation != 'treaty'
+	) {
 		return 'Regular trade is unavailable during a vendetta';
 	}
 	if (military_request && relation != 'pact') {
@@ -789,6 +825,7 @@ return (game) => {
 		game.set('f_diplomacy_get_offer_base', get_offer_base);
 		game.set('f_diplomacy_get_request_base', get_request_base);
 		game.set('f_diplomacy_get_request_vendetta_player', get_request_vendetta_player);
+		game.set('f_diplomacy_get_proposed_relation', get_proposed_relation);
 		game.set('f_diplomacy_is_military_request', is_military_request);
 		game.set('f_diplomacy_find_player', (player_id) => {
 			return find_player(game, player_id);

@@ -52,8 +52,8 @@ const trade_side_text = (game, energy, technology, contact, world_map, base_id) 
 	return result;
 };
 
-const trade_text = (game, terms) => {
-	return (
+const trade_text = (game, terms, proposed_relation) => {
+	const text = (
 		'Offers ' + trade_side_text(
 			game, terms.offer_energy, terms.offer_technology, terms.offer_contact,
 			terms.offer_map, terms.offer_base
@@ -62,6 +62,8 @@ const trade_text = (game, terms) => {
 			terms.request_map, terms.request_base
 		)
 	);
+	return proposed_relation == ''
+		? text : text + '; establishes ' + relation_name(proposed_relation);
 };
 
 const ultimatum_text = (game, terms) => {
@@ -216,6 +218,8 @@ return {
 		this.request_energy_label = null;
 		this.request_energy = null;
 		this.request_map = null;
+		this.trade_relation_label = null;
+		this.trade_relation = null;
 		this.propose_trade_button = null;
 		this.issue_ultimatum_button = null;
 		this.accept_trade = null;
@@ -391,11 +395,18 @@ return {
 				class: 'popup-list-select', align: 'top right', right: 10, top: 390,
 				width: 190, items: [['0', 'No world map'], ['1', 'World map']], value: '0',
 			});
+			this.trade_relation_label = body.text({
+				class: 'game-popup-text', text: 'Agreement:', left: 10, top: 422,
+			});
+			this.trade_relation = body.select({
+				class: 'popup-list-select', align: 'top right', right: 10, top: 418,
+				width: 360, items: [['', 'No agreement change']], value: '',
+			});
 			this.trade_error = body.text({
-				class: 'game-popup-text', text: '', left: 10, right: 10, top: 422,
+				class: 'game-popup-text', text: '', left: 10, right: 10, top: 446,
 			});
 			this.propose_trade_button = body.button({
-				class: 'game-popup-button', text: 'Propose Trade', left: 10, top: 446,
+				class: 'game-popup-button', text: 'Propose Trade', left: 10, top: 470,
 				width: 280,
 			});
 			this.propose_trade_button.on('click', (e) => {
@@ -403,7 +414,7 @@ return {
 				return true;
 			});
 			this.issue_ultimatum_button = body.button({
-				class: 'game-popup-button', text: 'Issue Ultimatum', right: 10, top: 446,
+				class: 'game-popup-button', text: 'Issue Ultimatum', right: 10, top: 470,
 				width: 280,
 			});
 			this.issue_ultimatum_button.on('click', (e) => {
@@ -411,7 +422,7 @@ return {
 				return true;
 			});
 			this.accept_trade = body.button({
-				class: 'game-popup-button', text: 'Accept Trade', left: 10, top: 446,
+				class: 'game-popup-button', text: 'Accept Trade', left: 10, top: 470,
 				width: 180,
 			});
 			this.accept_trade.on('click', (e) => {
@@ -419,7 +430,7 @@ return {
 				return true;
 			});
 			this.counter_trade = body.button({
-				class: 'game-popup-button', text: 'Counter Trade', left: 210, top: 446,
+				class: 'game-popup-button', text: 'Counter Trade', left: 210, top: 470,
 				width: 180,
 			});
 			this.counter_trade.on('click', (e) => {
@@ -427,7 +438,7 @@ return {
 				return true;
 			});
 			this.reject_trade = body.button({
-				class: 'game-popup-button', text: 'Reject Trade', right: 10, top: 446,
+				class: 'game-popup-button', text: 'Reject Trade', right: 10, top: 470,
 				width: 180,
 			});
 			this.reject_trade.on('click', (e) => {
@@ -435,14 +446,14 @@ return {
 				return true;
 			});
 			this.military_target_label = body.text({
-				class: 'game-popup-text', text: 'Joint vendetta:', left: 10, top: 478,
+				class: 'game-popup-text', text: 'Joint vendetta:', left: 10, top: 502,
 			});
 			this.military_target = body.select({
-				class: 'popup-list-select', align: 'top right', right: 10, top: 474,
+				class: 'popup-list-select', align: 'top right', right: 10, top: 498,
 				width: 360, items: [], value: '',
 			});
 			this.request_military_support = body.button({
-				class: 'game-popup-button', text: 'Request Joint Vendetta', top: 506,
+				class: 'game-popup-button', text: 'Request Joint Vendetta', top: 526,
 			});
 			this.request_military_support.on('click', (e) => {
 				this.propose_military_request();
@@ -525,6 +536,7 @@ return {
 		this.military_target.value = '';
 		this.offer_map.value = '0';
 		this.request_map.value = '0';
+		this.trade_relation.value = '';
 		this.countering_trade = false;
 		this.trade_error.text = '';
 		this.loan_error.text = '';
@@ -600,6 +612,7 @@ return {
 			request_base: #to_int(this.request_base.value),
 			request_vendetta_player: 0 - 1,
 			is_ultimatum: is_ultimatum,
+			proposed_relation: is_ultimatum ? '' : this.trade_relation.value,
 		};
 		if (
 			is_ultimatum &&
@@ -660,8 +673,10 @@ return {
 		if (incoming == null) {
 			return;
 		}
+		const incoming_relation = this.player.get_diplomatic_offer(this.target);
 		this.countering_trade = true;
 		this.refresh();
+		this.trade_relation.value = incoming_relation;
 		this.offer_energy.value = #to_string(incoming.request_energy);
 		this.offer_technology.value = incoming.request_technology;
 		this.offer_contact.value = #to_string(
@@ -848,6 +863,8 @@ return {
 		this.request_energy_label.hide();
 		this.request_energy.hide();
 		this.request_map.hide();
+		this.trade_relation_label.hide();
+		this.trade_relation.hide();
 		this.propose_trade_button.hide();
 		this.issue_ultimatum_button.hide();
 		this.loan_principal_label.hide();
@@ -938,22 +955,27 @@ return {
 			? 'Incoming unconditional surrender offer'
 			: (outgoing_surrender
 				? 'Surrender awaiting response'
-				: (incoming != ''
+				: (incoming != '' && incoming_trade == null
 			? 'Incoming proposal: ' + relation_name(incoming)
-			: (outgoing != '' ? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
+			: (outgoing != '' && outgoing_trade == null
+				? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
 		this.trade_text.text = incoming_trade != null
 			? (incoming_military_request
 				? 'Incoming military request: ' + military_request_text(this.p.game, incoming_trade)
 				: (incoming_ultimatum
 				? 'Incoming ultimatum: ' + ultimatum_text(this.p.game, incoming_trade)
-				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade)))
+				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade, incoming)))
 			: (outgoing_trade != null
 				? (outgoing_military_request
 					? 'Military request awaiting response: ' +
 						military_request_text(this.p.game, outgoing_trade)
 					: (outgoing_ultimatum
 					? 'Ultimatum awaiting response: ' + ultimatum_text(this.p.game, outgoing_trade)
-					: 'Trade awaiting response: ' + trade_text(this.p.game, outgoing_trade)))
+					: 'Trade awaiting response: ' + trade_text(
+						this.p.game,
+						outgoing_trade,
+						outgoing
+					)))
 				: '');
 		this.loan_text.text = player_debt != null
 			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
@@ -981,10 +1003,12 @@ return {
 		} else if (incoming_surrender) {
 			this.accept_surrender.show();
 			this.reject_surrender.show();
-		} else if (incoming != '') {
+		} else if (incoming != '' && incoming_trade == null) {
 			this.accept_offer.show();
 			this.reject_offer.show();
-		} else if (outgoing == '' && !outgoing_surrender && player_master != this.target.id &&
+		} else if (
+			outgoing == '' && incoming_trade == null && outgoing_trade == null &&
+			!outgoing_surrender && player_master != this.target.id &&
 			target_master != this.player.id) {
 			if (relation != 'treaty' && relation != 'pact') {
 				this.offer_treaty.show();
@@ -1019,8 +1043,7 @@ return {
 		if (outgoing_trade != null) {
 			return;
 		}
-		const regular_trade_available = relation != 'vendetta' &&
-			player_sanctions == 0 && target_sanctions == 0;
+		const regular_trade_available = player_sanctions == 0 && target_sanctions == 0;
 		const ultimatum_available = relation == 'neutral' || relation == 'vendetta';
 		const military_request_available = relation == 'pact';
 		if (!regular_trade_available && !ultimatum_available && !military_request_available) {
@@ -1041,6 +1064,15 @@ return {
 				#typeof(incoming_trade.offer_base) == 'Int'
 				? incoming_trade.offer_base : 0 - 1
 		);
+		let agreement_items = [['', 'No agreement change']];
+		if (relation == 'vendetta') {
+			agreement_items = [['treaty', 'Treaty']];
+		} else if (relation == 'neutral') {
+			agreement_items :+['treaty', 'Treaty'];
+		} else if (relation == 'treaty') {
+			agreement_items :+['pact', 'Pact'];
+		}
+		this.trade_relation.items = agreement_items;
 		if (!this.countering_trade) {
 			this.offer_technology.value = '';
 			this.request_technology.value = '';
@@ -1050,6 +1082,7 @@ return {
 			this.request_map.value = '0';
 			this.offer_base.value = '-1';
 			this.request_base.value = '-1';
+			this.trade_relation.value = relation == 'vendetta' ? 'treaty' : '';
 		}
 		this.propose_trade_button.text = this.countering_trade
 			? 'Send Counter' : 'Propose Trade';
@@ -1072,6 +1105,8 @@ return {
 			this.request_energy_label.show();
 			this.request_energy.show();
 			this.request_map.show();
+			this.trade_relation_label.show();
+			this.trade_relation.show();
 			this.propose_trade_button.show();
 			this.issue_ultimatum_button.show();
 			if (!ultimatum_available || this.countering_trade) {
