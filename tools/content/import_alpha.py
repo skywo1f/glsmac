@@ -40,6 +40,10 @@ TECHNOLOGY_FLAG_FIELDS = (
     ("fungus_nutrient_bonus", 8),
 )
 
+FACILITY_REQUIRED_PROJECTS = {
+    "TheAscentToTranscendence": "TheVoiceOfPlanet",
+}
+
 
 @dataclass(frozen=True)
 class TechnologyRow:
@@ -443,6 +447,7 @@ def generate_facility_catalog(
                 "mineral_cost": facility.mineral_cost,
                 "energy_maintenance": facility.maintenance,
                 "required_technology": required_technology,
+                "required_project": FACILITY_REQUIRED_PROJECTS.get(facility_id, ""),
                 "obsolete_technology": obsolete_technology,
                 "effect": facility.effect,
             }
@@ -463,6 +468,11 @@ def generate_facility_catalog(
                 f"\t\tmineral_cost: {entry['mineral_cost']},",
                 f"\t\tenergy_maintenance: {entry['energy_maintenance']},",
                 f"\t\trequired_technology: {quote(str(entry['required_technology']))},",
+                *(
+                    [f"\t\trequired_project: {quote(str(entry['required_project']))},"]
+                    if entry["required_project"]
+                    else []
+                ),
                 f"\t\tobsolete_technology: {quote(str(entry['obsolete_technology']))},",
                 f"\t\teffect: {quote(str(entry['effect']))},",
                 "\t},",
@@ -671,43 +681,54 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--technologies-output", type=Path, required=True)
     parser.add_argument("--facilities-output", type=Path)
     parser.add_argument("--units-output", type=Path)
+    parser.add_argument("--check", action="store_true")
     return parser.parse_args()
+
+
+def write_or_check(path: Path, output: str, check: bool) -> None:
+    if check:
+        if not path.is_file():
+            raise SystemExit(f"generated catalog does not exist: {path}")
+        if path.read_text(encoding="ascii") != output:
+            raise SystemExit(
+                f"generated catalog is out of date: {path}; rerun import_alpha.py"
+            )
+        print(f"verified {path}")
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(output, encoding="ascii", newline="\n")
 
 
 def main() -> None:
     args = parse_args()
     rows = read_technologies(args.alpha)
     output = generate_technology_catalog(rows)
-    args.technologies_output.parent.mkdir(parents=True, exist_ok=True)
-    args.technologies_output.write_text(output, encoding="ascii", newline="\n")
-    print(f"wrote {len(rows)} technologies to {args.technologies_output}")
+    write_or_check(args.technologies_output, output, args.check)
+    if not args.check:
+        print(f"wrote {len(rows)} technologies to {args.technologies_output}")
     if args.facilities_output is not None:
         facilities = read_facilities(args.alpha)
         facility_output = generate_facility_catalog(facilities, rows)
-        args.facilities_output.parent.mkdir(parents=True, exist_ok=True)
-        args.facilities_output.write_text(
-            facility_output,
-            encoding="ascii",
-            newline="\n",
-        )
+        write_or_check(args.facilities_output, facility_output, args.check)
         facility_count = sum(facility.kind == "facility" for facility in facilities)
         project_count = sum(facility.kind == "project" for facility in facilities)
-        print(
-            f"wrote {facility_count} facilities and {project_count} projects "
-            f"to {args.facilities_output}"
-        )
+        if not args.check:
+            print(
+                f"wrote {facility_count} facilities and {project_count} projects "
+                f"to {args.facilities_output}"
+            )
     if args.units_output is not None:
         unit_catalog = read_unit_catalog(args.alpha)
         unit_output = generate_unit_catalog(unit_catalog, rows)
-        args.units_output.parent.mkdir(parents=True, exist_ok=True)
-        args.units_output.write_text(unit_output, encoding="ascii", newline="\n")
+        write_or_check(args.units_output, unit_output, args.check)
         counts = [len(entries) for entries in unit_catalog]
-        print(
-            "wrote unit catalog "
-            f"(chassis={counts[0]}, reactors={counts[1]}, weapons={counts[2]}, "
-            f"armors={counts[3]}, abilities={counts[4]}, units={counts[5]}) "
-            f"to {args.units_output}"
-        )
+        if not args.check:
+            print(
+                "wrote unit catalog "
+                f"(chassis={counts[0]}, reactors={counts[1]}, weapons={counts[2]}, "
+                f"armors={counts[3]}, abilities={counts[4]}, units={counts[5]}) "
+                f"to {args.units_output}"
+            )
 
 
 if __name__ == "__main__":

@@ -116,6 +116,24 @@ IF ( BUILD_TESTING )
 
 	SET( GLSMAC_SMAC_PATH "" CACHE PATH "SMAC installation used by the optional runtime smoke test" )
 	IF ( GLSMAC_SMAC_PATH )
+		FIND_PACKAGE( Python3 COMPONENTS Interpreter QUIET )
+		IF ( Python3_Interpreter_FOUND )
+			ADD_TEST( NAME content_catalog_regeneration COMMAND
+				"${Python3_EXECUTABLE}"
+				"${PROJECT_SOURCE_DIR}/tools/content/import_alpha.py"
+				--alpha "${GLSMAC_SMAC_PATH}/alpha.txt"
+				--technologies-output "${PROJECT_SOURCE_DIR}/GLSMAC_data/default/content/base_technologies.gls.js"
+				--facilities-output "${PROJECT_SOURCE_DIR}/GLSMAC_data/default/content/base_facilities.gls.js"
+				--units-output "${PROJECT_SOURCE_DIR}/GLSMAC_data/default/content/base_units.gls.js"
+				--check
+			)
+			SET_TESTS_PROPERTIES( content_catalog_regeneration PROPERTIES
+				LABELS "content;assets"
+				TIMEOUT 30
+				WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+			)
+		ENDIF ()
+
 		SET( RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME runtime_smoke COMMAND

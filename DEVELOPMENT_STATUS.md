@@ -1392,5 +1392,21 @@ save/load runtime checks in 82.25 seconds. Object deletion still dominates the
 longest collector pauses, so this is a measured reduction rather than a claim
 that turn-time stalls are solved.
 
+The base-game technology and unlock catalogs were regenerated directly from the
+installed original `alpha.txt`: all 77 technologies, 38 facilities, 33 Secret
+Projects, 68 unit components, and 14 predefined units match the committed
+metadata. The importer now emits the Voice of Planet prerequisite for the
+Ascent to Transcendence instead of relying on a hand-edited generated file, and
+an asset-backed CTest check fails if any of the three generated catalogs drift.
+All nine original technology flag families have live consumers and focused
+coverage. The progression cost path was also cross-checked against the
+reverse-engineered original-engine formula; its difficulty, turn, map-size,
+research-rating, catch-up, and Tech Stagnation terms match, while the two base
+data modifiers omitted by the runtime are both neutral at 100%. Ten focused
+catalog, dependency, research, and rule checks passed in 43.38 seconds, followed
+by the installed-asset research runtime in 7.53 seconds. Discovery quotes,
+videos, and richer presentation remain incomplete even though the audited
+mechanical catalog is current.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
