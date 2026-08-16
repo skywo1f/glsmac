@@ -1526,3 +1526,12 @@ automated foreground-window capture still presented a black OpenGL client area
 despite the runtime log reaching the selected composed rover and completed
 minimap textures, so this is parser/runtime coverage rather than a claim of
 complete manual visual approval.
+
+AI action and animation completion polling now runs every 50 ms instead of
+every 100 ms while retaining pending-event checks, nearby tile-lock guards,
+completion retries, and two stable post-action checks. The identical seeded
+six-opponent economy soak passed first in 139.36 seconds and then in 136.72
+seconds, compared with the immediately preceding 143.70-second baseline. This
+is a modest scheduler-latency reduction; collector pauses, occasional
+completion-acknowledgement outliers, and Colony Pod search spikes remain
+separate performance risks.
