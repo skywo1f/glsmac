@@ -5,6 +5,7 @@
 #include <vector>
 #include <atomic>
 
+#include "common/Mutex.h"
 #include "gc/Object.h"
 
 #include "Value.h"
