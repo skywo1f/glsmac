@@ -2,6 +2,7 @@ const defs = #include('units/defs');
 const turns = #include('units/turns');
 const animations = #include('units/animations');
 const manifest = #include('content/base_units');
+const catalog_registration = #include('units/catalog_registration');
 
 let result = null;
 const synchronize_generated_catalog = () => {
@@ -32,20 +33,17 @@ result = {
 
 		let registration_scheduled = false;
 		let registered = {};
+		let known_technologies = {};
 		const register_available_designs = () => {
 			registration_scheduled = false;
-			for (definition of game.get_um().get_unit_defs()) {
-				registered[definition.id] = true;
-			}
 			if (!game.is_master()) {
 				return;
 			}
-			let known = {};
-			for (player of game.get_players()) {
-				for (technology_id of player.get_research_state().technologies) {
-					known[technology_id] = true;
-				}
+			for (definition of game.get_um().get_unit_defs()) {
+				registered[definition.id] = true;
 			}
+			const known = catalog_registration.get_known_technologies(game.get_players());
+			known_technologies = known;
 			defs.generate_available(known);
 			synchronize_generated_catalog();
 			let pending = [];
@@ -64,7 +62,7 @@ result = {
 			}
 		};
 		const schedule_registration = () => {
-			if (registration_scheduled) {
+			if (!game.is_master() || registration_scheduled) {
 				return;
 			}
 			registration_scheduled = true;
@@ -72,7 +70,15 @@ result = {
 		};
 		game.on('start', (e) => {
 			game.on('research_updated', (event) => {
-				schedule_registration();
+				if (
+					!#is_defined(event.player) ||
+					catalog_registration.has_new_technology(
+						known_technologies,
+						event.player
+					)
+				) {
+					schedule_registration();
+				}
 			});
 			schedule_registration();
 		});

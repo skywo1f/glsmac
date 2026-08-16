@@ -1432,5 +1432,15 @@ and save/load runtimes passed in 5.46, 4.46, and 16.72 seconds respectively;
 the final save/load fixture preserves a real pending wartime Treaty package
 through reload and the following turn.
 
+Generated conventional-unit registration now reconciles the host catalog only
+when startup or a genuinely new faction technology can unlock another design.
+Ordinary research-progress notifications and client-side notifications no
+longer schedule a global catalog pass. All 138 native/script GSE tests passed in
+212.78 seconds, the focused Workshop and installed-asset research runtimes
+passed, and save/load passed two consecutive fresh runs in 17.72-17.80 seconds.
+The deterministic six-AI economy soak still required 318.19 seconds and spent
+149.23 seconds in 127 logged collections, so this removes avoidable event work
+without resolving the collector-dominated long-turn pauses.
+
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
