@@ -141,6 +141,7 @@ return (m) => {
 		i.steps = {};
 		for (step of [
 			'notimpl',
+			'credits',
 			'main',
 			'load_game',
 			'start_game',

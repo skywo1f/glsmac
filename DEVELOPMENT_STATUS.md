@@ -468,7 +468,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 160 registered cases, including isolated
+The Release CTest matrix contains 179 registered cases, including isolated
 native/script GSE tests and asset-backed runtime scenarios. Script isolation
 keeps allocator lifetime bounded and reports the exact script that fails.
 
@@ -1407,6 +1407,15 @@ catalog, dependency, research, and rule checks passed in 43.38 seconds, followed
 by the installed-asset research runtime in 7.53 seconds. Discovery quotes,
 videos, and richer presentation remain incomplete even though the audited
 mechanical catalog is current.
+
+The main menu's View Credits command now opens a real attributed project screen
+instead of the generic not-implemented error, with an explicit distinction
+between GLSMAC contributors and Firaxis' original game and assets. Its focused
+script contract and the neighboring lobby, lazy-popup, and single-player setup
+tests passed together in 4.89 seconds. The installed-asset save/load scenario
+also passed five consecutive fresh-process runs in 18.70-18.83 seconds; this
+did not reproduce the previously observed completion timeout, but longer soak
+coverage is still required before that intermittent risk can be closed.
 
 Cross-platform release readiness must be confirmed by clean CI builds and the
 same relevant tests on every supported toolchain before shipping.
