@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <atomic>
 #include <mutex>
 #include <unordered_map>
 #include <unordered_set>
@@ -41,7 +42,7 @@ class Space;
 CLASS( Object, common::Class )
 
 	Object( gc::Space* const gc_space );
-	virtual ~Object() = default;
+	virtual ~Object();
 
 	virtual void GetReachableObjects( std::unordered_set< Object* >& reachable_objects );
 	static const bool QueueReachable( Object* const object, std::unordered_set< Object* >& reachable_objects );
@@ -53,12 +54,14 @@ protected:
 	const bool IsPersisted( Object* const obj ) const;
 
 private:
+	struct persisted_objects_t;
+	persisted_objects_t* GetOrCreatePersistedObjects() const;
+
 	static void BeginReachabilityPass();
 	static void DrainReachabilityQueue( std::unordered_set< Object* >& reachable_objects );
 	static const size_t GetReachableCount();
 	uint64_t m_reachability_pass = 0;
-	mutable std::mutex m_persisted_objects_mutex;
-	std::unordered_map< Object*, size_t > m_persisted_objects = {};
+	mutable std::atomic< persisted_objects_t* > m_persisted_objects = nullptr;
 
 private:
 	friend class Space;

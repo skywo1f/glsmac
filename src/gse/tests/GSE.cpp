@@ -273,6 +273,68 @@ void AddGSETests( task::gsetests::GSETests* task ) {
 	);
 
 	task->AddTest(
+		"persisted objects remain reachable until every hold is released",
+		GT() {
+			class PersistingObject final : public gc::Object {
+			public:
+				explicit PersistingObject( gc::Space* const gc_space )
+					: gc::Object( gc_space ) {}
+				void Hold( gc::Object* const object ) {
+					Persist( object );
+				}
+				void Release( gc::Object* const object ) {
+					Unpersist( object );
+				}
+				const bool IsHolding( gc::Object* const object ) const {
+					return IsPersisted( object );
+				}
+			};
+			class TrackedObject final : public gc::Object {
+			public:
+				TrackedObject( gc::Space* const gc_space, bool* const destroyed )
+					: gc::Object( gc_space )
+					, m_destroyed( destroyed ) {}
+				~TrackedObject() override {
+					*m_destroyed = true;
+				}
+			private:
+				bool* const m_destroyed;
+			};
+
+			auto* const gc_space = gse->GetGCSpace();
+			PersistingObject* owner = nullptr;
+			TrackedObject* child = nullptr;
+			bool child_destroyed = false;
+			gc_space->Accumulate(
+				gse,
+				[ & ]() {
+					owner = new PersistingObject( gc_space );
+					child = new TrackedObject( gc_space, &child_destroyed );
+					gse->AddRootObject( owner );
+					owner->Hold( child );
+					owner->Hold( child );
+				}
+			);
+			GT_ASSERT( owner->IsHolding( child ), "persisted object was not recorded" );
+
+			g_engine->GetGC()->CollectNow();
+			GT_ASSERT( !child_destroyed, "persisted object was collected" );
+			owner->Release( child );
+			g_engine->GetGC()->CollectNow();
+			GT_ASSERT( !child_destroyed, "counted persistence ended after only one release" );
+
+			owner->Release( child );
+			GT_ASSERT( !owner->IsHolding( child ), "released object remained persisted" );
+			g_engine->GetGC()->CollectNow();
+			GT_ASSERT( child_destroyed, "fully released object was not collected" );
+
+			gse->RemoveRootObject( owner );
+			g_engine->GetGC()->CollectNow();
+			GT_OK();
+		}
+	);
+
+	task->AddTest(
 		"test if cloned references snapshot pointer values",
 		GT() {
 			auto* gc_space = gse->GetGCSpace();

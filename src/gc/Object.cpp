@@ -12,10 +12,37 @@ thread_local static uint64_t s_reachability_pass = 0;
 thread_local static size_t s_reachable_count = 0;
 thread_local static std::vector< Object* > s_reachability_queue = {};
 
+struct Object::persisted_objects_t {
+	std::mutex mutex;
+	std::unordered_map< Object*, size_t > objects = {};
+};
+
 Object::Object( gc::Space* const gc_space ) {
 	if ( gc_space ) {
 		gc_space->Add( this );
 	}
+}
+
+Object::~Object() {
+	delete m_persisted_objects.load( std::memory_order_relaxed );
+}
+
+Object::persisted_objects_t* Object::GetOrCreatePersistedObjects() const {
+	auto* persisted = m_persisted_objects.load( std::memory_order_acquire );
+	if ( persisted ) {
+		return persisted;
+	}
+	auto* candidate = new persisted_objects_t();
+	if ( !m_persisted_objects.compare_exchange_strong(
+		persisted,
+		candidate,
+		std::memory_order_release,
+		std::memory_order_acquire
+	) ) {
+		delete candidate;
+		return persisted;
+	}
+	return candidate;
 }
 
 void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
@@ -24,11 +51,11 @@ void Object::GetReachableObjects( std::unordered_set< Object* >& reachable_objec
 	ASSERT( IsReachable(), "object was visited without being queued" );
 	GC_DEBUG( "this", this );
 
-	{
-		std::lock_guard guard( m_persisted_objects_mutex );
-		if ( !m_persisted_objects.empty() ) {
+	if ( auto* const persisted = m_persisted_objects.load( std::memory_order_acquire ) ) {
+		std::lock_guard guard( persisted->mutex );
+		if ( !persisted->objects.empty() ) {
 			GC_DEBUG_BEGIN( "persisted_objects" );
-			for ( const auto& [ obj, count ] : m_persisted_objects ) {
+			for ( const auto& [ obj, count ] : persisted->objects ) {
 				if ( count > 0 ) {
 					GC_REACHABLE( obj );
 				}
@@ -82,23 +109,30 @@ const bool Object::IsReachable() const {
 
 void Object::Persist( Object* const obj ) {
 	ASSERT( obj, "cannot persist null object" );
-	std::lock_guard guard( m_persisted_objects_mutex );
-	m_persisted_objects[ obj ]++;
+	auto* const persisted = GetOrCreatePersistedObjects();
+	std::lock_guard guard( persisted->mutex );
+	persisted->objects[ obj ]++;
 }
 
 void Object::Unpersist( Object* const obj ) {
-	std::lock_guard guard( m_persisted_objects_mutex );
-	auto it = m_persisted_objects.find( obj );
-	ASSERT( it != m_persisted_objects.end() && it->second > 0, "object not persisted" );
+	auto* const persisted = m_persisted_objects.load( std::memory_order_acquire );
+	ASSERT( persisted, "object not persisted" );
+	std::lock_guard guard( persisted->mutex );
+	auto it = persisted->objects.find( obj );
+	ASSERT( it != persisted->objects.end() && it->second > 0, "object not persisted" );
 	if ( --it->second == 0 ) {
-		m_persisted_objects.erase( it );
+		persisted->objects.erase( it );
 	}
 }
 
 const bool Object::IsPersisted( Object* const obj ) const {
-	std::lock_guard guard( m_persisted_objects_mutex );
-	const auto& it = m_persisted_objects.find( obj );
-	return it != m_persisted_objects.end() && it->second > 0;
+	auto* const persisted = m_persisted_objects.load( std::memory_order_acquire );
+	if ( !persisted ) {
+		return false;
+	}
+	std::lock_guard guard( persisted->mutex );
+	const auto& it = persisted->objects.find( obj );
+	return it != persisted->objects.end() && it->second > 0;
 }
 
 }

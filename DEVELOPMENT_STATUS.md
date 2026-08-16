@@ -1582,3 +1582,23 @@ These automated gates justify another manual-play candidate, not a shippable
 claim; campaign pacing, UI responsiveness, fog/resource presentation, Council
 interaction, hurry production, and composed unit visuals still require human
 regression play.
+
+GC objects now allocate their counted persisted-reference mutex and map only
+when an owner first retains a callback or other managed object. The millions of
+temporary integers, strings, references, arrays, objects, and script contexts
+created during AI turns therefore carry only an atomic sidecar pointer instead
+of an always-present mutex and hash map. A native regression holds one child
+twice, verifies that one release keeps it reachable, and verifies that the
+second release makes it collectible. Two identical seeded six-opponent economy
+soaks completed in 132.43 and 132.33 seconds, versus the recent 165.13-202
+second range. All 139 native/script tests passed in 198.34 seconds, and all 48
+content and installed-asset runtime tests passed once in 562.19 seconds; the
+runtime matrix includes a 99.24-second Diplomacy GC stress pass, the Gaian
+Former and Weather Paradigm opening choices, original maps, save/load,
+multiplayer, and running reconnect. The MSVC AddressSanitizer configuration
+built successfully and its native and scripted GC tests passed. Asset-heavy
+ASan runs produced no sanitizer diagnostic but exceeded their existing 150-
+and 420-second startup/stress timeouts, so they are not counted as passes. The
+previous `cf18cd30` checkpoint also completed its Windows build/package and
+Ubuntu static-analysis GitHub Actions jobs successfully. This performance
+milestone still requires ordinary manual campaign play before release claims.
