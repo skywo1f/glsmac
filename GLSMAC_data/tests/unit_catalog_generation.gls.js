@@ -36,8 +36,9 @@ const scout = get_unit('ScoutPatrol');
 const colony = get_unit('ColonyPod');
 const former = get_unit('Former');
 test.assert(
-	scout.data.render.file == 'newicons.pcx' &&
-	scout.data.render.x == 518 && scout.data.render.y == 82
+	scout.data.render.type == 'cvr' && scout.data.render.files == ['VI.cvr'] &&
+	scout.data.render.fallback.file == 'newicons.pcx' &&
+	scout.data.render.fallback.x == 518 && scout.data.render.fallback.y == 82
 );
 test.assert(
 	colony.data.render.file == 'newicons.pcx' &&
@@ -122,7 +123,16 @@ for (let i = 0; i < #sizeof(units.definitions); i++) {
 	const data = entry.data;
 	test.assert(data.mineral_cost >= 0);
 	test.assert(data.defense > 0);
-	test.assert(data.render.file == (data.is_native ? 'units.pcx' : 'newicons.pcx'));
+	if (data.render.type == 'cvr') {
+		test.assert(
+			data.chassis == 'Infantry' && data.armor == 'NoArmor' &&
+			data.weapon == 'HandWeapons' && data.render.files == ['VI.cvr'] &&
+			data.render.fallback.file == 'newicons.pcx'
+		);
+	} else {
+		test.assert(data.render.type == 'sprite');
+		test.assert(data.render.file == (data.is_native ? 'units.pcx' : 'newicons.pcx'));
+	}
 	test.assert(data.chassis != '');
 	test.assert(data.weapon != '');
 	test.assert(data.armor != '');

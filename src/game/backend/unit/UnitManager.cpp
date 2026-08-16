@@ -15,6 +15,7 @@
 #include "game/backend/Bindings.h"
 #include "game/backend/slot/Slots.h"
 #include "game/backend/unit/SpriteRender.h"
+#include "game/backend/unit/CVRRender.h"
 #include "game/backend/Player.h"
 
 #include "gse/context/Context.h"
@@ -620,6 +621,102 @@ WRAPIMPL_BEGIN( UnitManager )
 								buildable,
 								owner_player_id
 							);
+
+						DefineUnit( def );
+
+						return VALUE( gse::value::Undefined );
+					}
+					else if ( render_type == "cvr" ) {
+						N_GETPROP( cvr_file_values, render_def, "files", Array );
+						if (
+							cvr_file_values.empty() ||
+							cvr_file_values.size() > unit::CVRRender::MAX_FILES
+						) {
+							GSE_ERROR( gse::EC.INVALID_CALL, "CVR render requires one to sixteen files" );
+						}
+						std::vector< std::string > cvr_files;
+						cvr_files.reserve( cvr_file_values.size() );
+						for ( size_t i = 0 ; i < cvr_file_values.size() ; i++ ) {
+							N_GETELEMENT( cvr_file, cvr_file_values, i, String );
+							if ( cvr_file.empty() ) {
+								GSE_ERROR( gse::EC.INVALID_CALL, "CVR render files must be non-empty" );
+							}
+							cvr_files.push_back( cvr_file );
+						}
+						N_GETPROP( cvr_w, render_def, "w", Int );
+						N_GETPROP( cvr_h, render_def, "h", Int );
+						N_GETPROP( cvr_cx, render_def, "cx", Int );
+						N_GETPROP( cvr_cy, render_def, "cy", Int );
+						if (
+							cvr_w <= 0 || cvr_h <= 0 || cvr_cx < 0 || cvr_cy < 0 ||
+							cvr_w > unit::CVRRender::MAX_DIMENSION ||
+							cvr_h > unit::CVRRender::MAX_DIMENSION ||
+							cvr_cx > cvr_w || cvr_cy > cvr_h
+						) {
+							GSE_ERROR( gse::EC.INVALID_CALL, "Invalid CVR render dimensions" );
+						}
+						N_GETPROP( fallback, render_def, "fallback", Object );
+						N_GETPROP( fallback_file, fallback, "file", String );
+						N_GETPROP( fallback_x, fallback, "x", Int );
+						N_GETPROP( fallback_y, fallback, "y", Int );
+						N_GETPROP( fallback_w, fallback, "w", Int );
+						N_GETPROP( fallback_h, fallback, "h", Int );
+						N_GETPROP( fallback_cx, fallback, "cx", Int );
+						N_GETPROP( fallback_cy, fallback, "cy", Int );
+						N_GETPROP_OPT_INT( fallback_morale_based_xshift, fallback, "morale_based_xshift" );
+						if (
+							fallback_file.empty() || fallback_x < 0 || fallback_y < 0 ||
+							fallback_w <= 0 || fallback_h <= 0 || fallback_cx < 0 ||
+							fallback_cy < 0 || fallback_morale_based_xshift < 0
+						) {
+							GSE_ERROR( gse::EC.INVALID_CALL, "Invalid CVR fallback sprite" );
+						}
+						const auto* moraleset = GetMoraleSet( morale );
+						if ( !moraleset ) {
+							GSE_ERROR( gse::EC.INVALID_CALL, "Morale type '" + morale + "' is not defined" );
+						}
+						auto* def = new unit::StaticDef(
+							id,
+							moraleset,
+							name,
+							mineral_cost,
+							required_technology,
+							is_native,
+							offense,
+							defense,
+							can_found_base,
+							can_terraform,
+							movement_type,
+							movement_per_turn,
+							new unit::CVRRender(
+								cvr_files,
+								(uint32_t)cvr_w,
+								(uint32_t)cvr_h,
+								(uint32_t)cvr_cx,
+								(uint32_t)cvr_cy,
+								{
+									fallback_file,
+									(uint32_t)fallback_x,
+									(uint32_t)fallback_y,
+									(uint32_t)fallback_w,
+									(uint32_t)fallback_h,
+									(uint32_t)fallback_cx,
+									(uint32_t)fallback_cy,
+									(uint32_t)fallback_morale_based_xshift,
+								}
+							),
+							chassis_id,
+							weapon_id,
+							armor_id,
+							reactor_id,
+							reactor_power,
+							abilities,
+							operational_range,
+							is_missile,
+							cargo_capacity,
+							buildable,
+							owner_player_id
+						);
 
 						DefineUnit( def );
 

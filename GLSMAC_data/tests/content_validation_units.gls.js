@@ -43,3 +43,15 @@ invalid.units[0].data.abilities = ['HeavyArtillery', 'HeavyArtillery'];
 test.assert(content.validator.validate(invalid).errors == [
 	'units.ScoutPatrol.abilities[1]: duplicates unit ability HeavyArtillery',
 ]);
+
+invalid = content.make_catalog();
+invalid.units[0].data.render.files = [];
+test.assert(content.validator.validate(invalid).errors == [
+	'units.ScoutPatrol.render.files: must contain one to sixteen files',
+]);
+
+invalid = content.make_catalog();
+invalid.units[0].data.render.fallback.file = '';
+test.assert(content.validator.validate(invalid).errors == [
+	'units.ScoutPatrol.render.fallback.file: must be a non-empty string',
+]);

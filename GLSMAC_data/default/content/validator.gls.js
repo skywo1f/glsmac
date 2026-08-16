@@ -126,6 +126,20 @@ const unit_fields = {
 const unit_render_fields = {
 	type: true,
 	file: true,
+	files: true,
+	fallback: true,
+	x: true,
+	y: true,
+	w: true,
+	h: true,
+	cx: true,
+	cy: true,
+	morale_based_xshift: true,
+};
+
+const unit_sprite_render_fields = {
+	type: true,
+	file: true,
 	x: true,
 	y: true,
 	w: true,
@@ -1109,14 +1123,61 @@ const validate_unit_render = (render, path, errors) => {
 	}
 	validate_known_fields(render, unit_render_fields, path, errors);
 	validate_string(render, 'type', path, errors, true);
-	if (#is_defined(render.type) && render.type != 'sprite') {
-		add_error(errors, path + '.type', 'must be sprite');
+	if (!#is_defined(render.type)) {
+		return;
 	}
-	validate_string(render, 'file', path, errors, true);
-	for (field of ['x', 'y', 'w', 'h', 'cx', 'cy']) {
+	if (render.type == 'sprite') {
+		validate_string(render, 'file', path, errors, true);
+		for (field of ['x', 'y', 'w', 'h', 'cx', 'cy']) {
+			validate_int(render, field, path, errors, true, 0, MAX_DEFINITION_VALUE);
+		}
+		validate_int(render, 'morale_based_xshift', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		return;
+	}
+	if (render.type != 'cvr') {
+		add_error(errors, path + '.type', 'must be sprite or cvr');
+		return;
+	}
+	if (#typeof(render.files) != 'Array' || #sizeof(render.files) == 0 || #sizeof(render.files) > 16) {
+		add_error(errors, path + '.files', 'must contain one to sixteen files');
+	} else {
+		for (let i = 0; i < #sizeof(render.files); i++) {
+			if (#typeof(render.files[i]) != 'String' || render.files[i] == '') {
+				add_error(errors, path + '.files[' + #to_string(i) + ']', 'must be a non-empty string');
+			}
+		}
+	}
+	for (field of ['w', 'h']) {
+		validate_int(render, field, path, errors, true, 1, 4096);
+	}
+	for (field of ['cx', 'cy']) {
 		validate_int(render, field, path, errors, true, 0, MAX_DEFINITION_VALUE);
 	}
-	validate_int(render, 'morale_based_xshift', path, errors, false, 0, MAX_DEFINITION_VALUE);
+	if (#typeof(render.fallback) != 'Object') {
+		add_error(errors, path + '.fallback', 'must be an object');
+		return;
+	}
+	const fallback_path = path + '.fallback';
+	validate_known_fields(render.fallback, unit_sprite_render_fields, fallback_path, errors);
+	if (#is_defined(render.fallback.type) && render.fallback.type != 'sprite') {
+		add_error(errors, fallback_path + '.type', 'must be sprite');
+	}
+	validate_string(render.fallback, 'file', fallback_path, errors, true);
+	for (field of ['x', 'y', 'cx', 'cy']) {
+		validate_int(render.fallback, field, fallback_path, errors, true, 0, MAX_DEFINITION_VALUE);
+	}
+	for (field of ['w', 'h']) {
+		validate_int(render.fallback, field, fallback_path, errors, true, 1, MAX_DEFINITION_VALUE);
+	}
+	validate_int(
+		render.fallback,
+		'morale_based_xshift',
+		fallback_path,
+		errors,
+		false,
+		0,
+		MAX_DEFINITION_VALUE
+	);
 };
 
 const validate_units = (units, technologies, morale_ids, unit_manifest, errors) => {

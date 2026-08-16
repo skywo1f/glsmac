@@ -1,12 +1,17 @@
 #include "UnitDef.h"
 
 #include "game/backend/unit/StaticDef.h"
+#include "game/backend/unit/CVRRender.h"
 #include "game/backend/unit/SpriteRender.h"
 #include "engine/Engine.h"
 #include "loader/texture/TextureLoader.h"
+#include "types/texture/Texture.h"
+#include "util/LogHelper.h"
 #include "util/String.h"
+#include "game/frontend/sprite/InstancedSprite.h"
 #include "game/frontend/sprite/InstancedSpriteManager.h"
 #include "game/backend/map/Consts.h"
+#include "CVRRenderer.h"
 
 namespace game {
 namespace frontend {
@@ -44,6 +49,28 @@ UnitDef::UnitDef( sprite::InstancedSpriteManager* ism, const backend::unit::Def*
 
 					break;
 				}
+				case backend::unit::Render::RT_CVR: {
+					const auto* render = (backend::unit::CVRRender*)def->m_render;
+					m_cvr_files = render->m_files;
+					m_cvr_fallback = render->m_fallback;
+					m_is_cvr = true;
+					m_render = {
+						"",
+						0,
+						0,
+						render->m_w,
+						render->m_h,
+						render->m_cx,
+						render->m_cy,
+						0,
+					};
+
+					static_.movement_type = def->m_movement_type;
+					static_.movement_per_turn = def->m_movement_per_turn;
+					static_.render.is_sprite = true;
+
+					break;
+				}
 				default:
 					THROW( "unknown unit render type: " + std::to_string( def->m_render->m_type ) );
 			}
@@ -60,6 +87,13 @@ UnitDef::~UnitDef() {
 			if ( static_.render.morale_based_sprites ) {
 				DELETE( static_.render.morale_based_sprites );
 			}
+		}
+		if ( m_owns_texture && static_.render.texture ) {
+			if ( static_.render.sprite.instanced_sprite ) {
+				m_ism->RemoveInstancedSpriteByKey( static_.render.sprite.instanced_sprite->key );
+				static_.render.sprite.instanced_sprite = nullptr;
+			}
+			DELETE( static_.render.texture );
 		}
 	}
 }
@@ -87,6 +121,7 @@ const bool UnitDef::CanHideInFungus() const {
 sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {
 	ASSERT( m_type == backend::unit::DT_STATIC, "only static units are supported for now" );
 	ASSERT( static_.render.is_sprite, "only sprite unitdefs are supported for now" );
+	auto* texture = GetSpriteTexture();
 
 	if ( m_render.morale_based_xshift ) {
 		if ( !static_.render.morale_based_sprites ) {
@@ -100,7 +135,7 @@ sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {
 					morale,
 					{
 						m_ism->GetInstancedSprite(
-							"Unit_" + m_id + "_" + std::to_string( morale ), GetSpriteTexture(), {
+							"Unit_" + m_id + "_" + std::to_string( morale ), texture, {
 								m_render.x + xshift,
 								m_render.y,
 							},
@@ -128,7 +163,7 @@ sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {
 		if ( !static_.render.sprite.instanced_sprite ) {
 			static_.render.sprite = {
 				m_ism->GetInstancedSprite(
-					"Unit_" + m_id, GetSpriteTexture(), {
+					"Unit_" + m_id, texture, {
 						m_render.x,
 						m_render.y,
 					},
@@ -172,7 +207,24 @@ const std::string UnitDef::GetStatsString() const {
 
 types::texture::Texture* UnitDef::GetSpriteTexture() {
 	if ( !static_.render.texture ) {
-		static_.render.texture = g_engine->GetTextureLoader()->LoadCustomTexture( m_render.file, types::texture::TF_MIPMAPS );
+		if ( m_is_cvr ) {
+			try {
+				static_.render.texture = CVRRenderer::Render( m_cvr_files, m_render.w, m_render.h );
+				m_owns_texture = true;
+			}
+			catch ( const std::exception& error ) {
+				g_engine->Log( "CVR render failed for unit '" + m_id + "': " + error.what() );
+				util::LogHelper::Println( "CVR_RENDER_FALLBACK: unit=" + m_id + " error=" + error.what() );
+				m_is_cvr = false;
+				m_render = m_cvr_fallback;
+			}
+		}
+		if ( !static_.render.texture ) {
+			static_.render.texture = g_engine->GetTextureLoader()->LoadCustomTexture(
+				m_render.file,
+				types::texture::TF_MIPMAPS
+			);
+		}
 	}
 	return static_.render.texture;
 }

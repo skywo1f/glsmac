@@ -1,10 +1,17 @@
 const sprite_render = #include('../default/units/sprite_render');
 
 const scout = sprite_render.get('Infantry', 'NoArmor', 'HandWeapons');
-test.assert(scout.file == 'newicons.pcx');
-test.assert(scout.x == 518 && scout.y == 82 && scout.cx == 558 && scout.cy == 117);
+test.assert(scout.type == 'cvr');
+test.assert(scout.files == ['VI.cvr']);
+test.assert(scout.w == 100 && scout.h == 75 && scout.cx == 50 && scout.cy == 52);
+test.assert(scout.fallback.file == 'newicons.pcx');
+test.assert(
+	scout.fallback.x == 518 && scout.fallback.y == 82 &&
+	scout.fallback.cx == 558 && scout.fallback.cy == 117
+);
 
 const rover = sprite_render.get('Speeder', 'NoArmor', 'HandWeapons');
+test.assert(rover.type == 'sprite');
 test.assert(rover.x == 518 && rover.y == 82);
 
 const armored_foil = sprite_render.get('Foil', 'PlasmaSteelArmor', 'Laser');

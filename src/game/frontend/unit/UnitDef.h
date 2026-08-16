@@ -2,6 +2,7 @@
 
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "game/backend/unit/Types.h"
 
@@ -51,6 +52,10 @@ private:
 	sprite::InstancedSpriteManager* const m_ism;
 
 	backend::unit::sprite_render_info_t m_render = {};
+	std::vector< std::string > m_cvr_files = {};
+	backend::unit::sprite_render_info_t m_cvr_fallback = {};
+	bool m_is_cvr = false;
+	bool m_owns_texture = false;
 
 	std::string m_id;
 	std::string m_name;

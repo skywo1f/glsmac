@@ -4,6 +4,7 @@ SET( SRC ${SRC}
 	${PWD}/Def.cpp
 	${PWD}/StaticDef.cpp
 	${PWD}/Render.cpp
+	${PWD}/CVRRender.cpp
 	${PWD}/SpriteRender.cpp
 	${PWD}/Unit.cpp
 	${PWD}/Morale.cpp
