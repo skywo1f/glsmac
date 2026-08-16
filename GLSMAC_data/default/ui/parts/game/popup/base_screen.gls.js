@@ -242,6 +242,11 @@ return {
 		this.is_open = false;
 	},
 
+	on_replace: () => {
+		this.sections.bottom_bar.frame.hide();
+		this.is_open = false;
+	},
+
 	on_show: () => {
 		this.is_open = true;
 		this.sections.bottom_bar.frame.show();

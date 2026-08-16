@@ -218,9 +218,7 @@ const get = (chassis_id, armor_id, weapon_id, reactor_id) => {
 	const fallback = get_fallback(weapon_id);
 	let cvr_file = '';
 	if (chassis_id == 'Infantry' && armor_id == 'NoArmor') {
-		if (weapon_id == 'HandWeapons') {
-			cvr_file = 'VI.cvr';
-		} else if (weapon_id == 'ColonyModule') {
+		if (weapon_id == 'ColonyModule') {
 			cvr_file = 'Drop.cvr';
 		} else if (weapon_id == 'TerraformingUnit') {
 			cvr_file = 'VT.cvr';

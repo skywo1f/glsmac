@@ -4,39 +4,29 @@ return {
 		this.p = p;
 		this.targets = {};
 		this.target = '';
+		this.target_list = null;
+		this.available_count = 0;
 
-		return p.create('SELECT RESEARCH GOAL', 500, 148, (body, cb) => {
+		return p.create('SELECT RESEARCH GOAL', 500, 320, (body, cb) => {
+			this.list_body = body;
 			body.text({
 				class: 'game-popup-text',
-				text: 'Technology:',
+				text: 'Available technologies',
 				left: 10,
 				top: 12,
 			});
-			this.target_select = body.select({
-				class: 'popup-list-select',
-				align: 'top right',
-				right: 10,
-				top: 8,
-				width: 350,
-				items: [['', 'No research available']],
-				value: '',
-			});
-			this.target_select.on('select', (e) => {
-				this.target = e.value;
-				this.refresh();
-				return true;
-			});
+			this.create_target_list();
 			this.status = body.text({
 				class: 'game-popup-text',
 				text: '',
 				left: 10,
 				right: 10,
-				top: 52,
+				top: 238,
 			});
 			body.button({
 				class: 'game-popup-button',
 				text: 'Cancel',
-				top: 92,
+				top: 264,
 				is_cancel: true,
 			}).on('click', (e) => {
 				cb(false);
@@ -45,7 +35,7 @@ return {
 			this.begin_button = body.button({
 				class: 'game-popup-button',
 				text: 'Begin Research',
-				top: 116,
+				top: 288,
 				is_ok: true,
 			});
 			this.begin_button.on('click', (e) => {
@@ -66,6 +56,26 @@ return {
 		});
 	},
 
+	create_target_list: () => {
+		this.target_list = this.list_body.listview({
+			class: 'default-panel-inner',
+			left: 10,
+			right: 10,
+			top: 38,
+			bottom: 92,
+			itemsize: 25,
+			padding: 3,
+			vscroll_class: 'default-scroll-v',
+			has_hscroll: false,
+			has_vscroll: true,
+		});
+	},
+
+	select_target: (target) => {
+		this.target = target;
+		this.refresh();
+	},
+
 	refresh: () => {
 		if (!#is_defined(this.targets[this.target])) {
 			this.status.text = 'No technology is currently available.';
@@ -74,37 +84,59 @@ return {
 		}
 		const definition = this.targets[this.target];
 		const state = this.p.game.get_player().get_research_state();
-		this.status.text = 'Research cost: ' + #to_string(definition.cost) +
+		this.status.text = definition.name + ': ' + #to_string(definition.cost) +
 			' labs. Accumulated labs: ' + #to_string(state.progress) + '.';
 		this.begin_button.show();
 	},
 
 	on_show: () => {
 		this.targets = {};
+		this.available_count = 0;
+		if (this.target_list != null) {
+			this.target_list.remove();
+		}
+		this.create_target_list();
 		const state = this.p.game.get_player().get_research_state();
-		let items = [];
+		let available = [];
 		for (id of this.p.game.get('f_technology_get_available_targets')(
 			state.technologies
 		)) {
 			const definition = this.p.game.get('f_technology_get_definition')(id);
 			if (definition != null) {
 				this.targets[id] = definition;
-				items :+[id, definition.name + ' (' + #to_string(definition.cost) + ' labs)'];
+				available :+{id: id, definition: definition};
 			}
 		}
-		this.target_select.items = #sizeof(items) > 0
-			? items
-			: [['', 'No research available']];
-		this.target_select.readonly = #sizeof(items) == 0;
-		this.target = #is_defined(this.targets[state.target])
+		this.available_count = #sizeof(available);
+		const target = #is_defined(this.targets[state.target])
 			? state.target
-			: (#sizeof(items) > 0 ? items[0][0] : '');
-		this.target_select.value = this.target;
-		this.refresh();
+			: (this.available_count > 0 ? available[0].id : '');
+		for (candidate of available) {
+			const target_id = candidate.id;
+			const button = this.target_list.button({
+				class: 'game-popup-button',
+				text: candidate.definition.name + ' (' +
+					#to_string(candidate.definition.cost) + ' labs)',
+				left: 0,
+				right: 0,
+			});
+			button.on('click', (e) => {
+				this.select_target(target_id);
+				return true;
+			});
+		}
+		if (this.available_count == 0) {
+			this.target_list.text({
+				class: 'game-popup-text',
+				text: 'No research is currently available.',
+			});
+		}
+		this.select_target(target);
 	},
 
 	on_hide: () => {
 		this.targets = {};
+		this.available_count = 0;
 		this.target = '';
 	},
 

@@ -5,6 +5,7 @@ return {
 		this.base_id = null;
 		this.hurry_pending = false;
 		this.production_candidates = {};
+		this.production_data = [];
 		this.get_live_base = () => {
 			if (this.base_id == null) {
 				return null;
@@ -58,12 +59,9 @@ return {
 			bottom: 3,
 			width: 124,
 		});
-		p.ui.class('base-screen-change-production').extend('popup-list-select').set({
+		p.ui.class('base-screen-change-production').extend('game-popup-button').set({
 			top: 3,
 			bottom: 3,
-			itemclass: 'base-screen-change-production-item',
-		});
-		p.ui.class('base-screen-change-production-item').extend('popup-list-select-item').set({
 			font: 'arialnb.ttf:13',
 		});
 
@@ -74,14 +72,12 @@ return {
 			width: 124,
 			text: 'HURRY',
 		});
-		this.change_production = this.frame.select({
+		this.change_production = this.frame.button({
 			class: 'base-screen-change-production',
 			align: 'left',
 			left: 130,
 			width: 250,
-			items: [['', 'CHANGE PRODUCTION: NOTHING']],
-			value: '',
-			readonly: true,
+			text: 'CHANGE PRODUCTION',
 		});
 		this.btn_workshop = this.frame.button({
 			class: 'base-screen-popup-bottom-button',
@@ -124,18 +120,15 @@ return {
 			}
 			return true;
 		});
-		this.change_production.on('select', (e) => {
+		this.change_production.on('click', (e) => {
 			const base = this.get_live_base();
-			if (
-				base != null &&
-				#is_defined(this.production_candidates[e.value])
-			) {
-				const selected = this.production_candidates[e.value];
-				this.p.game.event('set_base_production', {
+			if (base != null && #sizeof(this.production_data) > 0) {
+				const production_data = #clone(this.production_data);
+				this.p.modules.popup.set('base_production', {
 					base: base,
-					kind: selected.production_kind,
-					id: selected.id,
+					candidates: production_data,
 				});
+				this.p.modules.popup.show('base_production');
 			}
 			return true;
 		});
@@ -146,20 +139,21 @@ return {
 		this.base_id = data.base.id;
 		this.hurry_pending = false;
 		this.production_candidates = {};
-		let production_items = [];
+		this.production_data = [];
 		for (candidate of data.production_candidates) {
+			const stored = {
+				production_kind: candidate.production_kind,
+				id: candidate.id,
+				name: candidate.name,
+				mineral_cost: candidate.mineral_cost,
+			};
+			this.production_data :+stored;
 			const key = candidate.production_kind + ':' + candidate.id;
-			this.production_candidates[key] = candidate;
-			production_items :+[key, 'CHANGE PRODUCTION: ' + candidate.name];
+			this.production_candidates[key] = stored;
 		}
-		if (#sizeof(production_items) == 0) {
-			production_items :+['', 'CHANGE PRODUCTION: NOTHING'];
-		}
-		this.change_production.items = production_items;
-		this.change_production.readonly = #sizeof(data.production_candidates) == 0;
-		this.change_production.value = #is_defined(data.production)
-			? data.production.production_kind + ':' + data.production.id
-			: '';
+		this.change_production.text = #is_defined(data.production)
+			? 'CHANGE: ' + data.production.name
+			: 'CHOOSE PRODUCTION';
 		const state = this.get_hurry_state();
 		this.btn_hurry.text = state.cost <= 0
 			? 'HURRY'

@@ -14,6 +14,7 @@
 #include "game/backend/connection/Connection.h"
 #include "graphics/Graphics.h"
 #include "util/FS.h"
+#include "util/Time.h"
 #include "game/backend/State.h"
 #include "Types.h"
 #include "game/frontend/tile/TileManager.h"
@@ -2357,11 +2358,12 @@ void Game::Initialize(
 
 					switch ( event.data.mouse.button ) {
 						case input::MB_LEFT: {
-							SelectTileAtPoint(
-								backend::TQP_OBJECT_SELECT,
-								c.x,
-								c.y
-							); // async
+							m_map_control.left_down_time_ms = util::Time::Now();
+							m_map_control.left_down_position = { c.x, c.y };
+							const auto* selected_unit = m_um->GetSelectedUnit();
+							m_map_control.left_down_unit_id = selected_unit
+								? selected_unit->GetId()
+								: 0;
 							break;
 						}
 						case input::MB_MIDDLE: {
@@ -2387,6 +2389,33 @@ void Game::Initialize(
 						}
 						default: {
 						}
+					}
+					break;
+				}
+				case input::EV_MOUSE_UP: {
+					const auto& c = event.data.mouse;
+					if (
+						event.data.mouse.button == input::MB_LEFT &&
+						m_map_control.left_down_time_ms > 0
+					) {
+						static constexpr uint64_t GOTO_HOLD_MS = 350;
+						static constexpr ssize_t GOTO_DRAG_TOLERANCE = 8;
+						const auto elapsed = util::Time::Now() - m_map_control.left_down_time_ms;
+						const auto delta_x = std::abs( c.x - m_map_control.left_down_position.x );
+						const auto delta_y = std::abs( c.y - m_map_control.left_down_position.y );
+						const bool is_goto =
+							elapsed >= GOTO_HOLD_MS &&
+							delta_x <= GOTO_DRAG_TOLERANCE && delta_y <= GOTO_DRAG_TOLERANCE &&
+							m_map_control.left_down_unit_id > 0;
+						if ( is_goto ) {
+							m_move_target_unit_id = m_map_control.left_down_unit_id;
+							SelectTileAtPoint( backend::TQP_MOVE_TARGET, c.x, c.y );
+						}
+						else {
+							SelectTileAtPoint( backend::TQP_OBJECT_SELECT, c.x, c.y );
+						}
+						m_map_control.left_down_time_ms = 0;
+						m_map_control.left_down_unit_id = 0;
 					}
 					break;
 				}
@@ -2604,6 +2633,29 @@ void Game::SelectTileOrUnit( tile::Tile* tile, const size_t selected_unit_id ) {
 	}
 
 	ASSERT( m_tile_at_query_purpose != backend::TQP_NONE, "tile query purpose not set" );
+	if ( m_tile_at_query_purpose == backend::TQP_MOVE_TARGET ) {
+		const auto unit_id = m_move_target_unit_id;
+		const auto target_coords = tile->GetCoords();
+		m_move_target_unit_id = 0;
+		m_tile_at_query_purpose = backend::TQP_NONE;
+		auto* game = m_game;
+		m_glsmac->WithGSE(
+			[ game, unit_id, target_coords ]( GSE_CALLABLE ) {
+				auto* unit = game->GetUM()->GetUnit( unit_id );
+				if ( !unit ) {
+					return;
+				}
+				auto* destination = game->GetMap()->GetTile( target_coords.x, target_coords.y );
+				game->Event(
+					GSE_CALL, "move_unit_to", {
+						{ "unit", unit->Wrap( GSE_CALL ) },
+						{ "tile", destination->Wrap( GSE_CALL ) },
+					}
+				);
+			}
+		);
+		return;
+	}
 	if ( m_tile_at_query_purpose == backend::TQP_ATTACK_TARGET ) {
 		const auto attacker_id = m_attack_target_unit_id;
 		m_attack_target_unit_id = 0;

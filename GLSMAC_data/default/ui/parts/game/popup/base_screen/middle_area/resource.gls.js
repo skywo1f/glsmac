@@ -32,12 +32,9 @@ return {
 			return true;
 		}
 		const click = this.click_context;
-		const click_base = click.base;
 		const click_half_width = this.tile_width / 2;
 		const click_x = e.x - click.c_left - click_half_width;
 		const click_y = e.y - click.c_top - this.tile_height / 2;
-		const find_best_or_worst = this.p.game.get('f_base_find_best_or_worst_tiles');
-		const get_assignable = this.p.game.get('f_base_get_assignable_worker_tiles');
 		for (click_tile of click.existing_tiles) {
 			const click_distance =
 				#abs(click_tile.cx - click_x) +
@@ -45,7 +42,21 @@ return {
 			if (click_distance > click_half_width) {
 				continue;
 			}
-			if (click_tile == click.center) {
+			this._handle_tile(click_tile);
+			break;
+		}
+		return true;
+	},
+
+	_handle_tile: (click_tile) => {
+		if (this.click_context == null) {
+			return true;
+		}
+		const click = this.click_context;
+		const click_base = click.base;
+		const find_best_or_worst = this.p.game.get('f_base_find_best_or_worst_tiles');
+		const get_assignable = this.p.game.get('f_base_get_assignable_worker_tiles');
+		if (click_tile == click.center) {
 				let click_pops = click_base.get_pops();
 				const best_tiles = find_best_or_worst(
 					click_base,
@@ -74,12 +85,12 @@ return {
 						pop: click_pop,
 					});
 				}
-			} else if (#is_defined(click_tile.el_resources)) {
+		} else if (click_tile.is_worked) {
 				this.p.game.event('unwork_base_tile', {
 					base: click_base,
 					tile: click_tile.tile,
 				});
-			} else {
+		} else {
 				let target_pop = null;
 				for (candidate_pop of click_base.get_pops()) {
 					if (candidate_pop.get_type() != 'WORKER') {
@@ -102,8 +113,6 @@ return {
 						pop: target_pop,
 					});
 				}
-			}
-			break;
 		}
 		return true;
 	},
@@ -139,9 +148,10 @@ return {
 				tile: tile,
 				cx: #round(#to_float(parent.tile_width) * cx),
 				cy: #round(#to_float(parent.tile_height) * cy),
+				is_worked: false,
 			};
 
-			this.el.widget({
+			const tile_el = this.el.widget({
 				class: 'base-screen-middle-area-tile',
 				data: {
 					tile: tile,
@@ -149,6 +159,12 @@ return {
 				left: c_left + t.cx,
 				top: c_top + t.cy,
 				type: 'tile-preview',
+			});
+			tile_el.on('mousedown', (e) => {
+				if (e.button == 'left') {
+					return this._handle_tile(t);
+				}
+				return true;
 			});
 
 			existing_tiles[key] = t;
@@ -170,7 +186,8 @@ return {
 		};
 
 		const f_resources = (t) => {
-			t.el_resources = this.el.widget({
+			t.is_worked = true;
+			const resources_el = this.el.widget({
 				class: 'base-screen-middle-area-tile',
 				data: {
 					tile: t.tile,
@@ -178,6 +195,12 @@ return {
 				left: c_left + t.cx,
 				top: c_top + t.cy,
 				type: 'tile-resources',
+			});
+			resources_el.on('mousedown', (e) => {
+				if (e.button == 'left') {
+					return this._handle_tile(t);
+				}
+				return true;
 			});
 		};
 

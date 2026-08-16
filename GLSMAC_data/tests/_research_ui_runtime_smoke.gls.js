@@ -34,7 +34,9 @@
 				event.game.trigger('economy_updated', {player: event.data.player});
 			},
 		});
-		game.on('economy_updated', (event) => { invalidated = true; });
+		game.on('economy_updated', (event) => {
+			invalidated = true;
+		});
 		game.set('f_ui_ready', (p) => {
 			const player = game.get_player();
 			const state = player.get_research_state();
@@ -52,9 +54,11 @@
 
 			p.modules.popup.show('research');
 			const research = p.modules.popup.popup_defs.research;
-			research.target = selected_target;
-			research.target_select.value = selected_target;
-			research.refresh();
+			if (research.available_count < 2) {
+				fail('research chooser did not expose multiple legal technologies');
+				return;
+			}
+			research.select_target(selected_target);
 			game.event('research_ui_runtime_invalidate', {player: game.get_player()});
 
 			let wait_ticks = 0;

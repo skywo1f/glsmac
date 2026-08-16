@@ -31,12 +31,10 @@ const workshop_button = {
 };
 let button_count = 0;
 let production_handler = null;
-const production_select = {
-	items: [],
-	value: '',
-	readonly: true,
+const production_button = {
+	text: '',
 	on: (name, handler) => {
-		if (name == 'select') {
+		if (name == 'click') {
 			production_handler = handler;
 		}
 	},
@@ -46,11 +44,14 @@ const frame = {
 		button_count++;
 		const button = button_count == 1
 			? hurry_button
-			: (button_count == 2 ? workshop_button : ok_button);
+			: (
+				button_count == 2
+					? production_button
+					: (button_count == 3 ? workshop_button : ok_button)
+			);
 		button.text = properties.text;
 		return button;
 	},
-	select: (properties) => { return production_select; },
 };
 let ui_class = null;
 ui_class = {
@@ -59,7 +60,7 @@ ui_class = {
 };
 const player = {id: 1};
 const owner = {id: 1, energy_credits: 100};
-const production = {production_kind: 'unit', id: 'ScoutPatrol'};
+const production = {production_kind: 'unit', id: 'ScoutPatrol', name: 'Scout Patrol'};
 const base = {
 	id: 9,
 	get_production: () => { return production; },
@@ -100,7 +101,20 @@ module.init({
 	game: game,
 	modules: {
 		popup: {
-			set: (name, data) => { popup_set = {name: name, data: data}; },
+			set: (name, data) => {
+				popup_set = {
+					name: name,
+					base: data.base,
+					candidate_count: #is_defined(data.candidates)
+						? #sizeof(data.candidates)
+						: 0,
+					candidate_id: (
+						#is_defined(data.candidates) && #sizeof(data.candidates) > 0
+							? data.candidates[0].id
+							: ''
+					),
+				};
+			},
 			show: (name) => { popup_shown = name; },
 		},
 	},
@@ -110,10 +124,11 @@ const former = {
 	production_kind: 'unit',
 	id: 'Former',
 	name: 'Former',
+	mineral_cost: 20,
 };
 module.set({
 	base: base,
-	production: {production_kind: 'unit', id: 'ScoutPatrol'},
+	production: production,
 	production_candidates: [former],
 });
 
@@ -122,26 +137,28 @@ test.assert(hurry_handler != null);
 test.assert(workshop_handler != null);
 test.assert(ok_handler != null);
 test.assert(production_handler != null);
-test.assert(production_select.items == [['unit:Former', 'CHANGE PRODUCTION: Former']]);
-production_handler({value: 'unit:Former'});
-test.assert(emitted[0].name == 'set_base_production');
-test.assert(emitted[0].kind == 'unit');
-test.assert(emitted[0].id == 'Former');
-test.assert(emitted[0].base == live_base);
+test.assert(production_button.text == 'CHANGE: Scout Patrol');
+test.assert(#sizeof(module.production_data) == 1);
+production_handler({});
+test.assert(popup_set.name == 'base_production');
+test.assert(popup_set.base == live_base);
+test.assert(popup_set.candidate_count == 1);
+test.assert(popup_set.candidate_id == 'Former');
+test.assert(popup_shown == 'base_production');
 workshop_handler({});
 test.assert(popup_set.name == 'unit_workshop');
-test.assert(popup_set.data.base == live_base);
+test.assert(popup_set.base == live_base);
 test.assert(popup_shown == 'unit_workshop');
 ok_handler({});
 test.assert(hidden);
 hurry_handler({});
 hurry_handler({});
-test.assert(#sizeof(emitted) == 2);
-test.assert(emitted[1].name == 'hurry_base_production');
+test.assert(#sizeof(emitted) == 1);
+test.assert(emitted[0].name == 'hurry_base_production');
 test.assert(hurry_button.text == 'HURRYING...');
 
 owner.energy_credits = 20;
 module.set({base: base, production: production, production_candidates: [former]});
 test.assert(hurry_button.text == 'NEED 25 EC');
 hurry_handler({});
-test.assert(#sizeof(emitted) == 2);
+test.assert(#sizeof(emitted) == 1);

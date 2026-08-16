@@ -66,6 +66,20 @@ return {
 		}
 	},
 
+	set_economy: () => {
+		if (this.energy_credits == null) {
+			return;
+		}
+		const player = this.game.get_player();
+		const income_resolver = this.game.get('f_economy_get_player');
+		const income = #typeof(income_resolver) == 'Callable'
+			? income_resolver(this.game, player)
+			: 0;
+		this.energy_credits.text = #to_string(player.get_energy_credits()) + ' Energy Credits';
+		this.energy_income.text = (income >= 0 ? '+' : '') +
+			#to_string(income) + ' per turn';
+	},
+
 	add_panel: (left, width, index) => {
 
 		const panel = this.page.panel({
@@ -87,6 +101,19 @@ return {
 				class: 'bottombar-info-detail',
 				top: 49,
 			});
+		} else if (index == 1) {
+			panel.text({
+				class: 'bottombar-info-title',
+				text: 'ECONOMY',
+			});
+			this.energy_credits = panel.text({
+				class: 'bottombar-info-value',
+				top: 25,
+			});
+			this.energy_income = panel.text({
+				class: 'bottombar-info-detail',
+				top: 49,
+			});
 		}
 
 		return panel;
@@ -96,6 +123,7 @@ return {
 	on_show: () => {
 		this.refresh(this.page.width); // TODO: make resize event trigger while hidden
 		this.set_research();
+		this.set_economy();
 	},
 
 	init: (p) => {
@@ -104,6 +132,8 @@ return {
 		this.game = p.game;
 		this.research_name = null;
 		this.research_progress = null;
+		this.energy_credits = null;
+		this.energy_income = null;
 
 		p.ui.class('bottombar-info-panel').extend('bottombar-panel-inner').set({
 			top: 0,
@@ -155,13 +185,21 @@ return {
 		this.page.listen(p.game, 'player_update', (e) => {
 			if (e.player.id == p.game.get_player().id) {
 				this.set_research();
+				this.set_economy();
+			}
+		});
+		this.page.listen(p.game, 'economy_updated', (e) => {
+			if (e.player.id == p.game.get_player().id) {
+				this.set_economy();
 			}
 		});
 		this.page.listen(p.game, 'turn', (e) => {
 			this.set_research();
+			this.set_economy();
 		});
 		this.refresh(this.page.width);
 		this.set_research();
+		this.set_economy();
 
 	},
 

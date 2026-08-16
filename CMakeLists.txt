@@ -362,6 +362,30 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( GAMEPLAY_CONTROLS_UI_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/gameplay-controls-ui-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${GAMEPLAY_CONTROLS_UI_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME gameplay_controls_ui_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${GAMEPLAY_CONTROLS_UI_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_gameplay_controls_ui_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--headless
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( gameplay_controls_ui_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "GAMEPLAY_CONTROLS_UI_RUNTIME_FAIL;Event rejected;Unhandled exception"
+			PASS_REGULAR_EXPRESSION "GAMEPLAY_CONTROLS_UI_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 120
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( UNIVERSITY_START_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/university-start-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${UNIVERSITY_START_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME university_start_runtime_smoke COMMAND

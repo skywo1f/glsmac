@@ -2,7 +2,9 @@ const sprite_render = #include('../default/units/sprite_render');
 
 const scout = sprite_render.get('Infantry', 'NoArmor', 'HandWeapons', 'FissionPlant');
 test.assert(scout.type == 'cvr');
-test.assert(scout.files == ['VI.cvr']);
+test.assert(scout.files == [
+	'VI.cvr', 'Vw00.cvr', 'VGMT.cvr', 'VGMTP.cvr', 'Viptr00.cvr',
+]);
 test.assert(scout.w == 100 && scout.h == 75 && scout.cx == 50 && scout.cy == 52);
 test.assert(scout.fallback.file == 'newicons.pcx');
 test.assert(

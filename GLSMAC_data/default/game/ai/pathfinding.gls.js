@@ -5,7 +5,14 @@ const get_tile_key = (tile) => {
 	return #to_string(tile.x) + '_' + #to_string(tile.y);
 };
 
-const find_path_step = (tm, unit, destination, can_enter, max_distance) => {
+const find_path_step_matching = (
+	tm,
+	unit,
+	destination,
+	can_enter,
+	max_distance,
+	accept_adjacent
+) => {
 	const source = unit.get_tile();
 	const source_x = source.x;
 	const source_y = source.y;
@@ -39,7 +46,10 @@ const find_path_step = (tm, unit, destination, can_enter, max_distance) => {
 			const candidate_y = candidate.y;
 			const candidate_first_x = first_x < 0 ? candidate_x : first_x;
 			const candidate_first_y = first_y < 0 ? candidate_y : first_y;
-			if (candidate == destination || candidate.is_adjactent_to(destination)) {
+			if (
+				candidate == destination ||
+				(accept_adjacent && candidate.is_adjactent_to(destination))
+			) {
 				return tm.get_tile(candidate_first_x, candidate_first_y);
 			}
 			queue_x :+candidate_x;
@@ -50,6 +60,28 @@ const find_path_step = (tm, unit, destination, can_enter, max_distance) => {
 		}
 	}
 	return null;
+};
+
+const find_path_step = (tm, unit, destination, can_enter, max_distance) => {
+	return find_path_step_matching(
+		tm,
+		unit,
+		destination,
+		can_enter,
+		max_distance,
+		true
+	);
+};
+
+const find_path_step_exact = (tm, unit, destination, can_enter, max_distance) => {
+	return find_path_step_matching(
+		tm,
+		unit,
+		destination,
+		can_enter,
+		max_distance,
+		false
+	);
 };
 
 const find_progress_step = (tm, unit, destination, can_enter, max_distance) => {
@@ -246,6 +278,7 @@ const find_best_reachable_preferred = (
 
 return {
 	find_path_step: find_path_step,
+	find_path_step_exact: find_path_step_exact,
 	find_progress_step: find_progress_step,
 	find_best_reachable: find_best_reachable,
 	find_best_reachable_preferred: find_best_reachable_preferred,

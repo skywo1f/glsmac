@@ -143,22 +143,29 @@ return (m) => {
 			}
 
 			m.root.on('keydown', (e) => {
+				const has_ctrl = #is_defined(e.modifiers.ctrl) && e.modifiers.ctrl;
+				const has_shift = #is_defined(e.modifiers.shift) && e.modifiers.shift;
+				const has_alt = #is_defined(e.modifiers.alt) && e.modifiers.alt;
+				const no_modifiers = !has_ctrl && !has_shift && !has_alt;
 				if (
-					e.modifiers == {} && e.code == 'ENTER' &&
+					no_modifiers && e.code == 'ENTER' &&
 					!p.modules.popup.is_shown() &&
 					#typeof(p.request_turn_action) == 'Callable'
 				) {
 					return p.request_turn_action();
 				}
-				if (e.modifiers == {} && e.code == 'ESCAPE') {
+				if (no_modifiers && e.code == 'ESCAPE') {
 					p.maybe_quit(true);
 					return true;
 				}
-				if (e.modifiers == {ctrl: true, shift: true} && e.code == 'Q') {
+				if (
+					has_ctrl && has_shift && !has_alt &&
+					e.code == 'Q'
+				) {
 					p.maybe_quit(false);
 					return true;
 				}
-				if (e.modifiers == {} && e.code == 'F6') {
+				if (no_modifiers && e.code == 'F6') {
 					p.modules.popup.show('orbital_attack');
 					return true;
 				}

@@ -20,6 +20,7 @@ return {
 		'psi_gate',
 		'unit_upgrade',
 		'unit_workshop',
+		'base_production',
 		'nerve_stapling',
 		'base_screen',
 	],
@@ -260,6 +261,9 @@ return {
 
 				popup.on('keydown', (e) => {
 					if (e.code == 'ESCAPE') {
+						if (#typeof(parent.popup_def.on_cancel) == 'Callable') {
+							return parent.popup_def.on_cancel();
+						}
 						f_result(false);
 					}
 					return true;

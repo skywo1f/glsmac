@@ -68,6 +68,131 @@ return {
 		return false;
 	},
 
+	close_actions_menu: () => {
+		if (this.actions_menu != null) {
+			this.actions_menu.hide();
+		}
+		this.actions_menu_open = false;
+		this.action_button.active = false;
+	},
+
+	start_goto: () => {
+		if (this.action_unit == null || this.action_unit.movement <= 0.0) {
+			return false;
+		}
+		this.goto_unit = this.action_unit;
+		this.p.modules.bottom_bar.process_message(
+			'Select a destination for ' + this.action_unit.get_def().name + '.'
+		);
+		this.close_actions_menu();
+		return true;
+	},
+
+	skip_unit: () => {
+		if (this.action_unit == null || this.action_unit.movement <= 0.0) {
+			return false;
+		}
+		this.p.game.event('unit_skip_turn', {unit: this.action_unit});
+		this.close_actions_menu();
+		return true;
+	},
+
+	perform_special_action: () => {
+		if (this.action_unit == null || this.action_mode == null) {
+			return false;
+		}
+		const unit = this.action_unit;
+		const mode = this.action_mode;
+		this.close_actions_menu();
+		if (mode == 'found_base') {
+			this.p.game.event('found_base', {unit: unit});
+		} else if (mode == 'cancel_terraform') {
+			this.p.game.event('cancel_terraform', {unit: unit});
+		} else if (mode == 'terraform') {
+			this.refresh_terraform_menu();
+			this.terraform_menu.show();
+			this.terraform_menu_open = true;
+		} else if (mode == 'probe') {
+			this.p.modules.popup.set('probe_operations', {unit: unit});
+			this.p.modules.popup.show('probe_operations');
+		} else if (mode == 'alien_artifact') {
+			this.p.modules.popup.set('alien_artifact', {unit: unit});
+			this.p.modules.popup.show('alien_artifact');
+		} else if (mode == 'supply_transport') {
+			this.p.modules.popup.set('supply_transport', {unit: unit});
+			this.p.modules.popup.show('supply_transport');
+		} else if (mode == 'airdrop') {
+			this.p.modules.popup.set('airdrop', {unit: unit});
+			this.p.modules.popup.show('airdrop');
+		} else if (mode == 'psi_gate') {
+			this.p.modules.popup.set('psi_gate', {unit: unit});
+			this.p.modules.popup.show('psi_gate');
+		} else if (mode == 'upgrade') {
+			this.open_upgrade_popup();
+		}
+		return true;
+	},
+
+	refresh_actions_menu: () => {
+		if (this.actions_menu != null) {
+			this.actions_menu.remove();
+		}
+		this.init_actions_menu();
+		let top = 0;
+		const add_action = (label, action) => {
+			const button = this.actions_menu.button({
+				class: 'game-menu-item',
+				text: label,
+				top: top,
+			});
+			button.on('click', (e) => {
+				action();
+				return true;
+			});
+			top += 18;
+		};
+		add_action('GO TO (G)', this.start_goto);
+		add_action('HOLD (H)', this.skip_unit);
+		if (this.action_mode != null) {
+			let label = 'SPECIAL ACTION';
+			if (this.action_mode == 'found_base') {
+				label = 'BUILD BASE (B)';
+			} else if (this.action_mode == 'terraform') {
+				label = 'TERRAFORM...';
+			} else if (this.action_mode == 'cancel_terraform') {
+				label = 'CANCEL ORDER (C)';
+			} else if (this.action_mode == 'probe') {
+				label = 'PROBE ACTION';
+			} else if (this.action_mode == 'alien_artifact') {
+				label = 'USE ARTIFACT';
+			} else if (this.action_mode == 'supply_transport') {
+				label = 'SUPPLY ACTION';
+			} else if (this.action_mode == 'airdrop') {
+				label = 'AIR DROP (I)';
+			} else if (this.action_mode == 'psi_gate') {
+				label = 'PSI GATE';
+			} else if (this.action_mode == 'upgrade') {
+				label = 'UPGRADE (U)';
+			}
+			add_action(label, this.perform_special_action);
+		}
+		this.actions_menu.height = top > 0 ? top : 18;
+	},
+
+	init_actions_menu: () => {
+		this.actions_menu = this.p.ui.root.panel({
+			class: 'game-menu',
+			zindex: 0.96,
+			align: 'bottom left',
+			left: 6,
+			bottom: 256,
+			height: 18,
+		});
+		this.actions_menu.surface({class: 'game-menu-top-border'});
+		this.actions_menu.surface({class: 'game-menu-bottom-border'});
+		this.actions_menu.hide();
+	},
+
 	close_terraform_menu: () => {
 		if (this.terraform_menu != null) {
 			this.terraform_menu.hide();
@@ -219,6 +344,7 @@ return {
 			this.action_unit = null;
 			this.action_mode = null;
 			this.close_terraform_menu();
+			this.close_actions_menu();
 			this.action_button.hide();
 			return;
 		}
@@ -249,6 +375,7 @@ return {
 			case 'Unit': {
 				const def = object.get_def();
 				const is_owned = object.owner == this.p.game.get_player().id;
+				this.close_actions_menu();
 
 				f_line(def.name, 16, 'center');
 
@@ -388,6 +515,11 @@ return {
 					this.close_terraform_menu();
 					this.action_button.hide();
 				}
+				if (is_owned && object.transport_id == 0) {
+					this.action_unit = object;
+					this.action_button.text = 'ACTIONS';
+					this.action_button.show();
+				}
 
 				break;
 			}
@@ -395,6 +527,7 @@ return {
 				this.action_unit = null;
 				this.action_mode = null;
 				this.close_terraform_menu();
+				this.close_actions_menu();
 				this.action_button.hide();
 
 				f_line(object.name, 14, 'center');
@@ -428,6 +561,9 @@ return {
 		this.moralesets = {};
 		this.action_unit = null;
 		this.action_mode = null;
+		this.goto_unit = null;
+		this.actions_menu_open = false;
+		this.actions_menu = null;
 		this.terraform_menu_open = false;
 		this.terraform_menu = null;
 		this.terraform_buttons = {};
@@ -464,53 +600,53 @@ return {
 			if (this.action_unit == null) {
 				return true;
 			}
-			if (this.action_mode == 'found_base') {
-				p.game.event('found_base', {
-					unit: this.action_unit,
-				});
-			} else if (this.action_mode == 'cancel_terraform') {
-				p.game.event('cancel_terraform', {
-					unit: this.action_unit,
-				});
-			} else if (this.action_mode == 'terraform') {
-				if (this.terraform_menu_open) {
-					this.close_terraform_menu();
-				} else {
-					this.refresh_terraform_menu();
-					this.terraform_menu.show();
-					this.terraform_menu_open = true;
-					this.action_button.active = true;
-				}
-			} else if (this.action_mode == 'probe') {
-				p.modules.popup.set('probe_operations', {unit: this.action_unit});
-				p.modules.popup.show('probe_operations');
-			} else if (this.action_mode == 'alien_artifact') {
-				p.modules.popup.set('alien_artifact', {unit: this.action_unit});
-				p.modules.popup.show('alien_artifact');
-			} else if (this.action_mode == 'supply_transport') {
-				p.modules.popup.set('supply_transport', {unit: this.action_unit});
-				p.modules.popup.show('supply_transport');
-			} else if (this.action_mode == 'airdrop') {
-				p.modules.popup.set('airdrop', {unit: this.action_unit});
-				p.modules.popup.show('airdrop');
-			} else if (this.action_mode == 'psi_gate') {
-				p.modules.popup.set('psi_gate', {unit: this.action_unit});
-				p.modules.popup.show('psi_gate');
-			} else if (this.action_mode == 'upgrade') {
-				this.open_upgrade_popup();
+			if (this.actions_menu_open) {
+				this.close_actions_menu();
+			} else {
+				this.close_terraform_menu();
+				this.refresh_actions_menu();
+				this.actions_menu.show();
+				this.actions_menu_open = true;
+				this.action_button.active = true;
 			}
 			return true;
 		});
 
 		this.init_terraform_menu();
+		this.init_actions_menu();
 
-		this.frame.on('keydown', (e) => {
+		this.p.root.on('keydown', (e) => {
+			const has_modifiers =
+				(#is_defined(e.modifiers.ctrl) && e.modifiers.ctrl) ||
+				(#is_defined(e.modifiers.shift) && e.modifiers.shift) ||
+				(#is_defined(e.modifiers.alt) && e.modifiers.alt);
 			if (
 				p.modules.popup.is_shown() ||
 				this.action_unit == null ||
-				e.modifiers != {}
+				has_modifiers
 			) {
 				return false;
+			}
+			if (e.code == 'A') {
+				if (this.actions_menu_open) {
+					this.close_actions_menu();
+				} else {
+					this.refresh_actions_menu();
+					this.actions_menu.show();
+					this.actions_menu_open = true;
+					this.action_button.active = true;
+				}
+				return true;
+			}
+			if (e.code == 'G' && this.start_goto()) {
+				return true;
+			}
+			if (e.code == 'H' && this.skip_unit()) {
+				return true;
+			}
+			if (e.code == 'B' && this.action_mode == 'found_base') {
+				p.game.event('found_base', {unit: this.action_unit});
+				return true;
 			}
 			if (this.action_mode == 'cancel_terraform' && e.code == 'C') {
 				p.game.event('cancel_terraform', {unit: this.action_unit});
@@ -556,7 +692,14 @@ return {
 		});
 		p.map.on('base_preview', (e) => {
 			this.show(e.base);
-		})
+		});
+		this.frame.listen(p.game, 'tile_select', (e) => {
+			if (this.goto_unit != null) {
+				const unit = this.goto_unit;
+				this.goto_unit = null;
+				p.game.event('move_unit_to', {unit: unit, tile: e.tile});
+			}
+		});
 
 	},
 

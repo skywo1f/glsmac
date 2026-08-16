@@ -49,8 +49,11 @@ const tm = {
 };
 
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter) == detour_a);
+test.assert(pathfinding.find_path_step_exact(tm, unit, destination, can_enter) == detour_a);
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter, 1) == null);
+test.assert(pathfinding.find_path_step_exact(tm, unit, destination, can_enter, 2) == null);
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter, 2) == detour_a);
+test.assert(pathfinding.find_path_step_exact(tm, unit, destination, can_enter, 3) == detour_a);
 test.assert(pathfinding.find_progress_step(tm, unit, destination, can_enter, 1) == detour_a);
 const destination_score = (tile, distance) => {
 	return tile == destination ? 100 - distance : null;
@@ -61,6 +64,7 @@ test.assert(best.step == detour_a);
 test.assert(best.distance == 3);
 detour_b.passable = false;
 test.assert(pathfinding.find_path_step(tm, unit, destination, can_enter) == null);
+test.assert(pathfinding.find_path_step_exact(tm, unit, destination, can_enter) == null);
 test.assert(pathfinding.find_best_reachable(tm, unit, can_enter, destination_score) == null);
 
 const source_score = (tile, distance) => {

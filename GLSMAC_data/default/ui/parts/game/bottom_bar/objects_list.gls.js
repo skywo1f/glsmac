@@ -287,10 +287,14 @@ return {
 		});
 
 		this.frame.on('keydown', (e) => {
+			const has_modifiers =
+				(#is_defined(e.modifiers.ctrl) && e.modifiers.ctrl) ||
+				(#is_defined(e.modifiers.shift) && e.modifiers.shift) ||
+				(#is_defined(e.modifiers.alt) && e.modifiers.alt);
 			if (
 				!this.p.modules.popup.is_shown() && // TODO: make universal key overrides in popups
 				this.is_turn_active && // TODO: override by turn complete button
-				e.modifiers == {} &&
+				!has_modifiers &&
 				e.code == 'ENTER'
 			) {
 				// open base screen if base is present

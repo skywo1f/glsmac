@@ -10,6 +10,7 @@ enum tile_query_purpose_t {
 	TQP_UNIT_SELECT,
 	TQP_OBJECT_SELECT, // unit or base
 	TQP_ATTACK_TARGET,
+	TQP_MOVE_TARGET,
 };
 
 }

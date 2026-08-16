@@ -161,6 +161,7 @@ return {
 		this.pp = {
 			game: p.game,
 			map: p.map,
+			root: p.root,
 			ui: p.ui,
 			el: parent.el,
 			sections: {},
@@ -183,6 +184,7 @@ return {
 		for (s of this.pp.sections) {
 			s.init(this.pp);
 		}
+		p.request_turn_action = this.pp.request_turn_action;
 
 	},
 

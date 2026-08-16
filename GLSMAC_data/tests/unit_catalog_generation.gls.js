@@ -36,7 +36,9 @@ const scout = get_unit('ScoutPatrol');
 const colony = get_unit('ColonyPod');
 const former = get_unit('Former');
 test.assert(
-	scout.data.render.type == 'cvr' && scout.data.render.files == ['VI.cvr'] &&
+	scout.data.render.type == 'cvr' && scout.data.render.files == [
+		'VI.cvr', 'Vw00.cvr', 'VGMT.cvr', 'VGMTP.cvr', 'Viptr00.cvr'
+	] &&
 	scout.data.render.fallback.file == 'newicons.pcx' &&
 	scout.data.render.fallback.x == 518 && scout.data.render.fallback.y == 82
 );
@@ -72,7 +74,6 @@ test.assert(
 const get_expected_cvr_files = (data) => {
 	if (data.is_native) { return []; }
 	if (data.chassis == 'Infantry' && data.armor == 'NoArmor') {
-		if (data.weapon == 'HandWeapons') { return ['VI.cvr']; }
 		if (data.weapon == 'ColonyModule') { return ['Drop.cvr']; }
 		if (data.weapon == 'TerraformingUnit') { return ['VT.cvr']; }
 	}
