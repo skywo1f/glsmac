@@ -24,6 +24,23 @@ test.assert(rover.fallback.x == 518 && rover.fallback.y == 82);
 const rover_without_reactor = sprite_render.get(
 	'Speeder', 'NoArmor', 'HandWeapons', #undefined
 );
+
+const laser_infantry = sprite_render.get(
+	'Infantry', 'NoArmor', 'Laser', 'FissionPlant'
+);
+test.assert(laser_infantry.type == 'cvr');
+test.assert(laser_infantry.files == [
+	'VI.cvr', 'VW01.cvr', 'VGMT.cvr', 'VGMTP.cvr', 'Viptr00.cvr',
+]);
+
+const synthmetal_sentinels = sprite_render.get(
+	'Infantry', 'SynthmetalArmor', 'HandWeapons', 'FusionReactor'
+);
+test.assert(synthmetal_sentinels.type == 'cvr');
+test.assert(synthmetal_sentinels.files == [
+	'VI.cvr', 'Vw00.cvr', 'VGMT.cvr', 'VGMTP.cvr',
+	'Vipta00.cvr', 'Viptr01.cvr',
+]);
 test.assert(
 	rover_without_reactor.type == 'sprite' &&
 	rover_without_reactor.x == 518 && rover_without_reactor.y == 82

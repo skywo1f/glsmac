@@ -1520,17 +1520,20 @@ their self-contained installed CVRs. The original base-game component selection
 logic was recovered from the installed `terran.exe` filename table and assembly
 routine, then reproduced for Speeder, Hovertank, Foil, Cruiser, Needlejet,
 Copter, Gravship, conventional missiles, and Planet Busters across all four
-reactor tiers. Layered Infantry configurations that are not one of the three
-self-contained stock roles still use role-specific fallback icons. A dedicated
-installed-asset gate registered the complete generated unit catalog and rendered
-all 516 generated definitions without `CVR_RENDER_FALLBACK` in 5.58 seconds.
+reactor tiers. Conventional combat Infantry now use the original humanoid,
+weapon-mount, armor, and Infantry-reactor CVR families. Infantry utility
+packages without a verified composition still use role-specific fallback icons.
+A dedicated installed-asset gate registered the complete generated unit catalog
+and rendered all 516 generated definitions without `CVR_RENDER_FALLBACK` in
+5.61 seconds.
 The parser now decodes each part's frame-zero visibility, translation, and 3x3
-matrix, applies Caviar's `z/x/y` vector order and half-unit translation scale,
+matrix, applies Caviar's `z/x/y` vector order and quarter-unit translation scale,
 and then projects the transformed voxels. Offline reference renders align the
 rover wheels and the hover, foil, needlejet, and copter subcomponents that were
 previously piled at their local origins. The complete 139-test native/script
-suite passed in 199.38 seconds, and the installed-asset catalog gate plus Unit
-Workshop and small-map frontend smokes passed afterward. Unit icons still use a
+suite passed in 205.57 seconds. The full 45-test runtime matrix then passed in
+560.72 seconds, including the Unit Workshop, CVR catalog, small-map frontend,
+research, diplomacy, and AI soak gates. Unit icons still use a
 static frame rather than playing the original animations, and the renderer does
 not yet reproduce Caviar normals, source lighting, or faction tinting. An
 automated foreground-window capture also still presented a black OpenGL client
@@ -1542,7 +1545,9 @@ AI action and animation completion polling now runs every 50 ms instead of
 every 100 ms while retaining pending-event checks, nearby tile-lock guards,
 completion retries, and two stable post-action checks. The identical seeded
 six-opponent economy soak passed first in 139.36 seconds and then in 136.72
-seconds, compared with the immediately preceding 143.70-second baseline. This
-is a modest scheduler-latency reduction; collector pauses, occasional
+seconds, compared with the immediately preceding 143.70-second baseline. A
+later full-matrix run completed the same soak in 182.23 seconds, showing that
+runtime variability remains material. This is a modest scheduler-latency
+reduction; collector pauses, occasional
 completion-acknowledgement outliers, and Colony Pod search spikes remain
 separate performance risks.

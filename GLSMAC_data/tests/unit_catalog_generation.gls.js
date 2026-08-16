@@ -151,6 +151,33 @@ const get_expected_cvr_files = (data) => {
 		return [];
 	}
 	const suffix = reactor_suffixes[data.reactor];
+	if (data.chassis == 'Infantry') {
+		const infantry_armor_files = {
+			NoArmor: [],
+			SynthmetalArmor: ['Vipta00.cvr'],
+			PlasmaSteelArmor: ['Vipta00.cvr'],
+			SilksteelArmor: ['Vipta00.cvr'],
+			PhotonWall: ['Viptawal.cvr'],
+			ProbabilitySheath: [],
+			NeutroniumArmor: ['Vipta00.cvr'],
+			AntimatterPlate: ['Vipta00.cvr'],
+			StasisGenerator: ['Viptasgn.cvr'],
+			PsiDefense: ['Viptapsi.cvr'],
+		};
+		if (
+			!#is_defined(weapon_files[data.weapon]) ||
+			!#is_defined(infantry_armor_files[data.armor]) ||
+			data.weapon == 'ColonyModule' || data.weapon == 'TerraformingUnit' ||
+			data.weapon == 'TroopTransport' || data.weapon == 'SupplyTransport' ||
+			data.weapon == 'ProbeTeam' || data.weapon == 'AlienArtifact'
+		) { return []; }
+		let result = [
+			'VI.cvr', weapon_files[data.weapon], 'VGMT.cvr', 'VGMTP.cvr',
+		];
+		for (file of infantry_armor_files[data.armor]) { result :+file; }
+		result :+('Viptr' + suffix + '.cvr');
+		return result;
+	}
 	if (data.chassis == 'Missile') {
 		let missile_file = '';
 		if (data.weapon == 'PlanetBuster') { missile_file = 'VW13.cvr'; }

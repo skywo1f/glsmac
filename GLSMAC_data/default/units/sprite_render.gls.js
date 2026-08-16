@@ -119,6 +119,49 @@ const get_layered_vehicle_files = (chassis_id, armor_id, weapon_id, reactor_id) 
 		return [];
 	}
 	const suffix = reactor_suffixes[reactor_id];
+	if (chassis_id == 'Infantry') {
+		const infantry_weapon_files = {
+			HandWeapons: 'Vw00.cvr',
+			Laser: 'VW01.cvr',
+			ParticleImpactor: 'VW02.cvr',
+			GatlingLaser: 'Vw03.cvr',
+			MissileLauncher: 'VW04.cvr',
+			ChaosGun: 'VW05.cvr',
+			FusionLaser: 'VW06.cvr',
+			TachyonBolt: 'VW07.cvr',
+			PlasmaShard: 'Vw08.cvr',
+			QuantumLaser: 'Vw09.cvr',
+			GravitonGun: 'VW10.cvr',
+			SingularityLaser: 'VW11.cvr',
+			PsiAttack: 'VW12.cvr',
+		};
+		const infantry_armor_files = {
+			NoArmor: [],
+			SynthmetalArmor: ['Vipta00.cvr'],
+			PlasmaSteelArmor: ['Vipta00.cvr'],
+			SilksteelArmor: ['Vipta00.cvr'],
+			PhotonWall: ['Viptawal.cvr'],
+			ProbabilitySheath: [],
+			NeutroniumArmor: ['Vipta00.cvr'],
+			AntimatterPlate: ['Vipta00.cvr'],
+			StasisGenerator: ['Viptasgn.cvr'],
+			PsiDefense: ['Viptapsi.cvr'],
+		};
+		if (
+			!#is_defined(infantry_weapon_files[weapon_id]) ||
+			!#is_defined(infantry_armor_files[armor_id])
+		) {
+			return [];
+		}
+		let files = [
+			'VI.cvr', infantry_weapon_files[weapon_id], 'VGMT.cvr', 'VGMTP.cvr',
+		];
+		for (file of infantry_armor_files[armor_id]) {
+			files :+file;
+		}
+		files :+('Viptr' + suffix + '.cvr');
+		return files;
+	}
 	if (chassis_id == 'Missile') {
 		let missile_file = '';
 		if (weapon_id == 'PlanetBuster') {

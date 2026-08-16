@@ -23,7 +23,7 @@ namespace {
 static constexpr size_t MAX_PARTS = 2048;
 static constexpr size_t MAX_VOXELS = 4000000;
 static constexpr size_t MAX_FRAMES = 65536;
-static constexpr float TRANSLATION_TO_VOXELS = 0.5f;
+static constexpr float TRANSLATION_TO_VOXELS = 0.25f;
 
 struct color_t {
 	uint8_t red;
@@ -337,7 +337,7 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 		}
 		for ( size_t i = first_part_voxel ; i < voxels.size() ; i++ ) {
 			auto& voxel = voxels[ i ];
-			// Caviar stores vectors in z/x/y order and translations in half-voxel units.
+			// Caviar stores vectors in z/x/y order and uses four transform units per voxel.
 			const std::array< float, 3 > source = { voxel.z, voxel.x, voxel.y };
 			std::array< float, 3 > transformed = {};
 			for ( size_t row = 0 ; row < transformed.size() ; row++ ) {
