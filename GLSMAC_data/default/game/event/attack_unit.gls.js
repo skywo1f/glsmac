@@ -1,6 +1,7 @@
 const MIN_DAMAGE_VALUE = 0.1;
 const MAX_DAMAGE_VALUE = 0.3;
-const MIN_BOMBARDMENT_HEALTH = 0.1;
+const ARTILLERY_DAMAGE_MULTIPLIER = 1.5;
+const MIN_LAND_BOMBARDMENT_HEALTH = 0.5;
 const NERVE_GAS_SANCTION_YEARS = 10;
 const MAX_MAJOR_ATROCITIES = 1000000;
 const combat_rules = #include('../combat_rules');
@@ -12,6 +13,34 @@ const message_rules = #include('../message_rules');
 const movement_rules = #include('../movement_rules');
 const unit_order_rules = #include('../unit_order_rules');
 const snapshot_unit = entity_snapshots.snapshot_unit;
+
+const find_active_unit = (game, tile, fallback, unit_id) => {
+	if (#is_defined(fallback.id) && fallback.id == unit_id) {
+		return fallback;
+	}
+	if (
+		#is_defined(game.um) && game.um.has_unit(unit_id)
+	) {
+		return game.um.get_unit(unit_id);
+	}
+	if (tile != null && #is_defined(tile.get_units)) {
+		for (unit of tile.get_units()) {
+			if (#is_defined(unit.id) && unit.id == unit_id) {
+				return unit;
+			}
+		}
+	}
+	return null;
+};
+
+const resolve_bombardment_target = (game, tile, fallback, bombardment) => {
+	const unit_id = #is_defined(bombardment.unit) && #is_defined(bombardment.unit.id)
+		? bombardment.unit.id : bombardment.unit_id;
+	const active = find_active_unit(game, tile, fallback, unit_id);
+	return active != null
+		? active
+		: (#is_defined(bombardment.unit) ? bombardment.unit : null);
+};
 
 const is_un_charter_active = (game) => {
 	const is_repealed = game.get('f_council_is_un_charter_repealed');
@@ -316,16 +345,28 @@ return {
 		const target_tile = #is_defined(e.data.defender.get_tile)
 			? e.data.defender.get_tile()
 			: null;
-		const selected_defender = target_tile != null && #is_defined(target_tile.get_units)
+		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
+		const artillery_duel_defender =
+			attacker_is_artillery && target_tile != null && #is_defined(target_tile.get_units)
+				? combat_rules.get_best_defender(
+					attacker,
+					target_tile,
+					e.game,
+					true,
+					true
+				)
+				: null;
+		const selected_defender = artillery_duel_defender != null
+			? artillery_duel_defender
+			: (target_tile != null && #is_defined(target_tile.get_units)
 			? combat_rules.get_best_defender(
 				attacker,
 				target_tile,
 				e.game,
 				true
 			)
-			: null;
+			: null);
 		const defender = selected_defender == null ? e.data.defender : selected_defender;
-		const attacker_is_artillery = combat_rules.is_artillery(attacker.get_def());
 		const defender_is_artillery = combat_rules.is_artillery(defender.get_def());
 		const nerve_gas = combat_rules.is_nerve_gas_attack(attacker, defender);
 		const capture = native_capture.resolve(e.game, attacker, defender);
@@ -347,24 +388,57 @@ return {
 		}
 
 		if (attacker_is_artillery && !defender_is_artillery) {
-			const powers = combat_rules.get_artillery_powers(attacker, defender);
+			let targets = [defender];
+			if (target_tile != null && #is_defined(target_tile.get_units)) {
+				targets = [];
+				for (candidate of target_tile.get_units()) {
+					if (
+						candidate.owner == defender.owner && candidate.health > 0.0 &&
+						!combat_rules.is_artillery(candidate.get_def()) &&
+						combat_rules.can_attack_target(attacker, candidate)
+					) {
+						targets :+candidate;
+					}
+				}
+			}
+			let bombardments = [];
 			let damage_sequence = [];
-			const combat_roll = e.game.random.get_float(0.0, powers.attack + powers.defence);
-			if (combat_roll < powers.attack && defender.health > MIN_BOMBARDMENT_HEALTH) {
-				const maximum_damage = defender.health - MIN_BOMBARDMENT_HEALTH;
+			for (target of targets) {
+				const minimum_health = #is_defined(target.is_land) && target.is_land
+					? MIN_LAND_BOMBARDMENT_HEALTH : 0.0;
+				if (target.health <= minimum_health) {
+					continue;
+				}
+				const powers = combat_rules.get_artillery_powers(attacker, target, e.game);
+				const combat_roll = e.game.random.get_float(0.0, powers.attack + powers.defence);
+				if (combat_roll >= powers.attack) {
+					continue;
+				}
+				const maximum_damage = target.health - minimum_health;
 				const damage = #min(
 					maximum_damage,
 					combat_rules.get_damage(
-						defender,
+						target,
 						e.game.random.get_float(MIN_DAMAGE_VALUE, MAX_DAMAGE_VALUE)
-					)
+					) * ARTILLERY_DAMAGE_MULTIPLIER
 				);
-				damage_sequence [] = [true, damage];
+				if (damage > 0.0) {
+					bombardments :+{
+						unit: target,
+						damage: damage,
+						dead: target.health - damage <= 0.0,
+					};
+					if (target == defender) {
+						damage_sequence [] = [true, damage];
+					}
+				}
 			}
 			return {
 				defender: defender,
 				defender_id: defender.id,
 				sequence: damage_sequence,
+				is_bombardment: true,
+				bombardments: bombardments,
 				attacker_dead: false,
 				defender_dead: false,
 				advance_after_combat: false,
@@ -478,6 +552,25 @@ return {
 				defender: snapshot_unit(defender),
 			},
 		};
+		const is_bombardment =
+			#is_defined(e.resolved.is_bombardment) && e.resolved.is_bombardment;
+		if (is_bombardment) {
+			applied.backup.bombarded_units = [];
+			for (bombardment of e.resolved.bombardments) {
+				const target = resolve_bombardment_target(
+					e.game,
+					defender_tile,
+					defender,
+					bombardment
+				);
+				if (target == defender) {
+					continue;
+				}
+				if (target != null) {
+					applied.backup.bombarded_units :+snapshot_unit(target);
+				}
+			}
+		}
 		movement_rules.clear_move_target(attacker);
 		const attacker_owner = e.game.get_player(attacker.owner);
 		const defender_owner = e.game.get_player(defender.owner);
@@ -586,7 +679,15 @@ return {
 		}
 
 		let animations = [];
-		for (step of e.resolved.sequence) {
+		if (is_bombardment) {
+			animations :+{id: attack_animation, tile: defender_tile};
+			for (bombardment of e.resolved.bombardments) {
+				if (bombardment.dead) {
+					animations :+{id: death_animation_id, tile: defender_tile};
+				}
+			}
+		}
+		for (step of is_bombardment ? [] : e.resolved.sequence) {
 			if (step[0]) {
 				animations :+{
 					id: attack_animation,
@@ -637,12 +738,26 @@ return {
 		}
 
 		applied.animations_id = e.game.am.show_animations(animations);
-		for (step of e.resolved.sequence) {
-			if (step[0]) {
-				defender.health = #max(0.0, defender.health - step[1]);
+		if (is_bombardment) {
+			for (bombardment of e.resolved.bombardments) {
+				const target = resolve_bombardment_target(
+					e.game,
+					defender_tile,
+					defender,
+					bombardment
+				);
+				if (target != null) {
+					target.health = #max(0.0, target.health - bombardment.damage);
+				}
 			}
-			else {
-				attacker.health = #max(0.0, attacker.health - step[1]);
+		} else {
+			for (step of e.resolved.sequence) {
+				if (step[0]) {
+					defender.health = #max(0.0, defender.health - step[1]);
+				}
+				else {
+					attacker.health = #max(0.0, attacker.health - step[1]);
+				}
 			}
 		}
 		if (attacker_destroyed) {
@@ -737,7 +852,21 @@ return {
 			if (attacker_destroyed) {
 				e.game.event('despawn_unit', {unit: attacker});
 			}
-			if (e.resolved.defender_dead) {
+			if (is_bombardment) {
+				for (bombardment of e.resolved.bombardments) {
+					if (bombardment.dead) {
+						const target = resolve_bombardment_target(
+							e.game,
+							defender_tile,
+							defender,
+							bombardment
+						);
+						if (target != null) {
+							e.game.event('despawn_unit', {unit: target});
+						}
+					}
+				}
+			} else if (e.resolved.defender_dead) {
 				e.game.event('despawn_unit', {unit: defender});
 			}
 		}
@@ -788,6 +917,11 @@ return {
 		}
 		restore_unit(e, a.backup.attacker);
 		restore_unit(e, a.backup.defender);
+		if (#is_defined(a.backup.bombarded_units)) {
+			for (backup of a.backup.bombarded_units) {
+				restore_unit(e, backup);
+			}
+		}
 		if (#is_defined(a.base_combat_population)) {
 			entity_snapshots.restore_rehomed_units(
 				e.game,

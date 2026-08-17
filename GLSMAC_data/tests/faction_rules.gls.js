@@ -10,11 +10,14 @@ const university = player('UNIVERSITY');
 const morganites = player('MORGANITES');
 const believers = player('BELIEVERS');
 const peacekeepers = player('PEACEKEEPERS');
+const spartans = player('SPARTANS');
 
 test.assert(rules.get_faction_id(gaians) == 'GAIANS');
 test.assert(rules.get_faction_id({}) == '');
 test.assert(rules.get_starting_energy(gaians) == 10);
 test.assert(rules.get_starting_energy(morganites) == 110);
+test.assert(rules.get_starting_unit(gaians) == 'ScoutPatrol');
+test.assert(rules.get_starting_unit(spartans) == 'ReconRover');
 test.assert(rules.get_free_base_facilities(gaians) == []);
 test.assert(rules.get_free_base_facilities(hive) == ['PerimeterDefense']);
 test.assert(rules.get_free_base_facilities(university) == ['NetworkNode']);

@@ -3,9 +3,13 @@ const faction_rules = #include('faction_rules');
 const visibility_rules = #include('visibility_rules');
 
 const is_artillery = (def) => {
-	return #is_defined(def.is_artillery)
-		? def.is_artillery
-		: unit_abilities.has(def, 'HeavyArtillery');
+	return (#is_defined(def.is_artillery) && def.is_artillery) ||
+		unit_abilities.has(def, 'HeavyArtillery') ||
+		(
+			#is_defined(def.is_water) && def.is_water && def.offense > 0 &&
+			(!#is_defined(def.is_psi_attack) || !def.is_psi_attack) &&
+			(!#is_defined(def.is_native) || !def.is_native)
+		);
 };
 
 const has_ability = (def, id) => { return unit_abilities.has(def, id); };
@@ -452,13 +456,17 @@ const get_attack_score = (attacker, defender, game) => {
 	return total > 0.0 ? powers.attack / total : 0.0;
 };
 
-const get_best_defender = (attacker, tile, game, detected_only) => {
+const get_best_defender = (attacker, tile, game, detected_only, artillery_only) => {
 	let best = null;
 	let best_attack_score = 2.0;
 	for (defender of tile.get_units()) {
 		if (
 			defender.owner == attacker.owner || defender.health <= 0.0 ||
 			!can_attack_target(attacker, defender) ||
+			(
+				#is_defined(artillery_only) && artillery_only &&
+				!is_artillery(defender.get_def())
+			) ||
 			(
 				#is_defined(game) &&
 				!visibility_rules.can_target(game, attacker.owner, attacker, defender)

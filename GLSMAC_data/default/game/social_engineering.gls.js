@@ -117,6 +117,16 @@ const faction_immunities = {
 	HIVE: {effic: true},
 };
 
+const faction_aversions = {
+	GAIANS: 'FreeMarket',
+	HIVE: 'Democratic',
+	UNIVERSITY: 'Fundamentalist',
+	MORGANITES: 'Planned',
+	SPARTANS: 'Wealth',
+	BELIEVERS: 'Knowledge',
+	PEACEKEEPERS: 'PoliceState',
+};
+
 const faction_commerce_bonuses = {
 	MORGANITES: 1,
 };
@@ -150,6 +160,11 @@ const get_faction_modifier = (player, name) => {
 	const faction_id = get_faction_id(player);
 	const modifiers = faction_modifiers[faction_id];
 	return #is_defined(modifiers) && #is_defined(modifiers[name]) ? modifiers[name] : 0;
+};
+
+const is_faction_aversion = (player, choice_id) => {
+	const faction_id = get_faction_id(player);
+	return #is_defined(faction_aversions[faction_id]) && faction_aversions[faction_id] == choice_id;
 };
 
 const add_ratings = (ratings, modifiers, ignore_negative) => {
@@ -244,6 +259,11 @@ const validate_choices = (player, choices) => {
 		if (choice.required_technology != '' && !player.has_technology(choice.required_technology)) {
 			return choice.name + ' requires ' + choice.required_technology;
 		}
+		if (is_faction_aversion(player, choice.id)) {
+			const faction = player.get_faction();
+			const faction_name = #is_defined(faction.name) ? faction.name : faction.id;
+			return faction_name + ' cannot adopt ' + choice.name;
+		}
 	}
 };
 
@@ -253,7 +273,10 @@ const get_available_choices = (player, category_id) => {
 	}
 	let result = [];
 	for (choice of choices_by_category[category_id]) {
-		if (choice.required_technology == '' || player.has_technology(choice.required_technology)) {
+		if (
+			(choice.required_technology == '' || player.has_technology(choice.required_technology)) &&
+			!is_faction_aversion(player, choice.id)
+		) {
 			result :+choice;
 		}
 	}

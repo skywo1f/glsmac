@@ -87,11 +87,11 @@ return (game) => {
 		});
 		tiles_with_bases :+tile;
 
-		// Base SMAC factions all begin on land with a Scout Patrol.
+		// Spartans replace the standard patrol with their original fast scout rover.
 		game.event('spawn_unit', {
 			owner: player,
 			tile: tile,
-			type: 'ScoutPatrol',
+			type: faction_rules.get_starting_unit(player),
 			health: 1.0,
 			morale: 1,
 			home_base_at_tile: true,

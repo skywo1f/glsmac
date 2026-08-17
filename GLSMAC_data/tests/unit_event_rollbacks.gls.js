@@ -305,7 +305,8 @@ test.assert(
 			},
 			defender: {
 				morale: 3,
-				health: 0.2,
+				health: 0.6,
+				is_land: true,
 				get_def: () => { return native_def; },
 			},
 		},
@@ -317,6 +318,88 @@ test.assert(
 	test.assert(resolved.attacker_dead == false);
 	test.assert(resolved.defender_dead == false);
 	test.assert(resolved.advance_after_combat == false);
+}
+
+{
+	let units = [];
+	const bombardment_tile = {
+		rockiness: 1,
+		features: {xenofungus: false},
+		terraforming: {bunker: false},
+		get_base: () => { return null; },
+		get_units: () => { return units; },
+	};
+	const make_target = (id, health) => {
+		return {
+			id: id,
+			owner: 2,
+			morale: 3,
+			health: health,
+			is_land: true,
+			get_tile: () => { return bombardment_tile; },
+			get_def: () => {
+				return {
+					id: 'BombardmentTarget',
+					is_native: false,
+					is_artillery: false,
+					offense: 1,
+					defense: 1,
+					abilities: [],
+				};
+			},
+		};
+	};
+	const first = make_target(30, 1.0);
+	const second = make_target(31, 0.6);
+	const already_suppressed = make_target(32, 0.5);
+	units = [first, second, already_suppressed];
+	const artillery = {
+		id: 20,
+		owner: 1,
+		morale: 3,
+		health: 1.0,
+		get_def: () => { return artillery_def; },
+	};
+	let random_index = 0;
+	const random_values = [0.0, 0.2, 0.0, 0.2];
+	const resolved = attack_unit.resolve({
+		game: {
+			random: {
+				get_float: (min, max) => { return random_values[random_index++]; },
+			},
+		},
+		data: {attacker: artillery, defender: first},
+	});
+	test.assert(resolved.is_bombardment);
+	test.assert(random_index == 4);
+	test.assert(#sizeof(resolved.bombardments) == 2);
+	test.assert(resolved.bombardments[0].unit == first);
+	test.assert(resolved.bombardments[0].damage > 0.299);
+	test.assert(resolved.bombardments[1].unit == second);
+	test.assert(resolved.bombardments[1].damage > 0.099);
+	test.assert(!resolved.bombardments[0].dead && !resolved.bombardments[1].dead);
+
+	const naval = make_target(33, 0.1);
+	naval.is_land = false;
+	naval.is_water = true;
+	naval.get_def = () => {
+		return {
+			id: 'NavalGunship',
+			is_native: false,
+			is_artillery: true,
+			offense: 2,
+			defense: 1,
+			abilities: [],
+		};
+	};
+	units = [first, naval];
+	const duel = attack_unit.resolve({
+		game: {random: {get_float: (min, max) => { return min; }}},
+		data: {attacker: artillery, defender: first},
+	});
+	test.assert(duel.defender_id == naval.id);
+	test.assert(!#is_defined(duel.is_bombardment));
+	test.assert(duel.defender_dead);
 }
 
 {
@@ -722,10 +805,11 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		get_base: () => { return null; },
 	};
 	let current_tile = source;
+	let movement_abilities = [];
 	const unit = {
 		movement: 1.5,
 		moved_this_turn: false,
-		get_def: () => { return {is_native: false}; },
+		get_def: () => { return {is_native: false, abilities: movement_abilities}; },
 		get_tile: () => { return current_tile; },
 		move_to_tile: (tile, oncomplete) => {
 			current_tile = tile;
@@ -741,6 +825,17 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	move_unit.rollback(event);
 	test.assert(event.data.unit.movement == 1.5);
 	current_tile = source;
+
+	movement_abilities = ['AntigravStruts'];
+	event = {
+		data: {unit: unit, tile: destination},
+		resolved: {is_movement_successful: true},
+	};
+	event.applied = move_unit.apply(event);
+	test.assert(event.data.unit.movement == 0.5);
+	move_unit.rollback(event);
+	current_tile = source;
+	movement_abilities = [];
 
 	source.terraforming.road = true;
 	destination.terraforming.road = true;
@@ -1246,7 +1341,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 					return true;
 				}
 			}
-			return active_defender != null;
+			return id == defender.id && active_defender != null;
 		},
 		get_unit: (id) => {
 			if (id == attacker.id) {
@@ -1257,6 +1352,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 					return unit;
 				}
 			}
+			test.assert(id == defender.id);
 			return active_defender;
 		},
 		get_units: () => {
@@ -1275,8 +1371,16 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 		despawn_unit: (unit) => {
 			if (unit.id == attacker.id) {
 				active_attacker = null;
-			} else {
+			} else if (unit.id == defender.id) {
 				active_defender = null;
+			} else {
+				let remaining = [];
+				for (supported of support_units) {
+					if (supported.id != unit.id) {
+						remaining :+supported;
+					}
+				}
+				support_units = remaining;
 			}
 		},
 		spawn_unit: (data) => {
@@ -1284,8 +1388,10 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			unit.owner = data.owner.id;
 			if (data.id == attacker.id) {
 				active_attacker = unit;
-			} else {
+			} else if (data.id == defender.id) {
 				active_defender = unit;
+			} else {
+				support_units :+unit;
 			}
 			return unit;
 		},
@@ -1549,6 +1655,64 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	attack_unit.rollback(event);
 	test.assert(active_attacker.morale == 3);
 	test.assert(active_defender.morale == 5);
+
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	active_attacker.get_def = () => { return artillery_def; };
+	active_defender.get_def = () => {
+		return {
+			id: 'BombardmentDefender',
+			is_native: false,
+			is_artillery: false,
+			offense: 1,
+			defense: 1,
+			abilities: [],
+		};
+	};
+	const collateral = make_unit(22, 'GroundedAircraft', defender_tile, 1.0, 2, 0.2, false);
+	collateral.owner = defender_player.id;
+	collateral.is_land = false;
+	collateral.is_air = true;
+	collateral.get_def = () => {
+		return {
+			id: 'GroundedAircraft',
+			is_native: false,
+			is_artillery: false,
+			offense: 2,
+			defense: 1,
+			abilities: [],
+		};
+	};
+	support_units = [collateral];
+	unit_event_defender_units = [active_defender, collateral];
+	event.resolved = {
+		sequence: [[true, 0.4]],
+		is_bombardment: true,
+		bombardments: [
+			{unit: active_defender, damage: 0.4, dead: false},
+			{unit: collateral, damage: 0.2, dead: true},
+		],
+		attacker_dead: false,
+		defender_dead: false,
+		advance_after_combat: false,
+		nerve_gas: false,
+	};
+	is_master = true;
+	const despawns_before_bombardment = despawn_requests;
+	test.assert(event.resolved.bombardments[0].unit == active_defender);
+	event.applied = attack_unit.apply(event);
+	test.assert(active_defender.health > 0.499 && active_defender.health < 0.501);
+	test.assert(#sizeof(support_units) == 0);
+	test.assert(despawn_requests == despawns_before_bombardment + 1);
+	test.assert(#sizeof(animations) == 2);
+	attack_unit.rollback(event);
+	test.assert(active_defender.health == 0.9);
+	test.assert(#sizeof(support_units) == 1);
+	test.assert(support_units[0].id == collateral.id && support_units[0].health == 0.2);
+	support_units = [];
+	unit_event_defender_units = [];
+	active_attacker.get_def = () => { return native_def; };
+	active_defender.get_def = () => { return native_def; };
 
 	event.data.attacker = active_attacker;
 	event.data.defender = active_defender;

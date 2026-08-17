@@ -140,6 +140,10 @@
 				fail('generated combat-access unit definitions are incomplete');
 				return;
 			}
+			if (!combat_rules.is_artillery(sea_sam_def)) {
+				fail('conventional naval combat unit is missing its bombardment role');
+				return;
+			}
 
 			let coast_water = null;
 			let coast_land = null;

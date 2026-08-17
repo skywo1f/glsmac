@@ -2,6 +2,9 @@ const DEFAULT_STARTING_ENERGY = 10;
 const FANATIC_ATTACK_MULTIPLIER = 1.25;
 
 const rules = {
+	SPARTANS: {
+		starting_unit: 'ReconRover',
+	},
 	HIVE: {
 		free_base_facilities: ['PerimeterDefense'],
 	},
@@ -42,6 +45,11 @@ const get_starting_energy = (player) => {
 			? faction.starting_energy_bonus
 			: 0
 	);
+};
+
+const get_starting_unit = (player) => {
+	const faction = get_rules(player);
+	return #is_defined(faction.starting_unit) ? faction.starting_unit : 'ScoutPatrol';
 };
 
 const get_free_base_facilities = (player) => {
@@ -115,6 +123,7 @@ const get_attack_multiplier = (player, is_psi_combat) => {
 return {
 	get_faction_id: get_faction_id,
 	get_starting_energy: get_starting_energy,
+	get_starting_unit: get_starting_unit,
 	get_free_base_facilities: get_free_base_facilities,
 	has_free_base_facility: has_free_base_facility,
 	apply_free_base_facilities: apply_free_base_facilities,

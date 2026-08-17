@@ -151,7 +151,9 @@ const bool StaticDef::HasAbility( const std::string& id ) const {
 }
 
 const bool StaticDef::IsArtillery() const {
-	return HasAbility( "HeavyArtillery" );
+	return HasAbility( "HeavyArtillery" ) || (
+		m_movement_type == MT_WATER && m_offense > 0 && !IsPsiAttack()
+	);
 }
 
 const bool StaticDef::IsPsiAttack() const {

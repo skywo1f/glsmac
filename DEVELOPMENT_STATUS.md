@@ -41,9 +41,10 @@ scenarios, for:
   source records, while center altitudes are projected onto GLSMAC's continuous
   shared-corner mesh with exact source land/water classification;
 - all 16 original social models, original-faction rating modifiers and immunity,
-  technology gating, the complete difficulty-scaled upheaval cost table, atomic
-  energy accounting, cost-aware human selection UI, and strategy-weighted AI
-  selection that stages paid category changes to avoid multi-model surcharges;
+  faction-specific model aversions, technology gating, the complete
+  difficulty-scaled upheaval cost table, atomic energy accounting, cost-aware
+  human selection UI, and strategy-weighted AI selection that stages paid
+  category changes to avoid multi-model surcharges;
 - social-policy Secret Project effects, including Cloning Vats immunity to the
   Power and Thought Control penalties, Network Backbone immunity to the
   Cybernetic penalty, and all Planned, Simple/Green, and Free Market branches
@@ -1618,3 +1619,16 @@ matrix covers unfortified land bases, effective Perimeter Defense, ocean bases,
 Citizen difficulty, surviving garrisons, size-one destruction and support
 rehoming, plus exact rollback. These automated results do not replace manual
 siege and composed-unit visual testing.
+
+The artillery and original-faction checkpoint adds the Spartan fast scout rover
+start, enforces all seven original social-model aversions, and lets Antigrav
+Struts ignore rocky and forest movement penalties. Conventional naval combat
+units now receive their original bombardment role. Bombardment independently
+attacks every eligible unit in the target stack with the base game's 3/2 damage
+factor, cannot reduce land units below 50% health, and turns into an
+attack-versus-attack duel whenever a detected enemy naval or artillery unit is
+present. Collateral destruction and rollback are covered. The Windows x64
+RelWithDebInfo build passed, all 147 native/script tests passed in 207.04
+seconds, and nine installed-asset CVR, research/UI, gameplay-control, University
+start, combat-access, production, frontend, and save/load scenarios passed in
+62.32 seconds. Manual campaign and visual regression testing is still required.

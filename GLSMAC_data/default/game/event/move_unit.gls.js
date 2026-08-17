@@ -101,6 +101,12 @@ const get_movement_aftercost = (unit, src_tile, dst_tile, fungus_road) => {
 	if ((is_native || fungus_road) && dst_tile.features.xenofungus) {
 		return 0.0;
 	}
+	if (
+		dst_tile.is_land &&
+		unit_abilities.has(unit, 'AntigravStruts')
+	) {
+		return 0.0;
+	}
 	const has_forest = #is_defined(dst_tile.terraforming.forest) && dst_tile.terraforming.forest;
 	if (dst_tile.is_land && (dst_tile.rockiness >= 3 || has_forest)) {
 		return 1.0;

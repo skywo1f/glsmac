@@ -82,6 +82,46 @@ test.assert(!#is_defined(values.f_social_validate_choices(player, {
 test.assert(#sizeof(values.f_social_get_available_choices(player, 'politics')) == 2);
 test.assert(values.f_social_get_adoption_cost(player, choices) == 0);
 
+technologies = {
+	DoctrineLoyalty: true,
+	EthicalCalculus: true,
+	SecretsHumanBrain: true,
+	IndustrialEconomics: true,
+	PlanetaryNetworks: true,
+	CentauriEmpathy: true,
+	AdvancedMilitaryAlgorithms: true,
+	Cyberethics: true,
+	IndustrialAutomation: true,
+};
+const aversions = [
+	{faction: 'GAIANS', category: 'economics', choice: 'FreeMarket'},
+	{faction: 'HIVE', category: 'politics', choice: 'Democratic'},
+	{faction: 'UNIVERSITY', category: 'politics', choice: 'Fundamentalist'},
+	{faction: 'MORGANITES', category: 'economics', choice: 'Planned'},
+	{faction: 'SPARTANS', category: 'values', choice: 'Wealth'},
+	{faction: 'BELIEVERS', category: 'values', choice: 'Knowledge'},
+	{faction: 'PEACEKEEPERS', category: 'politics', choice: 'PoliceState'},
+];
+for (aversion of aversions) {
+	faction_id = aversion.faction;
+	let aversion_choices = {
+		politics: 'Frontier',
+		economics: 'Simple',
+		values: 'Survival',
+		future_society: 'None',
+	};
+	aversion_choices[aversion.category] = aversion.choice;
+	test.assert(#is_defined(values.f_social_validate_choices(player, aversion_choices)));
+	let found_aversion = false;
+	for (available of values.f_social_get_available_choices(player, aversion.category)) {
+		if (available.id == aversion.choice) {
+			found_aversion = true;
+		}
+	}
+	test.assert(!found_aversion);
+}
+faction_id = 'GAIANS';
+
 const adoption_choices = [
 	{
 		politics: 'PoliceState', economics: 'Simple',
@@ -238,6 +278,7 @@ police = values.f_social_get_police_rules(player, 100);
 test.assert(police == {rating: 3, unit_limit: 3, unit_multiplier: 2});
 
 technologies.DoctrineLoyalty = true;
+faction_id = 'NEUTRAL';
 const original_choices = choices;
 const owned_base = {get_owner: () => { return player; }};
 const rival_base = {get_owner: () => { return {id: 2}; }};

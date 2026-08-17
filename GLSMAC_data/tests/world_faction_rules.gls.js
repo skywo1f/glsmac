@@ -23,7 +23,8 @@ const make_player = (id, faction_id) => {
 
 const gaians = make_player(1, 'GAIANS');
 const morganites = make_player(2, 'MORGANITES');
-const players = [gaians, morganites];
+const spartans = make_player(3, 'SPARTANS');
+const players = [gaians, morganites, spartans];
 let bases = 0;
 let scouts = 0;
 const game = {
@@ -47,7 +48,8 @@ const game = {
 			test.assert(data.headquarters && data.initial_population);
 		} else {
 			test.assert(name == 'spawn_unit');
-			test.assert(data.type == 'ScoutPatrol');
+			const expected = data.owner == spartans ? 'ReconRover' : 'ScoutPatrol';
+			test.assert(data.type == expected);
 			scouts++;
 		}
 	},
@@ -56,5 +58,5 @@ const game = {
 #include('../default/game/world/default')(game);
 test.assert(gaians.get_energy_credits() == 10);
 test.assert(morganites.get_energy_credits() == 110);
-test.assert(bases == 2);
-test.assert(scouts == 2);
+test.assert(bases == 3);
+test.assert(scouts == 3);
