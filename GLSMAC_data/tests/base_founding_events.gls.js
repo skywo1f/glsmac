@@ -1,7 +1,11 @@
 const found_base = #include('../default/game/event/found_base');
 const spawn_base = #include('../default/game/event/spawn_base');
 
-const owner = {id: 1};
+let owner_faction_id = 'GAIANS';
+const owner = {
+	id: 1,
+	get_faction: () => { return {id: owner_faction_id}; },
+};
 const work_tile = {
 	x: 8,
 	y: 8,
@@ -258,10 +262,22 @@ validation_event.data.name = #undefined;
 		worked_pop: null,
 		worked_tile: null,
 		starting_minerals: null,
+		added_facilities: [],
 	};
 
 	const base = {
 		id: 88,
+		add_facility: (id) => {
+			state.added_facilities :+id;
+		},
+		has_facility: (id) => {
+			for (facility_id of state.added_facilities) {
+				if (facility_id == id) {
+					return true;
+				}
+			}
+			return false;
+		},
 		create_pop: (data) => {
 			test.assert(data.type == 'WORKER');
 			const pop = {id: #sizeof(state.created_pops) + 1, type: data.type};
@@ -365,6 +381,7 @@ validation_event.data.name = #undefined;
 		},
 	};
 
+	owner_faction_id = 'UNIVERSITY';
 	event.applied = found_base.apply(event);
 	test.assert(event.applied.base == base);
 	test.assert(event.applied.unit.id == 42);
@@ -374,6 +391,8 @@ validation_event.data.name = #undefined;
 	test.assert(state.active_unit == null);
 	test.assert(state.starting_minerals == 10);
 	test.assert(#sizeof(state.created_pops) == 3);
+	test.assert(state.added_facilities == ['NetworkNode']);
+	owner_faction_id = 'GAIANS';
 	test.assert(state.worked_pop == state.created_pops[0]);
 	test.assert(state.worked_tile == work_tile);
 

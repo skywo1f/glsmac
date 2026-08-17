@@ -119,6 +119,12 @@ const make_player = (id, energy, technologies, target, type) => {
 	player.clear_diplomatic_loan = (other) => {
 		loans['p' + #to_string(other.id)] = #undefined;
 		};
+	player.get_faction = () => {
+		return {
+			id: id == 2 ? 'UNIVERSITY' : 'GAIANS',
+			name: 'Faction ' + #to_string(id),
+		};
+	};
 	return player;
 };
 
@@ -644,6 +650,19 @@ e.resolved = probe_operation.resolve(e);
 test.assert(e.resolved.success && e.resolved.sabotage_facility_id == 'RecyclingTanks');
 e.data.sabotage_target_id = 'Headquarters';
 test.assert(probe_operation.validate(e) == 'Target facility is not available to sabotage');
+
+f = make_fixture();
+f.target_base.add_facility('NetworkNode');
+e = {caller: 1, game: f.game, data: {
+	unit: f.probe,
+	operation: 'sabotage',
+	target: f.target_base,
+	sabotage_target_id: 'NetworkNode',
+}};
+test.assert(
+	probe_operation.validate(e) ==
+	'Target facility is not available to sabotage'
+);
 
 f = make_fixture();
 e = {caller: 1, game: f.game, data: {unit: f.probe, operation: 'drain_energy', target: f.target_base}};

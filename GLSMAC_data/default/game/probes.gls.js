@@ -1,3 +1,4 @@
+const faction_rules = #include('./faction_rules');
 const MAX_ENERGY_CREDITS = 1000000000;
 const RESEARCH_DATA_STOLEN_KEY = 'probe_research_data_stolen';
 const ENERGY_RESERVES_DRAINED_KEY = 'probe_energy_reserves_drained';
@@ -346,6 +347,7 @@ const get_sabotage_facilities = (base) => {
 	for (facility of base.get_facilities()) {
 		if (
 			!facility.is_project && facility.id != 'Headquarters' &&
+			!faction_rules.has_free_base_facility(base.get_owner(), facility.id) &&
 			!(
 				facility.id == 'PressureDome' &&
 				#is_defined(base_tile.is_water) && base_tile.is_water

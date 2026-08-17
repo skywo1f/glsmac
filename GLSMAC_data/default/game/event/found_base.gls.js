@@ -1,6 +1,7 @@
 const MAX_BASE_NAME_LENGTH = 64;
 const snapshots = #include('../entity_snapshots');
 const snapshot_unit = snapshots.snapshot_unit;
+const faction_rules = #include('../faction_rules');
 const unit_order_rules = #include('../unit_order_rules');
 
 const restore_unit = (e, backup) => {
@@ -121,6 +122,7 @@ return {
 		base.set_accumulated_minerals(
 			#is_defined(get_new_base_minerals) ? get_new_base_minerals(owner) : 10
 		);
+		faction_rules.apply_free_base_facilities(base, owner);
 		e.game.um.despawn_unit(unit);
 
 		const get_project_effects = #is_defined(e.game.get)

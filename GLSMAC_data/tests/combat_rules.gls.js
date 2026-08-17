@@ -370,6 +370,7 @@ const trance_defender = make_unit(base_tile, 2, 1, 1, false, 'land');
 trance_defender.get_def = () => {
 	return {
 		is_native: false,
+
 		is_psi_defense: true,
 		offense: 1,
 		defense: 1,
@@ -424,3 +425,38 @@ illegal_psi_gas.get_def = () => {
 	};
 };
 test.assert(!combat_rules.is_nerve_gas_attack(illegal_psi_gas, defender));
+
+const believer_tile = make_tile();
+const believer_attacker = make_unit(believer_tile, 1, 2, 1, false, 'land');
+believer_attacker.get_owner = () => {
+	return {id: 1, get_faction: () => { return {id: 'BELIEVERS'}; }};
+};
+const believer_defender_tile = make_tile();
+const believer_defender = make_unit(
+	believer_defender_tile,
+	2,
+	1,
+	2,
+	false,
+	'land'
+);
+test.assert(
+	combat_rules.get_combat_powers(believer_attacker, believer_defender).attack == 2.5
+);
+believer_attacker.get_def = () => {
+	return {
+		is_native: false,
+		is_psi_attack: true,
+		offense: 2,
+		defense: 1,
+	};
+};
+test.assert(
+	combat_rules.get_combat_powers(believer_attacker, believer_defender).attack == 3.0
+);
+believer_attacker.get_def = () => {
+	return {id: 'BelieverArtillery', is_artillery: true, offense: 2, defense: 1};
+};
+test.assert(
+	combat_rules.get_artillery_powers(believer_attacker, believer_defender).attack == 2.0
+);

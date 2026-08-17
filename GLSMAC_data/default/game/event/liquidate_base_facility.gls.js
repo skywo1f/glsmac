@@ -1,3 +1,5 @@
+const faction_rules = #include('../faction_rules');
+
 return {
 	validate: (e) => {
 		if (e.caller != 0) {
@@ -5,6 +7,12 @@ return {
 		}
 		if (!e.data.base.has_facility(e.data.facility_id)) {
 			return 'Base does not have this facility';
+		}
+		const owner = #typeof(e.data.base.get_owner) == 'Callable'
+			? e.data.base.get_owner()
+			: null;
+		if (faction_rules.has_free_base_facility(owner, e.data.facility_id)) {
+			return 'Faction facility cannot be liquidated';
 		}
 		const facility = e.game.get_bm().get_facility_def(e.data.facility_id);
 		if (facility.energy_maintenance <= 0) {

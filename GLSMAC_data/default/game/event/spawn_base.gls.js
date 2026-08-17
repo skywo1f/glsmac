@@ -1,3 +1,5 @@
+const faction_rules = #include('../faction_rules');
+
 return {
 
 	validate: (e) => {
@@ -35,6 +37,7 @@ return {
 		base.set_accumulated_minerals(
 			#is_defined(get_new_base_minerals) ? get_new_base_minerals(owner) : 10
 		);
+		faction_rules.apply_free_base_facilities(base, owner);
 		if (#is_defined(e.data.headquarters) && e.data.headquarters) {
 			base.add_facility('Headquarters');
 		}

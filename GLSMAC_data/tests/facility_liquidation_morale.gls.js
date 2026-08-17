@@ -102,3 +102,18 @@ liquidate.rollback(event);
 test.assert(has_commons);
 test.assert([talent.get_type(), worker_b.get_type(), worker_c.get_type(), worker_d.get_type()] == ['TALENT', 'WORKER', 'WORKER', 'WORKER']);
 test.assert(resource_refreshes == 2);
+
+const university_base = {
+	get_owner: () => {
+		return {get_faction: () => { return {id: 'UNIVERSITY'}; }};
+	},
+	has_facility: (id) => { return id == 'NetworkNode'; },
+};
+const university_event = {
+	caller: 0,
+	game: game,
+	data: {base: university_base, facility_id: 'NetworkNode'},
+};
+test.assert(
+	liquidate.validate(university_event) == 'Faction facility cannot be liquidated'
+);

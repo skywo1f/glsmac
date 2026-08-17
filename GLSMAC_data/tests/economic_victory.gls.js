@@ -31,7 +31,12 @@ const make_player = (id, faction_name, energy, commerce) => {
 		set_relation: (other, relation) => {
 			relations['p' + #to_string(other.id)] = relation;
 		},
-		get_faction: () => { return {name: faction_name}; },
+		get_faction: () => {
+			return {
+				id: faction_name == 'The University' ? 'UNIVERSITY' : 'HIVE',
+				name: faction_name,
+			};
+		},
 		energy_credits: energy,
 	};
 	return player;
@@ -166,6 +171,8 @@ actor_headquarters.set('probe_genetic_plague_introduced', true);
 const capture = base_capture.capture_base(game, actor_headquarters, target);
 test.assert(actor_headquarters.get_owner() == target);
 test.assert(!actor_headquarters.has_facility('Headquarters'));
+test.assert(actor_headquarters.has_facility('NetworkNode'));
+test.assert(actor_headquarters.has_facility('PerimeterDefense'));
 test.assert(!actor_headquarters.has('probe_research_data_stolen'));
 test.assert(actor_headquarters.get('probe_energy_reserves_drained') == true);
 test.assert(actor_headquarters.get('probe_genetic_plague_introduced') == true);
@@ -176,6 +183,8 @@ test.assert(#is_defined(capture.economic_victory_capture));
 base_capture.restore_base(game, actor_headquarters, capture);
 test.assert(actor_headquarters.get_owner() == actor);
 test.assert(actor_headquarters.has_facility('Headquarters'));
+test.assert(actor_headquarters.has_facility('NetworkNode'));
+test.assert(!actor_headquarters.has_facility('PerimeterDefense'));
 test.assert(actor_headquarters.get('probe_research_data_stolen') == true);
 test.assert(actor_headquarters.get('probe_energy_reserves_drained') == true);
 test.assert(actor_headquarters.get('probe_genetic_plague_introduced') == true);

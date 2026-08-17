@@ -1,4 +1,5 @@
 const project_acquisition = #include('./project_acquisition');
+const faction_rules = #include('./faction_rules');
 const economic_victory = #include('./economic_victory_rules');
 const game_rules = #include('./game_rules');
 const technology_effects = #include('./technology_effects');
@@ -328,7 +329,9 @@ const capture_base = (game, base, new_owner) => {
 	if (#typeof(base.set) == 'Callable') {
 		base.set(FORMER_OWNER_KEY, old_owner.id);
 	}
+	faction_rules.apply_free_base_facilities(base, old_owner);
 	base.set_owner(new_owner);
+	const faction_facilities_added = faction_rules.apply_free_base_facilities(base, new_owner);
 	const spoils_of_war = apply_spoils_of_war(game, new_owner, old_owner);
 	if (headquarters_evacuation != null) {
 		messages.to_players(
@@ -384,6 +387,7 @@ const capture_base = (game, base, new_owner) => {
 		empath_guild_infiltration: empath_guild_infiltration,
 		economic_victory_capture: economic_victory_capture,
 		spoils_of_war: spoils_of_war,
+		faction_facilities_added: faction_facilities_added,
 	};
 	if (#typeof(headquarters_evacuation_offer) == 'Callable') {
 		headquarters_evacuation_candidate.new_owner = new_owner;
@@ -416,6 +420,9 @@ const restore_base = (game, base, snapshot) => {
 	}
 	if (#is_defined(snapshot.spoils_of_war)) {
 		rollback_spoils_of_war(game, snapshot.spoils_of_war);
+	}
+	if (#is_defined(snapshot.faction_facilities_added)) {
+		faction_rules.rollback_free_base_facilities(base, snapshot.faction_facilities_added);
 	}
 	if (base.get_owner().id != snapshot.old_owner.id) {
 		base.set_owner(snapshot.old_owner);

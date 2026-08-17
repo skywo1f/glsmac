@@ -7,7 +7,11 @@ let police_rating = 0;
 let base_units = [];
 let supported_units = [];
 let base_values = {};
-const owner = {id: 1};
+let owner_faction_id = 'GAIANS';
+const owner = {
+	id: 1,
+	get_faction: () => { return {id: owner_faction_id}; },
+};
 values.f_economy_get_base_psych = (game, base) => { return psych_energy; };
 values.f_social_get_ratings = (player) => {
 	return {economy: 0, support: 0, talent: 0, police: police_rating, growth: 0};
@@ -338,3 +342,44 @@ test.assert(state.talents == 0 && state.drones == 0 && state.workers == 6);
 test.assert(state.is_rioting == false);
 test.assert(values.f_base_get_pending_production(base) == 8);
 base.unset('nerve_stapling_turns');
+
+police_rating = 0;
+base_units = [];
+supported_units = [];
+facilities = [];
+psych_energy = 0;
+owner_faction_id = 'UNIVERSITY';
+reset_laborers();
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 4 && state.workers == 2 && state.talents == 0);
+
+owner_faction_id = 'PEACEKEEPERS';
+reset_laborers();
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 1 && state.workers == 5 && state.talents == 0);
+
+pops = [
+	make_pop('WORKER', true),
+	make_pop('WORKER', true),
+	make_pop('WORKER', true),
+];
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 0 && state.workers == 2 && state.talents == 1);
+
+owner_faction_id = 'UNIVERSITY';
+pops = [];
+for (let i = 0; i < 16; i++) {
+	pops :+make_pop('WORKER', true);
+}
+values.f_base_process_psych(game, base, 0);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 17 && state.workers == 0 && state.talents == 0);
+
+psych_energy = 2;
+values.f_base_process_psych(game, base, psych_energy);
+state = values.f_base_get_psych(base);
+test.assert(state.drones == 16 && state.workers == 0 && state.talents == 0);
+owner_faction_id = 'GAIANS';

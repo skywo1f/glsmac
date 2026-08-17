@@ -108,27 +108,13 @@ const add_bonus_starting_technologies = (player, known, choose_bonus) => {
 };
 
 const get_acquired_technology_count = (player, known) => {
-	let starting = {};
 	let has_repeatable = false;
-	if (#typeof(player.get_faction) == 'Callable') {
-		const faction = player.get_faction();
-		if (
-			#is_defined(faction) &&
-			#typeof(faction.get_starting_technologies) == 'Callable'
-		) {
-			for (id of faction.get_starting_technologies()) {
-				starting[id] = true;
-			}
-		}
-	}
 	let result = 0;
 	for (id of known) {
 		if (id == REPEATABLE_TECHNOLOGY_ID) {
 			has_repeatable = true;
 		}
-		if (!#is_defined(starting[id])) {
-			result++;
-		}
+		result++;
 	}
 	if (#typeof(player.get_transcendent_thoughts) == 'Callable') {
 		result += #max(

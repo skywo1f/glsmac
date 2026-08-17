@@ -1,5 +1,6 @@
 const base_capture = #include('./base_capture');
 const project_acquisition = #include('./project_acquisition');
+const faction_rules = #include('./faction_rules');
 
 const get_base_manager = (game) => {
 	return #typeof(game.get_bm) == 'Callable' ? game.get_bm() : game.bm;
@@ -107,7 +108,9 @@ const transfer_base = (game, base, new_owner) => {
 	const old_owner = base.get_owner();
 	const old_queue = get_queue_specs(base);
 	const rehomed_units = base_capture.rehome_units(game, base, old_owner.id);
+	faction_rules.apply_free_base_facilities(base, old_owner);
 	base.set_owner(new_owner);
+	const faction_facilities_added = faction_rules.apply_free_base_facilities(base, new_owner);
 	const empath_guild_infiltration = base.has_facility('TheEmpathGuild')
 		? project_acquisition.apply_empath_guild(game, base)
 		: #undefined;
@@ -132,12 +135,16 @@ const transfer_base = (game, base, new_owner) => {
 		old_queue: old_queue,
 		rehomed_units: rehomed_units,
 		empath_guild_infiltration: empath_guild_infiltration,
+		faction_facilities_added: faction_facilities_added,
 	};
 };
 
 const restore_transfer = (game, snapshot) => {
 	if (#is_defined(snapshot.empath_guild_infiltration)) {
 		project_acquisition.rollback_empath_guild(snapshot.empath_guild_infiltration);
+	}
+	if (#is_defined(snapshot.faction_facilities_added)) {
+		faction_rules.rollback_free_base_facilities(snapshot.base, snapshot.faction_facilities_added);
 	}
 	snapshot.base.set_owner(snapshot.old_owner);
 	snapshot.base.set_production_queue(snapshot.old_queue);

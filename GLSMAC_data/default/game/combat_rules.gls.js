@@ -1,4 +1,5 @@
 const unit_abilities = #include('unit_abilities');
+const faction_rules = #include('faction_rules');
 const visibility_rules = #include('visibility_rules');
 
 const is_artillery = (def) => {
@@ -367,6 +368,12 @@ const get_combat_powers = (attacker, defender, game) => {
 		attack_modifier *= get_project_effects(attacker, game).psi_attack_multiplier;
 		defence_modifier *= get_project_effects(defender, game).psi_defense_multiplier;
 	}
+	const attacker_owner = #typeof(attacker.get_owner) == 'Callable'
+		? attacker.get_owner()
+		: null;
+	attack_modifier *= faction_rules.get_attack_multiplier(
+		attacker_owner, is_psi_combat
+	);
 	if (attacker.is_land && !attacker_def.is_native && attacker.movement < 1.0) {
 		attack_modifier *= attacker.movement;
 	}

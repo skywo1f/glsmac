@@ -1,4 +1,5 @@
 const pops = #include('pops');
+const faction_rules = #include('faction_rules');
 const unit_abilities = #include('unit_abilities');
 const prototype_rules = #include('prototype_rules');
 const supply_rules = #include('supply_rules');
@@ -274,7 +275,12 @@ const get_psych_state = (game, base) => {
 };
 
 const get_social_facility_effects = (game, base) => {
-	let result = {drone_modifier: 0, talent_bonus: 0, suppress_psych: false};
+	let result = {
+		drone_modifier: 0,
+		extra_drones: 0,
+		talent_bonus: 0,
+		suppress_psych: false,
+	};
 	if (!#is_defined(base.get_facilities)) {
 		return result;
 	}
@@ -308,10 +314,24 @@ const get_social_facility_effects = (game, base) => {
 	} else if (talent_rating > 0) {
 		result.talent_bonus = result.talent_bonus + 1;
 	}
+	const faction_psych = faction_rules.get_psych_modifiers(
+		base.get_owner(), base.get_size()
+	);
+	result.extra_drones = result.extra_drones + faction_psych.drones;
+	result.talent_bonus = result.talent_bonus + faction_psych.talents;
 	return result;
 };
 
 const apply_psych_improvements = (base, improvements) => {
+	for (pop of base.get_pops()) {
+		if (improvements <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONEPLUS') {
+			pop.set_type('DRONE');
+			improvements--;
+		}
+	}
 	for (pop of base.get_pops()) {
 		if (improvements <= 0) {
 			break;
@@ -332,7 +352,37 @@ const apply_psych_improvements = (base, improvements) => {
 	}
 };
 
+const add_extra_drones = (base, drones) => {
+	for (pop of base.get_pops()) {
+		if (drones <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'WORKER') {
+			pop.set_type('DRONE');
+			drones--;
+		}
+	}
+	for (pop of base.get_pops()) {
+		if (drones <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONE') {
+			pop.set_type('DRONEPLUS');
+			drones--;
+		}
+	}
+};
+
 const suppress_drones = (base, suppression) => {
+	for (pop of base.get_pops()) {
+		if (suppression <= 0) {
+			break;
+		}
+		if (pop.has('worked_tile') && pop.get_type() == 'DRONEPLUS') {
+			pop.set_type('DRONE');
+			suppression--;
+		}
+	}
 	for (pop of base.get_pops()) {
 		if (suppression <= 0) {
 			break;
@@ -377,6 +427,7 @@ const process_psych = (game, base, allocated_psych) => {
 			laborer_count++;
 		}
 	}
+	add_extra_drones(base, effects.extra_drones);
 	if (
 		effects.suppress_psych ||
 		(base.has('nerve_stapling_turns') && base.get('nerve_stapling_turns') > 0)
@@ -456,14 +507,15 @@ const get_tile_score = (base, tile, projected_size, current_nutrients) => {
 const get_population_limit = (game, base) => {
 	let limit = DEFAULT_POPULATION_LIMIT;
 	if (!#is_defined(base.get_facilities)) {
-		return limit;
+		return limit + faction_rules.get_population_limit_modifier(base.get_owner());
 	}
 	for (facility of get_effective_facilities(game, base)) {
 		if (#is_defined(facility.population_limit)) {
 			limit = #max(limit, facility.population_limit);
 		}
 	}
-	return limit + get_project_effects(game, base).population_limit_bonus;
+	return limit + get_project_effects(game, base).population_limit_bonus +
+		faction_rules.get_population_limit_modifier(base.get_owner());
 };
 
 const find_best_or_worst_tiles = (base, tiles, count, modifier, projected_size, require_available, excluded_keys) => { // modifier 1 to find best tiles, -1 to find worst tiles
@@ -604,12 +656,12 @@ const get_stable_worker_count = (game, base, allocated_psych) => {
 			#to_float(PSYCH_PER_IMPROVEMENT)
 		) + effects.talent_bonus;
 		const content_citizens = #max(CONTENT_CITIZENS - effects.drone_modifier, 0);
-		let drones = #max(workers - content_citizens, 0);
+		let drones = #max(workers - content_citizens, 0) + effects.extra_drones;
 		drones -= #min(drones, police_suppression);
 		const pacified = #min(drones, improvements);
 		drones -= pacified;
 		improvements -= pacified;
-		let talents = #min(workers - drones, improvements);
+		let talents = #min(#max(workers - drones, 0), improvements);
 		let pacifism_drones = police.pacifism_drones;
 		const neutral_workers = workers - drones - talents;
 		const converted_workers = #min(neutral_workers, pacifism_drones);
@@ -1034,7 +1086,9 @@ return (game) => {
 		) + project_effects.support_bonus;
 		result.MINERALS = #max(unit_support - free_support, 0);
 		for (facility of get_effective_facilities(game, e.base)) {
-			result.ENERGY = result.ENERGY + facility.energy_maintenance;
+			if (!faction_rules.has_free_base_facility(owner, facility.id)) {
+				result.ENERGY = result.ENERGY + facility.energy_maintenance;
+			}
 		}
 		result.ENERGY = #ceil(
 			#to_float(result.ENERGY) * project_effects.maintenance_multiplier

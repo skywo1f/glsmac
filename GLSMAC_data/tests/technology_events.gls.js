@@ -150,14 +150,19 @@ const calculate_research_cost = (
 	stagnation,
 	width,
 	height,
-	rival_known
+	rival_known,
+	starting_technologies
 ) => {
 	const cost_player = {
 		id: 1,
 		type: 'human',
 		difficulty_level: difficulty,
 		get_faction: () => {
-			return {get_starting_technologies: () => { return []; }};
+			return {
+				get_starting_technologies: () => {
+					return #is_defined(starting_technologies) ? starting_technologies : [];
+				},
+			};
 		},
 		get_research_state: () => {
 			return {technologies: known, target: 'Biogenetics', progress: 0, cost: 0};
@@ -220,6 +225,36 @@ test.assert(
 	calculate_research_cost(every_technology[0::9], 'Librarian', 0, 40, true, 112, 56, [])
 	== 405
 );
+test.assert(
+	calculate_research_cost(
+		['CentauriEcology'],
+		'Librarian',
+		0,
+		0,
+		false,
+		112,
+		56,
+		[],
+		['CentauriEcology']
+	) == 14
+);
+test.assert(
+	calculate_research_cost(
+		['InformationNetworks', 'Biogenetics'],
+		'Librarian',
+		2,
+		0,
+		false,
+		112,
+		56,
+		[],
+		['InformationNetworks']
+	) == 16
+);
+test.assert(technologies.get_acquired_technology_count(
+	{get_faction: () => { return {get_starting_technologies: () => { return ['Biogenetics']; }}; }},
+	['Biogenetics']
+) == 1);
 
 const base = {
 	get_intake: () => { return {ENERGY: 6}; },

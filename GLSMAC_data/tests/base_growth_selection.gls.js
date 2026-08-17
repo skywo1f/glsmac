@@ -35,7 +35,11 @@ define_bases(game);
 callbacks.start({});
 events = [];
 
-const owner = {id: 1};
+let owner_faction_id = 'GAIANS';
+const owner = {
+	id: 1,
+	get_faction: () => { return {id: owner_faction_id}; },
+};
 const make_tile = (x, nutrients, minerals, energy) => {
 	let working_pop = #undefined;
 	let tile_base = null;
@@ -182,6 +186,21 @@ test.assert(#sizeof(events) == 1);
 test.assert(events[0].name == 'add_base_pop');
 test.assert(values.f_base_get_population_limit(base) == 14);
 facilities = [];
+
+owner_faction_id = 'MORGANITES';
+test.assert(values.f_base_get_population_limit(base) == 4);
+facilities = [{population_limit: 14}];
+test.assert(values.f_base_get_population_limit(base) == 11);
+
+owner_faction_id = 'PEACEKEEPERS';
+facilities = [];
+test.assert(values.f_base_get_population_limit(base) == 9);
+facilities = [{population_limit: 14}];
+test.assert(values.f_base_get_population_limit(base) == 16);
+
+owner_faction_id = 'GAIANS';
+facilities = [];
+test.assert(values.f_base_get_population_limit(base) == 7);
 
 const mineral_pop = {has: (key) => { return key == 'worked_tile'; }};
 const nutrient_pop = {has: (key) => { return key == 'worked_tile'; }};

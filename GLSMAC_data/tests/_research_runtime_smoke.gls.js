@@ -138,7 +138,7 @@
 					player.get_faction().id != 'GAIANS' ||
 					state.technologies != ['CentauriEcology'] ||
 					state.target != 'Biogenetics' ||
-					state.progress != 0 || state.cost <= 0
+					state.progress != 0 || state.cost != 2
 				) {
 					fail('initial Gaian research state is invalid');
 					return;

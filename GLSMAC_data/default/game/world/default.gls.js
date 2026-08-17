@@ -2,6 +2,8 @@
 	normal game start
  */
 
+const faction_rules = #include('../faction_rules');
+
 return (game) => {
 
 	// variables
@@ -65,6 +67,14 @@ return (game) => {
 	for (player of players) {
 
 		const faction = player.get_faction();
+
+		const is_native = #is_defined(faction.is_native) && faction.is_native;
+		if (!is_native) {
+			game.event('process_player_economy', {
+				player: player,
+				energy_credits: faction_rules.get_starting_energy(player),
+			});
+		}
 
 		const tile = get_good_starting_base_location(faction.is_naval);
 

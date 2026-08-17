@@ -29,13 +29,17 @@ const game = {
 
 define_bases(game);
 
-const owner = {id: 1};
+let owner_faction_id = 'GAIANS';
+const owner = {
+	id: 1,
+	get_faction: () => { return {id: owner_faction_id}; },
+};
 let base_size = 2;
 const base = {
 	id: 7,
 	get_owner: () => { return owner; },
 	get_size: () => { return base_size; },
-	get_facilities: () => { return [{energy_maintenance: 2}]; },
+	get_facilities: () => { return [{id: 'NetworkNode', energy_maintenance: 2}]; },
 };
 const supported = (owner_id, home_base_id, abilities, weapon) => {
 	const def = {
@@ -81,6 +85,15 @@ base_size = 4;
 consumption = callbacks.get_base_consumption({base: base});
 test.assert(consumption == {NUTRIENTS: 8, MINERALS: 0, ENERGY: 2});
 
+
+owner_faction_id = 'UNIVERSITY';
+base_size = 2;
+units = [];
+consumption = callbacks.get_base_consumption({base: base});
+test.assert(consumption.NUTRIENTS == 4);
+test.assert(consumption.MINERALS == 0);
+test.assert(consumption.ENERGY == 0);
+owner_faction_id = 'GAIANS';
 base_size = 0;
 units = [supported(owner.id, base.id)];
 consumption = callbacks.get_base_consumption({base: base});

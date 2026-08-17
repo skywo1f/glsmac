@@ -204,6 +204,12 @@ const make_player = (id, name) => {
 			}
 		},
 		get_explored_tiles: () => { return explored_tiles; },
+		get_faction: () => {
+			return {
+				id: id == 1 ? 'HIVE' : (id == 2 ? 'UNIVERSITY' : 'GAIANS'),
+				name: name,
+			};
+		},
 	};
 	return player;
 };
@@ -234,6 +240,16 @@ const make_base = (id, name, owner, x, facilities, production_ids) => {
 				if (facility.id == facility_id) { return true; }
 			}
 			return false;
+		},
+		add_facility: (facility_id) => {
+			facilities :+{id: facility_id, is_project: false};
+		},
+		remove_facility: (facility_id) => {
+			let remaining = [];
+			for (facility of facilities) {
+				if (facility.id != facility_id) { remaining :+facility; }
+			}
+			facilities = remaining;
 		},
 		get_production_queue: () => { return queue; },
 		can_produce: (kind, production_id) => {
@@ -570,6 +586,10 @@ test.assert(beta.has_explored(alpha_map_tile));
 test.assert(alpha.has_explored(beta_map_tile));
 test.assert(alpha_trade_base.get_owner().id == beta.id);
 test.assert(beta_trade_base.get_owner().id == alpha.id);
+test.assert(alpha_trade_base.has_facility('PerimeterDefense'));
+test.assert(alpha_trade_base.has_facility('NetworkNode'));
+test.assert(beta_trade_base.has_facility('NetworkNode'));
+test.assert(beta_trade_base.has_facility('PerimeterDefense'));
 test.assert(alpha_supported.home_base_id == alpha_headquarters.id);
 test.assert(beta_supported.home_base_id == beta_headquarters.id);
 const transferred_alpha_queue = alpha_trade_base.get_production_queue();
@@ -593,6 +613,10 @@ test.assert(!beta.has_explored(alpha_map_tile));
 test.assert(!alpha.has_explored(beta_map_tile));
 test.assert(alpha_trade_base.get_owner().id == alpha.id);
 test.assert(beta_trade_base.get_owner().id == beta.id);
+test.assert(alpha_trade_base.has_facility('PerimeterDefense'));
+test.assert(!alpha_trade_base.has_facility('NetworkNode'));
+test.assert(beta_trade_base.has_facility('NetworkNode'));
+test.assert(!beta_trade_base.has_facility('PerimeterDefense'));
 test.assert(alpha_supported.home_base_id == alpha_trade_base.id);
 test.assert(beta_supported.home_base_id == beta_trade_base.id);
 test.assert(#sizeof(alpha_trade_base.get_production_queue()) == 2);
