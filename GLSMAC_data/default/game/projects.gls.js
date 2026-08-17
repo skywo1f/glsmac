@@ -223,7 +223,12 @@ const get_effects = (game, base, player_effects) => {
 const get_effective_facilities = (game, base, owned_projects) => {
 	let result = [];
 	let seen = {};
+	const pressure_dome_replaces_recycling =
+		#is_defined(base.has_facility) && base.has_facility('PressureDome');
 	for (facility of base.get_facilities()) {
+		if (pressure_dome_replaces_recycling && facility.id == 'RecyclingTanks') {
+			continue;
+		}
 		result :+facility;
 		seen[facility.id] = true;
 	}

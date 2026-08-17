@@ -148,6 +148,17 @@ private:
 	gse::value::Object* const GetIntake( GSE_CALLABLE );
 	gse::value::Object* const GetConsumption( GSE_CALLABLE );
 	void RestoreWorkedTiles( GSE_CALLABLE );
+	bool CanProduce(
+		const production_t& production,
+		const facilities_t& planned_facilities,
+		const facilities_t& planned_projects
+	) const;
+	bool HasEffectiveFacility(
+		const std::string& id,
+		const facilities_t& planned_facilities
+	) const;
+	bool HasOwnedProject( const std::string& id, const facilities_t& planned_projects ) const;
+	bool HasWaterAccess() const;
 	bool ValidateProductionQueue( const production_queue_t& production_queue, std::string& error ) const;
 	bool ValidateFacilities( const facilities_t& facilities, std::string& error ) const;
 

@@ -249,7 +249,61 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 	return false;
 }
 
+bool Base::HasEffectiveFacility(
+	const std::string& id,
+	const facilities_t& planned_facilities
+) const {
+	if ( HasFacility( id ) || planned_facilities.find( id ) != planned_facilities.end() ) {
+		return true;
+	}
+	if ( !m_owner ) {
+		return false;
+	}
+	const auto* const bm = m_game->GetBM();
+	for ( const auto& it : bm->GetFacilityDefs() ) {
+		const auto* const project = it.second;
+		if ( project->m_is_project && project->m_granted_facility == id ) {
+			const auto* const project_base = bm->GetProjectBase( project->m_id );
+			if ( project_base && project_base->m_owner == m_owner ) {
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+bool Base::HasOwnedProject(
+	const std::string& id,
+	const facilities_t& planned_projects
+) const {
+	if ( planned_projects.find( id ) != planned_projects.end() ) {
+		return true;
+	}
+	const auto* const project_base = m_game->GetBM()->GetProjectBase( id );
+	return project_base && project_base->m_owner == m_owner;
+}
+
+bool Base::HasWaterAccess() const {
+	if ( m_tile->is_water_tile ) {
+		return true;
+	}
+	for ( const auto* const neighbour : m_tile->neighbours ) {
+		if ( neighbour->is_water_tile ) {
+			return true;
+		}
+	}
+	return false;
+}
+
 bool Base::CanProduce( const production_t& production ) const {
+	return CanProduce( production, {}, {} );
+}
+
+bool Base::CanProduce(
+	const production_t& production,
+	const facilities_t& planned_facilities,
+	const facilities_t& planned_projects
+) const {
 	if ( production.id.empty() ) {
 		return false;
 	}
@@ -259,7 +313,7 @@ bool Base::CanProduce( const production_t& production ) const {
 		case PK_FACILITY:
 		case PK_PROJECT: {
 			auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
-			const auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
+			auto* const owner = m_owner ? m_owner->GetPlayer() : nullptr;
 			const bool is_conversion = def && def->m_mineral_to_energy_divisor > 0;
 			const bool is_orbital = def && (
 				!def->m_orbital_resource.empty() || def->m_orbital_defense
@@ -268,26 +322,81 @@ bool Base::CanProduce( const production_t& production ) const {
 				? m_game->GetBM()->GetProjectBase( "TheSpaceElevator" )
 				: nullptr;
 			const bool has_orbital_access =
-				is_orbital && space_elevator && space_elevator->m_owner == m_owner;
-			return
-				def &&
-				def->m_is_project == ( production.kind == PK_PROJECT ) &&
-				( def->m_mineral_cost > 0 || is_conversion ) &&
-				( is_conversion || is_orbital || !HasFacility( production.id ) ) &&
-				( !def->m_is_project || !m_game->GetBM()->GetProjectBase( production.id ) ) &&
-				(
-					def->m_required_facility.empty() ||
-					HasFacility( def->m_required_facility ) ||
-					has_orbital_access
-				) &&
-				(
-					def->m_required_project.empty() ||
-					m_game->GetBM()->GetProjectBase( def->m_required_project )
-				) &&
-				(
-					def->m_required_technology.empty() ||
-					( owner && owner->HasTechnology( def->m_required_technology ) )
+				is_orbital && (
+					( space_elevator && space_elevator->m_owner == m_owner ) ||
+					planned_projects.find( "TheSpaceElevator" ) != planned_projects.end()
 				);
+			if (
+				!def ||
+				def->m_is_project != ( production.kind == PK_PROJECT ) ||
+				( def->m_mineral_cost <= 0 && !is_conversion ) ||
+				(
+					def->m_is_project && (
+						m_game->GetBM()->GetProjectBase( production.id ) ||
+						planned_projects.find( production.id ) != planned_projects.end()
+					)
+				) ||
+				(
+					!def->m_is_project && !is_conversion && !is_orbital &&
+					HasEffectiveFacility( production.id, planned_facilities )
+				) ||
+				(
+					!def->m_required_facility.empty() &&
+					!HasEffectiveFacility( def->m_required_facility, planned_facilities ) &&
+					!has_orbital_access
+				) ||
+				(
+					!def->m_required_project.empty() &&
+					!m_game->GetBM()->GetProjectBase( def->m_required_project ) &&
+					planned_projects.find( def->m_required_project ) == planned_projects.end()
+				) ||
+				(
+					!def->m_required_technology.empty() &&
+					( !owner || !owner->HasTechnology( def->m_required_technology ) )
+				)
+			) {
+				return false;
+			}
+
+			const auto has_facility = [this, &planned_facilities]( const std::string& id ) {
+				return HasEffectiveFacility( id, planned_facilities );
+			};
+			if ( production.id == "RecyclingTanks" && has_facility( "PressureDome" ) ) {
+				return false;
+			}
+			if (
+				production.id == "HologramTheatre" &&
+				HasOwnedProject( "TheVirtualWorld", planned_projects )
+			) {
+				return false;
+			}
+			if ( production.id == "ParadiseGarden" && has_facility( "PunishmentSphere" ) ) {
+				return false;
+			}
+			if ( production.id == "PunishmentSphere" && has_facility( "ParadiseGarden" ) ) {
+				return false;
+			}
+			if (
+				production.id == "Nanoreplicator" &&
+				!has_facility( "RoboticAssemblyPlant" ) &&
+				!has_facility( "GenejackFactory" )
+			) {
+				return false;
+			}
+			if ( production.id == "NavalYard" && !HasWaterAccess() ) {
+				return false;
+			}
+			if ( production.id == "Skunkworks" && owner ) {
+				const auto* const faction = owner->GetFaction();
+				const auto& difficulty = owner->GetDifficultyLevel();
+				if (
+					( faction && faction->m_id == "SPARTANS" ) ||
+					difficulty == "Citizen" || difficulty == "Specialist"
+				) {
+					return false;
+				}
+			}
+			return true;
 		}
 	}
 	return false;
@@ -1613,19 +1722,22 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 		return false;
 	}
 	std::unordered_set< std::string > queued_constructions = {};
+	facilities_t planned_facilities = {};
+	facilities_t planned_projects = {};
 	size_t index = 0;
 	for ( const auto& production : production_queue ) {
 		if ( production.kind < PK_UNIT || production.kind > PK_PROJECT || production.id.empty() ) {
 			error = "Invalid production queue entry";
 			return false;
 		}
-		if ( !CanProduce( production ) ) {
+		if ( !CanProduce( production, planned_facilities, planned_projects ) ) {
 			error = "Cannot produce " + GetProductionKindString( production.kind ) + ": " + production.id;
 			return false;
 		}
 		bool is_repeatable = false;
+		const FacilityDef* def = nullptr;
 		if ( production.kind == PK_FACILITY ) {
-			const auto* const def = m_game->GetBM()->GetFacilityDef( production.id );
+			def = m_game->GetBM()->GetFacilityDef( production.id );
 			is_repeatable = def && (
 				def->m_mineral_to_energy_divisor > 0 ||
 				!def->m_orbital_resource.empty() ||
@@ -1643,6 +1755,16 @@ bool Base::ValidateProductionQueue( const production_queue_t& production_queue, 
 		) {
 			error = "Construction is already in the production queue: " + production.id;
 			return false;
+		}
+		if ( !is_repeatable && production.kind == PK_FACILITY ) {
+			planned_facilities.insert( production.id );
+		}
+		else if ( production.kind == PK_PROJECT ) {
+			planned_projects.insert( production.id );
+			def = m_game->GetBM()->GetFacilityDef( production.id );
+			if ( def && !def->m_granted_facility.empty() ) {
+				planned_facilities.insert( def->m_granted_facility );
+			}
 		}
 		index++;
 	}

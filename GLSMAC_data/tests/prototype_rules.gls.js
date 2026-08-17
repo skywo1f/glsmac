@@ -3,6 +3,7 @@ const prototype_rules = #include('../default/game/prototype_rules');
 let components = ['ColonyModule', 'HandWeapons', 'Infantry', 'NoArmor'];
 let faction_id = 'UNIVERSITY';
 const player = {
+	difficulty_level: 'Talent',
 	get_faction: () => { return {id: faction_id}; },
 	get_prototyped_components: () => { return #clone(components); },
 	has_prototyped_component: (id) => {
@@ -56,6 +57,16 @@ faction_id = 'SPARTANS';
 test.assert(prototype_rules.has_cost_waiver(base));
 test.assert(prototype_rules.get_mineral_cost(base, prototype, 20) == 20);
 faction_id = 'UNIVERSITY';
+
+player.difficulty_level = 'Citizen';
+test.assert(prototype_rules.has_cost_waiver(base));
+test.assert(prototype_rules.get_mineral_cost(base, prototype, 20) == 20);
+player.difficulty_level = 'Specialist';
+test.assert(prototype_rules.has_cost_waiver(base));
+test.assert(prototype_rules.get_mineral_cost(base, prototype, 20) == 20);
+player.difficulty_level = 'Talent';
+test.assert(!prototype_rules.has_cost_waiver(base));
+test.assert(prototype_rules.get_mineral_cost(base, prototype, 20) == 30);
 
 test.assert(prototype_rules.get_mineral_cost(base, {
 	production_kind: 'unit',

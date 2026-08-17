@@ -34,12 +34,19 @@ const is_prototype = (player, def) => {
 };
 
 const has_cost_waiver = (base) => {
+	const owner = base.get_owner();
+	if (
+		#is_defined(owner.difficulty_level) &&
+		(owner.difficulty_level == 'Citizen' || owner.difficulty_level == 'Specialist')
+	) {
+		return true;
+	}
 	for (facility of base.get_facilities()) {
 		if (#is_defined(facility.prototype_cost_waiver) && facility.prototype_cost_waiver) {
 			return true;
 		}
 	}
-	return base.get_owner().get_faction().id == 'SPARTANS';
+	return owner.get_faction().id == 'SPARTANS';
 };
 
 const get_mineral_cost = (base, production, base_cost) => {

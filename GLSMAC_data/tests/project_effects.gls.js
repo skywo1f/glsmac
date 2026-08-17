@@ -2,6 +2,8 @@ const define_projects = #include('../default/game/projects');
 
 const command_center = {id: 'CommandCenter', is_project: false};
 const network_node = {id: 'NetworkNode', is_project: false};
+const recycling_tanks = {id: 'RecyclingTanks', is_project: false};
+const pressure_dome = {id: 'PressureDome', is_project: false};
 const project = {
 	id: 'TestProject',
 	is_project: true,
@@ -39,10 +41,18 @@ const project_base = {
 	get_facilities: () => { return [project]; },
 	has_facility: (id) => { return id == project.id; },
 };
+let target_facilities = [network_node];
 const target_base = {
 	get_owner: () => { return owner; },
-	get_facilities: () => { return [network_node]; },
-	has_facility: (id) => { return id == 'NetworkNode'; },
+	get_facilities: () => { return target_facilities; },
+	has_facility: (id) => {
+		for (facility of target_facilities) {
+			if (facility.id == id) {
+				return true;
+			}
+		}
+		return false;
+	},
 };
 const rival_base = {
 	get_owner: () => { return rival; },
@@ -112,6 +122,9 @@ test.assert(values.f_project_get_effects(target_base) == {
 test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);
+target_facilities = [recycling_tanks, pressure_dome];
+test.assert(values.f_base_get_effective_facilities(target_base) == [pressure_dome, command_center]);
+target_facilities = [network_node];
 
 project.id = 'ThePholusMutagen';
 invalidate_projects();
