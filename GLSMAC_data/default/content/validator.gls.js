@@ -55,7 +55,9 @@ const facility_fields = {
 	global_maintenance_multiplier: true,
 	global_native_lifecycle_bonus: true,
 	network_node_drone_modifier: true,
+	network_node_psych_multiplier: true,
 	network_node_research_bonus: true,
+	global_ecology_divisor_bonus: true,
 	worked_tile_energy_bonus: true,
 	forest_nutrient_bonus: true,
 	forest_mineral_bonus: true,
@@ -539,7 +541,17 @@ const validate_facilities = (facilities, technologies, errors) => {
 			0 - MAX_DEFINITION_VALUE,
 			MAX_DEFINITION_VALUE
 		);
+		validate_number(
+			data,
+			'network_node_psych_multiplier',
+			path,
+			errors,
+			false,
+			0.0,
+			10.0
+		);
 		validate_int(data, 'network_node_research_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
+		validate_int(data, 'global_ecology_divisor_bonus', path, errors, false, 0, 10);
 		validate_int(data, 'worked_tile_energy_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'forest_nutrient_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
 		validate_int(data, 'forest_mineral_bonus', path, errors, false, 0, MAX_DEFINITION_VALUE);
@@ -716,8 +728,16 @@ const validate_facilities = (facilities, technologies, errors) => {
 				data.network_node_drone_modifier != 0
 			) ||
 			(
+				#is_defined(data.network_node_psych_multiplier) &&
+				data.network_node_psych_multiplier > 0.0
+			) ||
+			(
 				#is_defined(data.network_node_research_bonus) &&
 				data.network_node_research_bonus > 0
+			) ||
+			(
+				#is_defined(data.global_ecology_divisor_bonus) &&
+				data.global_ecology_divisor_bonus > 0
 			) ||
 			(#is_defined(data.worked_tile_energy_bonus) && data.worked_tile_energy_bonus > 0) ||
 			(#is_defined(data.forest_nutrient_bonus) && data.forest_nutrient_bonus > 0) ||

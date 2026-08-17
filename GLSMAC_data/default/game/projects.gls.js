@@ -13,7 +13,9 @@ const empty_effects = () => {
 		maintenance_multiplier: 1.0,
 		native_lifecycle_bonus: 0,
 		network_node_drone_modifier: 0,
+		network_node_psych_multiplier: 0.0,
 		network_node_research_bonus: 0,
+		psych_multiplier: 0.0,
 		prevent_riots: false,
 		terraforming_rate_multiplier: 1.0,
 		advanced_terraforming: false,
@@ -122,6 +124,11 @@ const get_player_effects = (game, player, owned_projects) => {
 			project.global_native_lifecycle_bonus;
 		result.network_node_drone_modifier = result.network_node_drone_modifier +
 			project.network_node_drone_modifier;
+		result.network_node_psych_multiplier = result.network_node_psych_multiplier + (
+			#is_defined(project.network_node_psych_multiplier)
+				? project.network_node_psych_multiplier
+				: 0.0
+		);
 		result.network_node_research_bonus = result.network_node_research_bonus +
 			project.network_node_research_bonus;
 		result.prevent_riots = result.prevent_riots || project.global_prevent_riots;
@@ -169,6 +176,11 @@ const get_player_effects = (game, player, owned_projects) => {
 				? project.global_extra_police_units
 				: 0
 		);
+		result.ecology_divisor_bonus = result.ecology_divisor_bonus + (
+			#is_defined(project.global_ecology_divisor_bonus)
+				? project.global_ecology_divisor_bonus
+				: 0
+		);
 		if (project.id == 'TheNanoFactory') {
 			result.unit_upgrade_cost_multiplier = 0.5;
 		}
@@ -177,7 +189,6 @@ const get_player_effects = (game, player, owned_projects) => {
 			result.orbital_production_multiplier = 2.0;
 		}
 		if (project.id == 'ThePholusMutagen') {
-			result.ecology_divisor_bonus = result.ecology_divisor_bonus + 1;
 			result.native_fungus_combat = true;
 		}
 		if (project.id == 'TheXenoempathyDome') {
@@ -206,16 +217,21 @@ const get_effects = (game, base, player_effects) => {
 	let result = #is_defined(player_effects)
 		? player_effects
 		: get_player_effects(game, base.get_owner());
-	if (
+	const economy_multiplier = (
 		base.has_facility('TheLongevityVaccine') &&
 		base.get_owner().get_social_engineering().economics == 'FreeMarket'
-	) {
+	) ? 0.5 : 0.0;
+	const psych_multiplier = base.has_facility('NetworkNode')
+		? result.network_node_psych_multiplier
+		: 0.0;
+	if (economy_multiplier != 0.0 || psych_multiplier != 0.0) {
 		let local_effects = {};
 		for (key in result) {
 			local_effects[key] = result[key];
 		}
 		result = local_effects;
-		result.economy_multiplier = result.economy_multiplier + 0.5;
+		result.economy_multiplier = result.economy_multiplier + economy_multiplier;
+		result.psych_multiplier = result.psych_multiplier + psych_multiplier;
 	}
 	return result;
 };

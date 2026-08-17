@@ -245,17 +245,19 @@ const get_completion_turns = (tile, unit, type, project_effects) => {
 
 const get_contribution = (unit, type, project_effects) => {
 	let contribution = unit_abilities.has(unit, 'SuperFormer') ? 4 : 2;
+	let multiplier = type == 'remove_fungus'
+		? 1.0
+		: (
+			#is_defined(project_effects.terraforming_rate_multiplier)
+				? project_effects.terraforming_rate_multiplier
+				: 1.0
+		);
 	if (is_fungus_order(type)) {
-		const multiplier = #is_defined(project_effects.fungus_terraforming_rate_multiplier)
+		multiplier *= #is_defined(project_effects.fungus_terraforming_rate_multiplier)
 			? project_effects.fungus_terraforming_rate_multiplier
 			: 1.0;
-		contribution = #floor(#to_float(contribution) * multiplier);
-	} else {
-		const multiplier = #is_defined(project_effects.terraforming_rate_multiplier)
-			? project_effects.terraforming_rate_multiplier
-			: 1.0;
-		contribution = #floor(#to_float(contribution) * multiplier);
 	}
+	contribution = #floor(#to_float(contribution) * multiplier);
 	return #max(1, contribution);
 };
 

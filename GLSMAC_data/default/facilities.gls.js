@@ -2,10 +2,11 @@ const manifest = #include('content/base_facilities');
 const game_rules = #include('game/game_rules');
 
 const effects = {
-	Headquarters: {energy_bonus: 1},
+	Headquarters: {energy_bonus: 1, defender_morale_bonus: 1},
 	ChildrenSCreche: {
 		growth_rating_bonus: 2,
 		efficiency_rating_bonus: 2,
+		defender_morale_bonus: 1,
 		defender_morale_minimum: 1,
 	},
 	RecyclingTanks: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
@@ -104,7 +105,10 @@ const project_effects = {
 	TheMerchantExchange: {worked_tile_energy_bonus: 1},
 	TheEmpathGuild: {},
 	TheCitizensDefenseForce: {granted_facility: 'PerimeterDefense'},
-	TheVirtualWorld: {network_node_drone_modifier: -2},
+	TheVirtualWorld: {
+		network_node_drone_modifier: -2,
+		network_node_psych_multiplier: 0.5,
+	},
 	ThePlanetaryTransitSystem: {new_base_population: 3, small_base_drone_modifier: -1},
 	TheXenoempathyDome: {global_native_lifecycle_bonus: 1},
 	TheNeuralAmplifier: {global_psi_defense_multiplier: 1.5},
@@ -120,7 +124,10 @@ const project_effects = {
 	},
 	TheLongevityVaccine: {},
 	TheHunterSeekerAlgorithm: {},
-	ThePholusMutagen: {global_native_lifecycle_bonus: 1},
+	ThePholusMutagen: {
+		global_native_lifecycle_bonus: 1,
+		global_ecology_divisor_bonus: 1,
+	},
 	TheUniversalTranslator: {},
 	TheCyborgFactory: {granted_facility: 'BioenhancementCenter'},
 	TheTheoryOfEverything: {research_multiplier: 1.0},
@@ -135,7 +142,10 @@ const project_effects = {
 	},
 	ClinicalImmortality: {global_talent_bonus: 1},
 	TheSpaceElevator: {economy_multiplier: 1.0},
-	TheSingularityInductor: {granted_facility: 'QuantumConverter'},
+	TheSingularityInductor: {
+		granted_facility: 'QuantumConverter',
+		global_ecology_divisor_bonus: 1,
+	},
 	TheBulkMatterTransmitter: {global_mineral_bonus: 2},
 	TheTelepathicMatrix: {global_prevent_riots: true},
 	TheVoiceOfPlanet: {global_native_lifecycle_bonus: 1},

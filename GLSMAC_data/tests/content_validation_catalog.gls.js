@@ -12,9 +12,10 @@ test.assert(content.get_facility(catalog, 'HybridForest').data.forest_energy_bon
 test.assert(catalog.facility_coverage.status.TreeFarm == 'complete');
 test.assert(catalog.facility_coverage.status.HybridForest == 'complete');
 test.assert(content.get_facility(catalog, 'Headquarters').data.energy_bonus == 1);
-test.assert(!#is_defined(content.get_facility(catalog, 'Headquarters').data.defender_morale_bonus));
+test.assert(content.get_facility(catalog, 'Headquarters').data.defender_morale_bonus == 1);
 test.assert(catalog.facility_coverage.status.Headquarters == 'complete');
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.efficiency_rating_bonus == 2);
+test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.defender_morale_bonus == 1);
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.defender_morale_minimum == 1);
 test.assert(catalog.facility_coverage.status.ChildrenSCreche == 'complete');
 test.assert(catalog.facility_coverage.status.BioenhancementCenter == 'complete');
@@ -61,6 +62,15 @@ for (id of [
 }
 test.assert(content.get_facility(catalog, 'TheAsceticVirtues').data.global_police_rating_bonus == 1);
 test.assert(content.get_facility(catalog, 'TheSelfAwareColony').data.global_extra_police_units == 1);
+test.assert(
+	content.get_facility(catalog, 'TheVirtualWorld').data.network_node_psych_multiplier == 0.5
+);
+test.assert(
+	content.get_facility(catalog, 'ThePholusMutagen').data.global_ecology_divisor_bonus == 1
+);
+test.assert(
+	content.get_facility(catalog, 'TheSingularityInductor').data.global_ecology_divisor_bonus == 1
+);
 test.assert(catalog.project_coverage.status.TheLongevityVaccine == 'complete');
 test.assert(catalog.project_coverage.status.TheCloningVats == 'complete');
 test.assert(catalog.project_coverage.status.TheTelepathicMatrix == 'complete');

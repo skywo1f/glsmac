@@ -221,7 +221,11 @@ test.assert(social_powers.attack == 2.25);
 test.assert(social_powers.defence == 2.5);
 
 const creche_tile = make_tile();
-make_base(creche_tile, 2, [{defender_morale_minimum: 1}]);
+make_base(creche_tile, 2, [{
+	id: 'ChildrenSCreche',
+	defender_morale_bonus: 1,
+	defender_morale_minimum: 1,
+}]);
 const creche_defender = make_unit(creche_tile, 2, 1, 2, false, 'land');
 let creche_social_bonus = 0 - 2;
 const creche_game = {
@@ -236,9 +240,10 @@ const creche_game = {
 	},
 };
 test.assert(combat_rules.get_base_defender_morale_minimum(creche_defender, creche_game) == 1);
+test.assert(combat_rules.get_base_defender_morale_bonus(creche_defender, creche_game) == 1);
 test.assert(combat_rules.get_combat_powers(attacker, creche_defender, creche_game).defence == 2.8125);
 creche_social_bonus = 2;
-test.assert(combat_rules.get_combat_powers(attacker, creche_defender, creche_game).defence == 3.125);
+test.assert(combat_rules.get_combat_powers(attacker, creche_defender, creche_game).defence == 3.4375);
 creche_social_bonus = 0 - 2;
 const creche_occupier = make_unit(creche_tile, 3, 1, 2, false, 'land');
 test.assert(combat_rules.get_base_defender_morale_minimum(creche_occupier, creche_game) == 0);
@@ -250,7 +255,18 @@ const creche_occupier_defence = combat_rules.get_combat_powers(
 ).defence;
 test.assert(creche_occupier_defence == 1.875);
 const creche_native = make_unit(creche_tile, 2, 1, 2, true, 'land');
-test.assert(combat_rules.get_combat_powers(attacker, creche_native, creche_game).defence == 2.5);
+test.assert(combat_rules.get_combat_powers(attacker, creche_native, creche_game).defence == 2.8125);
+const creche_attacker = make_unit(creche_tile, 2, 2, 1, false, 'land');
+test.assert(combat_rules.get_base_attacker_morale_bonus(creche_attacker, creche_game) == 1);
+test.assert(combat_rules.get_social_morale_bonus(creche_attacker, creche_game, false) == 0);
+test.assert(combat_rules.get_combat_powers(creche_attacker, attacker, creche_game).attack == 2.25);
+creche_social_bonus = 2;
+test.assert(combat_rules.get_combat_powers(creche_attacker, attacker, creche_game).attack == 2.75);
+creche_social_bonus = 0 - 2;
+const creche_native_attacker = make_unit(creche_tile, 2, 2, 1, true, 'land');
+test.assert(
+	combat_rules.get_combat_powers(creche_native_attacker, attacker, creche_game).attack == 3.375
+);
 
 const stack_tile = make_tile();
 const weak_defender = make_unit(stack_tile, 2, 1, 1, false, 'land');

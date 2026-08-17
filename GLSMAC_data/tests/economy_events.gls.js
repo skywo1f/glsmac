@@ -73,6 +73,7 @@ const deficit_base = {
 let callbacks = {};
 let efficiency_rating = 0;
 let project_economy_multiplier = 0.0;
+let project_psych_multiplier = 0.0;
 let values = {
 	f_technology_get_base_labs: (base) => {
 		return {
@@ -87,7 +88,10 @@ let values = {
 	f_technology_get_definition: (id) => { return null; },
 	f_technology_get_total_commerce_bonus: () => { return 6; },
 	f_project_get_effects: (base) => {
-		return {economy_multiplier: project_economy_multiplier};
+		return {
+			economy_multiplier: project_economy_multiplier,
+			psych_multiplier: project_psych_multiplier,
+		};
 	},
 	f_base_get_pending_production: (base) => {
 		return base.id == positive_base.id
@@ -163,6 +167,10 @@ test.assert(values.f_economy_get_base_psych(game, positive_base) == 6);
 positive_psych_multiplier = 0.5;
 test.assert(values.f_economy_get_base_psych(game, positive_base) == 7);
 positive_psych_multiplier = 0.0;
+project_psych_multiplier = 0.5;
+test.assert(values.f_economy_get_base_psych(game, positive_base) == 7);
+test.assert(values.f_economy_get_base_allocation(game, positive_base).psych.bonus == 5);
+project_psych_multiplier = 0.0;
 positive_economy_multiplier = 0.5;
 const bank_allocation = values.f_economy_get_base_allocation(game, positive_base);
 test.assert(bank_allocation.economy.value == 4);

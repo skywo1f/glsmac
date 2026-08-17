@@ -16,7 +16,9 @@ const project = {
 	global_maintenance_multiplier: 0.5,
 	global_native_lifecycle_bonus: 1,
 	network_node_drone_modifier: -2,
+	network_node_psych_multiplier: 0.5,
 	network_node_research_bonus: 1,
+	global_ecology_divisor_bonus: 1,
 	global_prevent_riots: true,
 	global_terraforming_rate_multiplier: 1.5,
 	global_advanced_terraforming: true,
@@ -94,7 +96,9 @@ test.assert(values.f_project_get_effects(target_base) == {
 	maintenance_multiplier: 0.5,
 	native_lifecycle_bonus: 1,
 	network_node_drone_modifier: -2,
+	network_node_psych_multiplier: 0.5,
 	network_node_research_bonus: 1,
+	psych_multiplier: 0.5,
 	prevent_riots: true,
 	terraforming_rate_multiplier: 1.5,
 	advanced_terraforming: true,
@@ -107,7 +111,7 @@ test.assert(values.f_project_get_effects(target_base) == {
 	police_rating_bonus: 1,
 	extra_police_units: 2,
 	unit_upgrade_cost_multiplier: 1.0,
-	ecology_divisor_bonus: 0,
+	ecology_divisor_bonus: 1,
 	native_fungus_combat: false,
 	fungus_movement_as_road: false,
 	fungus_terraforming_rate_multiplier: 1.0,
@@ -119,7 +123,9 @@ test.assert(values.f_project_get_effects(target_base) == {
 	orbital_access: false,
 	orbital_production_multiplier: 1.0,
 });
-test.assert(values.f_project_get_player_effects(owner) == values.f_project_get_effects(target_base));
+test.assert(values.f_project_get_player_effects(owner).psych_multiplier == 0.0);
+test.assert(values.f_project_get_effects(target_base).psych_multiplier == 0.5);
+test.assert(values.f_project_get_effects(project_base).psych_multiplier == 0.0);
 test.assert(values.f_base_get_effective_facilities(target_base) == [network_node, command_center]);
 test.assert(values.f_base_get_effective_facilities(project_base) == [project, command_center]);
 target_facilities = [recycling_tanks, pressure_dome];

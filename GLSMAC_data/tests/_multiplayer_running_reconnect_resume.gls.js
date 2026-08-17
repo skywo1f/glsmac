@@ -572,7 +572,7 @@
 				recycling_tanks.growth_rating_bonus != 0 ||
 				recycling_tanks.native_lifecycle_bonus != 0 ||
 				recycling_tanks.defender_morale_bonus != 0 ||
-				headquarters.defender_morale_bonus != 0 ||
+				headquarters.defender_morale_bonus != 1 ||
 				ascetic_virtues.global_police_rating_bonus != 1 ||
 				self_aware_colony.global_extra_police_units != 1 ||
 				recreation_commons.psych_bonus != 0 ||
@@ -588,6 +588,7 @@
 				!command_center.full_repair_land ||
 				childrens_creche.growth_rating_bonus != 2 ||
 				childrens_creche.efficiency_rating_bonus != 2 ||
+				childrens_creche.defender_morale_bonus != 1 ||
 				childrens_creche.defender_morale_minimum != 1 ||
 				naval_yard.unit_morale_water_bonus != 2 ||
 				naval_yard.water_defense_multiplier != 2.0 ||

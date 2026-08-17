@@ -134,6 +134,9 @@ const get_base_allocation = (game, base, intake, consumption) => {
 			? facility.psych_multiplier
 			: 0.0;
 	}
+	psych_multiplier += #is_defined(project_effects.psych_multiplier)
+		? project_effects.psych_multiplier
+		: 0.0;
 	psych_bonus += #ceil(
 		#to_float(psych + specialists.psych) * psych_multiplier
 	);
@@ -351,6 +354,7 @@ const get_base_psych = (game, base, headquarters_by_owner, intake, consumption) 
 		? consumption
 		: base.get_consumption();
 	const facilities = get_effective_facilities(game, base);
+	const project_effects = get_project_effects(game, base);
 	const energy = get_base_energy(
 		game,
 		base,
@@ -368,6 +372,9 @@ const get_base_psych = (game, base, headquarters_by_owner, intake, consumption) 
 			? facility.psych_multiplier
 			: 0.0;
 	}
+	psych_multiplier += #is_defined(project_effects.psych_multiplier)
+		? project_effects.psych_multiplier
+		: 0.0;
 	psych_bonus += #ceil(#to_float(psych) * psych_multiplier);
 	return psych + psych_bonus;
 };

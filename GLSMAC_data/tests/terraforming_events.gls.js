@@ -451,7 +451,22 @@ terraforming_rate_multiplier = 1.5;
 event.applied = terraform_tile.apply(event);
 test.assert(unit.terraforming_turns_remaining == 6);
 terraform_tile.rollback(event);
+
+event.data.type = 'plant_fungus';
+tile.features.xenofungus = false;
+known_technologies.EcologicalEngineering = true;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 4);
+terraform_tile.rollback(event);
+
+fungus_terraforming_rate_multiplier = 2.0;
+event.applied = terraform_tile.apply(event);
+test.assert(unit.terraforming_turns_remaining == 2);
+terraform_tile.rollback(event);
+
+fungus_terraforming_rate_multiplier = 1.0;
 terraforming_rate_multiplier = 1.0;
+known_technologies = {};
 
 event.data.type = 'road';
 tile.rockiness = 2;

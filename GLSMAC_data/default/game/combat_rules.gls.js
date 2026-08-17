@@ -138,16 +138,20 @@ const get_morale_multiplier = (unit, bonus) => {
 	return 0.75 + #to_float(unit.morale + value_bonus) * 0.125;
 };
 
-const get_base_defender_morale_bonus = (defender, game) => {
-	if (!#is_defined(defender.get_tile)) {
+const get_base_unit_morale_bonus = (unit, game, defending) => {
+	if (!#is_defined(unit.get_tile)) {
 		return 0;
 	}
-	const base = defender.get_tile().get_base();
+	const tile = unit.get_tile();
+	if (tile == null || !#is_defined(tile.get_base)) {
+		return 0;
+	}
+	const base = tile.get_base();
 	if (
 		base == null ||
 		!#is_defined(base.get_owner) ||
 		!#is_defined(base.get_facilities) ||
-		base.get_owner().id != defender.owner
+		base.get_owner().id != unit.owner
 	) {
 		return 0;
 	}
@@ -157,6 +161,9 @@ const get_base_defender_morale_bonus = (defender, game) => {
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	let result = 0;
 	for (facility of facilities) {
+		if (!defending && facility.id != 'ChildrenSCreche') {
+			continue;
+		}
 		result += #is_defined(facility.defender_morale_bonus)
 			? facility.defender_morale_bonus
 			: 0;
@@ -164,16 +171,28 @@ const get_base_defender_morale_bonus = (defender, game) => {
 	return result;
 };
 
-const get_base_defender_morale_minimum = (defender, game) => {
-	if (!#is_defined(defender.get_tile)) {
+const get_base_defender_morale_bonus = (defender, game) => {
+	return get_base_unit_morale_bonus(defender, game, true);
+};
+
+const get_base_attacker_morale_bonus = (attacker, game) => {
+	return get_base_unit_morale_bonus(attacker, game, false);
+};
+
+const get_base_unit_morale_minimum = (unit, game, defending) => {
+	if (!#is_defined(unit.get_tile)) {
 		return 0;
 	}
-	const base = defender.get_tile().get_base();
+	const tile = unit.get_tile();
+	if (tile == null || !#is_defined(tile.get_base)) {
+		return 0;
+	}
+	const base = tile.get_base();
 	if (
 		base == null ||
 		!#is_defined(base.get_owner) ||
 		!#is_defined(base.get_facilities) ||
-		base.get_owner().id != defender.owner
+		base.get_owner().id != unit.owner
 	) {
 		return 0;
 	}
@@ -183,6 +202,9 @@ const get_base_defender_morale_minimum = (defender, game) => {
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	let result = 0;
 	for (facility of facilities) {
+		if (!defending && facility.id != 'ChildrenSCreche') {
+			continue;
+		}
 		result = #max(
 			result,
 			#is_defined(facility.defender_morale_minimum)
@@ -191,6 +213,10 @@ const get_base_defender_morale_minimum = (defender, game) => {
 		);
 	}
 	return result;
+};
+
+const get_base_defender_morale_minimum = (defender, game) => {
+	return get_base_unit_morale_minimum(defender, game, true);
 };
 
 const get_social_morale_bonus = (unit, game, defending) => {
@@ -207,10 +233,8 @@ const get_social_morale_bonus = (unit, game, defending) => {
 	const social_bonus = #is_defined(resolver)
 		? resolver(unit.get_owner(), defending)
 		: 0;
-	const facility_minimum = defending
-		? get_base_defender_morale_minimum(unit, game)
-		: 0;
-	return facility_minimum > 0 ? #max(social_bonus, facility_minimum) : social_bonus;
+	const facility_minimum = get_base_unit_morale_minimum(unit, game, defending);
+	return facility_minimum > 0 ? #max(social_bonus, 0) : social_bonus;
 };
 
 const get_base_defense_multiplier = (defender, attacker, game) => {
@@ -380,7 +404,8 @@ const get_combat_powers = (attacker, defender, game) => {
 	return {
 		attack: attack_strength * get_morale_multiplier(
 			attacker,
-			get_social_morale_bonus(attacker, game, false)
+			get_base_attacker_morale_bonus(attacker, game) +
+				get_social_morale_bonus(attacker, game, false)
 		) * attacker.health * attack_modifier,
 		defence: defence_strength * get_morale_multiplier(
 			defender,
@@ -401,7 +426,8 @@ const get_artillery_powers = (attacker, defender, game) => {
 	return {
 		attack: #to_float(attacker_def.offense) * get_morale_multiplier(
 			attacker,
-			get_social_morale_bonus(attacker, game, false)
+			get_base_attacker_morale_bonus(attacker, game) +
+				get_social_morale_bonus(attacker, game, false)
 		) * attacker.health * attack_modifier,
 		defence: #to_float(
 			is_artillery(defender_def) ? defender_def.offense : defender_def.defense
@@ -471,6 +497,7 @@ return {
 	can_advance_after_combat: can_advance_after_combat,
 	get_morale_multiplier: get_morale_multiplier,
 	get_base_defender_morale_bonus: get_base_defender_morale_bonus,
+	get_base_attacker_morale_bonus: get_base_attacker_morale_bonus,
 	get_base_defender_morale_minimum: get_base_defender_morale_minimum,
 	get_social_morale_bonus: get_social_morale_bonus,
 	get_base_defense_multiplier: get_base_defense_multiplier,
