@@ -6,6 +6,8 @@ let show_count = 0;
 let menu_close_count = 0;
 let sound_count = 0;
 let observe_count = 0;
+let hide_count = 0;
+let replace_count = 0;
 const element = {
 	top: 10,
 	show: () => { show_count++; },
@@ -19,6 +21,7 @@ popup.popup_defs = {
 			return data;
 		},
 		set: (value) => { set_value = value; },
+		on_hide: () => { hide_count++; },
 	},
 };
 popup.popups = {lazy: null};
@@ -29,6 +32,7 @@ popup.popup_def = null;
 popup.popup_cb = null;
 popup.menu = {close_all: () => { menu_close_count++; }};
 popup.sound_up = {play: () => { sound_count++; }};
+popup.sound_down = {play: () => {}};
 popup.viewport_size = {height: 100};
 popup.no_sliding = true;
 
@@ -61,3 +65,49 @@ test.assert(menu_close_count == 1);
 test.assert(sound_count == 1);
 test.assert(show_count == 1);
 test.assert(popup.is_shown());
+
+const replacement_data = {
+	id: '',
+	el: {
+		top: 10,
+		show: () => {},
+		hide: () => {},
+	},
+	height: 20,
+};
+popup.popup_defs.replacement = {
+	init: () => { return replacement_data; },
+	on_hide: () => { hide_count++; },
+};
+popup.popups.replacement = null;
+popup.show('replacement');
+test.assert(hide_count == 1);
+
+const specialized_data = {
+	id: '',
+	el: {
+		top: 10,
+		show: () => {},
+		hide: () => {},
+	},
+	height: 20,
+};
+popup.popup_defs.specialized = {
+	init: () => { return specialized_data; },
+	on_hide: () => { hide_count++; },
+	on_replace: () => { replace_count++; },
+};
+popup.popups.specialized = null;
+popup.show('specialized');
+test.assert(hide_count == 2);
+
+popup.show('lazy');
+test.assert(replace_count == 1);
+test.assert(hide_count == 2);
+
+let callback_count = 0;
+popup.popup_result = true;
+popup.show('replacement', (result) => { callback_count++; });
+test.assert(popup.popup_result == null);
+popup.hide('replacement');
+test.assert(callback_count == 0);

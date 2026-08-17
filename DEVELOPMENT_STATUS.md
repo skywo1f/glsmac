@@ -1716,3 +1716,12 @@ The Windows x64 RelWithDebInfo build passed, followed by all 198 CTest cases in
 save/load, multiplayer, and running reconnect. These gates justify a fresh
 manual-play candidate; report readability and normal campaign behavior still
 require human approval and the project is not yet shippable.
+
+Popup replacement now falls back to each screen's ordinary hide cleanup when
+no specialized replacement handler exists. This releases live player, unit,
+base, target, and option state held by Diplomacy, research, production,
+Workshop, Council, Probe, and other stateful views before another popup opens.
+The popup manager also clears discarded result values so a later programmatic
+close cannot deliver a stale answer to a new callback. Focused lifecycle,
+live Diplomacy, and live gameplay-controls regressions passed; manual rapid
+switching between management screens remains part of the next playtest.

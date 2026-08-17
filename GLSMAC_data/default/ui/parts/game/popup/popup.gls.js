@@ -359,6 +359,7 @@ return {
 			this.popup = null;
 			this.popup_def = null;
 			this.popup_cb = null;
+			this.popup_result = null;
 		}
 	},
 
@@ -383,6 +384,8 @@ return {
 		if (this.popup != null) {
 			if (#typeof(this.popup_def.on_replace) == 'Callable') {
 				this.popup_def.on_replace();
+			} else if (#typeof(this.popup_def.on_hide) == 'Callable') {
+				this.popup_def.on_hide();
 			}
 			this.clear();
 		}
