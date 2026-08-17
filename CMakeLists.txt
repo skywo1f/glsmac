@@ -321,7 +321,7 @@ IF ( BUILD_TESTING )
 			--smacpath "${GLSMAC_SMAC_PATH}"
 			--mainscript "../tests/_diplomacy_ui_runtime_smoke"
 			--quickstart
-			--quickstart-ai "1"
+			--quickstart-ai "2"
 			--quickstart-mapsize "20x10"
 			--quickstart-seed "1:2:3:4"
 			--quickstart-faction "GAIANS"

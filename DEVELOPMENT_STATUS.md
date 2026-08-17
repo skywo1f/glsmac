@@ -270,6 +270,18 @@ scenarios, for:
   decisions account for coalition strength, target threat, existing relations,
   and proposer integrity; proposal persistence, save compatibility, UI
   controls, rejection, acceptance, and exact three-faction rollback are covered;
+- persistent Treaty-partner withdrawal demands; human and AI factions can
+  demand that foreign units leave their territory, acceptance repatriates each
+  eligible root unit to the nearest compatible owned base while clearing its
+  active orders, and refusal establishes a justified Vendetta; proposal
+  persistence, UI controls, save compatibility, and exact unit and relation
+  rollback are covered;
+- persistent third-party peace mediation requests; human and AI factions can
+  ask a contacted faction to call off a Vendetta against a Treaty or Pact
+  friend, acceptance restores bilateral neutral relations with that friend
+  while preserving the mediator's relationship, and refusal leaves the war
+  unchanged; proposal persistence, private messages, UI controls, save
+  compatibility, AI evaluation, and exact three-faction rollback are covered;
 - persistent faction-specific explored-tile state discovered around units and
   bases, through movement, air drops, combat advances, and Psi Gates; unexplored
   terrain is covered, previously explored terrain is dimmed, currently visible
@@ -472,8 +484,9 @@ The following original-SMAC systems remain absent or materially incomplete:
 
 - deeper original diplomacy branches beyond the implemented relationship-aware
   trade and counteroffers, loans, surrender, player-authored base exchange,
-  coercive demands, and joint Vendetta requests, especially multi-stage demands
-  and faction-specific dialogue behavior;
+  coercive demands, joint Vendetta requests, Treaty-partner withdrawal demands,
+  and third-party peace mediation, especially timed Blood Truces, multi-stage
+  demands, and faction-specific dialogue behavior;
 - remaining multiplayer information-boundary audits for content handlers not
   yet exercised by adversarial multi-client coverage and extended soak testing;
 - complete UI workflows, accessibility review, packaging, upgrade migration,
@@ -486,7 +499,7 @@ development build rather than a finished replacement for the original game.
 
 ## Test Status
 
-The Release CTest matrix contains 179 registered cases, including isolated
+The CTest matrix contains 200 registered cases, including isolated
 native/script GSE tests and asset-backed runtime scenarios. Script isolation
 keeps allocator lifetime bounded and reports the exact script that fails.
 
@@ -1806,3 +1819,27 @@ CVR catalog, seven-player startup, live small-map frontend, SDL input,
 gameplay-controls, and save/load checks pass. CVR animation and exact original
 dynamic light placement remain incomplete, and the recolored units still need
 normal-campaign visual approval before their presentation can be called final.
+
+Treaty partners can now demand that foreign units withdraw from their territory,
+and contacted factions can ask a neutral, Treaty, or Pact partner to call off a
+Vendetta against the mediator's Treaty or Pact friend. The latter request has a
+versioned private native representation, three-faction validation, human UI,
+AI proposal and response scoring, targeted messages, save compatibility, and
+exact acceptance and rollback coverage. Acceptance currently establishes
+GLSMAC's neutral Blood Truce state; the original timed truce expiration remains
+unimplemented. The live Diplomacy smoke now renders both native withdrawal and
+peace requests, and the military-request runtime accepts a joint Vendetta before
+mediating its end.
+
+The first complete runtime matrix exposed an AI production crash after the repair
+fixture spawned a unit: strategy metrics had retained native player, base, and
+unit wrappers across an asynchronous event drain. Production now reacquires live
+collections at its synchronous planning boundary and no longer stores those
+wrappers in retained metrics. The deterministic repair scenario then passed in
+7.45 seconds instead of timing out at 180 seconds, while the six-opponent economy
+soak remained within its recent range at 113.56 seconds. The final RelWithDebInfo
+build passed all 149 native/script tests in 192.89 seconds, followed by all 51
+installed-asset runtime tests in bounded halves of 202.70 and 309.68 seconds.
+This supports another manual-play candidate, not a shippable claim; timed Blood
+Truces, ordinary campaign behavior, and two-human negotiation still require
+manual validation.

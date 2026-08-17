@@ -242,6 +242,8 @@ const update_diplomacy = (game, player) => {
 			});
 			const military_target = diplomacy.is_military_request(trade)
 				? game.get_player(trade.request_vendetta_player) : null;
+			const peace_target = diplomacy.is_peace_request(trade)
+				? game.get_player(trade.request_peace_player) : null;
 			const offer_definition = trade.offer_technology == ''
 				? null
 				: game.get('f_technology_get_definition')(trade.offer_technology);
@@ -273,7 +275,17 @@ const update_diplomacy = (game, player) => {
 			game.event_as(player.id, 'respond_diplomatic_trade', {
 				player: player,
 				proposer: other,
-				accept: military_target != null
+				accept: peace_target != null
+					? diplomacy.get_peace_request_acceptance_score({
+						relation: player.get_diplomatic_relation(other),
+						own_power: own_power,
+						other_power: get_player_power(game, other),
+						target_power: get_player_power(game, peace_target),
+						target_relation: player.get_diplomatic_relation(peace_target),
+						proposer_target_relation: other.get_diplomatic_relation(peace_target),
+						other_integrity_blemishes: other.get_integrity_blemishes(),
+					}) >= 0.0
+					: military_target != null
 					? diplomacy.get_military_request_acceptance_score({
 						relation: player.get_diplomatic_relation(other),
 						own_power: own_power,
@@ -570,6 +582,65 @@ const update_diplomacy = (game, player) => {
 		return;
 	}
 
+	let best_peace_request = null;
+	let best_peace_recipient = null;
+	for (other of game.get_players()) {
+		if (
+			other.id == player.id || !player.has_contact(other) ||
+			player.get_diplomatic_relation(other) == 'vendetta' ||
+			other.get_diplomatic_offer(player) != '' ||
+			player.get_diplomatic_offer(other) != '' ||
+			other.get_diplomatic_trade(player) != null ||
+			player.get_diplomatic_trade(other) != null
+		) {
+			continue;
+		}
+		let peace_targets = [];
+		for (target of game.get_players()) {
+			if (
+				target.id == player.id || target.id == other.id ||
+				!player.has_contact(target) || !target.has_contact(player) ||
+				!other.has_contact(target) || !target.has_contact(other)
+			) {
+				continue;
+			}
+			peace_targets :+{
+				id: target.id,
+				power: get_player_power(game, target),
+				proposer_relation: player.get_diplomatic_relation(target),
+				recipient_relation: other.get_diplomatic_relation(target),
+			};
+		}
+		const request = diplomacy.get_peace_request_proposal({
+			relation: player.get_diplomatic_relation(other),
+			own_power: own_power,
+			other_power: get_player_power(game, other),
+			own_integrity_blemishes: player.get_integrity_blemishes(),
+			targets: peace_targets,
+		});
+		if (
+			request == null ||
+			#is_defined(game.get('f_diplomacy_validate_trade')(player, other, request.terms))
+		) {
+			continue;
+		}
+		if (
+			best_peace_request == null || request.score > best_peace_request.score ||
+			(request.score == best_peace_request.score && other.id < best_peace_recipient.id)
+		) {
+			best_peace_request = request;
+			best_peace_recipient = other;
+		}
+	}
+	if (best_peace_request != null) {
+		game.event_as(player.id, 'propose_diplomatic_trade', {
+			player: player,
+			target: best_peace_recipient,
+			terms: best_peace_request.terms,
+		});
+		return;
+	}
+
 	let best_trade = null;
 	let best_trade_target = null;
 	for (other of game.get_players()) {
@@ -830,9 +901,6 @@ const get_strategy_metrics = (game, player, bases, units) => {
 		energy_income: energy_income,
 		own_combat_power: combat_power.own,
 		strongest_rival_power: combat_power.strongest_rival,
-		players: players,
-		all_units: all_units,
-		all_bases: all_bases,
 		base_metrics: base_metrics,
 		strategy_profile: {
 			units_ms: profile_units_ms,
@@ -1100,7 +1168,11 @@ const queue_production = (
 	}
 	let available_energy = #max(metrics.energy_income, 0);
 	const tm = game.get_tm();
-	const all_units = metrics.all_units;
+	// Production runs after asynchronous event drains, so native wrappers retained
+	// in earlier strategy metrics may already have been replaced.
+	const current_players = game.get_players();
+	const current_units = game.get_um().get_units();
+	const current_bases = game.get_bm().get_bases();
 	let air_superiority_count = 0;
 	let amphibious_count = 0;
 	for (unit of units) {
@@ -1116,16 +1188,16 @@ const queue_production = (
 	}
 	let hostile_air_unit_count = 0;
 	let hostile_coastal_base_count = 0;
-	for (other of metrics.players) {
+	for (other of current_players) {
 		if (other.id == player.id || is_protected_partner(game, player, other.id)) {
 			continue;
 		}
-		for (unit of all_units) {
+		for (unit of current_units) {
 			if (unit.owner == other.id && unit.is_air) {
 				hostile_air_unit_count++;
 			}
 		}
-		for (candidate of metrics.all_bases) {
+		for (candidate of current_bases) {
 			if (candidate.get_owner().id != other.id) {
 				continue;
 			}
@@ -1153,7 +1225,7 @@ const queue_production = (
 	const planet_buster_minimum_target_size = get_planet_buster_minimum_target_size(game);
 	let orbital_defense_threats = 0;
 	let planet_buster_target_value = 0;
-	for (other of metrics.players) {
+	for (other of current_players) {
 		if (
 			other.id == player.id ||
 			player.get_diplomatic_relation(other) != 'vendetta'
@@ -1161,7 +1233,7 @@ const queue_production = (
 			continue;
 		}
 		let has_planet_buster = other.has_technology('OrbitalSpaceflight');
-		for (unit of all_units) {
+		for (unit of current_units) {
 			if (
 				unit.owner == other.id &&
 				unit.get_def().weapon == 'PlanetBuster'
@@ -1173,7 +1245,7 @@ const queue_production = (
 		if (has_planet_buster) {
 			orbital_defense_threats++;
 		}
-		for (candidate of metrics.all_bases) {
+		for (candidate of current_bases) {
 			if (candidate.get_owner().id == other.id) {
 				planet_buster_target_value = #max(
 					planet_buster_target_value,
@@ -1209,7 +1281,7 @@ const queue_production = (
 		: 0;
 	let empath_guild_infiltration_count = 0;
 	const has_intelligence = game.get('f_council_has_intelligence');
-	for (other of metrics.players) {
+	for (other of current_players) {
 		if (
 			other.id != player.id &&
 			!(#is_defined(has_intelligence)
@@ -1220,7 +1292,7 @@ const queue_production = (
 		}
 	}
 	let global_network_node_count = 0;
-	for (candidate of metrics.all_bases) {
+	for (candidate of current_bases) {
 		if (candidate.has_facility('NetworkNode')) {
 			global_network_node_count++;
 		}
@@ -2633,7 +2705,18 @@ const play_turn = (game, player, done) => {
 			return;
 		}
 		const production_started = is_profiling ? #monotonic_ms() : 0;
-		queue_production(game, player, bases, bases, units, metrics, false, true);
+		const production_bases = owned_bases(game, player);
+		const production_units = owned_units(game, player);
+		queue_production(
+			game,
+			player,
+			production_bases,
+			production_bases,
+			production_units,
+			metrics,
+			false,
+			true
+		);
 		production_ms = is_profiling ? #monotonic_ms() - production_started : 0;
 		setup_ms += production_ms;
 		wait_for_event_drain(play_next_action);

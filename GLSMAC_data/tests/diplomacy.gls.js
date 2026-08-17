@@ -1045,7 +1045,7 @@ const bundled_military_request = #clone(military_request.data.terms);
 bundled_military_request.offer_energy = 5;
 test.assert(
 	values.f_diplomacy_validate_trade(alpha, beta, bundled_military_request) ==
-	'A military request cannot contain trade terms'
+		'A third-party diplomatic request cannot contain trade terms'
 );
 let military_items = diplomacy_popup.get_military_target_items(alpha, beta);
 test.assert(#sizeof(military_items) == 1 && military_items[0][0] == #to_string(gamma.id));
@@ -1096,6 +1096,88 @@ test.assert(beta.get_diplomatic_relation(gamma) == 'neutral');
 respond_trade.rollback(military_response);
 propose_trade.rollback(military_request);
 test.assert(beta.get_diplomatic_trade(alpha) == null);
+
+alpha.set_diplomatic_relation(beta, 'treaty');
+beta.set_diplomatic_relation(alpha, 'treaty');
+alpha.set_diplomatic_relation(gamma, 'pact');
+gamma.set_diplomatic_relation(alpha, 'pact');
+beta.set_diplomatic_relation(gamma, 'vendetta');
+gamma.set_diplomatic_relation(beta, 'vendetta');
+const peace_terms = {
+	offer_energy: 0,
+	offer_technology: '',
+	request_energy: 0,
+	request_technology: '',
+	offer_contact: 0 - 1,
+	request_contact: 0 - 1,
+	offer_map: false,
+	request_map: false,
+	offer_base: 0 - 1,
+	request_base: 0 - 1,
+	request_vendetta_player: 0 - 1,
+	is_ultimatum: false,
+	request_peace_player: gamma.id,
+};
+let peace_request = {
+	caller: alpha.id,
+	game: game,
+	data: {player: alpha, target: beta, terms: peace_terms},
+};
+test.assert(!#is_defined(propose_trade.validate(peace_request)));
+const bundled_peace_request = #clone(peace_terms);
+bundled_peace_request.request_energy = 5;
+test.assert(
+	values.f_diplomacy_validate_trade(alpha, beta, bundled_peace_request) ==
+		'A third-party diplomatic request cannot contain trade terms'
+);
+military_items = diplomacy_popup.get_military_target_items(alpha, beta);
+test.assert(
+	#sizeof(military_items) == 1 &&
+		military_items[0][0] == #to_string(0 - gamma.id - 1)
+);
+diplomacy_popup.military_target = {value: #to_string(0 - gamma.id - 1)};
+diplomacy_popup.propose_military_request();
+test.assert(event_calls[#sizeof(event_calls) - 1].name == 'propose_diplomatic_trade');
+test.assert(
+	event_calls[#sizeof(event_calls) - 1].data.terms.request_peace_player == gamma.id &&
+	event_calls[#sizeof(event_calls) - 1].data.terms.request_vendetta_player < 0
+);
+peace_request.applied = propose_trade.apply(peace_request);
+test.assert(beta.get_diplomatic_trade(alpha).request_peace_player == gamma.id);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_peace_request_proposed');
+let mediation_response = {
+	caller: beta.id,
+	game: game,
+	data: {
+		player: beta,
+		proposer: alpha,
+		accept: true,
+		counter_terms: #clone(trade.data.terms),
+	},
+};
+test.assert(respond_trade.validate(mediation_response) == 'A peace request cannot be countered');
+mediation_response.data.counter_terms = #undefined;
+test.assert(!#is_defined(respond_trade.validate(mediation_response)));
+mediation_response.applied = respond_trade.apply(mediation_response);
+test.assert(beta.get_diplomatic_relation(gamma) == 'neutral');
+test.assert(gamma.get_diplomatic_relation(beta) == 'neutral');
+test.assert(alpha.get_diplomatic_relation(beta) == 'treaty');
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_peace_request_resolved');
+respond_trade.rollback(mediation_response);
+test.assert(beta.get_diplomatic_relation(gamma) == 'vendetta');
+test.assert(gamma.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(beta.get_diplomatic_trade(alpha).request_peace_player == gamma.id);
+mediation_response.data.accept = false;
+mediation_response.applied = respond_trade.apply(mediation_response);
+test.assert(beta.get_diplomatic_relation(gamma) == 'vendetta');
+respond_trade.rollback(mediation_response);
+propose_trade.rollback(peace_request);
+test.assert(beta.get_diplomatic_trade(alpha) == null);
+alpha.set_diplomatic_relation(gamma, 'neutral');
+gamma.set_diplomatic_relation(alpha, 'neutral');
+test.assert(#is_defined(propose_trade.validate(peace_request)));
+
 alpha.set_diplomatic_relation(beta, 'neutral');
 beta.set_diplomatic_relation(alpha, 'neutral');
 test.assert(#is_defined(propose_trade.validate(military_request)));

@@ -50,10 +50,26 @@
 			},
 			rollback: (e) => {},
 		});
+		game.register_event('peace_request_runtime_setup', {
+			validate: (e) => {
+				if (e.caller != 0 && e.caller != e.data.player.id) {
+					return 'Only the runtime player may prepare peace mediation';
+				}
+			},
+			apply: (e) => {
+				e.data.player.set_diplomatic_relation(e.data.target, 'pact');
+				e.data.target.set_diplomatic_relation(e.data.player, 'pact');
+			},
+			rollback: (e) => {},
+		});
 
 		let resolved = false;
+		let peace_resolved = false;
 		game.on('diplomatic_military_request_resolved', (event) => {
 			resolved = event.accepted;
+		});
+		game.on('diplomatic_peace_request_resolved', (event) => {
+			peace_resolved = event.accepted;
 		});
 		game.on('start_ui', (event) => {
 			const player = game.get_player();
@@ -125,14 +141,73 @@
 										ally.get_diplomatic_relation(target) == 'vendetta' &&
 										target.get_diplomatic_relation(ally) == 'vendetta';
 								},
-								'accepted joint vendetta request did not create bilateral war',
-								() => {
-									finished = true;
-									#print(
-										'MILITARY_REQUEST_RUNTIME_PASS: persisted and accepted a three-faction joint vendetta request'
-									);
-									glsmac.exit();
-								}
+							'accepted joint vendetta request did not create bilateral war',
+							() => {
+								game.event('peace_request_runtime_setup', {
+									player: player,
+									target: target,
+								});
+								wait_for(
+									() => {
+										return player.get_diplomatic_relation(target) == 'pact' &&
+											ally.get_diplomatic_relation(target) == 'vendetta';
+									},
+									'could not prepare peace mediation state',
+									() => {
+										game.event('propose_diplomatic_trade', {
+											player: player,
+											target: ally,
+											terms: {
+												offer_energy: 0,
+												offer_technology: '',
+												request_energy: 0,
+												request_technology: '',
+												offer_contact: 0 - 1,
+												request_contact: 0 - 1,
+												offer_map: false,
+												request_map: false,
+												offer_base: 0 - 1,
+												request_base: 0 - 1,
+												request_vendetta_player: 0 - 1,
+												is_ultimatum: false,
+												request_peace_player: target.id,
+											},
+										});
+										wait_for(
+											() => {
+												const pending = ally.get_diplomatic_trade(player);
+												return pending != null &&
+													pending.request_peace_player == target.id;
+											},
+											'peace request was not stored',
+											() => {
+												game.event_as(ally.id, 'respond_diplomatic_trade', {
+													player: ally,
+													proposer: player,
+													accept: true,
+												});
+												wait_for(
+													() => {
+														return peace_resolved &&
+															ally.get_diplomatic_trade(player) == null &&
+															player.get_diplomatic_relation(ally) == 'pact' &&
+															ally.get_diplomatic_relation(target) == 'neutral' &&
+															target.get_diplomatic_relation(ally) == 'neutral';
+													},
+													'accepted peace request did not end the third-party vendetta',
+													() => {
+														finished = true;
+														#print(
+															'MILITARY_REQUEST_RUNTIME_PASS: joint vendetta and mediated peace accepted'
+														);
+														glsmac.exit();
+													}
+												);
+											}
+										);
+									}
+								);
+							}
 							);
 						}
 					);

@@ -23,14 +23,18 @@ return {
 		}
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(terms);
+		const peace_request = e.game.get('f_diplomacy_is_peace_request')(terms);
 		const withdrawal_request = e.game.get('f_diplomacy_is_withdrawal_request')(terms);
 		if (#is_defined(e.data.counter_terms)) {
-			if (ultimatum || military_request || withdrawal_request) {
+			if (ultimatum || military_request || peace_request || withdrawal_request) {
 				if (withdrawal_request) {
 					return 'A withdrawal demand cannot be countered';
 				}
 				if (military_request) {
 					return 'A joint vendetta request cannot be countered';
+				}
+				if (peace_request) {
+					return 'A peace request cannot be countered';
 				}
 				return 'An ultimatum cannot be countered';
 			}
@@ -67,10 +71,16 @@ return {
 		const terms = player.get_diplomatic_trade(proposer);
 		const proposed_relation = player.get_diplomatic_offer(proposer);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(terms);
+		const peace_request = e.game.get('f_diplomacy_is_peace_request')(terms);
 		const withdrawal_request = e.game.get('f_diplomacy_is_withdrawal_request')(terms);
 		const military_target = military_request
 			? e.game.get('f_diplomacy_find_player')(
 				e.game.get('f_diplomacy_get_request_vendetta_player')(terms)
+			)
+			: null;
+		const peace_target = peace_request
+			? e.game.get('f_diplomacy_find_player')(
+				e.game.get('f_diplomacy_get_request_peace_player')(terms)
 			)
 			: null;
 		const snapshot = {
@@ -84,6 +94,9 @@ return {
 			military_target: military_target,
 			military_pair: military_target == null
 				? null : e.game.get('f_diplomacy_snapshot_pair')(player, military_target),
+			peace_target: peace_target,
+			peace_pair: peace_target == null
+				? null : e.game.get('f_diplomacy_snapshot_pair')(player, peace_target),
 			contacts: [],
 			maps: [],
 			specialist_updates: [],
@@ -199,6 +212,19 @@ return {
 					target: military_target,
 					relation: 'vendetta',
 				});
+			} else if (peace_request) {
+				e.game.get('f_diplomacy_set_bilateral_relation')(
+					player,
+					peace_target,
+					'neutral',
+					true
+				);
+				e.game.get('f_diplomacy_clear_offers')(player, peace_target);
+				e.game.trigger('diplomacy_updated', {
+					player: player,
+					target: peace_target,
+					relation: 'neutral',
+				});
 			} else if (ultimatum && proposer.get_diplomatic_relation(player) == 'vendetta') {
 				e.game.get('f_diplomacy_set_bilateral_relation')(
 					proposer,
@@ -224,6 +250,10 @@ return {
 				message = player.name + ' joined ' + proposer.name + '\'s vendetta against ' +
 					military_target.name + '.';
 			}
+			if (peace_request) {
+				message = player.name + ' called off the vendetta against ' +
+					peace_target.name + ' at ' + proposer.name + '\'s request.';
+			}
 			if (withdrawal_request) {
 				let unit_label = ' units';
 				if (#sizeof(snapshot.withdrawal) == 1) {
@@ -232,7 +262,11 @@ return {
 				message = player.name + ' withdrew ' + #to_string(#sizeof(snapshot.withdrawal)) +
 					unit_label + ' from ' + proposer.name + '\'s territory.';
 			}
-			message_rules.to_players(e.game, [player, proposer], message);
+			if (peace_request) {
+				message_rules.to_players(e.game, [player, proposer, peace_target], message);
+			} else {
+				message_rules.to_players(e.game, [player, proposer], message);
+			}
 		} else if (#is_defined(e.data.counter_terms)) {
 			proposer.set_diplomatic_trade(player, e.data.counter_terms);
 			proposer.set_diplomatic_offer(
@@ -274,6 +308,13 @@ return {
 				[player, proposer],
 				player.name + ' declined ' + proposer.name + '\'s joint vendetta request.'
 			);
+		} else if (peace_request) {
+			message_rules.to_players(
+				e.game,
+				[player, proposer],
+				player.name + ' refused to call off the vendetta against ' +
+					peace_target.name + '.'
+			);
 		}
 		let resolved_event_name = 'diplomatic_trade_resolved';
 		if (ultimatum) {
@@ -281,6 +322,9 @@ return {
 		}
 		if (military_request) {
 			resolved_event_name = 'diplomatic_military_request_resolved';
+		}
+		if (peace_request) {
+			resolved_event_name = 'diplomatic_peace_request_resolved';
 		}
 		if (withdrawal_request) {
 			resolved_event_name = 'diplomatic_withdrawal_resolved';
@@ -308,6 +352,7 @@ return {
 		const proposer = e.data.proposer;
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.applied.terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.applied.terms);
+		const peace_request = e.game.get('f_diplomacy_is_peace_request')(e.applied.terms);
 		const withdrawal_request = e.game.get('f_diplomacy_is_withdrawal_request')(
 			e.applied.terms
 		);
@@ -334,6 +379,26 @@ return {
 				});
 			}
 			e.game.trigger('diplomatic_military_request_updated', {
+				player: proposer,
+				target: player,
+			});
+			return;
+		}
+		if (peace_request) {
+			e.game.get('f_diplomacy_restore_pair')(player, proposer, e.applied.pair);
+			if (e.applied.peace_target != null && e.applied.peace_pair != null) {
+				e.game.get('f_diplomacy_restore_pair')(
+					player,
+					e.applied.peace_target,
+					e.applied.peace_pair
+				);
+				e.game.trigger('diplomacy_updated', {
+					player: player,
+					target: e.applied.peace_target,
+					relation: e.applied.peace_pair.player_relation,
+				});
+			}
+			e.game.trigger('diplomatic_peace_request_updated', {
 				player: proposer,
 				target: player,
 			});

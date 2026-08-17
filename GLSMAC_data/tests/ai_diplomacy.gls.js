@@ -99,6 +99,44 @@ test.assert(diplomacy.get_military_request_proposal({
 	targets: [],
 }) == null);
 
+const peace_terms = {request_peace_player: 3};
+test.assert(diplomacy.is_peace_request(peace_terms));
+const peace_state = {
+	relation: 'pact',
+	own_power: 8.0,
+	other_power: 12.0,
+	target_power: 24.0,
+	target_relation: 'vendetta',
+	proposer_target_relation: 'treaty',
+	other_integrity_blemishes: 0,
+};
+test.assert(diplomacy.get_peace_request_acceptance_score(peace_state) >= 0.0);
+peace_state.own_power = 30.0;
+peace_state.target_power = 5.0;
+peace_state.relation = 'neutral';
+test.assert(diplomacy.get_peace_request_acceptance_score(peace_state) < 0.0);
+peace_state.relation = 'pact';
+peace_state.target_relation = 'neutral';
+test.assert(diplomacy.get_peace_request_acceptance_score(peace_state) < 0.0);
+peace_state.target_relation = 'vendetta';
+peace_state.proposer_target_relation = 'neutral';
+test.assert(diplomacy.get_peace_request_acceptance_score(peace_state) < 0.0);
+
+const peace_proposal = diplomacy.get_peace_request_proposal({
+	relation: 'pact',
+	own_power: 14.0,
+	other_power: 8.0,
+	own_integrity_blemishes: 0,
+	targets: [
+		{id: 3, power: 22.0, proposer_relation: 'pact', recipient_relation: 'vendetta'},
+		{id: 4, power: 4.0, proposer_relation: 'neutral', recipient_relation: 'vendetta'},
+	],
+});
+test.assert(peace_proposal != null);
+test.assert(peace_proposal.target_id == 3);
+test.assert(peace_proposal.terms.request_peace_player == 3);
+test.assert(peace_proposal.terms.request_vendetta_player < 0);
+
 const fair_swap = {
 	relation: 'treaty',
 	own_power: 10.0,

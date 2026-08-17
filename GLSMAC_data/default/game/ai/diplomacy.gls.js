@@ -176,6 +176,11 @@ const is_military_request = (terms) => {
 		terms.request_vendetta_player >= 0;
 };
 
+const is_peace_request = (terms) => {
+	return #typeof(terms.request_peace_player) == 'Int' &&
+		terms.request_peace_player >= 0;
+};
+
 const get_military_request_acceptance_score = (state) => {
 	if (
 		state.relation != 'pact' ||
@@ -240,6 +245,83 @@ const get_military_request_proposal = (state) => {
 					request_base: 0 - 1,
 					request_vendetta_player: target.id,
 					is_ultimatum: false,
+				},
+			};
+		}
+	}
+	return best;
+};
+
+const get_peace_request_acceptance_score = (state) => {
+	if (
+		state.relation == 'vendetta' || state.target_relation != 'vendetta' ||
+		(state.proposer_target_relation != 'treaty' &&
+			state.proposer_target_relation != 'pact')
+	) {
+		return 0.0 - 100000.0;
+	}
+	let proposer_relation_bonus = 5.0;
+	if (state.relation == 'treaty') {
+		proposer_relation_bonus = 20.0;
+	} else if (state.relation == 'pact') {
+		proposer_relation_bonus = 35.0;
+	}
+	const protected_friend_bonus = state.proposer_target_relation == 'pact'
+		? 20.0 : 10.0;
+	const war_pressure = get_relative_strength(state.own_power, state.target_power) * 90.0;
+	const mediator_pressure = get_relative_strength(state.own_power, state.other_power) * 20.0;
+	const integrity_penalty = #to_float(get_other_integrity_blemishes(state)) * 8.0;
+	return proposer_relation_bonus + protected_friend_bonus + war_pressure +
+		mediator_pressure - integrity_penalty - 25.0;
+};
+
+const get_peace_request_proposal = (state) => {
+	if (state.relation == 'vendetta') {
+		return null;
+	}
+	let best = null;
+	for (target of state.targets) {
+		if (
+			(target.proposer_relation != 'treaty' && target.proposer_relation != 'pact') ||
+			target.recipient_relation != 'vendetta'
+		) {
+			continue;
+		}
+		const acceptance_score = get_peace_request_acceptance_score({
+			relation: state.relation,
+			own_power: state.other_power,
+			other_power: state.own_power,
+			target_power: target.power,
+			target_relation: target.recipient_relation,
+			proposer_target_relation: target.proposer_relation,
+			other_integrity_blemishes: #is_defined(state.own_integrity_blemishes)
+				? state.own_integrity_blemishes
+				: 0,
+		});
+		if (acceptance_score < 0.0) {
+			continue;
+		}
+		const friend_bonus = target.proposer_relation == 'pact' ? 35.0 : 20.0;
+		const danger = get_relative_strength(target.power, state.other_power) * 40.0;
+		const score = acceptance_score + friend_bonus + danger;
+		if (best == null || score > best.score || (score == best.score && target.id < best.target_id)) {
+			best = {
+				target_id: target.id,
+				score: score,
+				terms: {
+					offer_energy: 0,
+					offer_technology: '',
+					request_energy: 0,
+					request_technology: '',
+					offer_contact: 0 - 1,
+					request_contact: 0 - 1,
+					offer_map: false,
+					request_map: false,
+					offer_base: 0 - 1,
+					request_base: 0 - 1,
+					request_vendetta_player: 0 - 1,
+					is_ultimatum: false,
+					request_peace_player: target.id,
 				},
 			};
 		}
@@ -747,8 +829,11 @@ return {
 	get_trade_proposal: get_trade_proposal,
 	is_ultimatum: is_ultimatum,
 	is_military_request: is_military_request,
+	is_peace_request: is_peace_request,
 	get_military_request_acceptance_score: get_military_request_acceptance_score,
 	get_military_request_proposal: get_military_request_proposal,
+	get_peace_request_acceptance_score: get_peace_request_acceptance_score,
+	get_peace_request_proposal: get_peace_request_proposal,
 	get_ultimatum_compliance_score: get_ultimatum_compliance_score,
 	get_ultimatum_proposal: get_ultimatum_proposal,
 	get_loan_acceptance_score: get_loan_acceptance_score,
