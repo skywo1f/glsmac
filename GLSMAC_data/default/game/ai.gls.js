@@ -343,6 +343,43 @@ const update_diplomacy = (game, player) => {
 		}
 	}
 
+	const withdrawal_error = game.get('f_diplomacy_get_withdrawal_error');
+	if (#typeof(withdrawal_error) == 'Callable') {
+		for (other of game.get_players()) {
+			if (
+				other.id == player.id || !player.has_contact(other) ||
+				player.get_diplomatic_relation(other) != 'treaty' ||
+				other.get_diplomatic_offer(player) != '' ||
+				player.get_diplomatic_offer(other) != '' ||
+				other.get_diplomatic_trade(player) != null ||
+				player.get_diplomatic_trade(other) != null ||
+				#is_defined(withdrawal_error(player, other))
+			) {
+				continue;
+			}
+			game.event_as(player.id, 'propose_diplomatic_trade', {
+				player: player,
+				target: other,
+				terms: {
+					offer_energy: 0,
+					offer_technology: '',
+					request_energy: 0,
+					request_technology: '',
+					offer_contact: 0 - 1,
+					request_contact: 0 - 1,
+					offer_map: false,
+					request_map: false,
+					offer_base: 0 - 1,
+					request_base: 0 - 1,
+					request_vendetta_player: 0 - 1,
+					is_ultimatum: true,
+					request_withdrawal: true,
+				},
+			});
+			return;
+		}
+	}
+
 	if (
 		game.get_turn() >= 20 &&
 		#typeof(player.get_surrender_offer_to_id) == 'Callable' &&

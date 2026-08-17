@@ -715,13 +715,27 @@ void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_
 			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
 			trade.offer_map || trade.request_map ||
 			trade.offer_base >= 0 || trade.request_base >= 0 ||
-			trade.is_ultimatum
+			trade.is_ultimatum || trade.request_withdrawal
 		)
 	) {
 		THROW( "diplomatic military request cannot contain trade terms" );
 	}
 	if (
-		trade.is_ultimatum &&
+		trade.request_withdrawal &&
+		(
+			!trade.is_ultimatum ||
+			trade.offer_energy != 0 || !trade.offer_technology.empty() ||
+			trade.request_energy != 0 || !trade.request_technology.empty() ||
+			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
+			trade.offer_map || trade.request_map ||
+			trade.offer_base >= 0 || trade.request_base >= 0 ||
+			trade.request_vendetta_player >= 0
+		)
+	) {
+		THROW( "diplomatic withdrawal request cannot contain trade terms" );
+	}
+	if (
+		trade.is_ultimatum && !trade.request_withdrawal &&
 		(
 			trade.offer_energy != 0 || !trade.offer_technology.empty() ||
 			trade.offer_contact >= 0 || trade.request_contact >= 0 ||
@@ -738,7 +752,7 @@ void Player::SetDiplomaticTrade( const size_t player_id, const diplomatic_trade_
 		trade.offer_contact < 0 && trade.request_contact < 0 &&
 		!trade.offer_map && !trade.request_map &&
 		trade.offer_base < 0 && trade.request_base < 0 &&
-		trade.request_vendetta_player < 0
+		trade.request_vendetta_player < 0 && !trade.request_withdrawal
 	) {
 		THROW( "diplomatic trade cannot be empty" );
 	}
@@ -1708,6 +1722,7 @@ WRAPIMPL_BEGIN( Player )
 						{ "request_base", VALUE( gse::value::Int, , trade->request_base ) },
 						{ "request_vendetta_player", VALUE( gse::value::Int, , trade->request_vendetta_player ) },
 						{ "is_ultimatum", BOOL_VALUE( trade->is_ultimatum ) },
+						{ "request_withdrawal", BOOL_VALUE( trade->request_withdrawal ) },
 					} );
 				} )
 			},
@@ -1733,6 +1748,7 @@ WRAPIMPL_BEGIN( Player )
 					N_GETPROP_OPT( int64_t, request_base, terms, "request_base", Int, -1 );
 					N_GETPROP_OPT( int64_t, request_vendetta_player, terms, "request_vendetta_player", Int, -1 );
 					N_GETPROP_OPT( bool, is_ultimatum, terms, "is_ultimatum", Bool, false );
+					N_GETPROP_OPT( bool, request_withdrawal, terms, "request_withdrawal", Bool, false );
 					try {
 						SetDiplomaticTrade( other->m_slotnum, {
 							offer_energy,
@@ -1747,6 +1763,7 @@ WRAPIMPL_BEGIN( Player )
 							request_base,
 							request_vendetta_player,
 							is_ultimatum,
+							request_withdrawal,
 						} );
 					}
 					catch ( const std::runtime_error& e ) {
@@ -2159,7 +2176,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 			buf.WriteString( id );
 		}
 	}
-	buf.WriteInt( 8 );
+	buf.WriteInt( 9 );
 	buf.WriteBool( include_private_state && m_legacy_unrestricted_contact );
 	buf.WriteInt( visible_count( m_contacted_players ) );
 	for ( const auto player_id : m_contacted_players ) {
@@ -2177,7 +2194,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 				trade.offer_map || trade.request_map ||
 				trade.offer_base >= 0 || trade.request_base >= 0 ||
 				trade.request_vendetta_player >= 0 ||
-				trade.is_ultimatum
+				trade.is_ultimatum || trade.request_withdrawal
 			)
 		) {
 			extended_trade_count++;
@@ -2193,7 +2210,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 			!trade.offer_map && !trade.request_map &&
 			trade.offer_base < 0 && trade.request_base < 0 &&
 			trade.request_vendetta_player < 0 &&
-			!trade.is_ultimatum
+			!trade.is_ultimatum && !trade.request_withdrawal
 		) {
 			continue;
 		}
@@ -2206,6 +2223,7 @@ const types::Buffer Player::Serialize( const Player* viewer ) const {
 		buf.WriteInt( trade.request_base );
 		buf.WriteBool( trade.is_ultimatum );
 		buf.WriteInt( trade.request_vendetta_player );
+		buf.WriteBool( trade.request_withdrawal );
 	}
 	buf.WriteBool( include_private_state && m_legacy_full_map_visibility );
 	buf.WriteInt( include_private_state ? m_explored_tiles.size() : 0 );
@@ -2576,7 +2594,8 @@ void Player::Deserialize( types::Buffer buf ) {
 		if (
 			contact_version != 1 && contact_version != 2 &&
 			contact_version != 3 && contact_version != 4 && contact_version != 5 &&
-			contact_version != 6 && contact_version != 7 && contact_version != 8
+			contact_version != 6 && contact_version != 7 && contact_version != 8 &&
+			contact_version != 9
 		) {
 			THROW( "unsupported serialized player contact version" );
 		}
@@ -2609,6 +2628,7 @@ void Player::Deserialize( types::Buffer buf ) {
 			const auto request_base = contact_version >= 3 ? buf.ReadInt() : -1;
 			const auto is_ultimatum = contact_version >= 4 ? buf.ReadBool() : false;
 			const auto request_vendetta_player = contact_version >= 5 ? buf.ReadInt() : -1;
+			const auto request_withdrawal = contact_version >= 9 ? buf.ReadBool() : false;
 			auto trade_it = diplomatic_trades.find( player_id );
 			if (
 				trade_it == diplomatic_trades.end() ||
@@ -2624,6 +2644,7 @@ void Player::Deserialize( types::Buffer buf ) {
 			trade_it->second.request_base = request_base;
 			trade_it->second.is_ultimatum = is_ultimatum;
 			trade_it->second.request_vendetta_player = request_vendetta_player;
+			trade_it->second.request_withdrawal = request_withdrawal;
 			Player validator( "extended trade validator", PR_NONE, nullptr, "" );
 			validator.SetDiplomaticTrade( player_id, trade_it->second );
 		}

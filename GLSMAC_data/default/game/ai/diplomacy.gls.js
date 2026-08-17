@@ -248,9 +248,13 @@ const get_military_request_proposal = (state) => {
 };
 
 const get_ultimatum_compliance_score = (state) => {
+	const withdrawal_request = #typeof(state.terms.request_withdrawal) == 'Bool' &&
+		state.terms.request_withdrawal;
 	if (
 		!is_ultimatum(state.terms) ||
-		(state.relation != 'neutral' && state.relation != 'vendetta')
+		(withdrawal_request
+			? state.relation != 'treaty'
+			: (state.relation != 'neutral' && state.relation != 'vendetta'))
 	) {
 		return 0.0 - 100000.0;
 	}
@@ -258,6 +262,9 @@ const get_ultimatum_compliance_score = (state) => {
 	const base_pressure = #to_float(state.other_bases - state.own_bases) * 7.0;
 	const war_pressure = state.relation == 'vendetta' ? 28.0 : 0.0;
 	const integrity_penalty = #to_float(get_other_integrity_blemishes(state)) * 7.0;
+	if (withdrawal_request) {
+		return 35.0 + relative_strength * 125.0 + base_pressure - integrity_penalty;
+	}
 	let demand_cost = #to_float(state.terms.request_energy);
 	let reserve_pressure = 0.0;
 	if (state.terms.request_energy > 0) {

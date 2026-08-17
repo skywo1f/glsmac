@@ -12,6 +12,7 @@ test.assert(#typeof(diplomacy_popup.init) == 'Callable');
 test.assert(#typeof(diplomacy_popup.propose_trade) == 'Callable');
 test.assert(#typeof(diplomacy_popup.begin_counter_trade) == 'Callable');
 test.assert(#typeof(diplomacy_popup.propose_military_request) == 'Callable');
+test.assert(#typeof(diplomacy_popup.propose_withdrawal) == 'Callable');
 test.assert(#typeof(diplomacy_popup.respond_excuse) == 'Callable');
 
 const callbacks = {};
@@ -23,6 +24,7 @@ let datalinks_queues = 0;
 let players = [];
 let bases = [];
 let units = [];
+let tiles = [];
 let event_calls = [];
 let turn = 40;
 const game = {
@@ -33,11 +35,29 @@ const game = {
 	is_master: () => { return true; },
 	get_players: () => { return players; },
 	get_bm: () => { return {get_bases: () => { return bases; }}; },
-	get_um: () => { return {get_units: () => { return units; }}; },
+	get_um: () => { return {
+		get_units: () => { return units; },
+		has_unit: (unit_id) => {
+			for (unit of units) { if (unit.id == unit_id) { return true; } }
+			return false;
+		},
+		get_unit: (unit_id) => {
+			for (unit of units) { if (unit.id == unit_id) { return unit; } }
+			return null;
+		},
+	}; },
 	get_tm: () => {
-		return {get_distance: (first, second) => {
-			return #abs(first.x - second.x) + #abs(first.y - second.y);
-		}};
+		return {
+			get_distance: (first, second) => {
+				return #abs(first.x - second.x) + #abs(first.y - second.y);
+			},
+			get_tile: (x, y) => {
+				for (tile of tiles) {
+					if (tile.x == x && tile.y == y) { return tile; }
+				}
+				return null;
+			},
+		};
 	},
 	get_turn: () => { return turn; },
 	event: (name, data) => { event_calls :+{name: name, data: data}; },
@@ -226,7 +246,7 @@ const make_base = (id, name, owner, x, facilities, production_ids) => {
 	for (production_id of production_ids) {
 		queue :+{production_kind: 'unit', id: production_id};
 	}
-	const tile = {x: x, y: 0};
+	const tile = {x: x, y: 0, is_water: false};
 	const base = {
 		id: id,
 		name: name,
@@ -263,6 +283,7 @@ const make_base = (id, name, owner, x, facilities, production_ids) => {
 		},
 	};
 	tile.get_base = () => { return base; };
+	tiles :+tile;
 	return base;
 };
 
@@ -1091,3 +1112,89 @@ declare_vendetta.rollback(vendetta);
 test.assert(beta.get_diplomatic_trade(alpha).offer_technology == 'CentauriEcology');
 
 test.assert(#sizeof(triggers) >= 6);
+
+beta.clear_diplomatic_trade(alpha);
+alpha.set_diplomatic_relation(beta, 'treaty');
+beta.set_diplomatic_relation(alpha, 'treaty');
+const intrusion_tile = {x: 6, y: 0, is_water: false};
+intrusion_tile.get_base = () => { return null; };
+tiles :+intrusion_tile;
+let intruder_tile = intrusion_tile;
+let intruder_move_target = alpha_trade_base.get_tile();
+const intruder = {
+	id: 200,
+	owner: beta.id,
+	health: 1.0,
+	is_land: true,
+	transport_id: 0,
+	movement: 1.5,
+	moved_this_turn: false,
+	order: 'hold',
+	terraforming: 'farm',
+	terraforming_turns_remaining: 3,
+	convoy_resource: 'nutrient',
+	get_tile: () => { return intruder_tile; },
+	get_move_target: () => { return intruder_move_target; },
+	set_move_target: (tile) => { intruder_move_target = tile; },
+	clear_move_target: () => { intruder_move_target = null; },
+	set_order: (order) => { intruder.order = order; },
+	set_terraforming_order: (order, turns_remaining) => {
+		intruder.terraforming = order;
+		intruder.terraforming_turns_remaining = turns_remaining;
+	},
+	set_convoy_resource: (resource) => { intruder.convoy_resource = resource; },
+	teleport_to_tile: (tile) => { intruder_tile = tile; },
+};
+units :+intruder;
+values.f_territory_get_owner = (tile) => { return tile == intrusion_tile ? alpha : null; };
+const withdrawal_terms = {
+	offer_energy: 0,
+	offer_technology: '',
+	request_energy: 0,
+	request_technology: '',
+	offer_contact: 0 - 1,
+	request_contact: 0 - 1,
+	offer_map: false,
+	request_map: false,
+	offer_base: 0 - 1,
+	request_base: 0 - 1,
+	request_vendetta_player: 0 - 1,
+	is_ultimatum: true,
+	request_withdrawal: true,
+};
+const withdrawal = {
+	caller: alpha.id,
+	game: game,
+	data: {player: alpha, target: beta, terms: withdrawal_terms},
+};
+test.assert(!#is_defined(propose_trade.validate(withdrawal)));
+withdrawal.applied = propose_trade.apply(withdrawal);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_withdrawal_proposed');
+const withdrawal_response = {
+	caller: beta.id,
+	game: game,
+	data: {player: beta, proposer: alpha, accept: true},
+};
+test.assert(!#is_defined(respond_trade.validate(withdrawal_response)));
+withdrawal_response.applied = respond_trade.apply(withdrawal_response);
+test.assert(intruder_tile == beta_trade_base.get_tile());
+test.assert(
+	intruder.order == 'none' && intruder.terraforming == 'none' &&
+	intruder.convoy_resource == 'none' && intruder_move_target == null
+);
+test.assert(triggers[#sizeof(triggers) - 1].name == 'diplomatic_withdrawal_resolved');
+respond_trade.rollback(withdrawal_response);
+test.assert(intruder_tile == intrusion_tile && intruder_move_target == alpha_trade_base.get_tile());
+test.assert(
+	intruder.order == 'hold' && intruder.terraforming == 'farm' &&
+	intruder.terraforming_turns_remaining == 3 && intruder.convoy_resource == 'nutrient'
+);
+withdrawal_response.data.accept = false;
+withdrawal_response.applied = respond_trade.apply(withdrawal_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'vendetta');
+test.assert(beta.get_diplomatic_relation(alpha) == 'vendetta');
+respond_trade.rollback(withdrawal_response);
+test.assert(alpha.get_diplomatic_relation(beta) == 'treaty');
+test.assert(beta.get_diplomatic_relation(alpha) == 'treaty');
+propose_trade.rollback(withdrawal);
+test.assert(beta.get_diplomatic_trade(alpha) == null);

@@ -10,8 +10,10 @@
 			apply: (e) => {
 				e.data.player.set_contact(e.data.target, true);
 				e.data.target.set_contact(e.data.player, true);
+				e.data.player.set_diplomatic_relation(e.data.target, 'treaty');
+				e.data.target.set_diplomatic_relation(e.data.player, 'treaty');
 				e.data.player.set_diplomatic_trade(e.data.target, {
-					offer_energy: 10,
+					offer_energy: 0,
 					offer_technology: '',
 					request_energy: 0,
 					request_technology: '',
@@ -21,13 +23,14 @@
 					request_map: false,
 					offer_base: 0 - 1,
 					request_base: 0 - 1,
-					is_ultimatum: false,
+					is_ultimatum: true,
 					request_vendetta_player: 0 - 1,
+					request_withdrawal: true,
 				});
 				const player_id = e.data.player.id + 0;
 				const target_id = e.data.target.id + 0;
 				#async(0, () => {
-					game.trigger('diplomatic_trade_proposed', {
+					game.trigger('diplomatic_withdrawal_proposed', {
 						player: game.get_player(target_id),
 						target: game.get_player(player_id),
 					});
@@ -74,13 +77,15 @@
 					return true;
 				}
 				const popup = p.modules.popup.popup;
+				const pending = player.get_diplomatic_trade(target);
 				if (
+					pending == null || !pending.request_withdrawal ||
 					popup == null || popup.id != 'diplomacy' ||
 					definition.target == null || definition.target.id != target.id
 				) {
 					wait_ticks++;
 					if (wait_ticks >= 100) {
-						#print('DIPLOMACY_UI_RUNTIME_FAIL: projected offer did not open its sender');
+						#print('DIPLOMACY_UI_RUNTIME_FAIL: projected withdrawal did not open its sender');
 						glsmac.exit();
 						return false;
 					}
@@ -94,7 +99,7 @@
 					});
 					return true;
 				}
-				#print('DIPLOMACY_UI_RUNTIME_PASS');
+				#print('DIPLOMACY_UI_RUNTIME_PASS: native withdrawal projection opened its sender');
 				#async(250, () => { glsmac.exit(); });
 				return false;
 			});

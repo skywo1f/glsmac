@@ -322,6 +322,32 @@ small_energy_ultimatum.own_energy = 150;
 small_energy_ultimatum.other_integrity_blemishes = 20;
 test.assert(diplomacy.get_ultimatum_compliance_score(small_energy_ultimatum) < 0.0);
 
+const withdrawal_demand = {
+	relation: 'treaty',
+	own_power: 5.0,
+	other_power: 30.0,
+	own_bases: 1,
+	other_bases: 5,
+	other_integrity_blemishes: 0,
+	terms: {
+		offer_energy: 0,
+		offer_technology: '',
+		request_energy: 0,
+		request_technology: '',
+		is_ultimatum: true,
+		request_withdrawal: true,
+	},
+};
+test.assert(diplomacy.is_ultimatum(withdrawal_demand.terms));
+test.assert(diplomacy.get_ultimatum_compliance_score(withdrawal_demand) >= 0.0);
+withdrawal_demand.own_power = 30.0;
+withdrawal_demand.other_power = 5.0;
+withdrawal_demand.own_bases = 5;
+withdrawal_demand.other_bases = 1;
+test.assert(diplomacy.get_ultimatum_compliance_score(withdrawal_demand) < 0.0);
+withdrawal_demand.relation = 'neutral';
+test.assert(diplomacy.get_ultimatum_compliance_score(withdrawal_demand) < 0.0);
+
 let ultimatum_proposal = diplomacy.get_ultimatum_proposal({
 	relation: 'neutral',
 	own_power: 30.0,

@@ -1,6 +1,7 @@
 const diplomatic_base_transfer = #include('./diplomatic_base_transfer');
 const technology_acquisition = #include('./technology_acquisition');
 const technology_effects = #include('./technology_effects');
+const diplomatic_withdrawal = #include('./diplomatic_withdrawal');
 const messages = #include('./message_rules');
 
 const is_player = (player) => {
@@ -341,6 +342,10 @@ const is_ultimatum = (terms) => {
 	return #typeof(terms.is_ultimatum) == 'Bool' && terms.is_ultimatum;
 };
 
+const is_withdrawal_request = (terms) => {
+	return #typeof(terms.request_withdrawal) == 'Bool' && terms.request_withdrawal;
+};
+
 const find_player = (game, player_id) => {
 	if (#typeof(game.get_players) != 'Callable') {
 		return null;
@@ -387,6 +392,8 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		(#is_defined(terms.request_vendetta_player) &&
 			#typeof(terms.request_vendetta_player) != 'Int') ||
 		(#is_defined(terms.is_ultimatum) && #typeof(terms.is_ultimatum) != 'Bool') ||
+		(#is_defined(terms.request_withdrawal) &&
+			#typeof(terms.request_withdrawal) != 'Bool') ||
 		(#is_defined(terms.proposed_relation) && #typeof(terms.proposed_relation) != 'String')
 	) {
 		return 'Diplomatic trade terms have invalid fields';
@@ -410,6 +417,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	const proposed_relation = get_proposed_relation(terms);
 	const military_request = request_vendetta_player >= 0;
 	const ultimatum = is_ultimatum(terms);
+	const withdrawal_request = is_withdrawal_request(terms);
 	if (
 		proposed_relation != '' &&
 		proposed_relation != 'treaty' && proposed_relation != 'pact'
@@ -440,13 +448,25 @@ const validate_trade = (game, proposer, recipient, terms) => {
 			terms.offer_energy != 0 || terms.offer_technology != '' ||
 			terms.request_energy != 0 || terms.request_technology != '' ||
 			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
-			offer_base >= 0 || request_base >= 0 || ultimatum || proposed_relation != ''
+			offer_base >= 0 || request_base >= 0 || ultimatum || withdrawal_request ||
+			proposed_relation != ''
 		)
 	) {
 		return 'A military request cannot contain trade terms';
 	}
 	if (
-		ultimatum &&
+		withdrawal_request &&
+		(
+			!ultimatum || terms.offer_energy != 0 || terms.offer_technology != '' ||
+			terms.request_energy != 0 || terms.request_technology != '' ||
+			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
+			offer_base >= 0 || request_base >= 0 || proposed_relation != ''
+		)
+	) {
+		return 'A withdrawal demand cannot contain trade terms';
+	}
+	if (
+		ultimatum && !withdrawal_request &&
 		(
 			terms.offer_energy != 0 || terms.offer_technology != '' ||
 			offer_contact >= 0 || request_contact >= 0 || offer_map || request_map ||
@@ -461,7 +481,7 @@ const validate_trade = (game, proposer, recipient, terms) => {
 		terms.request_energy == 0 && terms.request_technology == '' &&
 		offer_contact < 0 && request_contact < 0 &&
 		!offer_map && !request_map && offer_base < 0 && request_base < 0 &&
-		!military_request
+		!military_request && !withdrawal_request
 	) {
 		return 'Diplomatic trade cannot be empty';
 	}
@@ -502,8 +522,17 @@ const validate_trade = (game, proposer, recipient, terms) => {
 	if (military_request && relation != 'pact') {
 		return 'Joint vendetta requests require a diplomatic pact';
 	}
-	if (ultimatum && relation != 'neutral' && relation != 'vendetta') {
+	if (
+		ultimatum && !withdrawal_request &&
+		relation != 'neutral' && relation != 'vendetta'
+	) {
 		return 'Ultimatums require neutral relations or an active vendetta';
+	}
+	if (withdrawal_request) {
+		const withdrawal_error = diplomatic_withdrawal.get_error(game, proposer, recipient);
+		if (#is_defined(withdrawal_error)) {
+			return withdrawal_error;
+		}
 	}
 	if (
 		!ultimatum && !military_request &&
@@ -831,6 +860,16 @@ return (game) => {
 			return find_player(game, player_id);
 		});
 		game.set('f_diplomacy_is_ultimatum', is_ultimatum);
+		game.set('f_diplomacy_is_withdrawal_request', is_withdrawal_request);
+		game.set('f_diplomacy_get_withdrawal_error', (territory_owner, unit_owner) => {
+			return diplomatic_withdrawal.get_error(game, territory_owner, unit_owner);
+		});
+		game.set('f_diplomacy_apply_withdrawal', (territory_owner, unit_owner) => {
+			return diplomatic_withdrawal.apply(game, territory_owner, unit_owner);
+		});
+		game.set('f_diplomacy_rollback_withdrawal', (snapshots) => {
+			diplomatic_withdrawal.rollback(game, snapshots);
+		});
 		game.set('f_diplomacy_find_base', (base_id) => {
 			return diplomatic_base_transfer.find_base(game, base_id);
 		});

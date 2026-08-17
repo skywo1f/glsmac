@@ -67,6 +67,9 @@ const trade_text = (game, terms, proposed_relation) => {
 };
 
 const ultimatum_text = (game, terms) => {
+	if (#typeof(terms.request_withdrawal) == 'Bool' && terms.request_withdrawal) {
+		return 'Demands immediate withdrawal from faction territory';
+	}
 	return 'Demands ' + trade_side_text(
 		game, terms.request_energy, terms.request_technology, terms.request_contact,
 		terms.request_map, terms.request_base
@@ -123,7 +126,8 @@ const trade_signature = (terms) => {
 		#to_string(field(terms, 'offer_base', 0 - 1)) + '|' +
 		#to_string(field(terms, 'request_base', 0 - 1)) + '|' +
 		#to_string(field(terms, 'is_ultimatum', false)) + '|' +
-		#to_string(field(terms, 'request_vendetta_player', 0 - 1));
+		#to_string(field(terms, 'request_vendetta_player', 0 - 1)) + '|' +
+		#to_string(field(terms, 'request_withdrawal', false));
 };
 
 const loan_signature = (terms) => {
@@ -237,6 +241,9 @@ return {
 			'diplomatic_military_request_proposed',
 			'diplomatic_military_request_updated',
 			'diplomatic_military_request_resolved',
+			'diplomatic_withdrawal_proposed',
+			'diplomatic_withdrawal_updated',
+			'diplomatic_withdrawal_resolved',
 			'diplomatic_loan_proposed',
 			'diplomatic_loan_updated',
 			'diplomatic_loan_resolved',
@@ -295,6 +302,7 @@ return {
 						observed_event_name == 'diplomatic_trade_proposed' ||
 						observed_event_name == 'diplomatic_ultimatum_proposed' ||
 						observed_event_name == 'diplomatic_military_request_proposed' ||
+						observed_event_name == 'diplomatic_withdrawal_proposed' ||
 						observed_event_name == 'diplomatic_loan_proposed' ||
 						observed_event_name == 'diplomatic_surrender_offered') &&
 					e.target.id == p.game.get_player().id;
@@ -334,6 +342,7 @@ return {
 		this.offer_treaty = null;
 		this.offer_pact = null;
 		this.declare_vendetta = null;
+		this.demand_withdrawal = null;
 		this.use_excuse = null;
 		this.overlook_excuse = null;
 		this.accept_offer = null;
@@ -415,12 +424,21 @@ return {
 				return true;
 			});
 			this.declare_vendetta = body.button({
-				class: 'game-popup-button', text: 'Declare Vendetta', top: 142,
+				class: 'game-popup-button', text: 'Declare Vendetta', right: 10, top: 142,
+				width: 280,
 			});
 			this.declare_vendetta.on('click', (e) => {
 				if (this.player != null && this.target != null) {
 					p.game.event('declare_vendetta', {player: this.player, target: this.target});
 				}
+				return true;
+			});
+			this.demand_withdrawal = body.button({
+				class: 'game-popup-button', text: 'Demand Withdrawal', left: 10, top: 142,
+				width: 280,
+			});
+			this.demand_withdrawal.on('click', (e) => {
+				this.propose_withdrawal();
 				return true;
 			});
 			this.use_excuse = body.button({
@@ -812,6 +830,31 @@ return {
 		});
 	},
 
+	propose_withdrawal: () => {
+		if (this.player == null || this.target == null) {
+			return;
+		}
+		this.p.game.event('propose_diplomatic_trade', {
+			player: this.player,
+			target: this.target,
+			terms: {
+				offer_energy: 0,
+				offer_technology: '',
+				request_energy: 0,
+				request_technology: '',
+				offer_contact: 0 - 1,
+				request_contact: 0 - 1,
+				offer_map: false,
+				request_map: false,
+				offer_base: 0 - 1,
+				request_base: 0 - 1,
+				request_vendetta_player: 0 - 1,
+				is_ultimatum: true,
+				request_withdrawal: true,
+			},
+		});
+	},
+
 	begin_counter_trade: () => {
 		if (this.player == null || this.target == null) {
 			return;
@@ -987,6 +1030,7 @@ return {
 		this.offer_treaty.hide();
 		this.offer_pact.hide();
 		this.declare_vendetta.hide();
+		this.demand_withdrawal.hide();
 		this.use_excuse.hide();
 		this.overlook_excuse.hide();
 		this.accept_offer.hide();
@@ -1048,12 +1092,19 @@ return {
 		const outgoing_trade = this.target.get_diplomatic_trade(this.player);
 		const is_ultimatum = this.p.game.get('f_diplomacy_is_ultimatum');
 		const is_military_request = this.p.game.get('f_diplomacy_is_military_request');
+		const is_withdrawal_request = this.p.game.get(
+			'f_diplomacy_is_withdrawal_request'
+		);
 		const incoming_ultimatum = incoming_trade != null && is_ultimatum(incoming_trade);
 		const outgoing_ultimatum = outgoing_trade != null && is_ultimatum(outgoing_trade);
 		const incoming_military_request = incoming_trade != null &&
 			is_military_request(incoming_trade);
 		const outgoing_military_request = outgoing_trade != null &&
 			is_military_request(outgoing_trade);
+		const incoming_withdrawal = incoming_trade != null &&
+			is_withdrawal_request(incoming_trade);
+		const outgoing_withdrawal = outgoing_trade != null &&
+			is_withdrawal_request(outgoing_trade);
 		const incoming_loan = this.player.get_diplomatic_loan_offer(this.target);
 		const outgoing_loan = this.target.get_diplomatic_loan_offer(this.player);
 		const player_debt = this.player.get_diplomatic_loan(this.target);
@@ -1106,24 +1157,35 @@ return {
 			? 'Incoming proposal: ' + relation_name(incoming)
 			: (outgoing != '' && outgoing_trade == null
 				? 'Proposal awaiting response: ' + relation_name(outgoing) : ''))));
-		this.trade_text.text = incoming_trade != null
-			? (incoming_military_request
-				? 'Incoming military request: ' + military_request_text(this.p.game, incoming_trade)
-				: (incoming_ultimatum
-				? 'Incoming ultimatum: ' + ultimatum_text(this.p.game, incoming_trade)
-				: 'Incoming trade: ' + trade_text(this.p.game, incoming_trade, incoming)))
-			: (outgoing_trade != null
-				? (outgoing_military_request
+		this.trade_text.text = '';
+		if (incoming_trade != null) {
+			this.trade_text.text = incoming_withdrawal
+				? 'Incoming territory demand: ' + ultimatum_text(this.p.game, incoming_trade)
+				: (incoming_military_request
+					? 'Incoming military request: ' +
+						military_request_text(this.p.game, incoming_trade)
+					: (incoming_ultimatum
+						? 'Incoming ultimatum: ' + ultimatum_text(this.p.game, incoming_trade)
+						: 'Incoming trade: ' + trade_text(
+							this.p.game,
+							incoming_trade,
+							incoming
+						)));
+		} else if (outgoing_trade != null) {
+			this.trade_text.text = outgoing_withdrawal
+				? 'Withdrawal demand awaiting response'
+				: (outgoing_military_request
 					? 'Military request awaiting response: ' +
 						military_request_text(this.p.game, outgoing_trade)
 					: (outgoing_ultimatum
-					? 'Ultimatum awaiting response: ' + ultimatum_text(this.p.game, outgoing_trade)
-					: 'Trade awaiting response: ' + trade_text(
-						this.p.game,
-						outgoing_trade,
-						outgoing
-					)))
-				: '');
+						? 'Ultimatum awaiting response: ' +
+							ultimatum_text(this.p.game, outgoing_trade)
+						: 'Trade awaiting response: ' + trade_text(
+							this.p.game,
+							outgoing_trade,
+							outgoing
+						)));
+		}
 		this.loan_text.text = player_debt != null
 			? 'You owe ' + #to_string(player_debt.balance) + ' EC; ' +
 				#to_string(player_debt.payment) + ' EC/year'
@@ -1166,11 +1228,20 @@ return {
 			if (relation != 'vendetta') {
 				this.declare_vendetta.show();
 			}
+			const get_withdrawal_error = this.p.game.get('f_diplomacy_get_withdrawal_error');
+			if (
+				relation == 'treaty' && #typeof(get_withdrawal_error) == 'Callable' &&
+				!#is_defined(get_withdrawal_error(this.player, this.target))
+			) {
+				this.demand_withdrawal.show();
+			}
 		}
 
 		if (incoming_trade != null) {
-			this.accept_trade.text = incoming_military_request
-				? 'Join Vendetta' : (incoming_ultimatum ? 'Comply' : 'Accept Trade');
+			this.accept_trade.text = incoming_withdrawal
+				? 'Withdraw Units'
+				: (incoming_military_request
+					? 'Join Vendetta' : (incoming_ultimatum ? 'Comply' : 'Accept Trade'));
 			this.reject_trade.text = incoming_military_request
 				? 'Decline' : (incoming_ultimatum ? 'Refuse' : 'Reject Trade');
 			if (incoming_ultimatum || incoming_military_request) {

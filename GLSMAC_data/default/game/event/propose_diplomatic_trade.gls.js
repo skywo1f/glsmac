@@ -47,9 +47,19 @@ return {
 		}
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
-		const event_name = military_request
-			? 'diplomatic_military_request_proposed'
-			: (ultimatum ? 'diplomatic_ultimatum_proposed' : 'diplomatic_trade_proposed');
+		const withdrawal_request = e.game.get('f_diplomacy_is_withdrawal_request')(
+			e.data.terms
+		);
+		let event_name = 'diplomatic_trade_proposed';
+		if (ultimatum) {
+			event_name = 'diplomatic_ultimatum_proposed';
+		}
+		if (military_request) {
+			event_name = 'diplomatic_military_request_proposed';
+		}
+		if (withdrawal_request) {
+			event_name = 'diplomatic_withdrawal_proposed';
+		}
 		e.game.trigger(event_name, {
 			player: e.data.player,
 			target: e.data.target,
@@ -67,9 +77,19 @@ return {
 		e.data.target.set_diplomatic_offer(e.data.player, e.applied.offer);
 		const ultimatum = e.game.get('f_diplomacy_is_ultimatum')(e.data.terms);
 		const military_request = e.game.get('f_diplomacy_is_military_request')(e.data.terms);
-		const event_name = military_request
-			? 'diplomatic_military_request_updated'
-			: (ultimatum ? 'diplomatic_ultimatum_updated' : 'diplomatic_trade_updated');
+		const withdrawal_request = e.game.get('f_diplomacy_is_withdrawal_request')(
+			e.data.terms
+		);
+		let event_name = 'diplomatic_trade_updated';
+		if (ultimatum) {
+			event_name = 'diplomatic_ultimatum_updated';
+		}
+		if (military_request) {
+			event_name = 'diplomatic_military_request_updated';
+		}
+		if (withdrawal_request) {
+			event_name = 'diplomatic_withdrawal_updated';
+		}
 		e.game.trigger(event_name, {
 			player: e.data.player,
 			target: e.data.target,

@@ -498,6 +498,10 @@ void AddTests( task::gsetests::GSETests* task ) {
 				Player::diplomatic_trade_t military_request = {};
 				military_request.request_vendetta_player = 3;
 				source.SetDiplomaticTrade( 9, military_request );
+				Player::diplomatic_trade_t withdrawal_request = {};
+				withdrawal_request.is_ultimatum = true;
+				withdrawal_request.request_withdrawal = true;
+				source.SetDiplomaticTrade( 10, withdrawal_request );
 				const Player::diplomatic_loan_offer_t loan_offer = { false, 100, 6, 20 };
 				const Player::diplomatic_loan_t loan = { 120, 6 };
 				source.SetDiplomaticLoanOffer( 6, loan_offer );
@@ -607,6 +611,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					cloned.GetDiplomaticTrade( 9 ) &&
 						*cloned.GetDiplomaticTrade( 9 ) == military_request,
 					"pending military request was not cloned"
+				);
+				GT_ASSERT(
+					cloned.GetDiplomaticTrade( 10 ) &&
+						*cloned.GetDiplomaticTrade( 10 ) == withdrawal_request,
+					"pending withdrawal request was not cloned"
 				);
 				GT_ASSERT(
 					cloned.GetDiplomaticLoanOffer( 6 ) &&
@@ -776,6 +785,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.ClearDiplomaticTrade( 4 );
 				source.ClearDiplomaticTrade( 8 );
 				source.ClearDiplomaticTrade( 9 );
+				source.ClearDiplomaticTrade( 10 );
 				types::Buffer bool_field;
 				bool_field.WriteBool( true );
 				const auto bool_field_size = bool_field.ToString().size();
@@ -840,8 +850,41 @@ void AddTests( task::gsetests::GSETests* task ) {
 				types::Buffer transcendent_thoughts_field;
 				transcendent_thoughts_field.WriteInt( source.GetTranscendentThoughts() );
 				const auto current_player_extension_size =
-					player_extension_size + bool_field_size + research_cost_field.ToString().size() +
+					player_extension_size + bool_field_size * 2 + research_cost_field.ToString().size() +
 						transcendent_thoughts_field.ToString().size();
+				types::Buffer version_five_tag;
+				version_five_tag.WriteInt( 5 );
+				types::Buffer version_eight_tag;
+				version_eight_tag.WriteInt( 8 );
+				auto version_eight_extension = player_extension.ToString();
+				GT_ASSERT(
+					version_eight_extension.rfind( version_five_tag.ToString(), 0 ) == 0,
+					"legacy player extension did not begin with its version tag"
+				);
+				version_eight_extension.replace(
+					0,
+					version_five_tag.ToString().size(),
+					version_eight_tag.ToString()
+				);
+				types::Buffer authoritative_field;
+				authoritative_field.WriteBool( false );
+				version_eight_extension += authoritative_field.ToString();
+				version_eight_extension += research_cost_field.ToString();
+				version_eight_extension += transcendent_thoughts_field.ToString();
+				auto version_eight_data = source.Serialize().ToString();
+				version_eight_data.resize(
+					version_eight_data.size() - current_player_extension_size
+				);
+				version_eight_data += version_eight_extension;
+				Player version_eight( version_eight_data );
+				GT_ASSERT(
+					version_eight.GetDiplomaticTrade( 5 ) &&
+						*version_eight.GetDiplomaticTrade( 5 ) == trade &&
+						!version_eight.GetDiplomaticTrade( 5 )->request_withdrawal &&
+						version_eight.GetResearchCost() == source.GetResearchCost() &&
+						version_eight.GetTranscendentThoughts() == source.GetTranscendentThoughts(),
+					"version-eight player data shifted after adding withdrawal requests"
+				);
 				bool rejected_serialized_transcendent_thoughts = false;
 				try {
 					auto invalid_data = source.Serialize().ToString();
@@ -1091,7 +1134,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_one.GetDiplomaticTrade( 5 )->offer_base == -1 &&
 					version_one.GetDiplomaticTrade( 5 )->request_base == -1 &&
 					version_one.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
-					!version_one.GetDiplomaticTrade( 5 )->is_ultimatum,
+					!version_one.GetDiplomaticTrade( 5 )->is_ultimatum &&
+					!version_one.GetDiplomaticTrade( 5 )->request_withdrawal,
 					"version-one diplomatic trade unexpectedly gained a map term"
 				);
 				types::Buffer version_two_extension;
@@ -1126,7 +1170,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_two.GetDiplomaticTrade( 5 )->offer_base == -1 &&
 					version_two.GetDiplomaticTrade( 5 )->request_base == -1 &&
 					version_two.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
-					!version_two.GetDiplomaticTrade( 5 )->is_ultimatum,
+					!version_two.GetDiplomaticTrade( 5 )->is_ultimatum &&
+					!version_two.GetDiplomaticTrade( 5 )->request_withdrawal,
 					"version-two diplomatic trade did not preserve map terms or default base terms"
 				);
 				types::Buffer version_three_extension;
@@ -1161,7 +1206,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 					version_three.GetDiplomaticTrade( 5 )->offer_base == trade.offer_base &&
 					version_three.GetDiplomaticTrade( 5 )->request_base == trade.request_base &&
 					version_three.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
-					!version_three.GetDiplomaticTrade( 5 )->is_ultimatum,
+					!version_three.GetDiplomaticTrade( 5 )->is_ultimatum &&
+					!version_three.GetDiplomaticTrade( 5 )->request_withdrawal,
 					"version-three diplomatic trade did not preserve bases or default ultimatum state"
 				);
 				types::Buffer version_four_extension;
@@ -1195,7 +1241,8 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					version_four.GetDiplomaticTrade( 5 ) &&
 					version_four.GetDiplomaticTrade( 5 )->is_ultimatum == trade.is_ultimatum &&
-					version_four.GetDiplomaticTrade( 5 )->request_vendetta_player == -1,
+					version_four.GetDiplomaticTrade( 5 )->request_vendetta_player == -1 &&
+					!version_four.GetDiplomaticTrade( 5 )->request_withdrawal,
 					"version-four diplomatic trade did not default military request state"
 				);
 				auto pre_retirement_data = source.Serialize().ToString();
@@ -1284,6 +1331,11 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"pending military request was not serialized"
 				);
 				GT_ASSERT(
+					roundtrip.GetDiplomaticTrade( 10 ) &&
+						*roundtrip.GetDiplomaticTrade( 10 ) == withdrawal_request,
+					"pending withdrawal request was not serialized"
+				);
+				GT_ASSERT(
 					roundtrip.GetDiplomaticLoanOffer( 6 ) &&
 						*roundtrip.GetDiplomaticLoanOffer( 6 ) == loan_offer,
 					"pending diplomatic loan offer was not serialized"
@@ -1360,6 +1412,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				roundtrip.ClearDiplomaticTrade( 4 );
 				roundtrip.ClearDiplomaticTrade( 8 );
 				roundtrip.ClearDiplomaticTrade( 9 );
+				roundtrip.ClearDiplomaticTrade( 10 );
 				GT_ASSERT( roundtrip.GetDiplomaticTrades().empty(), "cleared diplomatic trade was retained" );
 				roundtrip.ClearDiplomaticLoanOffer( 6 );
 				roundtrip.ClearDiplomaticLoan( 7 );
@@ -1684,6 +1737,38 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"military request bundled with trade terms was accepted"
 				);
 
+				bool rejected_non_ultimatum_withdrawal = false;
+				try {
+					Player invalid( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_request = {};
+					invalid_request.request_withdrawal = true;
+					invalid.SetDiplomaticTrade( 1, invalid_request );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_non_ultimatum_withdrawal = true;
+				}
+				GT_ASSERT(
+					rejected_non_ultimatum_withdrawal,
+					"withdrawal request without ultimatum state was accepted"
+				);
+
+				bool rejected_bundled_withdrawal = false;
+				try {
+					Player invalid( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
+					Player::diplomatic_trade_t invalid_request = {};
+					invalid_request.offer_energy = 10;
+					invalid_request.is_ultimatum = true;
+					invalid_request.request_withdrawal = true;
+					invalid.SetDiplomaticTrade( 1, invalid_request );
+				}
+				catch ( const std::runtime_error& ) {
+					rejected_bundled_withdrawal = true;
+				}
+				GT_ASSERT(
+					rejected_bundled_withdrawal,
+					"withdrawal request bundled with trade terms was accepted"
+				);
+
 				bool rejected_invalid_ultimatum = false;
 				try {
 					Player invalid( "Demander", Player::PR_SINGLE, nullptr, "Citizen" );
@@ -1709,9 +1794,15 @@ void AddTests( task::gsetests::GSETests* task ) {
 				technology_ultimatum.request_technology = "CentauriEcology";
 				technology_ultimatum.is_ultimatum = true;
 				valid_demander.SetDiplomaticTrade( 2, technology_ultimatum );
+				Player::diplomatic_trade_t withdrawal = {};
+				withdrawal.is_ultimatum = true;
+				withdrawal.request_withdrawal = true;
+				valid_demander.SetDiplomaticTrade( 3, withdrawal );
 				GT_ASSERT(
 					valid_demander.GetDiplomaticTrade( 1 )->is_ultimatum &&
-					valid_demander.GetDiplomaticTrade( 2 )->is_ultimatum,
+					valid_demander.GetDiplomaticTrade( 2 )->is_ultimatum &&
+					valid_demander.GetDiplomaticTrade( 3 )->is_ultimatum &&
+					valid_demander.GetDiplomaticTrade( 3 )->request_withdrawal,
 					"valid diplomatic ultimatum was not retained"
 				);
 

@@ -274,6 +274,7 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 		int64_t request_base = -1;
 		int64_t request_vendetta_player = -1;
 		bool is_ultimatum = false;
+		bool request_withdrawal = false;
 
 		bool operator==( const diplomatic_trade_t& other ) const {
 			return
@@ -288,7 +289,8 @@ CLASS2( Player, types::Serializable, gse::Wrappable )
 				offer_base == other.offer_base &&
 				request_base == other.request_base &&
 				request_vendetta_player == other.request_vendetta_player &&
-				is_ultimatum == other.is_ultimatum;
+				is_ultimatum == other.is_ultimatum &&
+				request_withdrawal == other.request_withdrawal;
 		}
 	};
 	using diplomatic_trades_t = std::map< size_t, diplomatic_trade_t >;
