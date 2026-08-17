@@ -1542,7 +1542,7 @@ suite passed in 205.57 seconds. The full 45-test runtime matrix then passed in
 560.72 seconds, including the Unit Workshop, CVR catalog, small-map frontend,
 research, diplomacy, and AI soak gates. Unit icons still use a
 static frame rather than playing the original animations, and the renderer does
-not yet reproduce Caviar normals, source lighting, or faction tinting. An
+not yet reproduce source dynamic lighting or faction tinting. An
 automated foreground-window capture also still presented a black OpenGL client
 area despite the runtime log reaching the selected composed rover and completed
 minimap textures. This is broad asset and parser coverage, not a claim of
@@ -1671,3 +1671,16 @@ by multiplayer and running-game reconnect. The six-opponent economy soak passed
 but took 184.88 seconds, versus recent 132-second focused runs, so AI-turn
 performance remains open. These results support a new manual-play candidate,
 not a shippable claim.
+
+The CVR renderer now decodes Caviar's packed per-voxel normals, rotates them by
+each part's frame-zero matrix, and selects colors from the installed model's
+complete 24-level shade table using a fixed map-camera light. This work was
+cross-checked against Ford Prefect's GPL CVR-Colorizer and the community Caviar
+format specification; GLSMAC's bounded chunk parser and multipart transform
+path remain native C++ implementations, and no game assets were added to Git.
+The normal-lit Scout Patrol dump is a recognizable armed infantry figure rather
+than the earlier flat or false-palette blob. The Windows RelWithDebInfo rebuild,
+unit-render script, complete generated CVR catalog, live gameplay-controls, and
+Gaian small-map opening tests all passed. Animation playback, exact original
+light placement, and faction-specific unit tinting remain incomplete and still
+need visual manual play approval.
