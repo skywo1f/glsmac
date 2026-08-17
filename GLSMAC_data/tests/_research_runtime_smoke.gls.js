@@ -43,7 +43,11 @@
 		if (runtime_complete && ui_started && !exit_scheduled) {
 			exit_scheduled = true;
 			#print(
-				'RESEARCH_RUNTIME_PASS: validated 77 technologies, 37 facilities, 33 projects, and batch production gates'
+				'RESEARCH_RUNTIME_PASS: validated ' +
+				#to_string(#sizeof(technologies.order)) + ' technologies, ' +
+				#to_string(#sizeof(facility_ids)) + ' facilities, ' +
+				#to_string(#sizeof(project_ids)) +
+				' projects, and batch production gates'
 			);
 			#async(500, () => { glsmac.exit(); });
 		}
