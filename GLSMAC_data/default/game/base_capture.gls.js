@@ -50,7 +50,7 @@ const get_energy_credits = (player) => {
 	return #typeof(player.energy_credits) == 'Int' ? player.energy_credits : 0;
 };
 
-const apply_spoils_of_war = (game, winner, loser) => {
+const apply_spoils_of_war = (game, winner, loser, count) => {
 	if (
 		!game_rules.get(game, 'spoils_of_war') ||
 		#typeof(winner.has_technology) != 'Callable' ||
@@ -65,44 +65,71 @@ const apply_spoils_of_war = (game, winner, loser) => {
 	if (#typeof(grant) != 'Callable') {
 		return #undefined;
 	}
-	let technology = '';
-	for (id of loser.get_research_state().technologies) {
-		if (!winner.has_technology(id)) {
-			technology = id;
-			break;
-		}
-	}
-	if (technology == '') {
+	const maximum = #typeof(count) == 'Int' ? #max(0, count) : 1;
+	if (maximum == 0) {
 		return #undefined;
 	}
 	const state = winner.get_research_state();
-	const granted = grant(winner, technology);
-	if (
-		!#is_defined(granted) ||
-		(#typeof(granted) == 'Bool' && !granted)
-	) {
+	let technologies = [];
+	let map_reveals = [];
+	let specialist_updates = [];
+	for (let i = 0; i < maximum; i++) {
+		let technology = '';
+		for (id of loser.get_research_state().technologies) {
+			if (!winner.has_technology(id)) {
+				technology = id;
+				break;
+			}
+		}
+		if (technology == '') {
+			break;
+		}
+		const granted = grant(winner, technology);
+		if (
+			!#is_defined(granted) ||
+			(#typeof(granted) == 'Bool' && !granted)
+		) {
+			break;
+		}
+		technologies :+technology;
+		if (#typeof(granted) == 'Object') {
+			if (#is_defined(granted.map_reveals)) {
+				for (map_reveal of granted.map_reveals) {
+					map_reveals :+map_reveal;
+				}
+			}
+			if (#is_defined(granted.specialist_updates)) {
+				for (specialist_update of granted.specialist_updates) {
+					specialist_updates :+specialist_update;
+				}
+			}
+		}
+	}
+	if (#sizeof(technologies) == 0) {
 		return #undefined;
 	}
 	game.trigger('research_updated', {player: winner});
 	const get_definition = game.get('f_technology_get_definition');
-	const definition = #typeof(get_definition) == 'Callable'
-		? get_definition(technology)
-		: null;
 	const winner_name = #typeof(winner.get_faction) == 'Callable'
 		? winner.get_faction().name
 		: winner.name;
-	messages.to_contacts(
-		game,
-		winner,
-		winner_name + ' captured research data for ' +
-		(definition == null ? technology : definition.name) + '.'
-	);
+	for (technology of technologies) {
+		const definition = #typeof(get_definition) == 'Callable'
+			? get_definition(technology)
+			: null;
+		messages.to_contacts(
+			game,
+			winner,
+			winner_name + ' captured research data for ' +
+			(definition == null ? technology : definition.name) + '.'
+		);
+	}
 	return {
 		player: winner,
 		state: state,
-		map_reveals: #typeof(granted) == 'Object' ? granted.map_reveals : [],
-		specialist_updates: #typeof(granted) == 'Object'
-			? granted.specialist_updates : [],
+		technologies: technologies,
+		map_reveals: map_reveals,
+		specialist_updates: specialist_updates,
 	};
 };
 
@@ -332,7 +359,12 @@ const capture_base = (game, base, new_owner) => {
 	faction_rules.apply_free_base_facilities(base, old_owner);
 	base.set_owner(new_owner);
 	const faction_facilities_added = faction_rules.apply_free_base_facilities(base, new_owner);
-	const spoils_of_war = apply_spoils_of_war(game, new_owner, old_owner);
+	const spoils_of_war = apply_spoils_of_war(
+		game,
+		new_owner,
+		old_owner,
+		base.has_facility('TheUniversalTranslator') ? 2 : 1
+	);
 	if (headquarters_evacuation != null) {
 		messages.to_players(
 			game,

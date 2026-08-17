@@ -75,11 +75,15 @@ const winner = {
 };
 const loser = {
 	get_research_state: () => {
-		return {technologies: ['Biogenetics', 'AppliedPhysics'], target: '', progress: 0};
+		return {
+			technologies: ['Biogenetics', 'AppliedPhysics', 'SocialPsych'],
+			target: '',
+			progress: 0,
+		};
 	},
 };
 let research_updates = 0;
-let message = '';
+let messages = [];
 let global_message = '';
 const spoils_game = rules_game({spoils_of_war: true});
 spoils_game.get = (name) => {
@@ -92,10 +96,15 @@ spoils_game.get = (name) => {
 		};
 	}
 	if (name == 'f_technology_get_definition') {
-		return (id) => { return {name: 'Applied Physics'}; };
+		return (id) => {
+			return {name: id == 'AppliedPhysics' ? 'Applied Physics' : 'Social Psych'};
+		};
 	}
 	if (name == 'f_message_to_contacts') {
-		return (player, value) => { test.assert(player == winner); message = value; };
+		return (player, value) => {
+			test.assert(player == winner);
+			messages :+value;
+		};
 	}
 	return #undefined;
 };
@@ -106,7 +115,7 @@ const spoils = base_capture.apply_spoils_of_war(spoils_game, winner, loser);
 test.assert(#is_defined(spoils));
 test.assert(winner.has_technology('AppliedPhysics'));
 test.assert(research_updates == 1);
-test.assert(message == 'Gaians captured research data for Applied Physics.');
+test.assert(messages == ['Gaians captured research data for Applied Physics.']);
 test.assert(global_message == '');
 base_capture.rollback_spoils_of_war(spoils_game, spoils);
 test.assert(!winner.has_technology('AppliedPhysics'));
@@ -114,5 +123,33 @@ test.assert(winner_state.target == 'IndustrialBase');
 test.assert(winner_state.progress == 4);
 test.assert(research_updates == 2);
 
+messages = [];
+const translator_spoils = base_capture.apply_spoils_of_war(
+	spoils_game,
+	winner,
+	loser,
+	2
+);
+test.assert(#is_defined(translator_spoils));
+test.assert(translator_spoils.technologies == ['AppliedPhysics', 'SocialPsych']);
+test.assert(winner.has_technology('AppliedPhysics'));
+test.assert(winner.has_technology('SocialPsych'));
+test.assert(research_updates == 3);
+test.assert(messages == [
+	'Gaians captured research data for Applied Physics.',
+	'Gaians captured research data for Social Psych.',
+]);
+base_capture.rollback_spoils_of_war(spoils_game, translator_spoils);
+test.assert(!winner.has_technology('AppliedPhysics'));
+test.assert(!winner.has_technology('SocialPsych'));
+test.assert(winner_state.target == 'IndustrialBase');
+test.assert(winner_state.progress == 4);
+test.assert(research_updates == 4);
+
 const no_spoils_game = rules_game({spoils_of_war: false});
-test.assert(!#is_defined(base_capture.apply_spoils_of_war(no_spoils_game, winner, loser)));
+test.assert(!#is_defined(base_capture.apply_spoils_of_war(
+	no_spoils_game,
+	winner,
+	loser,
+	2
+)));
