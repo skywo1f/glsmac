@@ -11,7 +11,12 @@ const effects = {
 	},
 	RecyclingTanks: {nutrient_bonus: 1, mineral_bonus: 1, energy_bonus: 1},
 	PerimeterDefense: {defense_multiplier: 2.0},
-	TachyonField: {defense_multiplier: 2.0, required_facility: 'PerimeterDefense'},
+	TachyonField: {
+		defense_multiplier: 2.0,
+		water_defense_multiplier: 2.0,
+		air_defense_multiplier: 2.0,
+		required_facility: 'PerimeterDefense',
+	},
 	RecreationCommons: {drone_modifier: -2},
 	EnergyBank: {economy_multiplier: 0.5},
 	NetworkNode: {research_multiplier: 0.5},

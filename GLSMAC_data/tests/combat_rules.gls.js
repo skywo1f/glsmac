@@ -146,10 +146,26 @@ const air_attacker = make_unit(attack_tile, 1, 2, 1, false, 'air');
 facilities :+{defense_multiplier: 1.0, water_defense_multiplier: 2.0};
 facilities :+{defense_multiplier: 1.0, air_defense_multiplier: 2.0};
 test.assert(combat_rules.get_base_defense_multiplier(defender, attacker) == 2.5);
-test.assert(combat_rules.get_base_defense_multiplier(defender, water_attacker) == 3.5);
-test.assert(combat_rules.get_base_defense_multiplier(defender, air_attacker) == 3.5);
-test.assert(combat_rules.get_combat_powers(water_attacker, defender).defence == 8.75);
-test.assert(combat_rules.get_combat_powers(air_attacker, defender).defence == 8.75);
+test.assert(combat_rules.get_base_defense_multiplier(defender, water_attacker) == 2.0);
+test.assert(combat_rules.get_base_defense_multiplier(defender, air_attacker) == 2.0);
+test.assert(combat_rules.get_combat_powers(water_attacker, defender).defence == 5.0);
+test.assert(combat_rules.get_combat_powers(air_attacker, defender).defence == 5.0);
+
+const triad_defense_tile = make_tile();
+make_base(triad_defense_tile, 2, [
+	{defense_multiplier: 2.0},
+	{
+		defense_multiplier: 2.0,
+		water_defense_multiplier: 2.0,
+		air_defense_multiplier: 2.0,
+	},
+	{water_defense_multiplier: 2.0},
+	{air_defense_multiplier: 2.0},
+]);
+const triad_defender = make_unit(triad_defense_tile, 2, 1, 2, false, 'land');
+test.assert(combat_rules.get_base_defense_multiplier(triad_defender, attacker) == 3.0);
+test.assert(combat_rules.get_base_defense_multiplier(triad_defender, water_attacker) == 3.0);
+test.assert(combat_rules.get_base_defense_multiplier(triad_defender, air_attacker) == 3.0);
 
 facilities = [];
 const project_defense_game = {

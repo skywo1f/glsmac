@@ -372,7 +372,13 @@ scenarios, for:
   provide global orbital insertion, Air Superiority patrols can deny landing
   zones, reactor-scaled landing damage and the same-turn attack penalty apply,
   transport cargo moves and rolls back with its carrier, and player and
-  target-aware AI controls use the same authoritative rules;
+  target-aware AI controls use the same authoritative rules; base defense now
+  applies Perimeter Defense to land attacks, Naval Yards to sea attacks,
+  Aerospace Complexes to air attacks, and Tachyon Fields to all three triads;
+  defeating the last conventional defender of an unfortified land base removes
+  one population, including reversible size-one base destruction, while
+  fortifications, ocean bases, Citizen difficulty, native attackers, and a
+  surviving garrison preserve the population;
 - AI expansion, research, production, terraforming, economy, opponent-aware
   combat, retreat and repair, reinforcement, air units, and hurry production;
   AI and native-life controllers retry animation-blocked turn completion and
@@ -1602,3 +1608,13 @@ and 420-second startup/stress timeouts, so they are not counted as passes. The
 previous `cf18cd30` checkpoint also completed its Windows build/package and
 Ubuntu static-analysis GitHub Actions jobs successfully. This performance
 milestone still requires ordinary manual campaign play before release claims.
+
+The conventional base-combat parity checkpoint completed a Windows x64
+RelWithDebInfo build, all 147 native/script tests in 205.63 seconds, and six
+focused installed-asset runtime scenarios in 48.36 seconds. The live scenarios
+covered the Unit Workshop, research, facility production rules, combat access,
+small-map frontend startup, and save/load. The population-loss regression
+matrix covers unfortified land bases, effective Perimeter Defense, ocean bases,
+Citizen difficulty, surviving garrisons, size-one destruction and support
+rehoming, plus exact rollback. These automated results do not replace manual
+siege and composed-unit visual testing.

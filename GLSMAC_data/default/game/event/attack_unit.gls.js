@@ -53,6 +53,76 @@ const refresh_base_psych = (game, base) => {
 	}
 };
 
+const has_base_combat_fortification = (game, base) => {
+	const resolver = game.get('f_base_get_effective_facilities');
+	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
+	for (facility of facilities) {
+		if (facility.id == 'PerimeterDefense' || facility.id == 'TachyonField') {
+			return true;
+		}
+	}
+	return false;
+};
+
+const should_lose_base_combat_population = (
+	game,
+	base,
+	defender_tile,
+	attacker,
+	defender,
+	attacker_owner,
+	defender_owner
+) => {
+	if (
+		base == null || base.get_owner().id != defender.owner ||
+		base.get_tile().is_water == true ||
+		attacker_owner.type == 'native' ||
+		(
+			defender_owner.type == 'human' &&
+			#is_defined(defender_owner.difficulty_level) &&
+			defender_owner.difficulty_level == 'Citizen'
+		) ||
+		has_base_combat_fortification(game, base)
+	) {
+		return false;
+	}
+	if (#is_defined(defender_tile.get_units)) {
+		for (other of defender_tile.get_units()) {
+			if (
+				other.id != defender.id && other.owner != attacker.owner &&
+				other.health > 0.0
+			) {
+				return false;
+			}
+		}
+	}
+	return true;
+};
+
+const apply_base_combat_population_loss = (game, base, defender) => {
+	const result = {
+		base_id: base.id,
+		base_name: base.name,
+		population_loss: 1,
+		rehomed_units: [],
+	};
+	if (base.get_size() <= 1) {
+		result.destroyed_base = game.bm.snapshot_base(base);
+		game.bm.despawn_base(base.id);
+		result.rehomed_units = entity_snapshots.rehome_surviving_units(
+			game,
+			[{id: base.id}],
+			defender.id
+		);
+	} else {
+		result.base = base;
+		result.population = remove_base_population(game, base, 1);
+		refresh_base_psych(game, base);
+		game.trigger('update_base', {base: base});
+	}
+	return result;
+};
+
 const restore_unit = (e, backup) => {
 	let unit = null;
 	if (e.game.um.has_unit(backup.id)) {
@@ -587,6 +657,32 @@ return {
 		if (!e.resolved.defender_dead && e.resolved.attacker_dead) {
 			promote_unit(e.game.um, defender);
 		}
+		if (!nerve_gas && e.resolved.defender_dead) {
+			const base = defender_tile.get_base();
+			if (should_lose_base_combat_population(
+				e.game,
+				base,
+				defender_tile,
+				attacker,
+				defender,
+				attacker_owner,
+				defender_owner
+			)) {
+				applied.base_combat_population = apply_base_combat_population_loss(
+					e.game,
+					base,
+					defender
+				);
+				message_rules.to_players(
+					e.game,
+					[attacker_owner, defender_owner],
+					applied.base_combat_population.base_name +
+						(#is_defined(applied.base_combat_population.destroyed_base)
+							? ' was destroyed after its last defender fell.'
+							: ' lost 1 population after its last defender fell.')
+				);
+			}
+		}
 		if (nerve_gas && e.resolved.defender_dead) {
 			const base = defender_tile.get_base();
 			if (base != null && base.get_owner().id == defender.owner) {
@@ -677,8 +773,27 @@ return {
 				e.game.trigger('update_base', {base: a.nerve_gas.base});
 			}
 		}
+		if (#is_defined(a.base_combat_population)) {
+			if (#is_defined(a.base_combat_population.destroyed_base)) {
+				e.game.bm.restore_base(a.base_combat_population.destroyed_base);
+			} else if (#is_defined(a.base_combat_population.population)) {
+				restore_base_population(
+					e.game,
+					a.base_combat_population.base,
+					a.base_combat_population.population
+				);
+				refresh_base_psych(e.game, a.base_combat_population.base);
+				e.game.trigger('update_base', {base: a.base_combat_population.base});
+			}
+		}
 		restore_unit(e, a.backup.attacker);
 		restore_unit(e, a.backup.defender);
+		if (#is_defined(a.base_combat_population)) {
+			entity_snapshots.restore_rehomed_units(
+				e.game,
+				a.base_combat_population.rehomed_units
+			);
+		}
 		if (#is_defined(a.nerve_gas)) {
 			entity_snapshots.restore_rehomed_units(e.game, a.nerve_gas.rehomed_units);
 			const attacker_owner = e.game.get_player(a.backup.attacker.owner);

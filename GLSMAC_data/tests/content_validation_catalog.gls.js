@@ -14,6 +14,16 @@ test.assert(catalog.facility_coverage.status.HybridForest == 'complete');
 test.assert(content.get_facility(catalog, 'Headquarters').data.energy_bonus == 1);
 test.assert(content.get_facility(catalog, 'Headquarters').data.defender_morale_bonus == 1);
 test.assert(catalog.facility_coverage.status.Headquarters == 'complete');
+test.assert(content.get_facility(catalog, 'PerimeterDefense').data.defense_multiplier == 2.0);
+test.assert(!#is_defined(
+	content.get_facility(catalog, 'PerimeterDefense').data.water_defense_multiplier
+));
+test.assert(!#is_defined(
+	content.get_facility(catalog, 'PerimeterDefense').data.air_defense_multiplier
+));
+test.assert(content.get_facility(catalog, 'TachyonField').data.defense_multiplier == 2.0);
+test.assert(content.get_facility(catalog, 'TachyonField').data.water_defense_multiplier == 2.0);
+test.assert(content.get_facility(catalog, 'TachyonField').data.air_defense_multiplier == 2.0);
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.efficiency_rating_bonus == 2);
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.defender_morale_bonus == 1);
 test.assert(content.get_facility(catalog, 'ChildrenSCreche').data.defender_morale_minimum == 1);

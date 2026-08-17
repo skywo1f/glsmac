@@ -7,10 +7,13 @@ const spawn_unit = #include('../default/game/event/spawn_unit');
 const owner = {id: 1};
 const attacker_tile = {x: 3, y: 4};
 let unit_event_defender_base = null;
+let unit_event_defender_units = [];
 const defender_tile = {
 	x: 4,
 	y: 4,
+	is_water: false,
 	get_base: () => { return unit_event_defender_base; },
+	get_units: () => { return unit_event_defender_units; },
 };
 const open_combat_tile = {
 	rockiness: 1,
@@ -1151,6 +1154,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	let sanction_turns = 3;
 	let active_gas_base = null;
 	let gas_pops = [];
+	let gas_facilities = [];
 	let support_units = [];
 	let attacker_player = null;
 	let defender_player = null;
@@ -1160,6 +1164,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			id: id,
 			name: id == 1 ? 'Attacker' : 'Defender',
 			type: 'ai',
+			difficulty_level: 'Talent',
 			get_diplomatic_relation: (other) => { return combat_relation; },
 			set_diplomatic_relation: (other, relation) => { combat_relation = relation; },
 			get_diplomatic_offer: (other) => { return ''; },
@@ -1198,6 +1203,8 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			id: id,
 			name: name,
 			get_owner: () => { return defender_player; },
+			get_tile: () => { return defender_tile; },
+			get_facilities: () => { return gas_facilities; },
 			get_size: () => { return #sizeof(gas_pops); },
 			get_pops: () => { return gas_pops; },
 			create_pop: (data) => {
@@ -1318,6 +1325,9 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			}
 			if (name == 'f_base_pop_work_tile') {
 				return (base, pop, tile) => { pop.set_worked_tile(tile); };
+			}
+			if (name == 'f_base_get_effective_facilities') {
+				return (base) => { return base.get_facilities(); };
 			}
 			if (
 				name == 'f_economy_get_base_psych' ||
@@ -1670,4 +1680,94 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
 	test.assert(supported.home_base_id == 50);
 	test.assert(major_atrocities == 2 && sanction_turns == 3);
+
+	active_attacker.def = 'ConventionalAttacker';
+	active_attacker.get_def = () => {
+		return {
+			id: 'ConventionalAttacker',
+			is_native: false,
+			is_psi_attack: false,
+			offense: 2,
+			defense: 1,
+			morale_set: 'NATIVE',
+			abilities: [],
+		};
+	};
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.resolved = {
+		sequence: [[true, 0.9]],
+		attacker_dead: false,
+		defender_dead: true,
+		advance_after_combat: false,
+		nerve_gas: false,
+	};
+	gas_pops = [
+		make_gas_pop('WORKER', defender_tile),
+		make_gas_pop('TALENT', #undefined),
+		make_gas_pop('DRONE', #undefined),
+	];
+	gas_facilities = [];
+	active_gas_base = make_gas_base(50, 'Conventional Target', 12);
+	unit_event_defender_base = active_gas_base;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base.get_size() == 2);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 0);
+	test.assert(event.applied.base_combat_population.population_loss == 1);
+	attack_unit.rollback(event);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
+
+	gas_facilities = [{id: 'PerimeterDefense'}];
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(!#is_defined(event.applied.base_combat_population));
+	attack_unit.rollback(event);
+
+	gas_facilities = [];
+	defender_tile.is_water = true;
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(!#is_defined(event.applied.base_combat_population));
+	attack_unit.rollback(event);
+	defender_tile.is_water = false;
+
+	defender_player.type = 'human';
+	defender_player.difficulty_level = 'Citizen';
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(!#is_defined(event.applied.base_combat_population));
+	attack_unit.rollback(event);
+	defender_player.type = 'ai';
+	defender_player.difficulty_level = 'Talent';
+
+	unit_event_defender_units = [active_defender, supported];
+	supported.health = 1.0;
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base.get_size() == 3);
+	test.assert(!#is_defined(event.applied.base_combat_population));
+	attack_unit.rollback(event);
+	unit_event_defender_units = [];
+
+	gas_pops = [make_gas_pop('WORKER', #undefined)];
+	supported.home_base_id = 50;
+	support_units = [supported];
+	event.data.attacker = active_attacker;
+	event.data.defender = active_defender;
+	event.applied = attack_unit.apply(event);
+	test.assert(active_gas_base == null);
+	test.assert(supported.home_base_id == 0);
+	test.assert(#is_defined(event.applied.base_combat_population.destroyed_base));
+	attack_unit.rollback(event);
+	test.assert(active_gas_base != null && active_gas_base.get_size() == 1);
+	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
+	test.assert(supported.home_base_id == 50);
 }

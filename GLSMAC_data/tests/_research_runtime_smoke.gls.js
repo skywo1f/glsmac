@@ -597,8 +597,8 @@
 					research_multiplier != 2.0 || research_bonus != 2 ||
 					defense_multiplier != 3.0 || morale_bonus != 2 ||
 					land_morale_bonus != 2 || water_morale_bonus != 2 ||
-					air_morale_bonus != 2 || water_defense_multiplier != 2.0 ||
-					air_defense_multiplier != 2.0 || growth_rating_bonus != 2 ||
+					air_morale_bonus != 2 || water_defense_multiplier != 3.0 ||
+					air_defense_multiplier != 3.0 || growth_rating_bonus != 2 ||
 					native_lifecycle_bonus != 4 ||
 					drone_modifier != -5 || talent_bonus != 2 || suppress_psych != 1 ||
 					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus -

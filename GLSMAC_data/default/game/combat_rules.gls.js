@@ -251,10 +251,6 @@ const get_base_defense_multiplier = (defender, attacker, game) => {
 	const resolver = #is_defined(game) ? game.get('f_base_get_effective_facilities') : #undefined;
 	const facilities = #is_defined(resolver) ? resolver(base) : base.get_facilities();
 	for (facility of facilities) {
-		const facility_defense = #is_defined(facility.defense_multiplier)
-			? facility.defense_multiplier
-			: 1.0;
-		multiplier += #max(facility_defense - 1.0, 0.0);
 		if (#is_defined(attacker) && attacker.is_water) {
 			const scoped_multiplier = #is_defined(facility.water_defense_multiplier)
 				? facility.water_defense_multiplier
@@ -263,6 +259,11 @@ const get_base_defense_multiplier = (defender, attacker, game) => {
 		} else if (#is_defined(attacker) && attacker.is_air) {
 			const scoped_multiplier = #is_defined(facility.air_defense_multiplier)
 				? facility.air_defense_multiplier
+				: 1.0;
+			multiplier += #max(scoped_multiplier - 1.0, 0.0);
+		} else {
+			const scoped_multiplier = #is_defined(facility.defense_multiplier)
+				? facility.defense_multiplier
 				: 1.0;
 			multiplier += #max(scoped_multiplier - 1.0, 0.0);
 		}
