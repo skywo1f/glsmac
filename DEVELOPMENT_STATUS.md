@@ -1737,3 +1737,19 @@ backend diplomacy runtime, the 92-second Diplomacy GC stress run, and the live
 sender-selection UI smoke all pass. Ordinary two-client manual negotiation and
 reconnect play still need regression testing before multiplayer diplomacy can
 be called complete.
+
+Projected Diplomacy auto-open now limits snapshot inference to non-master
+clients, debounces snapshot bursts with a bounded one-shot timer, inspects only
+the player carried by each projection event, and reacquires local and opponent
+wrappers from a stable opponent ID before later updates. Authoritative offline
+and host games continue to use their direct Diplomacy events, so an inferred
+offer cannot interfere with synchronous save creation. Native text inputs now
+make show and hide idempotent; repeated popup refreshes no longer double-register
+or remove an absent focusable and corrupt the UI focus vector. The live
+Diplomacy smoke now refreshes an already-open offer. After a clean rebuild, all
+199 CTest entries passed in bounded chunks, including isolated UI operations,
+live sender selection, backend Diplomacy, the 20-turn seven-faction GC stress
+run, four-phase save/load, multiplayer runtime, and running reconnect. This
+closes the automated projection/reconnect and save interaction, but ordinary
+two-human negotiation and manual campaign play remain required before the
+multiplayer UI or project can be called complete.

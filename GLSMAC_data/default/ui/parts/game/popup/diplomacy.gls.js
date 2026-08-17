@@ -137,26 +137,26 @@ const loan_signature = (terms) => {
 		#to_string(field(terms, 'turns', 0));
 };
 
-const get_incoming_states = (game, player) => {
-	let states = {};
-	if (player == null) {
-		return states;
+const get_incoming_state = (game, player, target) => {
+	const empty = {
+		target_id: target == null ? 0 - 1 : target.id + 0,
+		relation: '', trade: '', loan: '', surrender: false, excuse_turn: 0 - 1,
+	};
+	if (
+		player == null || target == null || target.id == player.id ||
+		target.type == 'native' || !player.has_contact(target) || !target.has_contact(player)
+	) {
+		return empty;
 	}
-	for (target of game.get_players()) {
-		if (target.id == player.id || target.type == 'native') {
-			continue;
-		}
-		states['p' + #to_string(target.id)] = {
-			target_id: target.id + 0,
-			relation: '' + player.get_diplomatic_offer(target),
-			trade: trade_signature(player.get_diplomatic_trade(target)),
-			loan: loan_signature(player.get_diplomatic_loan_offer(target)),
-			surrender: target.get_surrender_offer_to_id() == player.id,
-			excuse_turn: player.get_diplomatic_excuse_turn(target) >= game.get_turn()
-				? player.get_diplomatic_excuse_turn(target) : 0 - 1,
-		};
-	}
-	return states;
+	const excuse_turn = player.get_diplomatic_excuse_turn(target);
+	return {
+		target_id: target.id + 0,
+		relation: '' + player.get_diplomatic_offer(target),
+		trade: trade_signature(player.get_diplomatic_trade(target)),
+		loan: loan_signature(player.get_diplomatic_loan_offer(target)),
+		surrender: target.get_surrender_offer_to_id() == player.id,
+		excuse_turn: excuse_turn >= game.get_turn() ? excuse_turn : 0 - 1,
+	};
 };
 
 const find_new_incoming = (previous, current) => {
@@ -180,6 +180,15 @@ const find_new_incoming = (previous, current) => {
 	return null;
 };
 
+const incoming_state_changed = (previous, current) => {
+	return
+		previous.relation != current.relation ||
+		previous.trade != current.trade ||
+		previous.loan != current.loan ||
+		previous.surrender != current.surrender ||
+		previous.excuse_turn != current.excuse_turn;
+};
+
 return {
 	get_trade_action: get_trade_action,
 	find_new_incoming: find_new_incoming,
@@ -190,8 +199,24 @@ return {
 		this.observing = true;
 		this.p = p;
 		this.player = null;
+		this.target_id = 0 - 1;
 		this.pending_target_id = 0 - 1;
-		this.incoming_states = null;
+		this.pending_open_timer = null;
+		this.incoming_states = {};
+		const queue_pending_open = () => {
+			if (this.pending_open_timer != null) {
+				this.pending_open_timer.stop();
+			}
+			this.pending_open_timer = #async(100, () => {
+				this.pending_open_timer = null;
+				const target_id = this.pending_target_id + 0;
+				this.pending_target_id = 0 - 1;
+				this.open_target_id = target_id;
+				p.modules.popup.show('diplomacy');
+				this.open_target_id = 0 - 1;
+				return false;
+			});
+		};
 
 		for (event_name of [
 			'player_update',
@@ -225,21 +250,44 @@ return {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
 				let projected_incoming = null;
+				let projected_state_changed = false;
 				if (observed_event_name == 'player_update') {
-					const next_incoming_states = get_incoming_states(
-						p.game,
-						p.game.get_player()
-					);
-					projected_incoming = find_new_incoming(
-						this.incoming_states == null ? {} : this.incoming_states,
-						next_incoming_states
-					);
-					this.incoming_states = next_incoming_states;
-				} else if (this.incoming_states != null) {
-					// Keep the projection baseline current for direct local events.
-					this.incoming_states = get_incoming_states(p.game, p.game.get_player());
+					if (this.pending_target_id >= 0) {
+						queue_pending_open();
+					}
+					if (!p.game.is_master()) {
+						const player = p.game.get_player();
+						const target = e.player;
+						if (target.id != player.id && target.type != 'native') {
+							const key = 'p' + #to_string(target.id);
+							let previous = {};
+							let current = {};
+							previous[key] = #is_defined(this.incoming_states[key])
+								? this.incoming_states[key]
+								: {
+									target_id: target.id + 0,
+									relation: '', trade: '', loan: '', surrender: false,
+									excuse_turn: 0 - 1,
+								};
+							current[key] = get_incoming_state(p.game, player, target);
+							projected_state_changed = incoming_state_changed(
+								previous[key], current[key]
+							);
+							projected_incoming = find_new_incoming(previous, current);
+							this.incoming_states[key] = current[key];
+						}
+					}
 				}
-				if (this.player != null) {
+				const active_popup = p.modules.popup.popup;
+				if (
+					this.player != null && active_popup != null && active_popup.id == 'diplomacy'
+				) {
+					this.rebind_players();
+				}
+				if (
+					this.player != null && active_popup != null && active_popup.id == 'diplomacy' &&
+					(observed_event_name != 'player_update' || projected_state_changed)
+				) {
 					this.refresh();
 				}
 				const incoming_diplomacy =
@@ -253,9 +301,11 @@ return {
 				const incoming_excuse = observed_event_name == 'diplomatic_excuse_updated' &&
 					e.expiry_turn >= p.game.get_turn() &&
 					e.player.id == p.game.get_player().id;
-				const incoming_target_id = incoming_diplomacy || incoming_excuse
-					? e.target.id
-					: (projected_incoming == null ? 0 - 1 : projected_incoming.target_id);
+				const incoming_target_id = incoming_diplomacy
+					? e.player.id
+					: (incoming_excuse
+						? e.target.id
+						: (projected_incoming == null ? 0 - 1 : projected_incoming.target_id));
 				const should_auto_open = p.game.get('f_ui_should_auto_open_diplomacy');
 				if (
 					incoming_target_id >= 0 && this.pending_target_id < 0 &&
@@ -263,20 +313,11 @@ return {
 				) {
 					// Keep native event wrappers out of the deferred popup callback.
 					this.pending_target_id = incoming_target_id + 0;
+					// Projection updates arrive in bursts; open after the burst has settled.
+					queue_pending_open();
 				}
 			});
 		}
-		#async(25, () => {
-			if (this.pending_target_id < 0) {
-				return true;
-			}
-			const target_id = this.pending_target_id + 0;
-			this.pending_target_id = 0 - 1;
-			this.open_target_id = target_id;
-			this.p.modules.popup.show('diplomacy');
-			this.open_target_id = 0 - 1;
-			return true;
-		});
 	},
 
 	init: (p) => {
@@ -284,6 +325,7 @@ return {
 		this.p = p;
 		this.player = null;
 		this.target = null;
+		this.target_id = 0 - 1;
 		this.opponent_select = null;
 		this.relation_text = null;
 		this.offer_text = null;
@@ -622,8 +664,16 @@ return {
 		});
 	},
 
+	rebind_players: () => {
+		this.player = this.p.game.get_player();
+		this.target = this.target_id < 0
+			? null
+			: this.p.game.get_player(this.target_id);
+	},
+
 	select_target: (value) => {
-		this.target = value == '' ? null : this.p.game.get_player(#to_int(value));
+		this.target_id = value == '' ? 0 - 1 : #to_int(value);
+		this.rebind_players();
 		this.offer_energy.value = '0';
 		this.request_energy.value = '0';
 		this.offer_contact.value = '-1';
@@ -931,6 +981,7 @@ return {
 	},
 
 	refresh: () => {
+		this.rebind_players();
 		// UI wrappers must remain direct references; storing them in a script array
 		// converts them to plain values in the interpreter.
 		this.offer_treaty.hide();
@@ -980,7 +1031,6 @@ return {
 		this.request_military_support.hide();
 		this.accept_loan.hide();
 		this.reject_loan.hide();
-
 		if (this.player == null || this.target == null) {
 			this.relation_text.text = '';
 			this.offer_text.text = '';
@@ -1282,6 +1332,7 @@ return {
 	on_hide: () => {
 		this.player = null;
 		this.target = null;
+		this.target_id = 0 - 1;
 	},
 
 };

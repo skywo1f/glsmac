@@ -83,17 +83,21 @@ void Input::OnDefocus() {
 }
 
 void Input::Show() {
-	Panel::Show();
-	if ( m_ui ) {
-		m_ui->AddFocusable( this );
+	if ( !m_is_visible ) {
+		Panel::Show();
+		if ( m_ui ) {
+			m_ui->AddFocusable( this );
+		}
 	}
 }
 
 void Input::Hide() {
-	if ( m_ui ) {
-		m_ui->RemoveFocusable( this );
+	if ( m_is_visible ) {
+		if ( m_ui ) {
+			m_ui->RemoveFocusable( this );
+		}
+		Panel::Hide();
 	}
-	Panel::Hide();
 }
 
 const bool Input::ProcessEventImpl( GSE_CALLABLE, const input::Event& event ) {

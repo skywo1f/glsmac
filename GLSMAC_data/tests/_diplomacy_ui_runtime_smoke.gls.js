@@ -24,8 +24,13 @@
 					is_ultimatum: false,
 					request_vendetta_player: 0 - 1,
 				});
+				const player_id = e.data.player.id + 0;
+				const target_id = e.data.target.id + 0;
 				#async(0, () => {
-					game.trigger('player_update', {player: game.get_player()});
+					game.trigger('diplomatic_trade_proposed', {
+						player: game.get_player(target_id),
+						target: game.get_player(player_id),
+					});
 					return false;
 				});
 			},
@@ -49,6 +54,7 @@
 			let prepared = false;
 			let startup_ticks = 0;
 			let wait_ticks = 0;
+			let refresh_triggered = false;
 			#async(25, () => {
 				const definition = p.modules.popup.popup_defs.diplomacy;
 				if (!prepared) {
@@ -78,6 +84,14 @@
 						glsmac.exit();
 						return false;
 					}
+					return true;
+				}
+				if (!refresh_triggered) {
+					refresh_triggered = true;
+					game.trigger('diplomatic_sanctions_updated', {
+						player: player,
+						target: target,
+					});
 					return true;
 				}
 				#print('DIPLOMACY_UI_RUNTIME_PASS');
