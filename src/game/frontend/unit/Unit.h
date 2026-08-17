@@ -44,8 +44,6 @@ class UnitManager;
 class Unit : public TileObject {
 public:
 
-	static constexpr size_t MOVE_DURATION_MS = 125;
-
 	Unit(
 		UnitManager* um,
 		BadgeDefs* badge_defs,
@@ -116,7 +114,7 @@ public:
 	const bool CanMove() const;
 
 	void SetTile( tile::Tile* dst_tile, const bool update_render = true );
-	void MoveToTile( tile::Tile* dst_tile );
+	void MoveToTile( tile::Tile* dst_tile, const size_t duration_ms );
 
 	const bool IsMoving() const;
 

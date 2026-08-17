@@ -421,7 +421,7 @@ void Unit::SetAvailableForOrders( const bool active ) {
 	}
 }
 
-void Unit::MoveToTile( tile::Tile* dst_tile ) {
+void Unit::MoveToTile( tile::Tile* dst_tile, const size_t duration_ms ) {
 	m_mover.Stop(); //ASSERT( !m_mover.IsRunning(), "unit already moving" );
 	//ASSERT( m_tile != dst_tile, "can't move to same tile" );
 	ASSERT( m_tile, "source tile not set" );
@@ -433,7 +433,7 @@ void Unit::MoveToTile( tile::Tile* dst_tile ) {
 
 	auto from = m_tile->GetRenderData().coords.InvertY();
 	auto to = dst_tile->GetRenderData().coords.InvertY();
-	m_mover.Scroll( from, m_um->GetCloserCoords( to, from ), MOVE_DURATION_MS );
+	m_mover.Scroll( from, m_um->GetCloserCoords( to, from ), duration_ms );
 }
 
 const bool Unit::IsMoving() const {

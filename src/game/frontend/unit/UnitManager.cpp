@@ -192,7 +192,12 @@ void UnitManager::RefreshUnit( Unit* unit ) {
 	m_game->UpdateRelatedWidgets( ui::WT_UNIT_PREVIEW, unit->GetId(), unit );
 }
 
-void UnitManager::MoveUnit( Unit* unit, tile::Tile* dst_tile, const size_t animation_id ) {
+void UnitManager::MoveUnit(
+	Unit* unit,
+	tile::Tile* dst_tile,
+	const size_t animation_id,
+	const size_t duration_ms
+) {
 	auto* src_tile = unit->GetTile();
 	const auto& it = m_moving_units.find( unit );
 	if ( it != m_moving_units.end() ) {
@@ -215,7 +220,7 @@ void UnitManager::MoveUnit( Unit* unit, tile::Tile* dst_tile, const size_t anima
 		}
 	);
 	m_game->SetSelectedTile( dst_tile );
-	unit->MoveToTile( dst_tile );
+	unit->MoveToTile( dst_tile, duration_ms );
 	unit->SetTile( dst_tile, false );
 	m_game->RefreshSelectedTileIf( src_tile, m_selected_unit );
 }

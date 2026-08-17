@@ -1268,7 +1268,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 					d.dst_tile_coords.y
 				}
 			);
-			m_um->MoveUnit( unit, dst_tile, d.running_animation_id );
+			m_um->MoveUnit( unit, dst_tile, d.running_animation_id, d.duration_ms );
 			break;
 		}
 		case FrontendRequest::FR_UNIT_TELEPORT: {

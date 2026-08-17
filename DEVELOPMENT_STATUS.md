@@ -1753,3 +1753,17 @@ run, four-phase save/load, multiplayer runtime, and running reconnect. This
 closes the automated projection/reconnect and save interaction, but ordinary
 two-human negotiation and manual campaign play remain required before the
 multiplayer UI or project can be called complete.
+
+The generated base-game catalogs were rechecked directly against the installed
+`alpha.txt`: GLSMAC contains all 77 technologies, 38 facilities, 33 Secret
+Projects, 9 chassis, 4 reactors, 21 weapons, 10 armors, 24 abilities, and 14
+predefined units. The starting-faction and Gaian opening tests continue to
+verify Centauri Ecology plus immediate Former and Weather Paradigm availability.
+AI-owned unit travel now uses a 32 ms visual duration while human-owned movement
+retains 125 ms. The deterministic six-opponent economy soak improved from
+145.85 to 109.55 seconds, still met every growth, research, expansion,
+infrastructure, defense, production, treasury, and terraforming criterion, and
+kept retained script state flat. The Windows RelWithDebInfo build, seven focused
+movement/UI/multiplayer/AI tests, and all 148 native/script tests passed. Manual
+campaign play remains necessary before either the unit presentation or the game
+can be called shippable.

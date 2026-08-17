@@ -1244,6 +1244,8 @@ const health_t UnitManager::GetHealth( GSE_CALLABLE, const float health ) {
 }
 
 const std::string* UnitManager::MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::tile::Tile* dst_tile, const cb_oncomplete& on_complete ) {
+	static constexpr size_t HUMAN_MOVE_DURATION_MS = 125;
+	static constexpr size_t AI_MOVE_DURATION_MS = 32;
 
 	auto* tm = m_game->GetTM();
 	auto* am = m_game->GetAM();
@@ -1275,6 +1277,9 @@ const std::string* UnitManager::MoveUnitToTile( GSE_CALLABLE, Unit* unit, map::t
 	}
 	auto fr = FrontendRequest( FrontendRequest::FR_UNIT_MOVE );
 	fr.data.unit_move.unit_id = unit->m_id;
+	fr.data.unit_move.duration_ms = unit->m_owner->GetPlayer()->IsAI()
+		? AI_MOVE_DURATION_MS
+		: HUMAN_MOVE_DURATION_MS;
 	fr.data.unit_move.dst_tile_coords = {
 		dst_tile->coord.x,
 		dst_tile->coord.y

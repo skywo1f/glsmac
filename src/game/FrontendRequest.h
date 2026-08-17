@@ -247,6 +247,7 @@ public:
 		struct {
 			size_t unit_id;
 			size_t running_animation_id;
+			size_t duration_ms;
 			struct {
 				size_t x;
 				size_t y;
