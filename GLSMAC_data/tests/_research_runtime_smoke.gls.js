@@ -388,7 +388,19 @@
 					fail('generated unit catalog is unavailable at runtime');
 					return;
 				}
-				base.add_facility('AerospaceComplex');
+				const prerequisite_facilities = [
+					'AerospaceComplex',
+					'PerimeterDefense',
+					'RecreationCommons',
+					'TreeFarm',
+					'FusionLab',
+					'ResearchHospital',
+					'RoboticAssemblyPlant',
+					'CentauriPreserve',
+				];
+				for (facility_id of prerequisite_facilities) {
+					base.add_facility(facility_id);
+				}
 				for (gate of production_gates) {
 					const expected_available =
 						gate[1] != 'HabitationDome' && gate[1] != 'TheAscentToTranscendence' &&
@@ -398,7 +410,9 @@
 						return;
 					}
 				}
-				base.remove_facility('AerospaceComplex');
+				for (facility_id of prerequisite_facilities) {
+					base.remove_facility(facility_id);
+				}
 				base.add_facility('HabComplex');
 				if (!base.can_set_production('facility', 'HabitationDome')) {
 					fail('Habitation Dome stayed locked after Hab Complex');
@@ -572,6 +586,9 @@
 				const intake_after = base.get_intake();
 				const psych_after = game.get('f_economy_get_base_allocation')(game, base).psych;
 				const labs_after = game.get('f_technology_get_base_labs')(base);
+				const replaced_recycling_bonus =
+					base.has_facility('PressureDome') && base.has_facility('RecyclingTanks')
+						? 1 : 0;
 				if (
 					#sizeof(facility_ids) != 38 ||
 					nutrient_bonus != 2 || mineral_bonus != 2 || energy_bonus != 3 ||
@@ -584,12 +601,15 @@
 					air_defense_multiplier != 2.0 || growth_rating_bonus != 2 ||
 					native_lifecycle_bonus != 4 ||
 					drone_modifier != -5 || talent_bonus != 2 || suppress_psych != 1 ||
-					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus ||
+					intake_after.NUTRIENTS != intake_before.NUTRIENTS + nutrient_bonus -
+						replaced_recycling_bonus ||
 					intake_after.MINERALS != #ceil(
-						#to_float(intake_before.MINERALS + mineral_bonus) * (1.0 + mineral_multiplier)
+						#to_float(
+							intake_before.MINERALS + mineral_bonus - replaced_recycling_bonus
+						) * (1.0 + mineral_multiplier)
 					) ||
 					intake_after.ENERGY != intake_before.ENERGY + energy_bonus -
-						existing_facility_energy_bonus ||
+						existing_facility_energy_bonus - replaced_recycling_bonus ||
 					base.get_consumption().ENERGY != consumption_before + maintenance ||
 					psych_after.bonus != psych_bonus + #ceil(
 						#to_float(psych_after.value) * psych_multiplier
