@@ -386,6 +386,29 @@ IF ( BUILD_TESTING )
 			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
 		)
 
+		SET( SDL_INPUT_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/sdl-input-runtime-smoke" )
+		FILE( MAKE_DIRECTORY "${SDL_INPUT_RUNTIME_TEST_PROFILE_DIR}" )
+		ADD_TEST( NAME sdl_input_runtime_smoke COMMAND
+			$<TARGET_FILE:${PROJECT_NAME}>
+			--prefix "${SDL_INPUT_RUNTIME_TEST_PROFILE_DIR}"
+			--smacpath "${GLSMAC_SMAC_PATH}"
+			--mainscript "../tests/_sdl_input_runtime_smoke"
+			--quickstart
+			--quickstart-mapsize "20x10"
+			--quickstart-seed "1:2:3:4"
+			--quickstart-faction "GAIANS"
+			--nosound
+			--windowed
+			--window-size "1024x768"
+		)
+		SET_TESTS_PROPERTIES( sdl_input_runtime_smoke PROPERTIES
+			FAIL_REGULAR_EXPRESSION "SDL_INPUT_RUNTIME_FAIL;Event rejected;Unhandled exception"
+			PASS_REGULAR_EXPRESSION "SDL_INPUT_RUNTIME_PASS"
+			RUN_SERIAL TRUE
+			TIMEOUT 120
+			WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+		)
+
 		SET( UNIVERSITY_START_RUNTIME_TEST_PROFILE_DIR "${TEST_PROFILE_DIR}/university-start-runtime-smoke" )
 		FILE( MAKE_DIRECTORY "${UNIVERSITY_START_RUNTIME_TEST_PROFILE_DIR}" )
 		ADD_TEST( NAME university_start_runtime_smoke COMMAND

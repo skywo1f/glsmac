@@ -199,6 +199,12 @@ CLASS( Game, common::Module )
 	void CompleteTurn();
 	void UncompleteTurn();
 
+#if defined( GLSMAC_TESTING )
+	const backend::tile_query_purpose_t& GetLastMapInputPurposeForTesting() const {
+		return m_last_map_input_purpose_for_testing;
+	}
+#endif
+
 	void LoadMap( const std::string& path );
 	void SaveMap( const std::string& path );
 
@@ -446,6 +452,9 @@ private:
 	backend::tile_query_purpose_t m_tile_at_query_purpose = backend::TQP_NONE;
 	size_t m_attack_target_unit_id = 0;
 	size_t m_move_target_unit_id = 0;
+#if defined( GLSMAC_TESTING )
+	backend::tile_query_purpose_t m_last_map_input_purpose_for_testing = backend::TQP_NONE;
+#endif
 
 	void CancelTileAtRequest();
 	void GetTileAtScreenCoords( const backend::tile_query_purpose_t tile_query_purpose, const size_t screen_x, const size_t screen_inverse_y ); // async, y needs to be upside down

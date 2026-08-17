@@ -77,8 +77,8 @@ void SDL2::Iterate() {
 			}
 			case SDL_MOUSEBUTTONDOWN: {
 				m_last_mouse_position = { // just in case, maybe some devices like touchscreens don't produce mouse move event before click
-					event.motion.x,
-					event.motion.y
+					event.button.x,
+					event.button.y
 				};
 				const auto button = GetMouseButton( event.button.button );
 
@@ -86,12 +86,12 @@ void SDL2::Iterate() {
 					"duplicate mousedown (button=" + std::to_string( event.button.button ) + ")"
 				);
 				m_active_mousedowns[ event.button.button ] = {
-					event.motion.x,
-					event.motion.y
+					event.button.x,
+					event.button.y
 				};
 				e.SetType( EV_MOUSE_DOWN );
-				e.data.mouse.x = event.motion.x;
-				e.data.mouse.y = event.motion.y;
+				e.data.mouse.x = event.button.x;
+				e.data.mouse.y = event.button.y;
 				e.data.mouse.button = button;
 				break;
 			}
@@ -103,8 +103,8 @@ void SDL2::Iterate() {
 					m_active_mousedowns.erase( event.button.button );
 				}
 				e.SetType( EV_MOUSE_UP );
-				e.data.mouse.x = event.motion.x;
-				e.data.mouse.y = event.motion.y;
+				e.data.mouse.x = event.button.x;
+				e.data.mouse.y = event.button.y;
 				e.data.mouse.button = button;
 				break;
 			}

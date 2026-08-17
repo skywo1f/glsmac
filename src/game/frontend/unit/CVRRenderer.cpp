@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cstdlib>
 #include <cstdint>
 #include <cstring>
 #include <limits>
@@ -24,6 +25,78 @@ static constexpr size_t MAX_PARTS = 2048;
 static constexpr size_t MAX_VOXELS = 4000000;
 static constexpr size_t MAX_FRAMES = 65536;
 static constexpr float TRANSLATION_TO_VOXELS = 0.25f;
+
+#if defined( GLSMAC_TESTING )
+static void AppendU16( std::string& data, const uint16_t value ) {
+	data.push_back( (char)( value & 0xff ) );
+	data.push_back( (char)( value >> 8 ) );
+}
+
+static void AppendU32( std::string& data, const uint32_t value ) {
+	data.push_back( (char)( value & 0xff ) );
+	data.push_back( (char)( value >> 8 & 0xff ) );
+	data.push_back( (char)( value >> 16 & 0xff ) );
+	data.push_back( (char)( value >> 24 ) );
+}
+
+static void DumpTextureForTesting( const types::texture::Texture* texture ) {
+	static bool dumped = false;
+	const auto* path = std::getenv( "GLSMAC_CVR_DUMP" );
+	if ( dumped || !path || !*path ) {
+		return;
+	}
+	dumped = true;
+
+	const auto width = texture->GetWidth();
+	const auto height = texture->GetHeight();
+	const auto pixel_bytes = width * height * 4;
+	if (
+		width > std::numeric_limits< uint32_t >::max() ||
+		height > std::numeric_limits< uint32_t >::max() ||
+		pixel_bytes > std::numeric_limits< uint32_t >::max() - 54
+	) {
+		THROW( "Invalid CVR: test texture dump is too large" );
+	}
+
+	std::string bitmap;
+	bitmap.reserve( 54 + pixel_bytes );
+	bitmap += "BM";
+	AppendU32( bitmap, (uint32_t)( 54 + pixel_bytes ) );
+	AppendU32( bitmap, 0 );
+	AppendU32( bitmap, 54 );
+	AppendU32( bitmap, 40 );
+	AppendU32( bitmap, (uint32_t)width );
+	AppendU32( bitmap, (uint32_t)height );
+	AppendU16( bitmap, 1 );
+	AppendU16( bitmap, 32 );
+	AppendU32( bitmap, 0 );
+	AppendU32( bitmap, (uint32_t)pixel_bytes );
+	AppendU32( bitmap, 2835 );
+	AppendU32( bitmap, 2835 );
+	AppendU32( bitmap, 0 );
+	AppendU32( bitmap, 0 );
+	for ( size_t y = height ; y-- > 0 ; ) {
+		for ( size_t x = 0 ; x < width ; x++ ) {
+			const auto rgba = texture->GetPixel( x, y );
+			const auto alpha = (uint8_t)( rgba >> 24 );
+			if ( alpha == 0 ) {
+				const uint8_t background = ( ( x / 5 + y / 5 ) & 1 ) ? 24 : 12;
+				bitmap.push_back( (char)background );
+				bitmap.push_back( (char)background );
+				bitmap.push_back( (char)background );
+			}
+			else {
+				bitmap.push_back( (char)( rgba >> 16 & 0xff ) );
+				bitmap.push_back( (char)( rgba >> 8 & 0xff ) );
+				bitmap.push_back( (char)( rgba & 0xff ) );
+			}
+			bitmap.push_back( (char)255 );
+		}
+	}
+	util::FS::WriteFile( path, bitmap );
+	util::LogHelper::Println( "CVR_TEXTURE_DUMP: " + std::string( path ) );
+}
+#endif
 
 struct color_t {
 	uint8_t red;
@@ -144,41 +217,39 @@ static std::array< color_t, 256 > ParsePalette(
 	const std::vector< unsigned char >& data,
 	const size_t start
 ) {
+	const auto palette_chunk = FindAfter( data, start, { 0x00, 0x00, 0x02, 0x01 } );
+	const size_t chunk_size = ReadU32( data, palette_chunk );
+	static constexpr size_t HEADER_SIZE = 8;
+	static constexpr size_t RANGE_SIZE = 2;
+	static constexpr size_t PHYSICAL_PALETTE_SIZE = 256 * 3;
+	static constexpr size_t SHADE_TABLE_SIZE = 24 * 256;
+	static constexpr size_t SHADE_LEVEL_COUNT = 24;
+	Require(
+		chunk_size >= HEADER_SIZE + RANGE_SIZE + PHYSICAL_PALETTE_SIZE + SHADE_TABLE_SIZE,
+		"palette data chunk is too small"
+	);
+	RequireBytes( data, palette_chunk - 4, chunk_size );
+	const size_t palette_start = palette_chunk + 4 + RANGE_SIZE;
+	const size_t shade_table_start = palette_start + PHYSICAL_PALETTE_SIZE;
+	size_t shade_level = 12;
+#if defined( GLSMAC_TESTING )
+	if ( const auto* value = std::getenv( "GLSMAC_CVR_LIGHT" ) ) {
+		const auto parsed = std::strtol( value, nullptr, 10 );
+		if ( parsed >= 0 && parsed < (long)SHADE_LEVEL_COUNT ) {
+			shade_level = (size_t)parsed;
+		}
+	}
+#endif
+
 	std::array< color_t, 256 > palette = {};
 	for ( size_t i = 0 ; i < palette.size() ; i++ ) {
-		const auto value = (uint8_t)( 48 + i % 5 * 24 );
-		palette[ i ] = { value, value, value };
-	}
-
-	const auto palette_marker = FindAfter( data, start, { 0x00, 0x00, 0x01, 0x01 } );
-	RequireBytes( data, palette_marker, 4 );
-	Require( data[ palette_marker ] >= 8, "invalid palette name length" );
-	const size_t palette_name_length = data[ palette_marker ] - 8;
-	size_t pos = palette_marker + 4;
-	RequireBytes( data, pos, palette_name_length + 16 );
-	pos += palette_name_length + 16;
-
-	RequireBytes( data, pos, 1 );
-	const size_t first_block_count = data[ pos - 1 ];
-	Require( first_block_count <= ( data.size() - pos - 1 ) / 3, "invalid palette block" );
-	pos += 1 + first_block_count * 3;
-	Require( pos > 0, "invalid palette offset" );
-	const size_t palette_offset = data[ pos - 1 ];
-	Require( palette_offset <= 245, "invalid palette offset" );
-	const size_t color_count = 245 - palette_offset;
-	RequireBytes( data, pos, color_count * 3 );
-	for ( size_t i = 0 ; i < color_count ; i++ ) {
+		const size_t physical_index = data[ shade_table_start + shade_level * 256 + i ];
 		palette[ i ] = {
-			data[ pos + i * 3 ],
-			data[ pos + i * 3 + 1 ],
-			data[ pos + i * 3 + 2 ],
+			data[ palette_start + physical_index * 3 ],
+			data[ palette_start + physical_index * 3 + 1 ],
+			data[ palette_start + physical_index * 3 + 2 ],
 		};
 	}
-
-	palette[ 245 ] = { 81, 150, 80 };
-	palette[ 246 ] = { 38, 91, 49 };
-	palette[ 247 ] = { 142, 196, 116 };
-	palette[ 248 ] = { 23, 53, 32 };
 	return palette;
 }
 
@@ -416,6 +487,9 @@ types::texture::Texture* CVRRenderer::Render(
 		}
 	}
 	texture->FullUpdate();
+#if defined( GLSMAC_TESTING )
+	DumpTextureForTesting( texture );
+#endif
 	g_engine->Log(
 		"Rendered " + std::to_string( voxels.size() ) + " CVR voxels from " +
 		std::to_string( files.size() ) + " component file(s)"

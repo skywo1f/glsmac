@@ -42,9 +42,7 @@ const former = get_unit('Former');
 const transport_foil = get_unit('TransportFoil');
 const supply_crawler = get_unit('SupplyCrawler');
 test.assert(
-	scout.data.render.type == 'cvr' && scout.data.render.files == [
-		'VI.cvr', 'Vw00.cvr', 'VGMT.cvr', 'VGMTP.cvr', 'Viptr00.cvr'
-	] &&
+	scout.data.render.type == 'cvr' && scout.data.render.files == ['VI.cvr'] &&
 	scout.data.render.fallback.file == 'newicons.pcx' &&
 	scout.data.render.fallback.x == 518 && scout.data.render.fallback.y == 82
 );
@@ -91,6 +89,7 @@ test.assert(
 const get_expected_cvr_files = (data) => {
 	if (data.is_native) { return []; }
 	if (data.chassis == 'Infantry' && data.armor == 'NoArmor') {
+		if (data.weapon == 'HandWeapons') { return ['VI.cvr']; }
 		if (data.weapon == 'ColonyModule') { return ['Drop.cvr']; }
 		if (data.weapon == 'TerraformingUnit') { return ['VT.cvr']; }
 	}
@@ -189,11 +188,8 @@ const get_expected_cvr_files = (data) => {
 			data.weapon == 'TroopTransport' || data.weapon == 'SupplyTransport' ||
 			data.weapon == 'ProbeTeam' || data.weapon == 'AlienArtifact'
 		) { return []; }
-		let result = [
-			'VI.cvr', weapon_files[data.weapon], 'VGMT.cvr', 'VGMTP.cvr',
-		];
+		let result = ['VI.cvr', weapon_files[data.weapon]];
 		for (file of infantry_armor_files[data.armor]) { result :+file; }
-		result :+('Viptr' + suffix + '.cvr');
 		return result;
 	}
 	if (data.chassis == 'Missile') {

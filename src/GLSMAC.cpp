@@ -34,6 +34,10 @@
 
 #include "game/frontend/Game.h"
 
+#if defined( GLSMAC_TESTING )
+#include "input/sdl2/SDL2.h"
+#endif
+
 static GLSMAC* s_glsmac = nullptr;
 
 GLSMAC::GLSMAC()
@@ -220,6 +224,82 @@ WRAPIMPL_BEGIN( GLSMAC )
 				return VALUE( gse::value::Undefined );
 			} )
 		},
+#if defined( GLSMAC_TESTING )
+		{
+			"test_push_key_event",
+			NATIVE_CALL() {
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE( key_name, 0, String );
+				N_GETVALUE( is_down, 1, Bool );
+				const auto key = SDL_GetKeyFromName( key_name.c_str() );
+				if ( key == SDLK_UNKNOWN ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unknown SDL key name: " + key_name );
+				}
+				SDL_Event event = {};
+				event.type = is_down ? SDL_KEYDOWN : SDL_KEYUP;
+				event.key.type = event.type;
+				event.key.state = is_down ? SDL_PRESSED : SDL_RELEASED;
+				event.key.keysym.sym = key;
+				event.key.keysym.scancode = SDL_GetScancodeFromKey( key );
+				event.key.keysym.mod = KMOD_NONE;
+				if ( SDL_PushEvent( &event ) < 0 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Could not push SDL key event: " + std::string( SDL_GetError() ) );
+				}
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"test_push_mouse_button_event",
+			NATIVE_CALL() {
+				N_EXPECT_ARGS( 4 );
+				N_GETVALUE( x, 0, Int );
+				N_GETVALUE( y, 1, Int );
+				N_GETVALUE( button_name, 2, String );
+				N_GETVALUE( is_down, 3, Bool );
+				uint8_t button = 0;
+				if ( button_name == "left" ) {
+					button = SDL_BUTTON_LEFT;
+				}
+				else if ( button_name == "middle" ) {
+					button = SDL_BUTTON_MIDDLE;
+				}
+				else if ( button_name == "right" ) {
+					button = SDL_BUTTON_RIGHT;
+				}
+				else {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Unknown SDL mouse button: " + button_name );
+				}
+				SDL_Event event = {};
+				event.type = is_down ? SDL_MOUSEBUTTONDOWN : SDL_MOUSEBUTTONUP;
+				event.button.type = event.type;
+				event.button.button = button;
+				event.button.state = is_down ? SDL_PRESSED : SDL_RELEASED;
+				event.button.x = (Sint32)x;
+				event.button.y = (Sint32)y;
+				if ( SDL_PushEvent( &event ) < 0 ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Could not push SDL mouse button event: " + std::string( SDL_GetError() ) );
+				}
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"test_get_last_map_input_purpose",
+			NATIVE_CALL( this ) {
+				N_EXPECT_ARGS( 0 );
+				if ( !m_game ) {
+					return VALUE( gse::value::String,, "none" );
+				}
+				switch ( m_game->GetLastMapInputPurposeForTesting() ) {
+					case game::backend::TQP_OBJECT_SELECT:
+						return VALUE( gse::value::String,, "select" );
+					case game::backend::TQP_MOVE_TARGET:
+						return VALUE( gse::value::String,, "move" );
+					default:
+						return VALUE( gse::value::String,, "none" );
+				}
+			} )
+		},
+#endif
 		{
 			"mainmenu", NATIVE_CALL( this ) {
 				N_EXPECT_ARGS( 0 );

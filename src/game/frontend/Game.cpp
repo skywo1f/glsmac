@@ -2413,10 +2413,16 @@ void Game::Initialize(
 							m_map_control.left_down_unit_id > 0 &&
 							( was_held || was_dragged );
 						if ( is_goto ) {
+#if defined( GLSMAC_TESTING )
+							m_last_map_input_purpose_for_testing = backend::TQP_MOVE_TARGET;
+#endif
 							m_move_target_unit_id = m_map_control.left_down_unit_id;
 							SelectTileAtPoint( backend::TQP_MOVE_TARGET, c.x, c.y );
 						}
 						else {
+#if defined( GLSMAC_TESTING )
+							m_last_map_input_purpose_for_testing = backend::TQP_OBJECT_SELECT;
+#endif
 							SelectTileAtPoint( backend::TQP_OBJECT_SELECT, c.x, c.y );
 						}
 						m_map_control.left_down_time_ms = 0;

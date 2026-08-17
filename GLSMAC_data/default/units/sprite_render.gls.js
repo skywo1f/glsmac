@@ -153,13 +153,10 @@ const get_layered_vehicle_files = (chassis_id, armor_id, weapon_id, reactor_id) 
 		) {
 			return [];
 		}
-		let files = [
-			'VI.cvr', infantry_weapon_files[weapon_id], 'VGMT.cvr', 'VGMTP.cvr',
-		];
+		let files = ['VI.cvr', infantry_weapon_files[weapon_id]];
 		for (file of infantry_armor_files[armor_id]) {
 			files :+file;
 		}
-		files :+('Viptr' + suffix + '.cvr');
 		return files;
 	}
 	if (chassis_id == 'Missile') {
@@ -218,7 +215,9 @@ const get = (chassis_id, armor_id, weapon_id, reactor_id) => {
 	const fallback = get_fallback(weapon_id);
 	let cvr_file = '';
 	if (chassis_id == 'Infantry' && armor_id == 'NoArmor') {
-		if (weapon_id == 'ColonyModule') {
+		if (weapon_id == 'HandWeapons') {
+			cvr_file = 'VI.cvr';
+		} else if (weapon_id == 'ColonyModule') {
 			cvr_file = 'Drop.cvr';
 		} else if (weapon_id == 'TerraformingUnit') {
 			cvr_file = 'VT.cvr';
