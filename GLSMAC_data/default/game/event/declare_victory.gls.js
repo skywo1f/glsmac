@@ -1,9 +1,11 @@
 const victory_rules = #include('../victory_rules');
+const retirement_rules = #include('../retirement_rules');
 const game_rules = #include('../game_rules');
 
 const get_rule_key = (type) => {
 	if (type == 'conquest') { return 'allow_conquest_victory'; }
 	if (type == 'transcendence') { return 'allow_transcendence_victory'; }
+	if (type == 'score') { return ''; }
 	return 'allow_economic_victory';
 };
 
@@ -20,7 +22,7 @@ return {
 			#typeof(e.data.type) != 'String' ||
 			(
 				e.data.type != 'conquest' && e.data.type != 'transcendence' &&
-				e.data.type != 'economic'
+				e.data.type != 'economic' && e.data.type != 'score'
 			)
 		) {
 			return 'Unsupported victory type';
@@ -28,7 +30,8 @@ return {
 		if (#typeof(e.data.winner_id) != 'Int' || e.data.winner_id < 0) {
 			return 'Victory winner ID is invalid';
 		}
-		if (!game_rules.get(e.game, get_rule_key(e.data.type))) {
+		const rule_key = get_rule_key(e.data.type);
+		if (rule_key != '' && !game_rules.get(e.game, rule_key)) {
 			return 'This victory condition is disabled by the game rules';
 		}
 		if (#typeof(e.game.is_master) == 'Callable' && !e.game.is_master()) {
@@ -48,6 +51,11 @@ return {
 			winner = e.game.get_conquest_winner();
 		} else if (e.data.type == 'transcendence') {
 			winner = victory_rules.get_transcendence_winner(e.game);
+		} else if (e.data.type == 'score') {
+			if (e.game.get_year() < retirement_rules.get_ending_year(e.game)) {
+				return 'Mandatory retirement year has not been reached';
+			}
+			winner = retirement_rules.get_winner(e.game);
 		} else {
 			winner = victory_rules.get_economic_winner(e.game);
 		}
@@ -64,6 +72,8 @@ return {
 			result = ' has won by conquest';
 		} else if (e.data.type == 'transcendence') {
 			result = ' has achieved transcendence';
+		} else if (e.data.type == 'score') {
+			result = ' has won with the highest Alpha Centauri Score';
 		}
 		e.game.message(
 			winner.get_faction().name + result + ' in M.Y. ' +

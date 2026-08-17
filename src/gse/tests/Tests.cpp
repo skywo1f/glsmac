@@ -1850,6 +1850,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 						Game::GetVictoryTypeString( victory_type ) == "diplomatic",
 					"diplomatic victory type did not round-trip"
 				);
+				GT_ASSERT(
+					Game::ParseVictoryType( "score", victory_type ) &&
+						victory_type == Game::VT_SCORE &&
+						Game::GetVictoryTypeString( victory_type ) == "score",
+					"score victory type did not round-trip"
+				);
 				GT_OK();
 			}
 		);

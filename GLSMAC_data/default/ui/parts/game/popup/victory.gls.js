@@ -62,6 +62,7 @@ return {
 			transcendence: 'Transcendence Victory',
 			economic: 'Economic Victory',
 			diplomatic: 'Diplomatic Victory',
+			score: 'Highest Alpha Centauri Score',
 		};
 		const victory_name = #is_defined(victory_names[victory.type])
 			? victory_names[victory.type]

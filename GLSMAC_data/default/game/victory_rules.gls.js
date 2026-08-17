@@ -66,6 +66,9 @@ const get_victory_winners = (game, victory) => {
 	if (victory.type == '' || victory.winner < 0) {
 		return [];
 	}
+	if (victory.type == 'score') {
+		return [game.get_player(victory.winner)];
+	}
 	return get_cooperative_winners(game, game.get_player(victory.winner));
 };
 

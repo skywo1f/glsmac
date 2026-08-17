@@ -1767,3 +1767,14 @@ kept retained script state flat. The Windows RelWithDebInfo build, seven focused
 movement/UI/multiplayer/AI tests, and all 148 native/script tests passed. Manual
 campaign play remains necessary before either the unit presentation or the game
 can be called shippable.
+
+Standard games now enforce base SMAC's mandatory retirement calendar: M.Y. 2600
+for Citizen, Specialist, and Talent, and M.Y. 2500 for Librarian, Thinker, and
+Transcend, with a warning 20 years beforehand. Reaching the limit selects the
+highest Alpha Centauri Score deterministically, excludes native Planet, ends the
+game through a serialized `score` victory state, and presents the result in the
+game-complete popup. Score retirement cannot be declared early and does not share
+cooperative-victory bonuses. The Windows RelWithDebInfo build, all 149 native and
+script tests, and a post-validation set of 10 default-runtime, frontend, save/load,
+and multiplayer tests passed. A naturally played campaign reaching the retirement
+year has not been run and remains a manual long-game regression requirement.
