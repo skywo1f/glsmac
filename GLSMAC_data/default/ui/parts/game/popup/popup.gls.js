@@ -5,6 +5,7 @@ return {
 		'please_dont_go',
 		'victory',
 		'research',
+		'technology_report',
 		'social_engineering',
 		'planetary_council',
 		'economic_victory',

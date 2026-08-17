@@ -83,8 +83,45 @@
 						p.modules.popup.popup.id == 'research'
 					) {
 						p.modules.popup.popup_defs.research.begin_button.trigger('click');
+						phase = 'open_technology_report';
+						phase_ticks = 0;
 						return true;
 					}
+					return true;
+				}
+
+				if (phase == 'open_technology_report') {
+					if (p.modules.popup.popup != null) {
+						return true;
+					}
+					p.root.trigger('keydown', {code: 'F2', modifiers: {}});
+					phase = 'technology_report';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'technology_report') {
+					if (
+						p.modules.popup.popup == null ||
+						p.modules.popup.popup.id != 'technology_report'
+					) {
+						return true;
+					}
+					const report = p.modules.popup.popup_defs.technology_report;
+					if (
+						report.total_count != 77 || #sizeof(report.visible_ids) != 77 ||
+						report.known_count < 1 || report.available_count < 6 ||
+						!#is_defined(report.known.CentauriEcology)
+					) {
+						fail(
+							'technology report omitted the full tree or Gaian starting research (' +
+							#to_string(report.known_count) + '/' +
+							#to_string(report.total_count) + ', available=' +
+							#to_string(report.available_count) + ')'
+						);
+						return false;
+					}
+					report.close_button.trigger('click');
 					const base = get_live_base();
 					if (base == null) {
 						fail('human base disappeared');

@@ -165,6 +165,13 @@ return (m) => {
 					p.maybe_quit(false);
 					return true;
 				}
+				if (
+					no_modifiers && e.code == 'F2' &&
+					!p.modules.popup.is_shown()
+				) {
+					p.modules.popup.show('technology_report');
+					return true;
+				}
 				if (no_modifiers && e.code == 'F6') {
 					p.modules.popup.show('orbital_attack');
 					return true;

@@ -437,7 +437,9 @@ return {
 				}
 			);
 			game.set('f_technology_get_next_target', choose_next_target);
-			game.set('f_technology_get_player_labs', get_player_labs);
+			game.set('f_technology_get_player_labs', (player) => {
+				return get_player_labs(game, player);
+			});
 
 			if (game.is_master()) {
 				for (player of game.get_players()) {

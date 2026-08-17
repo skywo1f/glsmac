@@ -1684,3 +1684,17 @@ unit-render script, complete generated CVR catalog, live gameplay-controls, and
 Gaian small-map opening tests all passed. Animation playback, exact original
 light placement, and faction-specific unit tinting remain incomplete and still
 need visual manual play approval.
+
+The in-game F2 Technology report now exposes the complete 77-technology base
+SMAC graph instead of leaving research state visible only in selection prompts.
+It shows discovered and immediately available counts, current labs per turn,
+progress and estimated completion, filterable Known/Available/Locked states,
+prerequisites, direct successors, imported special effects, and the facilities,
+Secret Projects, predefined units, and Workshop components unlocked by each
+discovery. The left game menu opens the same report and its Change Research
+command retains the existing authoritative target chooser. Building this view
+also exposed and fixed the dormant public player-labs resolver signature. The
+Windows RelWithDebInfo build and all 14 focused technology, starting-faction,
+content-validation, unit-render, live controls, research UI, and installed-asset
+research runtime tests passed in 35.62 seconds. The report is a functional tree
+browser, not yet a replica of the original graphical tech-tree presentation.

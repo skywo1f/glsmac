@@ -22,9 +22,9 @@ return {
 				},
 			},
 			{
-				label: 'RESEARCH',
+				label: 'TECHNOLOGY',
 				open: () => {
-					p.modules.popup.show('research');
+					p.modules.popup.show('technology_report');
 				},
 			},
 			{
