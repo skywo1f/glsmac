@@ -1725,3 +1725,15 @@ The popup manager also clears discarded result values so a later programmatic
 close cannot deliver a stale answer to a new callback. Focused lifecycle,
 live Diplomacy, and live gameplay-controls regressions passed; manual rapid
 switching between management screens remains part of the next playtest.
+
+Remote private diplomacy updates now open the Diplomacy screen for the actual
+sender even when the server suppresses the original private event and sends
+only the viewer's authoritative player projection. The UI compares scalar
+signatures for relation, trade, loan, surrender, and active-excuse state; it
+does not retain projected native player wrappers. Deferred popup delivery also
+passes the sender ID into initial popup selection so the target wrapper is
+assigned only once. Pure projection coverage, popup lifecycle coverage, the
+backend diplomacy runtime, the 92-second Diplomacy GC stress run, and the live
+sender-selection UI smoke all pass. Ordinary two-client manual negotiation and
+reconnect play still need regression testing before multiplayer diplomacy can
+be called complete.

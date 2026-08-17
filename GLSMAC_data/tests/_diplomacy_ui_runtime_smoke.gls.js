@@ -5,14 +5,33 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
-		game.set('f_ui_should_auto_open_diplomacy', () => { return false; });
 		game.register_event('diplomacy_ui_runtime_prepare', {
 			validate: (e) => {},
 			apply: (e) => {
 				e.data.player.set_contact(e.data.target, true);
 				e.data.target.set_contact(e.data.player, true);
+				e.data.player.set_diplomatic_trade(e.data.target, {
+					offer_energy: 10,
+					offer_technology: '',
+					request_energy: 0,
+					request_technology: '',
+					offer_contact: 0 - 1,
+					request_contact: 0 - 1,
+					offer_map: false,
+					request_map: false,
+					offer_base: 0 - 1,
+					request_base: 0 - 1,
+					is_ultimatum: false,
+					request_vendetta_player: 0 - 1,
+				});
+				#async(0, () => {
+					game.trigger('player_update', {player: game.get_player()});
+					return false;
+				});
 			},
-			rollback: (e) => {},
+			rollback: (e) => {
+				e.data.player.clear_diplomatic_trade(e.data.target);
+			},
 		});
 		game.set('f_ui_ready', (p) => {
 			const player = game.get_player();
@@ -20,7 +39,6 @@
 			for (candidate of game.get_players()) {
 				if (candidate.id != player.id && candidate.type != 'native') {
 					target = candidate;
-					break;
 				}
 			}
 			if (target == null) {
@@ -28,20 +46,42 @@
 				glsmac.exit();
 				return;
 			}
-			game.event('diplomacy_ui_runtime_prepare', {
-				player: player,
-				target: target,
-			});
+			let prepared = false;
+			let startup_ticks = 0;
+			let wait_ticks = 0;
 			#async(25, () => {
+				const definition = p.modules.popup.popup_defs.diplomacy;
+				if (!prepared) {
+					// f_ui_ready runs immediately before native frontend slots are defined.
+					startup_ticks++;
+					if (startup_ticks < 20) {
+						return true;
+					}
+					prepared = true;
+					game.event('diplomacy_ui_runtime_prepare', {
+						player: player,
+						target: target,
+					});
+					return true;
+				}
 				if (!player.has_contact(target) || !target.has_contact(player)) {
 					return true;
 				}
-				p.modules.popup.show('diplomacy');
-				#async(250, () => {
-					#print('DIPLOMACY_UI_RUNTIME_PASS');
-					glsmac.exit();
-					return false;
-				});
+				const popup = p.modules.popup.popup;
+				if (
+					popup == null || popup.id != 'diplomacy' ||
+					definition.target == null || definition.target.id != target.id
+				) {
+					wait_ticks++;
+					if (wait_ticks >= 100) {
+						#print('DIPLOMACY_UI_RUNTIME_FAIL: projected offer did not open its sender');
+						glsmac.exit();
+						return false;
+					}
+					return true;
+				}
+				#print('DIPLOMACY_UI_RUNTIME_PASS');
+				#async(250, () => { glsmac.exit(); });
 				return false;
 			});
 		});

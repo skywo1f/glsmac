@@ -103,8 +103,86 @@ const get_trade_action = (player, target, terms, countering) => {
 	};
 };
 
+const field = (value, key, fallback) => {
+	return #is_defined(value[key]) ? value[key] : fallback;
+};
+
+const trade_signature = (terms) => {
+	if (terms == null) {
+		return '';
+	}
+	return
+		#to_string(field(terms, 'offer_energy', 0)) + '|' +
+		field(terms, 'offer_technology', '') + '|' +
+		#to_string(field(terms, 'request_energy', 0)) + '|' +
+		field(terms, 'request_technology', '') + '|' +
+		#to_string(field(terms, 'offer_contact', 0 - 1)) + '|' +
+		#to_string(field(terms, 'request_contact', 0 - 1)) + '|' +
+		#to_string(field(terms, 'offer_map', false)) + '|' +
+		#to_string(field(terms, 'request_map', false)) + '|' +
+		#to_string(field(terms, 'offer_base', 0 - 1)) + '|' +
+		#to_string(field(terms, 'request_base', 0 - 1)) + '|' +
+		#to_string(field(terms, 'is_ultimatum', false)) + '|' +
+		#to_string(field(terms, 'request_vendetta_player', 0 - 1));
+};
+
+const loan_signature = (terms) => {
+	if (terms == null) {
+		return '';
+	}
+	return
+		#to_string(field(terms, 'proposer_is_lender', false)) + '|' +
+		#to_string(field(terms, 'principal', 0)) + '|' +
+		#to_string(field(terms, 'payment', 0)) + '|' +
+		#to_string(field(terms, 'turns', 0));
+};
+
+const get_incoming_states = (game, player) => {
+	let states = {};
+	if (player == null) {
+		return states;
+	}
+	for (target of game.get_players()) {
+		if (target.id == player.id || target.type == 'native') {
+			continue;
+		}
+		states['p' + #to_string(target.id)] = {
+			target_id: target.id + 0,
+			relation: '' + player.get_diplomatic_offer(target),
+			trade: trade_signature(player.get_diplomatic_trade(target)),
+			loan: loan_signature(player.get_diplomatic_loan_offer(target)),
+			surrender: target.get_surrender_offer_to_id() == player.id,
+			excuse_turn: player.get_diplomatic_excuse_turn(target) >= game.get_turn()
+				? player.get_diplomatic_excuse_turn(target) : 0 - 1,
+		};
+	}
+	return states;
+};
+
+const find_new_incoming = (previous, current) => {
+	for (state of current) {
+		const key = 'p' + #to_string(state.target_id);
+		const old = #is_defined(previous[key]) ? previous[key] : {
+			relation: '', trade: '', loan: '', surrender: false, excuse_turn: 0 - 1,
+		};
+		for (kind of ['relation', 'trade', 'loan']) {
+			if (state[kind] != '' && state[kind] != old[kind]) {
+				return {target_id: state.target_id, kind: kind};
+			}
+		}
+		if (state.surrender && !old.surrender) {
+			return {target_id: state.target_id, kind: 'surrender'};
+		}
+		if (state.excuse_turn >= 0 && state.excuse_turn != old.excuse_turn) {
+			return {target_id: state.target_id, kind: 'excuse'};
+		}
+	}
+	return null;
+};
+
 return {
 	get_trade_action: get_trade_action,
+	find_new_incoming: find_new_incoming,
 	observe: (p) => {
 		if (#is_defined(this.observing) && this.observing) {
 			return;
@@ -112,7 +190,8 @@ return {
 		this.observing = true;
 		this.p = p;
 		this.player = null;
-		this.pending_popup = false;
+		this.pending_target_id = 0 - 1;
+		this.incoming_states = null;
 
 		for (event_name of [
 			'player_update',
@@ -142,10 +221,24 @@ return {
 			'diplomatic_grievance_updated',
 			'diplomatic_contact_established',
 			'diplomatic_contact_updated',
-			'map_visibility_updated',
 		]) {
 			const observed_event_name = event_name;
 			p.game.on(observed_event_name, (e) => {
+				let projected_incoming = null;
+				if (observed_event_name == 'player_update') {
+					const next_incoming_states = get_incoming_states(
+						p.game,
+						p.game.get_player()
+					);
+					projected_incoming = find_new_incoming(
+						this.incoming_states == null ? {} : this.incoming_states,
+						next_incoming_states
+					);
+					this.incoming_states = next_incoming_states;
+				} else if (this.incoming_states != null) {
+					// Keep the projection baseline current for direct local events.
+					this.incoming_states = get_incoming_states(p.game, p.game.get_player());
+				}
 				if (this.player != null) {
 					this.refresh();
 				}
@@ -160,25 +253,30 @@ return {
 				const incoming_excuse = observed_event_name == 'diplomatic_excuse_updated' &&
 					e.expiry_turn >= p.game.get_turn() &&
 					e.player.id == p.game.get_player().id;
+				const incoming_target_id = incoming_diplomacy || incoming_excuse
+					? e.target.id
+					: (projected_incoming == null ? 0 - 1 : projected_incoming.target_id);
 				const should_auto_open = p.game.get('f_ui_should_auto_open_diplomacy');
 				if (
-					(incoming_diplomacy || incoming_excuse) && !this.pending_popup &&
+					incoming_target_id >= 0 && this.pending_target_id < 0 &&
 					(!#is_defined(should_auto_open) || should_auto_open())
 				) {
-					const target_id = e.target.id;
-					this.pending_popup = true;
-					#async(0, () => {
-						this.pending_popup = false;
-						p.modules.popup.show('diplomacy');
-						if (incoming_excuse) {
-							this.opponent_select.value = #to_string(target_id);
-							this.select_target(this.opponent_select.value);
-						}
-						return false;
-					});
+					// Keep native event wrappers out of the deferred popup callback.
+					this.pending_target_id = incoming_target_id + 0;
 				}
 			});
 		}
+		#async(25, () => {
+			if (this.pending_target_id < 0) {
+				return true;
+			}
+			const target_id = this.pending_target_id + 0;
+			this.pending_target_id = 0 - 1;
+			this.open_target_id = target_id;
+			this.p.modules.popup.show('diplomacy');
+			this.open_target_id = 0 - 1;
+			return true;
+		});
 	},
 
 	init: (p) => {
@@ -229,7 +327,6 @@ return {
 		this.military_target = null;
 		this.request_military_support = null;
 		this.countering_trade = false;
-		this.pending_popup = false;
 		this.loan_text = null;
 		this.loan_error = null;
 		this.loan_principal_label = null;
@@ -1170,7 +1267,15 @@ return {
 			}
 		}
 		this.opponent_select.items = #sizeof(items) > 0 ? items : [['', 'No other factions']];
-		this.opponent_select.value = #sizeof(items) > 0 ? items[0][0] : '';
+		let selected_value = #sizeof(items) > 0 ? items[0][0] : '';
+		if (#is_defined(this.open_target_id) && this.open_target_id >= 0) {
+			for (item of items) {
+				if (#to_int(item[0]) == this.open_target_id) {
+					selected_value = item[0];
+				}
+			}
+		}
+		this.opponent_select.value = selected_value;
 		this.select_target(this.opponent_select.value);
 	},
 
