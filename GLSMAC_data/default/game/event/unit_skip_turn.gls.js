@@ -1,11 +1,27 @@
 const movement_rules = #include('../movement_rules');
 const unit_order_rules = #include('../unit_order_rules');
 
+const get_unit = (e) => {
+	if (#is_defined(e.data.unit) && e.data.unit != null) {
+		return e.data.unit;
+	}
+	if (
+		#is_defined(e.data.unit_id) && #typeof(e.data.unit_id) == 'Int' &&
+		e.game.get_um().has_unit(e.data.unit_id)
+	) {
+		return e.game.get_um().get_unit(e.data.unit_id);
+	}
+	return null;
+};
+
 return {
 	unit_visibility: 'private',
 
 	validate: (e) => {
-		const unit = e.data.unit;
+		const unit = get_unit(e);
+		if (unit == null) {
+			return 'Unit no longer exists';
+		}
 		const order_error = unit_order_rules.get_unavailable_reason(unit);
 		if (order_error != null) {
 			return order_error;
@@ -31,7 +47,10 @@ return {
 	},
 
 	apply: (e) => {
-		const unit = e.data.unit;
+		const unit = get_unit(e);
+		if (unit == null) {
+			throw Error('Unit disappeared while skipping its turn');
+		}
 
 		const result = {
 			original_movement: unit.movement + 0.0,
@@ -45,7 +64,10 @@ return {
 	},
 
 	rollback: (e) => {
-		const unit = e.data.unit;
+		const unit = get_unit(e);
+		if (unit == null) {
+			return;
+		}
 		unit.movement = e.applied.original_movement;
 		movement_rules.restore_move_target(unit, e.game, e.applied.move_target);
 	},

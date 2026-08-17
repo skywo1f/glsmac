@@ -102,7 +102,8 @@ return {
 		) {
 			return false;
 		}
-		this.p.game.event('unit_skip_turn', {unit: this.action_unit});
+		const unit_id = this.action_unit.id + 0;
+		this.p.game.event('unit_skip_turn', {unit_id: unit_id});
 		this.close_actions_menu();
 		return true;
 	},
@@ -676,6 +677,9 @@ return {
 				return true;
 			}
 			if (e.code == 'H' && this.hold_unit()) {
+				return true;
+			}
+			if (e.code == 'SPACE' && this.skip_unit()) {
 				return true;
 			}
 			if (e.code == 'B' && this.action_mode == 'found_base') {

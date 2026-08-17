@@ -1648,3 +1648,11 @@ Windows x64 RelWithDebInfo rebuild passed, all 147 native/script tests passed in
 206.96 seconds, and six installed-asset CVR, research UI, gameplay controls,
 facility production, AI repair, and small-map frontend scenarios passed in
 34.85 seconds.
+
+The global Space hotkey now dispatches Skip Turn for the unit shown in the
+object preview. The event carries a stable unit ID and resolves the current
+backend unit before validation, application, or rollback, avoiding stale native
+frontend wrappers. Focused event and live UI regressions pass, including Space
+through the root key handler, and all 147 native/script tests passed in 206.75
+seconds. This still requires manual confirmation in the packaged game alongside
+the remaining reported control and interface issues.

@@ -176,6 +176,7 @@ test.assert(!#is_defined(advance_turn.validate(advance_event)));
 let movement = 0.75;
 let unit = null;
 unit = {
+	id: 73,
 	owner: 1,
 	movement: movement,
 	health: 1.0,
@@ -205,6 +206,23 @@ test.assert(!#is_defined(unit_skip_turn.validate(skip_event)));
 skip_event.applied = unit_skip_turn.apply(skip_event);
 test.assert(skip_event.applied.original_movement == 0.75);
 unit_skip_turn.rollback(skip_event);
+test.assert(unit.movement == 0.75);
+
+const skip_by_id_event = {
+	caller: 1,
+	game: {
+		is_turn_complete: () => { return false; },
+		get_um: () => { return {
+			has_unit: (id) => { return id == unit.id; },
+			get_unit: (id) => { return id == unit.id ? unit : null; },
+		}; },
+	},
+	data: {unit_id: unit.id},
+};
+test.assert(!#is_defined(unit_skip_turn.validate(skip_by_id_event)));
+skip_by_id_event.applied = unit_skip_turn.apply(skip_by_id_event);
+test.assert(unit.movement == 0.0);
+unit_skip_turn.rollback(skip_by_id_event);
 test.assert(unit.movement == 0.75);
 
 const hold_event = {

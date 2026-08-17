@@ -40,11 +40,13 @@
 			let phase_ticks = 0;
 			let worker_target = null;
 			let moving_unit = null;
+			let space_unit = null;
 			let held_movement = 0.0;
 			let move_target = null;
 			let move_start_turn = 0;
 			let economy_credits_before = 0;
 			let economy_income_before = 0;
+			let economy_credits_after = 0;
 			let economy_update_count = 0;
 			game.on('economy_updated', (event) => {
 				if (event.player.id == player.id) {
@@ -444,6 +446,7 @@
 						#max(0, economy_credits_before + economy_income_before)
 					);
 					const actual_credits = game.get_player().get_energy_credits();
+					economy_credits_after = actual_credits;
 					if (economy_update_count == 0) {
 						fail('turn advance did not settle the human economy');
 						return false;
@@ -457,6 +460,47 @@
 						);
 						return false;
 					}
+					phase = 'space_prepare';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'space_prepare') {
+					if (p.modules.popup.popup != null) {
+						if (p.modules.popup.popup.id != 'research') {
+							fail('Space hotkey setup was blocked by ' + p.modules.popup.popup.id);
+							return false;
+						}
+						p.modules.popup.popup_defs.research.begin_button.trigger('click');
+						return true;
+					}
+					for (candidate of game.get_um().get_units()) {
+						if (
+							candidate.owner == player.id && candidate.transport_id == 0 &&
+							candidate.movement > 0.0 && candidate.order == 'none'
+						) {
+							space_unit = candidate;
+							break;
+						}
+					}
+					if (space_unit == null) {
+						fail('no active unit was available for the Space hotkey check');
+						return false;
+					}
+					const preview = p.modules.bottom_bar.pp.sections.object_preview;
+					preview.show(space_unit);
+					const skip_unit = preview.skip_unit;
+					let space_hotkey_invoked = false;
+					preview.skip_unit = () => {
+						space_hotkey_invoked = true;
+						return true;
+					};
+					p.root.trigger('keydown', {code: 'SPACE', modifiers: {}});
+					preview.skip_unit = skip_unit;
+					if (!space_hotkey_invoked) {
+						fail('Space hotkey did not dispatch Skip Turn');
+						return false;
+					}
 					finished = true;
 					#print(
 						'GAMEPLAY_CONTROLS_UI_RUNTIME_PASS: production=' +
@@ -466,7 +510,7 @@
 						',' + #to_string(move_target.y) + ' credits=' +
 						#to_string(economy_credits_before) + '+' +
 						#to_string(economy_income_before) + '=' +
-						#to_string(actual_credits)
+						#to_string(economy_credits_after) + ' space=skip'
 					);
 					glsmac.exit();
 					return false;
