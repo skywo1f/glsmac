@@ -62,6 +62,7 @@
 				victory_event == null || victory_event.type != 'conquest' ||
 				victory_event.winner.id != ai_id || victory_event.turn != victory.turn ||
 				captured_base.get_owner().id != ai_id ||
+				captured_base.get_size() != 1 ||
 				game.get_um().has_unit(defender_id) ||
 				!surviving_unit_rehomed ||
 				!ai_occupies_base ||
@@ -167,6 +168,10 @@
 
 			defender_id = defender.id;
 			defender.health = 0.01;
+			game.event('add_base_pop', {
+				base: human_base,
+				type: 'WORKER',
+			});
 			game.event('spawn_unit', {
 				owner: human,
 				tile: supported_unit_tile,

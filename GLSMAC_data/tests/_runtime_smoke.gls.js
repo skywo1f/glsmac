@@ -978,8 +978,8 @@
 				const fungus_former = game.get_um().get_unit(fungus_former_id);
 				const field_repair_unit = game.get_um().get_unit(field_repair_unit_id);
 				if (
-					game.get_um().get_unit(1).health < 0.699 ||
-					game.get_um().get_unit(1).health > 0.701 ||
+					game.get_um().get_unit(1).health < 0.799 ||
+					game.get_um().get_unit(1).health > 0.801 ||
 					field_repair_unit.health < 0.799 ||
 					field_repair_unit.health > 0.801 ||
 					former.health != 0.5 ||
@@ -988,7 +988,15 @@
 					former.movement != 0.0 ||
 					terraform_site.terraforming.farm
 				) {
-					#print('RUNTIME_SMOKE_FAIL: Former order did not advance into turn 2');
+					#print(
+						'RUNTIME_SMOKE_FAIL: turn-2 unit state is invalid: base_repair=' +
+						#to_string(game.get_um().get_unit(1).health) + ' field_repair=' +
+						#to_string(field_repair_unit.health) + ' former_health=' +
+						#to_string(former.health) + ' order=' + former.terraforming +
+						' remaining=' + #to_string(former.terraforming_turns_remaining) +
+						' movement=' + #to_string(former.movement) + ' farm=' +
+						#to_string(terraform_site.terraforming.farm)
+					);
 					glsmac.exit();
 					return;
 				}

@@ -137,10 +137,10 @@ const apply_base_combat_population_loss = (game, base, defender) => {
 	};
 	if (base.get_size() <= 1) {
 		result.destroyed_base = game.bm.snapshot_base(base);
-		game.bm.despawn_base(base.id);
+		game.bm.despawn_base(result.base_id);
 		result.rehomed_units = entity_snapshots.rehome_surviving_units(
 			game,
-			[{id: base.id}],
+			[{id: result.base_id}],
 			defender.id
 		);
 	} else {
@@ -808,11 +808,11 @@ return {
 				applied.nerve_gas.base_name = base.name;
 				if (size == 1) {
 					applied.nerve_gas.destroyed_base = e.game.bm.snapshot_base(base);
-					e.game.bm.despawn_base(base.id);
+					e.game.bm.despawn_base(applied.nerve_gas.base_id);
 					applied.nerve_gas.rehomed_units =
 						entity_snapshots.rehome_surviving_units(
 							e.game,
-							[{id: base.id}],
+							[{id: applied.nerve_gas.base_id}],
 							defender.id
 						);
 					message_rules.to_players(

@@ -302,7 +302,14 @@ def run(args):
                 LOBBY_PROBE_READY,
                 args.host_ready_timeout,
             ):
-                raise RuntimeError("reconnect probe did not authenticate in the lobby")
+                raise RuntimeError(
+                    "reconnect probe did not authenticate in the lobby "
+                    "(exit={}); stdout tail={!r}; stderr tail={!r}".format(
+                        reconnect.poll(),
+                        read_log(reconnect_stdout).splitlines()[-10:],
+                        read_log(reconnect_stderr).splitlines()[-10:],
+                    )
+                )
             host_log_start = len(read_log(host_stdout))
             stop_process(reconnect)
             if not wait_for_log_after(

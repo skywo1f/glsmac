@@ -1509,8 +1509,11 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 			},
 			despawn_base: (id) => {
 				test.assert(active_gas_base != null && active_gas_base.id == id);
+				const despawned = active_gas_base;
 				active_gas_base = null;
 				unit_event_defender_base = null;
+				// Native base wrappers become invalid as soon as the base is despawned.
+				despawned.id = #undefined;
 			},
 			restore_base: (snapshot) => {
 				active_gas_base = make_gas_base(snapshot.id, snapshot.name, snapshot.nutrients);
@@ -1839,6 +1842,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_gas_base == null);
 	test.assert(supported.home_base_id == 0);
 	test.assert(event.applied.nerve_gas.population_loss == 1);
+	test.assert(event.applied.nerve_gas.base_id == 50);
 	attack_unit.rollback(event);
 	test.assert(active_gas_base != null && active_gas_base.get_size() == 1);
 	test.assert(active_gas_base.get('accumulated_nutrients') == 12);
@@ -1930,6 +1934,7 @@ const make_unit = (id, def, tile, movement, morale, health, moved_this_turn) => 
 	test.assert(active_gas_base == null);
 	test.assert(supported.home_base_id == 0);
 	test.assert(#is_defined(event.applied.base_combat_population.destroyed_base));
+	test.assert(event.applied.base_combat_population.base_id == 50);
 	attack_unit.rollback(event);
 	test.assert(active_gas_base != null && active_gas_base.get_size() == 1);
 	test.assert(active_gas_base.get('accumulated_nutrients') == 12);

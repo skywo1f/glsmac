@@ -1656,3 +1656,18 @@ frontend wrappers. Focused event and live UI regressions pass, including Space
 through the root key handler, and all 147 native/script tests passed in 206.75
 seconds. This still requires manual confirmation in the packaged game alongside
 the remaining reported control and interface issues.
+
+Base destruction during conventional or nerve-gas combat now captures the base
+ID before despawning the native wrapper and uses that stable value while
+rehoming supported survivors. Regression fakes deliberately invalidate the
+wrapper on despawn so both rollback paths cover the original crash. Conquest
+and multiplayer fixtures now begin capture targets at size two and verify the
+base survives at size one, matching the original last-defender population loss;
+their asynchronous spawn waits were also made explicit. All 147 native/script
+tests passed in 206.86 seconds. The first 27 installed-asset runtime tests passed
+in 279.43 seconds, and the final 22 passed in 357.28 seconds after two consecutive
+focused multiplayer passes. The latter includes save/load immediately followed
+by multiplayer and running-game reconnect. The six-opponent economy soak passed
+but took 184.88 seconds, versus recent 132-second focused runs, so AI-turn
+performance remains open. These results support a new manual-play candidate,
+not a shippable claim.

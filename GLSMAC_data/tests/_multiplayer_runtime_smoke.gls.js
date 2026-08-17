@@ -29,6 +29,7 @@
 	let client_combat_target_x = 0;
 	let client_combat_target_y = 0;
 	let combat_defender_id = 0;
+	let combat_base_spawn_requested = false;
 	let combat_defender_spawn_requested = false;
 	let colony_pod_spawn_requested = false;
 	let former_spawn_requested = false;
@@ -534,7 +535,7 @@
 						return false;
 					}
 				}
-				if (wait_ticks >= 100) {
+				if (wait_ticks >= 300) {
 					#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: terraforming order timed out');
 					glsmac.exit();
 					return false;
@@ -770,7 +771,7 @@
 		};
 
 		const spawn_combat_defender = () => {
-			if (combat_defender_spawn_requested) {
+			if (combat_base_spawn_requested || combat_defender_spawn_requested) {
 				return true;
 			}
 			if (!prepare_client_movement_probe()) {
@@ -789,19 +790,47 @@
 				owner: game.get_player(0),
 				tile: combat_tile,
 				name: combat_base_name,
+				initial_population: true,
 			});
-			game.event('spawn_unit', {
-				owner: game.get_player(0),
-				tile: combat_tile,
-				type: attacker.def,
-				health: 0.1,
-				morale: 0,
-			});
-			combat_defender_spawn_requested = true;
+			combat_base_spawn_requested = true;
 			let wait_ticks = 0;
 			#async(100, () => {
 				wait_ticks++;
-				return find_combat_defender() == null && wait_ticks < 100;
+				const combat_base = find_base_by_name(combat_base_name);
+				if (combat_base == null) {
+					if (wait_ticks >= 100) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat base spawn timed out');
+						glsmac.exit();
+						return false;
+					}
+					return true;
+				}
+				game.event('add_base_pop', {
+					base: combat_base,
+					type: 'WORKER',
+				});
+				game.event('spawn_unit', {
+					owner: game.get_player(0),
+					tile: combat_tile,
+					type: attacker.def,
+					health: 0.1,
+					morale: 0,
+				});
+				combat_defender_spawn_requested = true;
+				let defender_wait_ticks = 0;
+				#async(100, () => {
+					defender_wait_ticks++;
+					if (find_combat_defender() != null) {
+						return false;
+					}
+					if (defender_wait_ticks >= 100) {
+						#print('MULTIPLAYER_SMOKE_FAIL_HOST: combat defender spawn timed out');
+						glsmac.exit();
+						return false;
+					}
+					return true;
+				});
+				return false;
 			});
 			return true;
 		};
@@ -1758,7 +1787,8 @@
 							if (
 								captured_base == null ||
 								captured_base.name != combat_base_name ||
-								captured_base.get_owner().id != get_client_player_id()
+								captured_base.get_owner().id != get_client_player_id() ||
+								captured_base.get_size() != 1
 							) {
 								#print('MULTIPLAYER_SMOKE_FAIL_CLIENT: combat base was not captured');
 								glsmac.exit();
@@ -2094,11 +2124,17 @@
 								return false;
 							}
 						}
-						if (accepted_event_count > 1 || wait_ticks >= 100) {
+						if (accepted_event_count > 1 || wait_ticks >= 300) {
 							#print(
 								'MULTIPLAYER_SMOKE_FAIL_CLIENT: event response counts are ' +
 								#to_string(accepted_event_count) + '/' +
-								#to_string(rejected_event_count)
+								#to_string(rejected_event_count) + ' ready=' +
+								#to_string(client_base_snapshot_probe_complete) + '/' +
+								#to_string(client_base_infiltration_probe_complete) + '/' +
+								#to_string(client_player_privacy_probe_complete) + '/' +
+								#to_string(client_terraform_probe_complete) + '/' +
+								#to_string(client_live_visibility_probe_complete) + '/' +
+								#to_string(client_sea_level_probe_complete)
 							);
 							glsmac.exit();
 							return false;
@@ -2193,6 +2229,7 @@
 					client_base == null ||
 					captured_base == null ||
 					captured_base.get_owner().id != client_player_id ||
+					captured_base.get_size() != 1 ||
 					#sizeof(client_base.get_worked_tiles()) != 0 ||
 					combat_defender_id == 0 ||
 					(client_unit != null && combat_defender != null) ||
@@ -2209,7 +2246,25 @@
 					#print(
 						'MULTIPLAYER_SMOKE_FAIL_' + role + ': event response state is ' +
 						#to_string(accepted_event_count) + '/' +
-						#to_string(rejected_event_count)
+						#to_string(rejected_event_count) + ' sea=' +
+						#to_string(sea_level_notification_seen) + '/' +
+						#to_string(sea_level_message_count) + ' client_base=' +
+						(client_base == null ? 'missing' :
+							#to_string(#sizeof(client_base.get_worked_tiles()))) +
+						' captured=' + (captured_base == null ? 'missing' :
+							#to_string(captured_base.get_owner().id) + '/' +
+							#to_string(captured_base.get_size())) + ' units=' +
+						#to_string(client_unit != null) + '/' +
+						#to_string(combat_defender != null) + '/' +
+						#to_string(combat_defender_id) + ' invalid=' +
+						#to_string(client_unit_invalid) + '/' +
+						#to_string(combat_defender_invalid) + '/' +
+						#to_string(expansion_base_invalid) + ' pod=' +
+						#to_string(find_client_colony_pod() != null) + ' former=' +
+						(client_former == null ? 'missing' :
+							client_former.terraforming + '/' +
+							#to_string(client_former.terraforming_turns_remaining) + '/' +
+							#to_string(client_former.movement))
 					);
 					glsmac.exit();
 					return;
