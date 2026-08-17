@@ -48,6 +48,15 @@
 			let economy_income_before = 0;
 			let economy_credits_after = 0;
 			let economy_update_count = 0;
+			const management_reports = [
+				{key: 'F3', mode: 'energy'},
+				{key: 'F4', mode: 'bases'},
+				{key: 'F5', mode: 'projects'},
+				{key: 'F6', mode: 'orbital'},
+				{key: 'F7', mode: 'units'},
+				{key: 'F8', mode: 'score'},
+			];
+			let management_report_index = 0;
 			game.on('economy_updated', (event) => {
 				if (event.player.id == player.id) {
 					economy_update_count++;
@@ -122,12 +131,113 @@
 						return false;
 					}
 					report.close_button.trigger('click');
-					const base = get_live_base();
-					if (base == null) {
-						fail('human base disappeared');
+					phase = 'open_management_report';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'open_management_report') {
+					if (p.modules.popup.popup != null) {
+						return true;
+					}
+					p.root.trigger('keydown', {
+						code: management_reports[management_report_index].key,
+						modifiers: {},
+					});
+					phase = 'management_report';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'management_report') {
+					if (
+						p.modules.popup.popup == null ||
+						p.modules.popup.popup.id != 'faction_report'
+					) {
+						return true;
+					}
+					const expected = management_reports[management_report_index];
+					const report = p.modules.popup.popup_defs.faction_report;
+					if (report.mode != expected.mode) {
+						fail(expected.key + ' opened report mode ' + report.mode);
 						return false;
 					}
-					game.select_base(base);
+					if (
+						(expected.mode == 'energy' && report.record_count < 1) ||
+						(expected.mode == 'bases' && report.record_count < 1) ||
+						(expected.mode == 'projects' && report.project_count != 33) ||
+						(expected.mode == 'orbital' && report.orbital_count != 4) ||
+						(expected.mode == 'units' && report.unit_count < 1) ||
+						(expected.mode == 'score' && report.record_count != 1)
+					) {
+						fail(
+							expected.key + ' report data was incomplete; mode=' + report.mode +
+							' records=' + #to_string(report.record_count) +
+							' projects=' + #to_string(report.project_count) +
+							' orbital=' + #to_string(report.orbital_count) +
+							' units=' + #to_string(report.unit_count)
+						);
+						return false;
+					}
+					if (expected.mode == 'orbital') {
+						report.action_button.trigger('click');
+						phase = 'orbital_attack_from_report';
+						phase_ticks = 0;
+						return true;
+					}
+					report.close_button.trigger('click');
+					management_report_index++;
+					if (management_report_index < #sizeof(management_reports)) {
+						phase = 'open_management_report';
+						phase_ticks = 0;
+						return true;
+					}
+					phase = 'open_base_report_action';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'orbital_attack_from_report') {
+					if (
+						p.modules.popup.popup == null ||
+						p.modules.popup.popup.id != 'orbital_attack'
+					) {
+						return true;
+					}
+					if (p.modules.popup.popup_defs.faction_report.player != null) {
+						fail('replaced faction report retained a live player wrapper');
+						return false;
+					}
+					p.modules.popup.hide('orbital_attack');
+					management_report_index++;
+					phase = 'open_management_report';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'open_base_report_action') {
+					if (p.modules.popup.popup != null) {
+						return true;
+					}
+					p.root.trigger('keydown', {code: 'F4', modifiers: {}});
+					phase = 'base_report_action';
+					phase_ticks = 0;
+					return true;
+				}
+
+				if (phase == 'base_report_action') {
+					if (
+						p.modules.popup.popup == null ||
+						p.modules.popup.popup.id != 'faction_report'
+					) {
+						return true;
+					}
+					const report = p.modules.popup.popup_defs.faction_report;
+					if (report.mode != 'bases' || report.record_count < 1) {
+						fail('base report action had no owned base');
+						return false;
+					}
+					report.action_button.trigger('click');
 					phase = 'open_base';
 					phase_ticks = 0;
 					return true;

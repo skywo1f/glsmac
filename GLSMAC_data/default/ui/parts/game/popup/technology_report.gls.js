@@ -340,4 +340,10 @@ return {
 		this.selected_id = '';
 		this.visible_ids = [];
 	},
+
+	on_replace: () => {
+		this.player = null;
+		this.selected_id = '';
+		this.visible_ids = [];
+	},
 };

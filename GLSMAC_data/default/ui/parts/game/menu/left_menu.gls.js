@@ -28,6 +28,13 @@ return {
 				},
 			},
 			{
+				label: 'REPORTS',
+				open: () => {
+					p.modules.popup.set('faction_report', {mode: 'energy'});
+					p.modules.popup.show('faction_report');
+				},
+			},
+			{
 				label: 'DIPLOMACY',
 				open: () => {
 					p.modules.popup.show('diplomacy');

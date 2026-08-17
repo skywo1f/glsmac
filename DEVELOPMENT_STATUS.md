@@ -1698,3 +1698,21 @@ Windows RelWithDebInfo build and all 14 focused technology, starting-faction,
 content-validation, unit-render, live controls, research UI, and installed-asset
 research runtime tests passed in 35.62 seconds. The report is a functional tree
 browser, not yet a replica of the original graphical tech-tree presentation.
+
+The classic F3-F8 management keys now open a shared faction-report interface:
+Energy, Bases, Secret Projects, Orbital Status, Units, and Score. The reports
+show live player reserves and per-base allocations, base yields and production,
+all 33 base-game Secret Projects with local ownership and availability, all four
+orbital facility classes, owned-unit status and map selection, and the player's
+score breakdown. F6 retains orbital attacks as an action inside Orbital Status,
+F4 can open the selected base, and the left menu exposes the report collection.
+Report lists retain only scalar IDs and copied display data; replacement cleanup
+drops player state before opening base or orbital screens. The expanded live UI
+smoke pressed F2 through F8, exercised both replacement actions, and then
+continued through Gaian production, worker reassignment, unit actions and
+hotkeys, Enter end-turn confirmation, multi-turn go-to, and credit settlement.
+The Windows x64 RelWithDebInfo build passed, followed by all 198 CTest cases in
+736.39 seconds, including Diplomacy GC stress, the six-opponent economy soak,
+save/load, multiplayer, and running reconnect. These gates justify a fresh
+manual-play candidate; report readability and normal campaign behavior still
+require human approval and the project is not yet shippable.

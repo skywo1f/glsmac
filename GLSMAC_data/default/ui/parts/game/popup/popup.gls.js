@@ -6,6 +6,7 @@ return {
 		'victory',
 		'research',
 		'technology_report',
+		'faction_report',
 		'social_engineering',
 		'planetary_council',
 		'economic_victory',

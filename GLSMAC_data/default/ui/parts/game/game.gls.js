@@ -165,15 +165,24 @@ return (m) => {
 					p.maybe_quit(false);
 					return true;
 				}
-				if (
-					no_modifiers && e.code == 'F2' &&
-					!p.modules.popup.is_shown()
-				) {
+				if (no_modifiers && e.code == 'F2' && !p.modules.popup.is_shown()) {
 					p.modules.popup.show('technology_report');
 					return true;
 				}
-				if (no_modifiers && e.code == 'F6') {
-					p.modules.popup.show('orbital_attack');
+				const report_modes = {
+					F3: 'energy',
+					F4: 'bases',
+					F5: 'projects',
+					F6: 'orbital',
+					F7: 'units',
+					F8: 'score',
+				};
+				if (
+					no_modifiers && !p.modules.popup.is_shown() &&
+					#is_defined(report_modes[e.code])
+				) {
+					p.modules.popup.set('faction_report', {mode: report_modes[e.code]});
+					p.modules.popup.show('faction_report');
 					return true;
 				}
 				return false;
