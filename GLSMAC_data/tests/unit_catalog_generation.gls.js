@@ -1,7 +1,7 @@
 const units = #include('../default/units');
 const technologies = #include('../default/technologies');
 const manifest = #include('../default/content/base_units');
-const PREDEFINED_COUNT = 14;
+const PREDEFINED_COUNT = 16;
 
 units.ensure_full_catalog();
 
@@ -39,6 +39,8 @@ test.assert(get_unit('SporeLauncher') == null);
 const scout = get_unit('ScoutPatrol');
 const colony = get_unit('ColonyPod');
 const former = get_unit('Former');
+const transport_foil = get_unit('TransportFoil');
+const supply_crawler = get_unit('SupplyCrawler');
 test.assert(
 	scout.data.render.type == 'cvr' && scout.data.render.files == [
 		'VI.cvr', 'Vw00.cvr', 'VGMT.cvr', 'VGMTP.cvr', 'Viptr00.cvr'
@@ -55,6 +57,17 @@ test.assert(
 	former.data.render.type == 'cvr' && former.data.render.files == ['VT.cvr'] &&
 	former.data.render.fallback.file == 'newicons.pcx' &&
 	former.data.render.fallback.x == 518 && former.data.render.fallback.y == 158
+);
+test.assert(
+	transport_foil != null && transport_foil.data.mineral_cost == 30 &&
+	transport_foil.data.movement_type == 'water' &&
+	transport_foil.data.cargo_capacity == 2 &&
+	transport_foil.data.required_technology == 'DoctrineFlexibility'
+);
+test.assert(
+	supply_crawler != null && supply_crawler.data.mineral_cost == 30 &&
+	supply_crawler.data.weapon == 'SupplyTransport' &&
+	supply_crawler.data.required_technology == 'IndustrialAutomation'
 );
 const recon = get_unit('ReconRover');
 const probe = get_unit('ProbeTeam');

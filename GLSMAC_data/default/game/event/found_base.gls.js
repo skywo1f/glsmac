@@ -3,6 +3,7 @@ const snapshots = #include('../entity_snapshots');
 const snapshot_unit = snapshots.snapshot_unit;
 const faction_rules = #include('../faction_rules');
 const unit_order_rules = #include('../unit_order_rules');
+const unit_requirements = #include('../unit_requirements');
 
 const restore_unit = (e, backup) => {
 	snapshots.spawn_unit_snapshot(e.game, backup);
@@ -18,10 +19,7 @@ const get_initial_production = (game, owner, tile) => {
 			!def.is_water || def.is_native || def.is_missile ||
 			def.offense <= 0 || def.can_found_base || def.can_terraform ||
 			def.cargo_capacity > 0 ||
-			(
-				def.required_technology != '' &&
-				!owner.has_technology(def.required_technology)
-			)
+			!unit_requirements.player_has_all(owner, def)
 		) {
 			continue;
 		}

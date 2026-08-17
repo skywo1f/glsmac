@@ -1,5 +1,6 @@
 #pragma once
 
+#include <set>
 #include <string>
 
 #include "Types.h"
@@ -28,6 +29,7 @@ public:
 	static constexpr int64_t MAX_MINERAL_COST = 1000000;
 	static constexpr int64_t MAX_COMBAT_STRENGTH = 1000000;
 	static constexpr int64_t MAX_OWNER_PLAYER_ID = 63;
+	static constexpr size_t MAX_REQUIRED_TECHNOLOGIES = 128;
 
 	Def(
 		const std::string& id,
@@ -42,7 +44,8 @@ public:
 		const bool can_found_base,
 		const bool can_terraform,
 		const bool buildable,
-		const int64_t owner_player_id
+		const int64_t owner_player_id,
+		const std::set< std::string >& required_technologies = {}
 	);
 	virtual ~Def() = default;
 
@@ -52,6 +55,7 @@ public:
 	const std::string m_name;
 	const int64_t m_mineral_cost;
 	const std::string m_required_technology;
+	const std::set< std::string > m_required_technologies;
 	const bool m_is_native;
 	const int64_t m_offense;
 	const int64_t m_defense;

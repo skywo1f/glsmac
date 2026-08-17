@@ -152,6 +152,29 @@ test.assert(
 	research.choose([expansion, ecology], [colony, former], [], strategic_context) == ecology
 );
 
+const flexibility = technology('Flexibility', 40);
+const sea_former = unit('SeaFormer', 'Flexibility', 0, 1, 4.0, false, true);
+sea_former.required_technologies = ['Ecology', 'Flexibility'];
+let cross_branch_context = context(false, false);
+cross_branch_context.known_technologies = {Ecology: true};
+test.assert(
+	research.score_technology(
+		flexibility,
+		[sea_former],
+		[],
+		cross_branch_context
+	) > research.score_technology(flexibility, [], [], cross_branch_context)
+);
+cross_branch_context.known_technologies = {};
+test.assert(
+	research.score_technology(
+		flexibility,
+		[sea_former],
+		[],
+		cross_branch_context
+	) == research.score_technology(flexibility, [], [], cross_branch_context)
+);
+
 const ordinary_special = technology('OrdinarySpecial', 80);
 const first_discovery = technology('FirstDiscovery', 80);
 first_discovery.free_technology_for_first_discoverer = true;

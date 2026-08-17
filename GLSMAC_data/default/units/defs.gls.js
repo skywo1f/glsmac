@@ -170,6 +170,8 @@ const predefined_units = [
 	conventional_unit('ReconRover', 'Recon Rover', 20, 1, 1, false, false, 'DoctrineMobility', 2, 'Speeder', 'HandWeapons', 'NoArmor'),
 	conventional_unit('LaserInfantry', 'Laser Infantry', 20, 2, 1, false, false, 'AppliedPhysics', 1, 'Infantry', 'Laser', 'NoArmor'),
 	conventional_unit('SynthmetalSentinels', 'Synthmetal Sentinels', 20, 1, 2, false, false, 'IndustrialBase', 1, 'Infantry', 'HandWeapons', 'SynthmetalArmor'),
+	special_unit('TransportFoil', 'Transport Foil', 30, 0, 1, 'water', 4, 0, 2, 'Foil', 'TroopTransport', 'NoArmor', 'DoctrineFlexibility'),
+	special_unit('SupplyCrawler', 'Supply Crawler', 30, 0, 1, 'land', 1, 0, 0, 'Infantry', 'SupplyTransport', 'NoArmor', 'IndustrialAutomation'),
 	conventional_unit('ProbeTeam', 'Probe Team', 40, 0, 1, false, false, 'PlanetaryNetworks', 2, 'Speeder', 'ProbeTeam', 'NoArmor'),
 	conventional_unit('AlienArtifact', 'Alien Artifact', 100, 0, 1, false, false, '', 1, 'Infantry', 'AlienArtifact', 'NoArmor'),
 	special_unit('UnityRover', 'Unity Rover', 0, 1, 1, 'land', 2, 0, 0, 'Speeder', 'HandWeapons', 'NoArmor', ''),

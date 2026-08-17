@@ -2,6 +2,26 @@
 
 	#include('../default/game/game')(glsmac);
 	#include('../default/ui/ui')(glsmac);
+	const unit_catalog = #include('../default/units');
+	unit_catalog.generate_available({
+		CentauriEcology: true,
+		DoctrineMobility: true,
+		DoctrineFlexibility: true,
+	});
+	let cross_branch_unit_definition = null;
+	for (entry of unit_catalog.generated_definitions) {
+		if (
+			entry.data.can_terraform && entry.data.movement_type == 'water' &&
+			entry.data.chassis == 'Foil' && entry.data.reactor == 'FissionPlant' &&
+			#sizeof(entry.data.abilities) == 0
+		) {
+			cross_branch_unit_definition = entry;
+			break;
+		}
+	}
+	if (cross_branch_unit_definition == null) {
+		throw Error('Save/load fixture could not generate a Sea Former definition');
+	}
 
 	const energy_stamp = 4321;
 	const nutrient_stamp = 37;
@@ -43,6 +63,13 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		if (!loading_save) {
+			game.on('configure', (configure_event) => {
+				configure_event.game.event('define_units', {
+					units: [cross_branch_unit_definition],
+				});
+			});
+		}
 		game.on('message', (event) => {
 			if (event.text == 'Game saved.') {
 				save_message_count++;
@@ -231,6 +258,30 @@
 			}
 			if (game.get_tm().get_map_width() != 20 || game.get_tm().get_map_height() != 10) {
 				return 'map dimensions were not restored';
+			}
+			let sea_former = null;
+			for (def of game.get_um().get_unit_defs()) {
+				if (
+					def.can_terraform && def.is_water && def.chassis == 'Foil' &&
+					def.reactor == 'FissionPlant' && #sizeof(def.abilities) == 0
+				) {
+					sea_former = def;
+					break;
+				}
+			}
+			if (sea_former == null) {
+				return 'generated Sea Former definition was not restored';
+			}
+			let sea_former_requirements = {};
+			for (technology_id of sea_former.required_technologies) {
+				sea_former_requirements[technology_id] = true;
+			}
+			if (
+				#sizeof(sea_former.required_technologies) != 2 ||
+				!#is_defined(sea_former_requirements.CentauriEcology) ||
+				!#is_defined(sea_former_requirements.DoctrineFlexibility)
+			) {
+				return 'generated Sea Former prerequisites were not restored';
 			}
 			if (expected_energy != null && game.get_player().energy_credits != expected_energy) {
 				return 'player economy was not restored (expected ' + #to_string(expected_energy) +

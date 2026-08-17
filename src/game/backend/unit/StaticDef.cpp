@@ -19,7 +19,7 @@ namespace game {
 namespace backend {
 namespace unit {
 
-static constexpr int64_t COMPONENT_METADATA_VERSION = 5;
+static constexpr int64_t COMPONENT_METADATA_VERSION = 6;
 
 // TODO: per-def values?
 const health_t StaticDef::HEALTH_MAX = 1.0f;
@@ -73,7 +73,8 @@ StaticDef::StaticDef(
 	const bool is_missile,
 	const int64_t cargo_capacity,
 	const bool buildable,
-	const int64_t owner_player_id
+	const int64_t owner_player_id,
+	const std::set< std::string >& required_technologies
 )
 	: Def(
 		id,
@@ -88,7 +89,8 @@ StaticDef::StaticDef(
 		can_found_base,
 		can_terraform,
 		buildable,
-		owner_player_id
+		owner_player_id,
+		required_technologies
 	)
 	, m_movement_type( movement_type )
 	, m_movement_per_turn( movement_per_turn )
@@ -200,6 +202,10 @@ void StaticDef::Serialize( types::Buffer& buf, const StaticDef* def ) {
 	buf.WriteInt( def->m_cargo_capacity );
 	buf.WriteBool( def->m_buildable );
 	buf.WriteInt( def->m_owner_player_id );
+	buf.WriteInt( def->m_required_technologies.size() );
+	for ( const auto& technology : def->m_required_technologies ) {
+		buf.WriteString( technology );
+	}
 }
 
 StaticDef* StaticDef::Deserialize(
@@ -248,6 +254,7 @@ StaticDef* StaticDef::Deserialize(
 	int64_t cargo_capacity = 0;
 	bool buildable = true;
 	int64_t owner_player_id = -1;
+	std::set< std::string > required_technologies = {};
 	if ( buf.GetRemaining() > 0 ) {
 		const auto version = buf.ReadInt();
 		if ( version < 1 || version > COMPONENT_METADATA_VERSION ) {
@@ -305,6 +312,18 @@ StaticDef* StaticDef::Deserialize(
 				THROW( "invalid serialized unit definition owner" );
 			}
 		}
+		if ( version >= 6 ) {
+			const auto required_technology_count = buf.ReadCollectionSize( "required unit technology" );
+			if ( required_technology_count > Def::MAX_REQUIRED_TECHNOLOGIES ) {
+				THROW( "too many serialized required unit technologies" );
+			}
+			for ( size_t i = 0 ; i < required_technology_count ; i++ ) {
+				const auto technology = buf.ReadString();
+				if ( technology.empty() || !required_technologies.insert( technology ).second ) {
+					THROW( "invalid or duplicate serialized required unit technology" );
+				}
+			}
+		}
 	}
 	return new StaticDef(
 		id,
@@ -330,7 +349,8 @@ StaticDef* StaticDef::Deserialize(
 		is_missile,
 		cargo_capacity,
 		buildable,
-		owner_player_id
+		owner_player_id,
+		required_technologies
 	);
 }
 

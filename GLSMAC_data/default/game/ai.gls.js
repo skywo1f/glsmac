@@ -23,6 +23,7 @@ const production = #include('ai/production');
 const research = #include('ai/research');
 const social_engineering = #include('ai/social_engineering');
 const strategy = #include('ai/strategy');
+const unit_requirements = #include('unit_requirements');
 const terraforming = #include('ai/terraforming');
 const unity_pods = #include('ai/unity_pods');
 const movement_rules = #include('movement_rules');
@@ -1037,8 +1038,7 @@ const queue_production = (
 	let available_unit_defs = [];
 	for (def of unit_defs) {
 		if (
-			(#is_defined(def.required_technology) && def.required_technology != '' &&
-				!#is_defined(known_technologies[def.required_technology])) ||
+			!unit_requirements.known_has_all(known_technologies, def) ||
 			(#is_defined(def.owner_player_id) && def.owner_player_id >= 0 &&
 				def.owner_player_id != player.id) ||
 			player.is_unit_design_obsolete(def.id)
@@ -1515,6 +1515,13 @@ const choose_research_target = (game, player, available) => {
 			needs_growth: metrics.growth_stalled_bases > 0,
 			needs_psych: metrics.unstable_bases > 0,
 			base_labs: metrics.base_labs,
+			known_technologies: (() => {
+				let known = {};
+				for (technology_id of player.get_research_state().technologies) {
+					known[technology_id] = true;
+				}
+				return known;
+			})(),
 			priorities: priorities,
 		}
 	);

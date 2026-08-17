@@ -4,6 +4,41 @@
 	#include('../default/ui/ui')(glsmac);
 
 	const technology_catalog = #include('../default/content/base_technologies');
+	const cross_branch_unit = {
+		id: 'RuntimeCrossBranchUnit',
+		data: {
+			name: 'Runtime Cross-Branch Unit',
+			mineral_cost: 10,
+			required_technology: 'DoctrineFlexibility',
+			required_technologies: [
+				'CentauriEcology',
+				'DoctrineFlexibility',
+			],
+			is_native: false,
+			offense: 1,
+			defense: 1,
+			can_found_base: false,
+			can_terraform: false,
+			chassis: 'Infantry',
+			weapon: 'HandWeapons',
+			armor: 'NoArmor',
+			reactor: 'FissionPlant',
+			reactor_power: 1,
+			abilities: [],
+			morale: 'STANDARD',
+			type: 'static',
+			movement_type: 'land',
+			movement_per_turn: 1,
+			operational_range: 0,
+			is_missile: false,
+			cargo_capacity: 0,
+			render: {
+				type: 'sprite', file: 'newicons.pcx',
+				x: 518, y: 82, w: 80, h: 69,
+				cx: 558, cy: 117,
+			},
+		},
+	};
 	let finished = false;
 
 	const fail = (message) => {
@@ -25,6 +60,11 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.on('configure', (configure_event) => {
+			configure_event.game.event('define_units', {
+				units: [cross_branch_unit],
+			});
+		});
 		game.on('turn', (e) => {
 			if (finished || e.year - 2100 != 1) {
 				return;
@@ -39,6 +79,35 @@
 				}
 			}
 			if (!expect(base != null, 'quickstart player has no base')) {
+				return;
+			}
+
+			player.set_research_state({
+				technologies: ['DoctrineMobility', 'DoctrineFlexibility'],
+				target: '',
+				progress: 0,
+				cost: 0,
+			});
+			if (!expect(
+				!base.can_set_production('unit', 'RuntimeCrossBranchUnit'),
+				'unit production ignored a missing component technology'
+			)) {
+				return;
+			}
+			player.set_research_state({
+				technologies: [
+					'CentauriEcology',
+					'DoctrineMobility',
+					'DoctrineFlexibility',
+				],
+				target: '',
+				progress: 0,
+				cost: 0,
+			});
+			if (!expect(
+				base.can_set_production('unit', 'RuntimeCrossBranchUnit'),
+				'unit production rejected complete component technologies'
+			)) {
 				return;
 			}
 

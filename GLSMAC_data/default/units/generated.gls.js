@@ -92,6 +92,32 @@ const find_component = (entries, id) => {
 	throw Error('Missing unit component: ' + id);
 };
 
+const get_required_technologies = (chassis, weapon, armor, abilities, reactor) => {
+	let required = {};
+	const add = (component) => {
+		if (component.availability == 'technology') {
+			required[component.required_technology] = true;
+		}
+	};
+	add(chassis);
+	add(weapon);
+	add(armor);
+	add(reactor);
+	for (ability of abilities) {
+		add(ability);
+	}
+	if (#sizeof(abilities) > 1) {
+		required.NeuralGrafting = true;
+	}
+	let result = [];
+	for (technology_id of technologies.order) {
+		if (#is_defined(required[technology_id])) {
+			result :+technology_id;
+		}
+	}
+	return result;
+};
+
 const hand_weapons = find_component(manifest.weapons, 'HandWeapons');
 const no_armor = find_component(manifest.armors, 'NoArmor');
 const colony_module = find_component(manifest.weapons, 'ColonyModule');
@@ -134,7 +160,6 @@ const get_role_abilities = (known, role) => {
 };
 
 const make_definition = (
-	technology_id,
 	chassis,
 	weapon,
 	armor,
@@ -142,6 +167,16 @@ const make_definition = (
 	abilities,
 	reactor
 ) => {
+	const required_technologies = get_required_technologies(
+		chassis,
+		weapon,
+		armor,
+		abilities,
+		reactor
+	);
+	const required_technology = #sizeof(required_technologies) == 0
+		? ''
+		: required_technologies[#sizeof(required_technologies) - 1];
 	const role_name = role == 'assault' ? weapon.short_name : armor.short_name;
 	let ability_name = '';
 	let ability_ids = [];
@@ -198,7 +233,8 @@ const make_definition = (
 			defense: armor.defense,
 			can_found_base: role == 'colony',
 			can_terraform: role == 'former',
-			required_technology: technology_id,
+			required_technology: required_technology,
+			required_technologies: required_technologies,
 			chassis: chassis.id,
 			weapon: weapon.id,
 			armor: armor.id,
@@ -225,8 +261,10 @@ seen['Infantry|Laser|NoArmor||FissionPlant'] = true;
 seen['Infantry|HandWeapons|SynthmetalArmor||FissionPlant'] = true;
 seen['Infantry|ColonyModule|NoArmor||FissionPlant'] = true;
 seen['Infantry|TerraformingUnit|NoArmor||FissionPlant'] = true;
+seen['Foil|TroopTransport|NoArmor||FissionPlant'] = true;
+seen['Infantry|SupplyTransport|NoArmor||FissionPlant'] = true;
 
-const add_design = (technology_id, chassis, weapon, armor, role, abilities, reactor) => {
+const add_design = (chassis, weapon, armor, role, abilities, reactor) => {
 	let ability_signature = '';
 	for (ability of abilities) {
 		ability_signature += ability.id + ',';
@@ -238,7 +276,6 @@ const add_design = (technology_id, chassis, weapon, armor, role, abilities, reac
 	}
 	seen[signature] = true;
 	definitions :+make_definition(
-		technology_id,
 		chassis,
 		weapon,
 		armor,
@@ -248,9 +285,7 @@ const add_design = (technology_id, chassis, weapon, armor, role, abilities, reac
 	);
 };
 
-const add_milestone_designs = (technology_id) => {
-	let known = {};
-	add_technology_closure(known, technology_id);
+const add_milestone_designs = (technology_id, known) => {
 	const weapon = get_best_weapon(known);
 	const armor = get_best_armor(known);
 	const chassis_by_triad = get_best_chassis_by_triad(known);
@@ -261,7 +296,7 @@ const add_milestone_designs = (technology_id) => {
 	const reactor_changed = technology_id == '' ||
 		reactor.required_technology == technology_id;
 	const add = (chassis, weapon, armor, role, abilities) => {
-		add_design(technology_id, chassis, weapon, armor, role, abilities, reactor);
+		add_design(chassis, weapon, armor, role, abilities, reactor);
 	};
 	for (triad in chassis_by_triad) {
 		const chassis = chassis_by_triad[triad];
@@ -436,33 +471,32 @@ const add_milestone_designs = (technology_id) => {
 	}
 };
 
-let generated_milestones = {};
-
-const generate_milestone = (technology_id) => {
-	const key = technology_id == '' ? 'initial' : technology_id;
-	if (#is_defined(generated_milestones[key])) {
-		return;
-	}
-	generated_milestones[key] = true;
-	add_milestone_designs(technology_id);
-};
-
 const generate_available = (known) => {
-	generate_milestone('');
+	let combined = {};
+	add_milestone_designs('', combined);
 	for (technology_id of technologies.order) {
 		if (#is_defined(known[technology_id])) {
-			generate_milestone(technology_id);
+			let branch = {};
+			add_technology_closure(branch, technology_id);
+			add_milestone_designs(technology_id, branch);
+			add_technology_closure(combined, technology_id);
 		}
 	}
+	add_milestone_designs('', combined);
 	result.definitions = definitions;
 	return definitions;
 };
 
 const generate_all = () => {
-	generate_milestone('');
+	let combined = {};
+	add_milestone_designs('', combined);
 	for (technology_id of technologies.order) {
-		generate_milestone(technology_id);
+		let branch = {};
+		add_technology_closure(branch, technology_id);
+		add_milestone_designs(technology_id, branch);
+		add_technology_closure(combined, technology_id);
 	}
+	add_milestone_designs('', combined);
 	result.definitions = definitions;
 	return definitions;
 };

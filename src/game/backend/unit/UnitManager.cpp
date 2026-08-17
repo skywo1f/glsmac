@@ -477,6 +477,30 @@ WRAPIMPL_BEGIN( UnitManager )
 				N_GETPROP( unit_type, unit_def, "type", String );
 				N_GETPROP( mineral_cost, unit_def, "mineral_cost", Int );
 				N_GETPROP_OPT( std::string, required_technology, unit_def, "required_technology", String, "" );
+				N_GETPROP_OPT(
+					gse::value::array_elements_t,
+					required_technology_values,
+					unit_def,
+					"required_technologies",
+					Array,
+					gse::value::array_elements_t()
+				);
+				std::set< std::string > required_technologies = {};
+				if ( required_technology_values.size() > unit::Def::MAX_REQUIRED_TECHNOLOGIES ) {
+					GSE_ERROR( gse::EC.INVALID_CALL, "Too many required unit technologies: " + id );
+				}
+				for ( size_t i = 0 ; i < required_technology_values.size() ; i++ ) {
+					N_GETELEMENT( technology_id, required_technology_values, i, String );
+					if ( technology_id.empty() || !required_technologies.insert( technology_id ).second ) {
+						GSE_ERROR(
+							gse::EC.INVALID_CALL,
+							"Required unit technologies must be unique, non-empty strings: " + id
+						);
+					}
+				}
+				if ( !required_technology.empty() ) {
+					required_technologies.insert( required_technology );
+				}
 				N_GETPROP_OPT( bool, is_native, unit_def, "is_native", Bool, morale == "NATIVE" );
 				N_GETPROP_OPT( int64_t, offense, unit_def, "offense", Int, 1 );
 				N_GETPROP_OPT( int64_t, defense, unit_def, "defense", Int, 1 );
@@ -621,7 +645,8 @@ WRAPIMPL_BEGIN( UnitManager )
 								is_missile,
 								cargo_capacity,
 								buildable,
-								owner_player_id
+								owner_player_id,
+								required_technologies
 							);
 
 						DefineUnit( def );
@@ -717,7 +742,8 @@ WRAPIMPL_BEGIN( UnitManager )
 							is_missile,
 							cargo_capacity,
 							buildable,
-							owner_player_id
+							owner_player_id,
+							required_technologies
 						);
 
 						DefineUnit( def );

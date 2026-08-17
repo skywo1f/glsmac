@@ -1,3 +1,5 @@
+const unit_requirements = #include('../../../../../game/unit_requirements');
+
 return {
 
 	available_parts: [
@@ -103,9 +105,7 @@ return {
 		let result = [];
 		for (def of unit_defs) {
 			if (
-				(#is_defined(def.required_technology) &&
-					def.required_technology != '' &&
-					!#is_defined(known[def.required_technology])) ||
+				!unit_requirements.known_has_all(known, def) ||
 				(#is_defined(def.owner_player_id) && def.owner_player_id >= 0 &&
 					def.owner_player_id != owner.id) ||
 				owner.is_unit_design_obsolete(def.id)

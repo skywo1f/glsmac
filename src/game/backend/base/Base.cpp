@@ -221,11 +221,10 @@ bool Base::CanProduceUnit( const unit::Def* def ) const {
 	) {
 		return false;
 	}
-	if (
-		!def->m_required_technology.empty() &&
-		( !owner || !owner->HasTechnology( def->m_required_technology ) )
-	) {
-		return false;
+	for ( const auto& technology : def->m_required_technologies ) {
+		if ( !owner || !owner->HasTechnology( technology ) ) {
+			return false;
+		}
 	}
 	switch ( def->GetMovementType() ) {
 		case unit::MT_LAND:

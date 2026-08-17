@@ -1,3 +1,5 @@
+const unit_requirements = #include('../unit_requirements');
+
 const get_priority = (context, name, fallback) => {
 	return #is_defined(context.priorities) && #is_defined(context.priorities[name])
 		? context.priorities[name]
@@ -48,7 +50,11 @@ const score_technology = (technology, unit_defs, facility_defs, context) => {
 		development_priority * 30
 	);
 	for (def of unit_defs) {
-		if (def.required_technology != technology.id) {
+		if (!unit_requirements.unlocked_by(
+			context.known_technologies,
+			def,
+			technology.id
+		)) {
 			continue;
 		}
 		if (def.can_found_base) {

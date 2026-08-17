@@ -109,6 +109,7 @@ const unit_fields = {
 	can_terraform: true,
 	buildable: true,
 	required_technology: true,
+	required_technologies: true,
 	chassis: true,
 	weapon: true,
 	armor: true,
@@ -1280,6 +1281,40 @@ const validate_units = (units, technologies, morale_ids, unit_manifest, errors) 
 				path + '.required_technology',
 				'references missing technology ' + data.required_technology
 			);
+		}
+		if (#is_defined(data.required_technologies)) {
+			if (#typeof(data.required_technologies) != 'Array') {
+				add_error(errors, path + '.required_technologies', 'must be an array');
+			} else {
+				let seen_required_technologies = {};
+				for (
+					let technology_index = 0;
+					technology_index < #sizeof(data.required_technologies);
+					technology_index++
+				) {
+					const technology_id = data.required_technologies[technology_index];
+					const technology_path = path + '.required_technologies[' +
+						#to_string(technology_index) + ']';
+					if (#typeof(technology_id) != 'String' || technology_id == '') {
+						add_error(errors, technology_path, 'must be a non-empty string');
+					} else if (#is_defined(seen_required_technologies[technology_id])) {
+						add_error(errors, technology_path, 'duplicates required technology ' + technology_id);
+					} else if (!#is_defined(technologies[technology_id])) {
+						add_error(errors, technology_path, 'references missing technology ' + technology_id);
+					}
+					seen_required_technologies[technology_id] = true;
+				}
+				if (
+					data.required_technology != '' &&
+					!#is_defined(seen_required_technologies[data.required_technology])
+				) {
+					add_error(
+						errors,
+						path + '.required_technologies',
+						'must include required_technology'
+					);
+				}
+			}
 		}
 		validate_string(data, 'morale', path, errors, true);
 		if (#is_defined(data.morale) && !#is_defined(morale_ids[data.morale])) {

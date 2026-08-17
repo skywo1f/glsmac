@@ -46,7 +46,8 @@ public:
 		const bool is_missile = false,
 		const int64_t cargo_capacity = 0,
 		const bool buildable = true,
-		const int64_t owner_player_id = -1
+		const int64_t owner_player_id = -1,
+		const std::set< std::string >& required_technologies = {}
 	);
 	~StaticDef();
 

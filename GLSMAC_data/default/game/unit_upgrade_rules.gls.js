@@ -1,6 +1,7 @@
 const manifest = #include('../content/base_units');
 const prototype_rules = #include('prototype_rules');
 const unit_order_rules = #include('unit_order_rules');
+const unit_requirements = #include('unit_requirements');
 
 const index_components = (entries) => {
 	let result = {};
@@ -49,11 +50,7 @@ const is_available = (player, def) => {
 		(
 			!#is_defined(def.owner_player_id) || def.owner_player_id < 0 ||
 			def.owner_player_id == player.id
-		) && (
-			!#is_defined(def.required_technology) ||
-			def.required_technology == '' ||
-			player.has_technology(def.required_technology)
-		)
+		) && unit_requirements.player_has_all(player, def)
 	) && !prototype_rules.is_prototype(player, def);
 };
 

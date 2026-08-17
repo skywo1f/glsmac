@@ -6,12 +6,24 @@
 
 #include "gse/value/Object.h"
 #include "gse/value/Bool.h"
+#include "gse/value/Array.h"
 #include "gse/value/Int.h"
 #include "gse/value/String.h"
 
 namespace game {
 namespace backend {
 namespace unit {
+
+static const std::set< std::string > NormalizeRequiredTechnologies(
+	const std::string& required_technology,
+	const std::set< std::string >& required_technologies
+) {
+	auto result = required_technologies;
+	if ( !required_technology.empty() ) {
+		result.insert( required_technology );
+	}
+	return result;
+}
 
 Def::Def(
 	const std::string& id,
@@ -26,7 +38,8 @@ Def::Def(
 	const bool can_found_base,
 	const bool can_terraform,
 	const bool buildable,
-	const int64_t owner_player_id
+	const int64_t owner_player_id,
+	const std::set< std::string >& required_technologies
 )
 	: m_id( id )
 	, m_moraleset( moraleset )
@@ -34,6 +47,7 @@ Def::Def(
 	, m_name( name )
 	, m_mineral_cost( mineral_cost )
 	, m_required_technology( required_technology )
+	, m_required_technologies( NormalizeRequiredTechnologies( required_technology, required_technologies ) )
 	, m_is_native( is_native )
 	, m_offense( offense )
 	, m_defense( defense )
@@ -52,10 +66,16 @@ Def::Def(
 		m_defense <= 0 ||
 		m_defense > MAX_COMBAT_STRENGTH ||
 		( m_can_found_base && m_can_terraform ) ||
+		m_required_technologies.size() > MAX_REQUIRED_TECHNOLOGIES ||
 		m_owner_player_id < -1 ||
 		m_owner_player_id > MAX_OWNER_PLAYER_ID
 	) {
 		THROW( "invalid unit definition: " + m_id );
+	}
+	for ( const auto& technology : m_required_technologies ) {
+		if ( technology.empty() ) {
+			THROW( "invalid empty required unit technology: " + m_id );
+		}
 	}
 }
 
@@ -135,6 +155,11 @@ Def* Def::Deserialize( types::Buffer& buf ) {
 }
 
 WRAPIMPL_BEGIN( Def )
+	gse::value::array_elements_t required_technologies = {};
+	required_technologies.reserve( m_required_technologies.size() );
+	for ( const auto& technology : m_required_technologies ) {
+		required_technologies.push_back( VALUE( gse::value::String, , technology ) );
+	}
 	WRAPIMPL_PROPS
 			{
 				"id",
@@ -159,6 +184,10 @@ WRAPIMPL_BEGIN( Def )
 			{
 				"required_technology",
 				VALUE( gse::value::String, , m_required_technology )
+			},
+			{
+				"required_technologies",
+				VALUE( gse::value::Array, , required_technologies )
 			},
 			{
 				"morale_set",

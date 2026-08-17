@@ -34,6 +34,18 @@ result = {
 		let registration_scheduled = false;
 		let registered = {};
 		let known_technologies = {};
+		const requirements_available = (data, known) => {
+			if (#is_defined(data.required_technologies)) {
+				for (technology_id of data.required_technologies) {
+					if (!#is_defined(known[technology_id])) {
+						return false;
+					}
+				}
+				return true;
+			}
+			return data.required_technology == '' ||
+				#is_defined(known[data.required_technology]);
+		};
 		const register_available_designs = () => {
 			registration_scheduled = false;
 			if (!game.is_master()) {
@@ -48,9 +60,8 @@ result = {
 			synchronize_generated_catalog();
 			let pending = [];
 			for (entry of defs.generated_definitions) {
-				const technology_id = entry.data.required_technology;
 				if (
-					technology_id != '' && #is_defined(known[technology_id]) &&
+					requirements_available(entry.data, known) &&
 					!#is_defined(registered[entry.id])
 				) {
 					registered[entry.id] = true;
