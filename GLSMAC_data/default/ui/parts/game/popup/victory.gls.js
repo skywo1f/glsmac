@@ -62,7 +62,7 @@ return {
 			transcendence: 'Transcendence Victory',
 			economic: 'Economic Victory',
 			diplomatic: 'Diplomatic Victory',
-			score: 'Highest Alpha Centauri Score',
+			retirement: 'Mandatory Retirement',
 		};
 		const victory_name = #is_defined(victory_names[victory.type])
 			? victory_names[victory.type]
@@ -71,12 +71,16 @@ return {
 			? this.p.game.get('f_score_get_breakdown') : #undefined;
 		const score = #typeof(score_resolver) == 'Callable'
 			? score_resolver(local_player) : null;
-		this.status_text.text = winner.id == local_player.id
-			? 'You have won the game.'
+		this.status_text.text = victory.type == 'retirement'
+			? 'Final score leader: ' + winner.get_faction().name + '.'
 			: (
-				score != null && score.is_victory_winner
-					? 'You share in the victory.'
-					: winner.get_faction().name + ' has won the game.'
+				winner.id == local_player.id
+					? 'You have won the game.'
+					: (
+						score != null && score.is_victory_winner
+							? 'You share in the victory.'
+							: winner.get_faction().name + ' has won the game.'
+					)
 			);
 		this.detail_text.text = victory_name + ' in M.Y. ' +
 			#to_string(victory.turn + 2100) + '.';

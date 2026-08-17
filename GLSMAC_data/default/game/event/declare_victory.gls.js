@@ -5,7 +5,7 @@ const game_rules = #include('../game_rules');
 const get_rule_key = (type) => {
 	if (type == 'conquest') { return 'allow_conquest_victory'; }
 	if (type == 'transcendence') { return 'allow_transcendence_victory'; }
-	if (type == 'score') { return ''; }
+	if (type == 'retirement') { return ''; }
 	return 'allow_economic_victory';
 };
 
@@ -22,7 +22,7 @@ return {
 			#typeof(e.data.type) != 'String' ||
 			(
 				e.data.type != 'conquest' && e.data.type != 'transcendence' &&
-				e.data.type != 'economic' && e.data.type != 'score'
+				e.data.type != 'economic' && e.data.type != 'retirement'
 			)
 		) {
 			return 'Unsupported victory type';
@@ -51,7 +51,7 @@ return {
 			winner = e.game.get_conquest_winner();
 		} else if (e.data.type == 'transcendence') {
 			winner = victory_rules.get_transcendence_winner(e.game);
-		} else if (e.data.type == 'score') {
+		} else if (e.data.type == 'retirement') {
 			if (e.game.get_year() < retirement_rules.get_ending_year(e.game)) {
 				return 'Mandatory retirement year has not been reached';
 			}
@@ -67,13 +67,19 @@ return {
 	apply: (e) => {
 		e.game.declare_victory(e.data.type, e.data.winner_id);
 		const winner = e.game.get_player(e.data.winner_id);
+		if (e.data.type == 'retirement') {
+			e.game.message(
+				'Mandatory retirement has been reached in M.Y. ' +
+				#to_string(e.game.get_year()) + '. Final score leader: ' +
+				winner.get_faction().name + '.'
+			);
+			return;
+		}
 		let result = ' has cornered the Global Energy Market';
 		if (e.data.type == 'conquest') {
 			result = ' has won by conquest';
 		} else if (e.data.type == 'transcendence') {
 			result = ' has achieved transcendence';
-		} else if (e.data.type == 'score') {
-			result = ' has won with the highest Alpha Centauri Score';
 		}
 		e.game.message(
 			winner.get_faction().name + result + ' in M.Y. ' +

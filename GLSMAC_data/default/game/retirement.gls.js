@@ -30,7 +30,7 @@ return (game) => {
 			}
 			declaration_pending = true;
 			game.event('declare_victory', {
-				type: 'score',
+				type: 'retirement',
 				winner_id: winner.id,
 			});
 		});

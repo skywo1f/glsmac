@@ -95,7 +95,7 @@ callbacks.turn({initial: false});
 test.assert(#sizeof(queued) == 1);
 test.assert(queued[0] == {
 	name: 'declare_victory',
-	data: {type: 'score', winner_id: leader.id},
+	data: {type: 'retirement', winner_id: leader.id},
 });
 
 const event = {
@@ -115,8 +115,8 @@ test.assert(#is_defined(declare_victory.validate(event)));
 event.data.winner_id = leader.id;
 declare_victory.apply(event);
 test.assert(game_over);
-test.assert(declaration == {type: 'score', winner_id: leader.id});
+test.assert(declaration == {type: 'retirement', winner_id: leader.id});
 test.assert(
 	messages[1] ==
-	'Leading Faction has won with the highest Alpha Centauri Score in M.Y. 2500.'
+	'Mandatory retirement has been reached in M.Y. 2500. Final score leader: Leading Faction.'
 );

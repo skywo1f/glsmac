@@ -1996,7 +1996,7 @@ void Game::DeclareVictory( GSE_CALLABLE, const victory_type_t type, const size_t
 	}
 	if (
 		type != VT_CONQUEST && type != VT_TRANSCENDENCE &&
-		type != VT_ECONOMIC && type != VT_DIPLOMATIC && type != VT_SCORE
+		type != VT_ECONOMIC && type != VT_DIPLOMATIC && type != VT_RETIREMENT
 	) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "Unsupported victory type" );
 	}
@@ -2053,8 +2053,8 @@ const std::string Game::GetVictoryTypeString( const victory_type_t type ) {
 			return "economic";
 		case VT_DIPLOMATIC:
 			return "diplomatic";
-		case VT_SCORE:
-			return "score";
+		case VT_RETIREMENT:
+			return "retirement";
 		default:
 			THROW( "Unknown victory type: " + std::to_string( type ) );
 	}
@@ -2077,8 +2077,8 @@ const bool Game::ParseVictoryType( const std::string& value, victory_type_t& res
 		result = VT_DIPLOMATIC;
 		return true;
 	}
-	if ( value == "score" ) {
-		result = VT_SCORE;
+	if ( value == "retirement" || value == "score" ) {
+		result = VT_RETIREMENT;
 		return true;
 	}
 	result = VT_NONE;

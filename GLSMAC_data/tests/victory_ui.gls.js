@@ -85,9 +85,10 @@ test.assert(victory_popup.detail_text.text == 'Transcendence Victory in M.Y. 223
 victory_state = {type: 'diplomatic', winner: 0, turn: 99};
 victory_popup.refresh();
 test.assert(victory_popup.detail_text.text == 'Diplomatic Victory in M.Y. 2199.');
-victory_state = {type: 'score', winner: 0, turn: 400};
+victory_state = {type: 'retirement', winner: 0, turn: 400};
 victory_popup.refresh();
-test.assert(victory_popup.detail_text.text == 'Highest Alpha Centauri Score in M.Y. 2500.');
+test.assert(victory_popup.status_text.text == 'Final score leader: Spartan Federation.');
+test.assert(victory_popup.detail_text.text == 'Mandatory Retirement in M.Y. 2500.');
 victory_state = {type: '', winner: -1, turn: 0};
 victory_popup.refresh();
 test.assert(victory_popup.status_text.text == 'No faction has won the game.');

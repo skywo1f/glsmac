@@ -1851,10 +1851,12 @@ void AddTests( task::gsetests::GSETests* task ) {
 					"diplomatic victory type did not round-trip"
 				);
 				GT_ASSERT(
+					Game::ParseVictoryType( "retirement", victory_type ) &&
+						victory_type == Game::VT_RETIREMENT &&
+						Game::GetVictoryTypeString( victory_type ) == "retirement" &&
 					Game::ParseVictoryType( "score", victory_type ) &&
-						victory_type == Game::VT_SCORE &&
-						Game::GetVictoryTypeString( victory_type ) == "score",
-					"score victory type did not round-trip"
+						victory_type == Game::VT_RETIREMENT,
+					"retirement terminal type did not round-trip"
 				);
 				GT_OK();
 			}
