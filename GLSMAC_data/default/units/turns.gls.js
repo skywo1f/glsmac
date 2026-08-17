@@ -20,7 +20,13 @@ const facility_repairs_unit = (facility, def) => {
 	);
 };
 
-const get_repair = (unit, def, project_effects, base_facilities) => {
+const get_repair = (
+	unit,
+	def,
+	project_effects,
+	base_facilities,
+	is_friendly_territory
+) => {
 	if (unit.moved_this_turn || unit.terraforming != 'none' || unit.health >= def.health_max) {
 		return 0.0;
 	}
@@ -46,8 +52,11 @@ const get_repair = (unit, def, project_effects, base_facilities) => {
 		return 0.0;
 	}
 	let repair = def.health_per_turn;
+	if (#is_defined(is_friendly_territory) && is_friendly_territory) {
+		repair += def.health_per_turn;
+	}
 	if (is_friendly_base) {
-		repair *= 2.0;
+		repair += def.health_per_turn;
 	}
 	if (#is_defined(tile.terraforming)) {
 		if (
@@ -127,9 +136,20 @@ const result = {
 					base_facilities = get_effective_facilities(base);
 				}
 			}
+			const is_friendly_territory_resolver = #is_defined(game.get)
+				? game.get('f_territory_is_friendly')
+				: #undefined;
+			const is_friendly_territory = #is_defined(is_friendly_territory_resolver) &&
+				is_friendly_territory_resolver(e.unit.get_owner(), e.unit.get_tile());
 			const repair = air_state.damage > 0.0
 				? 0.0
-				: get_repair(e.unit, def, project_effects, base_facilities);
+				: get_repair(
+					e.unit,
+					def,
+					project_effects,
+					base_facilities,
+					is_friendly_territory
+				);
 			if (repair > 0.0) {
 				e.unit.health = e.unit.health + repair;
 			}

@@ -1632,3 +1632,19 @@ RelWithDebInfo build passed, all 147 native/script tests passed in 207.04
 seconds, and nine installed-asset CVR, research/UI, gameplay-control, University
 start, combat-access, production, frontend, and save/load scenarios passed in
 62.32 seconds. Manual campaign and visual regression testing is still required.
+
+The facility, Secret Project, and unit-ability audit traced every catalog entry
+to an active rule, resolver, event, or intentionally disabled base-game data
+row. Unit repair now follows the original additive rates: 10% in the field,
+another 10% in friendly territory, and another 10% in a base, with bunker,
+airbase, and Repair Bay modifiers retaining the 80% field-repair ceiling.
+Biology Labs, Command Centers, Naval Yards, and Aerospace Complexes retain the
+original one-turn full repair for their matching unit classes, and the Nano
+Factory retains faction-wide full repair. Focused repair coverage and the live
+opening-turn controls/economy scenario passed; the latter changed the Gaian
+reserve from 10 to 11 credits while also exercising worker reassignment, the
+unit actions menu and hotkeys, end-turn confirmation, and multi-turn go-to. The
+Windows x64 RelWithDebInfo rebuild passed, all 147 native/script tests passed in
+206.96 seconds, and six installed-asset CVR, research UI, gameplay controls,
+facility production, AI repair, and small-map frontend scenarios passed in
+34.85 seconds.

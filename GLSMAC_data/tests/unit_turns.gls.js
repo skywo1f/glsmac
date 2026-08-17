@@ -30,6 +30,24 @@ test.assert(repair > 0.099 && repair < 0.101);
 repair = turns.get_repair(make_unit(friendly_tile, 0.5, false, 'none'), def);
 test.assert(repair > 0.199 && repair < 0.201);
 
+repair = turns.get_repair(
+	make_unit(field_tile, 0.5, false, 'none'),
+	def,
+	#undefined,
+	#undefined,
+	true
+);
+test.assert(repair > 0.199 && repair < 0.201);
+
+repair = turns.get_repair(
+	make_unit(friendly_tile, 0.5, false, 'none'),
+	def,
+	#undefined,
+	#undefined,
+	true
+);
+test.assert(repair > 0.299 && repair < 0.301);
+
 repair = turns.get_repair(make_unit(hostile_tile, 0.5, false, 'none'), def);
 test.assert(repair > 0.099 && repair < 0.101);
 
@@ -120,9 +138,11 @@ const bunker_tile = {
 repair = turns.get_repair(
 	make_unit(bunker_tile, 0.5, false, 'none'),
 	land_def,
-	{full_repair: false}
+	{full_repair: false},
+	#undefined,
+	true
 );
-test.assert(repair > 0.199 && repair < 0.201);
+test.assert(repair > 0.299 && repair < 0.301);
 
 const airbase_tile = {
 	terraforming: {bunker: false, airbase: true},
@@ -139,13 +159,15 @@ const air_def = {
 repair = turns.get_repair(
 	make_unit(airbase_tile, 0.5, false, 'none'),
 	air_def,
-	{full_repair: false}
+	{full_repair: false},
+	#undefined,
+	true
 );
-test.assert(repair > 0.199 && repair < 0.201);
+test.assert(repair > 0.299 && repair < 0.301);
 
 const repair_bay_unit = {
 	owner: owner.id,
-	health: 0.5,
+	health: 0.2,
 	moved_this_turn: false,
 	terraforming: 'none',
 	is_embarked: true,
@@ -154,8 +176,24 @@ const repair_bay_unit = {
 		return {get_def: () => { return {abilities: ['RepairBay']}; }};
 	},
 };
-repair = turns.get_repair(repair_bay_unit, land_def, {full_repair: false});
-test.assert(repair > 0.199 && repair < 0.201);
+repair = turns.get_repair(
+	repair_bay_unit,
+	land_def,
+	{full_repair: false},
+	#undefined,
+	true
+);
+test.assert(repair > 0.399 && repair < 0.401);
+
+repair_bay_unit.health = 0.5;
+repair = turns.get_repair(
+	repair_bay_unit,
+	land_def,
+	{full_repair: false},
+	#undefined,
+	true
+);
+test.assert(repair > 0.299 && repair < 0.301);
 
 const naval_def = {
 	health_max: 1.0,
