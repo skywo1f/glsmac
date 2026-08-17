@@ -849,6 +849,10 @@ void GLSMAC::SaveGame( GSE_CALLABLE, const size_t slot ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "Failed to save game: " + error );
 	}
 	game->MT_DestroyResponse( response );
+	const std::string message = "Game saved.";
+	game->Trigger( GSE_CALL, "message", ARGS_F( &message ) {
+		{ "text", VALUE( gse::value::String,, message ) }
+	}; } );
 }
 
 void GLSMAC::LoadGame( GSE_CALLABLE, const size_t slot ) {

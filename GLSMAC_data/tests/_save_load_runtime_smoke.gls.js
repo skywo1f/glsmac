@@ -11,6 +11,7 @@
 	let resume_turn_requested = false;
 	let resume_save_requested = false;
 	let exit_scheduled = false;
+	let save_message_count = 0;
 	let restored_move_unit_id = 0;
 	let restored_move_target_x = 0;
 	let restored_move_target_y = 0;
@@ -42,6 +43,11 @@
 
 	glsmac.on('configure_game', (e) => {
 		const game = e.game;
+		game.on('message', (event) => {
+			if (event.text == 'Game saved.') {
+				save_message_count++;
+			}
+		});
 
 		game.register_event('save_load_runtime_stamp', {
 			validate: (e) => {
@@ -320,6 +326,10 @@
 						fail(save_error.reason);
 					}
 				}
+				if (save_message_count != 1) {
+					fail('manual save did not emit exactly one completion message');
+					return;
+				}
 				#print('SAVE_LOAD_RUNTIME_RESUME_PASS');
 				exit_scheduled = true;
 				glsmac.exit();
@@ -395,6 +405,10 @@
 					}
 					if (!glsmac.has_save_game(1)) {
 						fail('manual save file was not created');
+						return false;
+					}
+					if (save_message_count != 2) {
+						fail('quicksave and manual save did not emit completion messages');
 						return false;
 					}
 					#print('SAVE_LOAD_RUNTIME_SAVE_PASS');
