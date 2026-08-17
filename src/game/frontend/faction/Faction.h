@@ -41,6 +41,7 @@ public:
 		const types::Color text = {};
 		const types::Color text_shadow = {};
 		const types::Color border = {};
+		const types::Color vehicle = {};
 	} m_colors = {};
 
 	struct {

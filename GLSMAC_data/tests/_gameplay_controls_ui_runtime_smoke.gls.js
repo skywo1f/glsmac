@@ -614,6 +614,10 @@
 
 				if (phase == 'space_prepare') {
 					if (p.modules.popup.popup != null) {
+						if (p.modules.popup.popup.id == 'technology_discovery') {
+							p.modules.popup.popup_defs.technology_discovery.continue_button.trigger('click');
+							return true;
+						}
 						if (p.modules.popup.popup.id != 'research') {
 							fail('Space hotkey setup was blocked by ' + p.modules.popup.popup.id);
 							return false;

@@ -2510,6 +2510,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				source.m_colors.text = types::Color::FromRGBA( 0x10203040 );
 				source.m_colors.text_shadow = types::Color::FromRGBA( 0x50607080 );
 				source.m_colors.border = types::Color::FromRGBA( 0x90a0b0c0 );
+				source.m_colors.vehicle = types::Color::FromRGBA( 0xd0e0f010 );
 				source.m_bases_render = { "caretake.pcx", 1, 2, 100, 75, 50, 37, 1, 0.75f, 1.25f };
 				source.m_base_names.land = { "Alpha Prime", "Tau Ceti" };
 				source.m_base_names.water = { "Deep Home" };
@@ -2524,6 +2525,7 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT( restored.m_colors.text.GetRGBA() == source.m_colors.text.GetRGBA(), "faction text color changed" );
 				GT_ASSERT( restored.m_colors.text_shadow.GetRGBA() == source.m_colors.text_shadow.GetRGBA(), "faction shadow color changed" );
 				GT_ASSERT( restored.m_colors.border.GetRGBA() == source.m_colors.border.GetRGBA(), "faction border color changed" );
+				GT_ASSERT( restored.m_colors.vehicle.GetRGBA() == source.m_colors.vehicle.GetRGBA(), "faction vehicle color changed" );
 				GT_ASSERT( restored.m_bases_render.file == source.m_bases_render.file, "faction base sprite changed" );
 				GT_ASSERT( restored.m_bases_render.cell_width == source.m_bases_render.cell_width, "faction base cell width changed" );
 				GT_ASSERT( restored.m_bases_render.scale_x == source.m_bases_render.scale_x, "faction base scale changed" );
@@ -2532,6 +2534,21 @@ void AddTests( task::gsetests::GSETests* task ) {
 				GT_ASSERT(
 					restored.m_starting_technologies == source.m_starting_technologies,
 					"faction starting technologies changed"
+				);
+
+				auto legacy = source.Serialize();
+				static constexpr uint32_t SERIALIZED_COLOR_SIZE =
+					sizeof( uint8_t ) +
+					sizeof( uint32_t ) +
+					sizeof( types::Color::color_t ) +
+					sizeof( types::Buffer::checksum_t );
+				legacy.lenw -= SERIALIZED_COLOR_SIZE;
+				legacy.dw = legacy.data + legacy.lenw;
+				Faction legacy_restored;
+				legacy_restored.Deserialize( legacy );
+				GT_ASSERT(
+					legacy_restored.m_colors.vehicle.GetRGBA() == source.m_colors.border.GetRGBA(),
+					"legacy faction vehicle color fallback changed"
 				);
 
 				source.m_starting_technologies.push_back( "CentauriEcology" );

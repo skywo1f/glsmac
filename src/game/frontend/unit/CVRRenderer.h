@@ -6,6 +6,9 @@
 namespace types::texture {
 class Texture;
 }
+namespace types {
+class Color;
+}
 
 namespace game {
 namespace frontend {
@@ -16,7 +19,8 @@ public:
 	static types::texture::Texture* Render(
 		const std::vector< std::string >& files,
 		const size_t width,
-		const size_t height
+		const size_t height,
+		const types::Color& vehicle_color
 	);
 };
 

@@ -18,7 +18,8 @@ Faction::Faction( const backend::faction::Faction* def, sprite::InstancedSpriteM
 		{
 			def->m_colors.text,
 			def->m_colors.text_shadow,
-			def->m_colors.border
+			def->m_colors.border,
+			def->m_colors.vehicle
 		}
 	)
 	, m_base_names(

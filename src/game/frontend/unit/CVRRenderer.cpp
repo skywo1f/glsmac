@@ -26,6 +26,8 @@ static constexpr size_t MAX_VOXELS = 4000000;
 static constexpr size_t MAX_FRAMES = 65536;
 static constexpr size_t SHADE_LEVEL_COUNT = 24;
 static constexpr float TRANSLATION_TO_VOXELS = 0.25f;
+static constexpr uint8_t VEHICLE_COLOR_INDEX = 246;
+static constexpr float VEHICLE_NEUTRAL_LUMINANCE = 237.0f;
 
 #if defined( GLSMAC_TESTING )
 static void AppendU16( std::string& data, const uint16_t value ) {
@@ -218,6 +220,22 @@ static size_t GetShadeLevel( const float x, const float y, const float z ) {
 	return (size_t)std::clamp( std::lround( 11.5f + dot * 9.5f ), 2L, 21L );
 }
 
+static color_t RecolorVehicle( const color_t& shaded, const types::Color& vehicle_color ) {
+	const float luminance =
+		shaded.red * 0.2126f +
+		shaded.green * 0.7152f +
+		shaded.blue * 0.0722f;
+	const float shade = luminance / VEHICLE_NEUTRAL_LUMINANCE;
+	const auto channel = [ shade ]( const float value ) {
+		return (uint8_t)std::clamp( std::lround( value * 255.0f * shade ), 0L, 255L );
+	};
+	return {
+		channel( vehicle_color.value.red ),
+		channel( vehicle_color.value.green ),
+		channel( vehicle_color.value.blue ),
+	};
+}
+
 static void RequireMarker(
 	const std::vector< unsigned char >& data,
 	const size_t pos,
@@ -274,7 +292,10 @@ static shade_palette_t ParsePalette(
 	return palette;
 }
 
-static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels ) {
+static void ParseFile(
+	const std::string& path,
+	std::vector< voxel_t >& voxels,
+	const types::Color& vehicle_color ) {
 	std::vector< unsigned char > data;
 	util::FS::ReadFile( data, path );
 	RequireBytes( data, 0, 8 );
@@ -459,6 +480,9 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 			voxel.normal_y = transformed_normal[ 2 ] / normal_length;
 			voxel.normal_z = transformed_normal[ 0 ] / normal_length;
 			voxel.color = palette[ GetShadeLevel( voxel.normal_x, voxel.normal_y, voxel.normal_z ) ][ voxel.color_index ];
+			if ( voxel.color_index == VEHICLE_COLOR_INDEX ) {
+				voxel.color = RecolorVehicle( voxel.color, vehicle_color );
+			}
 		}
 	}
 }
@@ -468,13 +492,14 @@ static void ParseFile( const std::string& path, std::vector< voxel_t >& voxels )
 types::texture::Texture* CVRRenderer::Render(
 	const std::vector< std::string >& files,
 	const size_t width,
-	const size_t height ) {
+	const size_t height,
+	const types::Color& vehicle_color ) {
 	Require( !files.empty(), "no component files" );
 	Require( width >= 8 && height >= 8, "output is too small" );
 
 	std::vector< voxel_t > voxels;
 	for ( const auto& file : files ) {
-		ParseFile( g_engine->GetResourceManager()->GetCustomPath( file ), voxels );
+		ParseFile( g_engine->GetResourceManager()->GetCustomPath( file ), voxels, vehicle_color );
 	}
 	Require( !voxels.empty(), "model contains no voxels" );
 

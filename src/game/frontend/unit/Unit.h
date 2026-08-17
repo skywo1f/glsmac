@@ -9,6 +9,7 @@
 #include "util/Timer.h"
 #include "util/Scroller.h"
 #include "types/Vec3.h"
+#include "types/Color.h"
 
 namespace types {
 namespace texture {
@@ -141,6 +142,7 @@ private:
 
 	size_t m_id = 0;
 	UnitDef* m_def = nullptr;
+	const types::Color m_vehicle_color;
 	struct {
 		types::Vec3 coords = {};
 		bool is_rendered = false;

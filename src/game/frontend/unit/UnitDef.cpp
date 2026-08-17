@@ -88,12 +88,11 @@ UnitDef::~UnitDef() {
 				DELETE( static_.render.morale_based_sprites );
 			}
 		}
-		if ( m_owns_texture && static_.render.texture ) {
-			if ( static_.render.sprite.instanced_sprite ) {
-				m_ism->RemoveInstancedSpriteByKey( static_.render.sprite.instanced_sprite->key );
-				static_.render.sprite.instanced_sprite = nullptr;
+		for ( auto& [ color, render ] : m_cvr_sprites ) {
+			if ( render.sprite.instanced_sprite ) {
+				m_ism->RemoveInstancedSpriteByKey( render.sprite.instanced_sprite->key );
 			}
-			DELETE( static_.render.texture );
+			DELETE( render.texture );
 		}
 	}
 }
@@ -118,9 +117,12 @@ const bool UnitDef::CanHideInFungus() const {
 	return m_can_hide_in_fungus;
 }
 
-sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale ) {
+sprite::Sprite* UnitDef::GetSprite( const backend::unit::morale_t morale, const types::Color& vehicle_color ) {
 	ASSERT( m_type == backend::unit::DT_STATIC, "only static units are supported for now" );
 	ASSERT( static_.render.is_sprite, "only sprite unitdefs are supported for now" );
+	if ( m_is_cvr ) {
+		return GetCVRSprite( morale, vehicle_color );
+	}
 	auto* texture = GetSpriteTexture();
 
 	if ( m_render.morale_based_xshift ) {
@@ -207,26 +209,49 @@ const std::string UnitDef::GetStatsString() const {
 
 types::texture::Texture* UnitDef::GetSpriteTexture() {
 	if ( !static_.render.texture ) {
-		if ( m_is_cvr ) {
-			try {
-				static_.render.texture = CVRRenderer::Render( m_cvr_files, m_render.w, m_render.h );
-				m_owns_texture = true;
-			}
-			catch ( const std::exception& error ) {
-				g_engine->Log( "CVR render failed for unit '" + m_id + "': " + error.what() );
-				util::LogHelper::Println( "CVR_RENDER_FALLBACK: unit=" + m_id + " error=" + error.what() );
-				m_is_cvr = false;
-				m_render = m_cvr_fallback;
-			}
-		}
-		if ( !static_.render.texture ) {
-			static_.render.texture = g_engine->GetTextureLoader()->LoadCustomTexture(
-				m_render.file,
-				types::texture::TF_MIPMAPS
-			);
-		}
+		static_.render.texture = g_engine->GetTextureLoader()->LoadCustomTexture(
+			m_render.file,
+			types::texture::TF_MIPMAPS
+		);
 	}
 	return static_.render.texture;
+}
+
+sprite::Sprite* UnitDef::GetCVRSprite(
+	const backend::unit::morale_t morale,
+	const types::Color& vehicle_color ) {
+	const auto key = vehicle_color.GetRGBA();
+	auto it = m_cvr_sprites.find( key );
+	if ( it == m_cvr_sprites.end() ) {
+		cvr_sprite_t render = {};
+		try {
+			render.texture = CVRRenderer::Render( m_cvr_files, m_render.w, m_render.h, vehicle_color );
+			render.sprite.instanced_sprite = m_ism->GetInstancedSprite(
+				"Unit_" + m_id + "_" + std::to_string( key ),
+				render.texture,
+				{ m_render.x, m_render.y },
+				{ m_render.w, m_render.h },
+				{ m_render.cx, m_render.cy },
+				{
+					backend::map::s_consts.tile.scale.x,
+					backend::map::s_consts.tile.scale.y * backend::map::s_consts.sprite.y_scale
+				},
+				ZL_UNITS
+			);
+			it = m_cvr_sprites.emplace( key, render ).first;
+		}
+		catch ( const std::exception& error ) {
+			if ( render.texture ) {
+				DELETE( render.texture );
+			}
+			g_engine->Log( "CVR render failed for unit '" + m_id + "': " + error.what() );
+			util::LogHelper::Println( "CVR_RENDER_FALLBACK: unit=" + m_id + " error=" + error.what() );
+			m_is_cvr = false;
+			m_render = m_cvr_fallback;
+			return GetSprite( morale, vehicle_color );
+		}
+	}
+	return &it->second.sprite;
 }
 
 }

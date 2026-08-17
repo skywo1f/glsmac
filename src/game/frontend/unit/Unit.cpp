@@ -5,6 +5,7 @@
 #include "util/String.h"
 #include "game/backend/unit/Unit.h"
 #include "game/frontend/Slot.h"
+#include "game/frontend/faction/Faction.h"
 #include "UnitDef.h"
 #include "BadgeDefs.h"
 #include "SlotBadges.h"
@@ -40,6 +41,7 @@ Unit::Unit(
 	, m_badge_defs( badge_defs )
 	, m_id( id )
 	, m_def( def )
+	, m_vehicle_color( slot->GetFaction()->m_colors.vehicle )
 	, m_slot_badges( m_um->GetSlotBadges( slot->GetIndex() ) )
 	, m_render(
 		{
@@ -162,7 +164,7 @@ const size_t Unit::GetSelectionWeight() const {
 }
 
 sprite::Sprite* Unit::GetSprite() const {
-	return m_def->GetSprite( m_morale );
+	return m_def->GetSprite( m_morale, m_vehicle_color );
 }
 
 sprite::Sprite* Unit::GetBadgeSprite() const {
@@ -214,7 +216,7 @@ void Unit::Show() {
 	if ( !m_is_embarked && !m_render.is_rendered ) {
 		const auto& c = m_render.coords;
 
-		auto* sprite = m_def->GetSprite( m_morale );
+		auto* sprite = GetSprite();
 
 		if ( !m_render.instance_id ) {
 			m_render.instance_id = sprite->next_instance_id++;
@@ -242,7 +244,7 @@ void Unit::Show() {
 
 void Unit::Hide() {
 	if ( m_render.is_rendered ) {
-		m_def->GetSprite( m_morale )->instanced_sprite->actor->RemoveInstance( m_render.instance_id );
+		GetSprite()->instanced_sprite->actor->RemoveInstance( m_render.instance_id );
 		StopBadgeBlink( false );
 		m_render.is_rendered = false;
 	}
@@ -483,7 +485,7 @@ void Unit::UpdateMeshTex( meshtex_t& meshtex, const sprite::InstancedSprite* spr
 
 void Unit::SetRenderCoords( const types::Vec3& coords ) {
 	m_render.coords = coords;
-	m_def->GetSprite( m_morale )->instanced_sprite->actor->UpdateInstance(
+	GetSprite()->instanced_sprite->actor->UpdateInstance(
 		m_render.instance_id, {
 			coords.x,
 			coords.y,

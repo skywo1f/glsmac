@@ -34,6 +34,7 @@ CLASS2( Faction, types::Serializable, gse::Wrappable )
 		types::Color text = {};
 		types::Color text_shadow = {};
 		types::Color border = {};
+		types::Color vehicle = {};
 	} m_colors = {};
 
 	struct {

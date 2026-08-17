@@ -7,6 +7,7 @@
 #include "game/backend/unit/Types.h"
 
 #include "types/Vec3.h"
+#include "types/Color.h"
 // TODO: remove?
 #include "game/frontend/sprite/Sprite.h"
 
@@ -40,7 +41,7 @@ public:
 	const bool IsConcealed() const;
 	const bool CanHideInFungus() const;
 
-	sprite::Sprite* GetSprite( const backend::unit::morale_t morale );
+	sprite::Sprite* GetSprite( const backend::unit::morale_t morale, const types::Color& vehicle_color );
 
 	const bool IsImmovable() const;
 
@@ -55,7 +56,11 @@ private:
 	std::vector< std::string > m_cvr_files = {};
 	backend::unit::sprite_render_info_t m_cvr_fallback = {};
 	bool m_is_cvr = false;
-	bool m_owns_texture = false;
+	struct cvr_sprite_t {
+		types::texture::Texture* texture = nullptr;
+		sprite::Sprite sprite = {};
+	};
+	std::unordered_map< types::Color::rgba_t, cvr_sprite_t > m_cvr_sprites = {};
 
 	std::string m_id;
 	std::string m_name;
@@ -82,6 +87,7 @@ private:
 	} static_ = {};
 
 	types::texture::Texture* GetSpriteTexture();
+	sprite::Sprite* GetCVRSprite( const backend::unit::morale_t morale, const types::Color& vehicle_color );
 };
 
 }

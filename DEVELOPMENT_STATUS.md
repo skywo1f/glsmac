@@ -1791,3 +1791,18 @@ seconds, and seven research, SDL input, Diplomacy, frontend, and save/load
 runtime checks passed in 60.19 seconds. Original discovery videos, voiceovers,
 and exact graphical presentation remain absent, and normal campaign play still
 requires human approval before the project can be called shippable.
+
+CVR logical color index 246 is now recolored from each faction PCX's installed
+vehicle swatch while retaining the model's decoded 24-level luminance ramp.
+Neutral equipment, skin, weapon, shadow, and highlight indices remain sourced
+from the CVR palette. Backend and frontend faction state now carry the vehicle
+color, faction serialization appends it with a tested legacy-save fallback, and
+the frontend caches a separate texture and instanced sprite per unit definition
+and faction color so mixed-faction stacks cannot share the wrong paint. The
+Gaian Scout Patrol diagnostic is a recognizable armed infantry figure with
+1,417 green body pixels across 11 luminance levels at the native 100x75 texture
+size. The RelWithDebInfo build, all 149 native/script tests, the full 516-unit
+CVR catalog, seven-player startup, live small-map frontend, SDL input,
+gameplay-controls, and save/load checks pass. CVR animation and exact original
+dynamic light placement remain incomplete, and the recolored units still need
+normal-campaign visual approval before their presentation can be called final.

@@ -61,6 +61,7 @@ const types::Buffer Faction::Serialize() const {
 	for ( const auto& id : m_starting_technologies ) {
 		buf.WriteString( id );
 	}
+	buf.WriteColor( m_colors.vehicle );
 
 	return buf;
 }
@@ -119,6 +120,10 @@ void Faction::Deserialize( types::Buffer buf ) {
 		}
 		starting_technologies.push_back( id );
 	}
+	types::Color vehicle = border;
+	if ( buf.GetRemaining() > 0 ) {
+		buf.ReadColor( vehicle );
+	}
 	if ( buf.GetRemaining() != 0 ) {
 		THROW( "unexpected data after serialized faction" );
 	}
@@ -126,7 +131,7 @@ void Faction::Deserialize( types::Buffer buf ) {
 	m_id = id;
 	m_name = name;
 	m_flags = flags;
-	m_colors = { text, text_shadow, border };
+	m_colors = { text, text_shadow, border, vehicle };
 	m_bases_render = bases_render;
 	m_base_names.land = std::move( land_names );
 	m_base_names.water = std::move( water_names );

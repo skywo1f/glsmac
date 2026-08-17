@@ -133,10 +133,12 @@ WRAPIMPL_BEGIN( FactionManager )
 				N_GETPROP_UNWRAP( colors_text, colors, "text", types::Color );
 				N_GETPROP_UNWRAP( colors_text_shadow, colors, "text_shadow", types::Color );
 				N_GETPROP_UNWRAP( colors_border, colors, "border", types::Color );
+				N_GETPROP_UNWRAP( colors_vehicle, colors, "vehicle", types::Color );
 				faction->m_colors = {
 					colors_text,
 					colors_text_shadow,
-					colors_border
+					colors_border,
+					colors_vehicle
 				};
 
 				N_GETPROP_OPT_BOOL( is_naval, faction_def, "is_naval")
