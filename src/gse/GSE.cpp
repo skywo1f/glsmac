@@ -1,5 +1,12 @@
 #include "GSE.h"
 
+#if defined( GLSMAC_TESTING )
+#include <typeinfo>
+
+#include "Wrappable.h"
+#include "game/backend/base/BaseManager.h"
+#endif
+
 #include "parser/JS.h"
 #include "runner/Interpreter.h"
 #include "gse/context/GlobalContext.h"
@@ -372,6 +379,88 @@ void GSE::GetReachableObjects( std::unordered_set< Object* >& reachable_objects 
 	GC_DEBUG_END();
 
 }
+
+#if defined( GLSMAC_TESTING )
+const GSE::profile_root_groups_t GSE::GetProfileRootGroups() {
+	profile_root_groups_t groups = {};
+	const auto add = [ &groups ]( const std::string& name, gc::Object* const object ) {
+		if ( object ) {
+			groups.push_back( { name, { object } } );
+		}
+	};
+
+	std::vector< gc::Object* > interned = {};
+	if ( m_true ) {
+		interned.push_back( m_true );
+	}
+	if ( m_false ) {
+		interned.push_back( m_false );
+	}
+	groups.push_back( { "interned", interned } );
+	add( "runner", m_runner );
+	add( "async", m_async );
+
+	std::vector< gc::Object* > parsers = {};
+	for ( const auto& it : m_parsers ) {
+		parsers.push_back( it.second );
+	}
+	groups.push_back( { "parsers", parsers } );
+
+	std::vector< gc::Object* > global_contexts = {};
+	for ( const auto* const context : m_global_contexts ) {
+		global_contexts.push_back( const_cast< context::GlobalContext* >( context ) );
+	}
+	groups.push_back( { "global-contexts", global_contexts } );
+
+	std::vector< gc::Object* > modules = {};
+	for ( const auto& it : m_modules ) {
+		modules.push_back( it.second );
+	}
+	groups.push_back( { "modules", modules } );
+
+	std::vector< gc::Object* > globals = {};
+	for ( const auto& it : m_globals ) {
+		globals.push_back( it.second );
+	}
+	groups.push_back( { "globals", globals } );
+
+	std::vector< gc::Object* > include_results = {};
+	for ( const auto& it : m_include_cache ) {
+		if ( it.second.result ) {
+			include_results.push_back( it.second.result );
+		}
+	}
+	groups.push_back( { "include-results", include_results } );
+
+	{
+		std::lock_guard guard( m_root_objects_mutex );
+		size_t index = 0;
+		for ( auto* const object : m_root_objects ) {
+			const auto prefix =
+				"root-object-" + std::to_string( index++ ) + "-" + typeid( *object ).name();
+			add(
+				prefix,
+				object
+			);
+			if ( auto* const wrappable = dynamic_cast< Wrappable* >( object ) ) {
+				std::vector< gc::Object* > callbacks = {};
+				std::vector< gc::Object* > globals = {};
+				wrappable->GetProfileRoots( callbacks, globals );
+				groups.push_back( { prefix + "-callbacks", callbacks } );
+				groups.push_back( { prefix + "-globals", globals } );
+			}
+			if ( auto* const base_manager = dynamic_cast< game::backend::base::BaseManager* >( object ) ) {
+				auto base_manager_groups = base_manager->GetProfileRootGroups();
+				for ( auto& group : base_manager_groups ) {
+					group.first = prefix + "-" + group.first;
+					groups.push_back( std::move( group ) );
+				}
+			}
+		}
+	}
+	return groups;
+}
+#endif
 
 void GSE::include_cache_t::Cleanup( GSE* const gse ) {
 	{

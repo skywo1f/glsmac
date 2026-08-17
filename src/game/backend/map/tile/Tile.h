@@ -141,6 +141,7 @@ public:
 private:
 	bool m_is_locked = false;
 	size_t m_lock_initiator_slot = 0;
+	base::Pop* m_working_pop = nullptr;
 
 	gse::Value* const GetFeatures( GSE_CALLABLE ) const;
 	gse::Value* const GetLandmarks( GSE_CALLABLE ) const;

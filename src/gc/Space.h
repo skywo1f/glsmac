@@ -72,6 +72,9 @@ private:
 		std::chrono::seconds( 30 );
 	bool m_has_collected = false;
 	size_t m_last_retained_count = 0;
+#if defined( GLSMAC_TESTING )
+	size_t m_last_profiled_reachable_count = 0;
+#endif
 	std::chrono::steady_clock::time_point m_last_collection_time =
 		std::chrono::steady_clock::now();
 

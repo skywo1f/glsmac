@@ -1461,7 +1461,10 @@ const queue_production = (
 	if (hurry != null) {
 		const cost = game.get('f_economy_get_hurry_cost')(hurry.base);
 		if (cost > 0 && player.energy_credits >= cost) {
-			game.event_as(player.id, 'hurry_base_production', {base: hurry.base});
+			game.event_as(player.id, 'hurry_base_production', {
+				base: hurry.base,
+				skip_if_unaffordable: true,
+			});
 		}
 	}
 };
@@ -2196,10 +2199,8 @@ const play_turn = (game, player, done) => {
 	phase_started = is_profiling ? #monotonic_ms() : 0;
 	economic_victory.update(game, player);
 	const economic_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
-	phase_started = is_profiling ? #monotonic_ms() : 0;
-	queue_production(game, player, bases, bases, units, metrics, false, true);
-	const production_ms = is_profiling ? #monotonic_ms() - phase_started : 0;
-	const setup_ms = is_profiling ? #monotonic_ms() - profile_started : 0;
+	let production_ms = 0;
+	let setup_ms = is_profiling ? #monotonic_ms() - profile_started : 0;
 
 	let steps = 0;
 	let completion_ready_checks = 0;
@@ -2314,6 +2315,24 @@ const play_turn = (game, player, done) => {
 				: #monotonic_ms() - completion_requested_at,
 		});
 	};
+	const wait_for_event_drain = (next) => {
+		const poll = () => {
+			if (
+				!game.is_master() || game.is_game_over() || game.get_turn() != turn_id ||
+				game.is_turn_complete(player.id)
+			) {
+				finish_profile(game.is_turn_complete(player.id) ? 'complete' : 'aborted');
+				done();
+				return;
+			}
+			if (!game.has_pending_events()) {
+				next();
+				return;
+			}
+			#async(MOVEMENT_ACTION_DELAY, poll);
+		};
+		#async(MOVEMENT_ACTION_DELAY, poll);
+	};
 	const play_next_action = () => {
 		action_phase_started = is_profiling ? #monotonic_ms() : 0;
 		if (
@@ -2379,6 +2398,7 @@ const play_turn = (game, player, done) => {
 						game.event_as(player.id, 'upgrade_unit', {
 							unit: unit,
 							target_def_id: target.id,
+							skip_if_unaffordable: true,
 						});
 						action_started = true;
 						action_delay = 100;
@@ -2566,7 +2586,22 @@ const play_turn = (game, player, done) => {
 		game.event_as(player.id, 'complete_turn', {turn_id: turn_id});
 		#async(TURN_COMPLETION_POLL_DELAY, play_next_action);
 	};
-	#async(0, play_next_action);
+	const queue_production_and_start = () => {
+		if (
+			!game.is_master() || game.is_game_over() || game.get_turn() != turn_id ||
+			game.is_turn_complete(player.id)
+		) {
+			finish_profile(game.is_turn_complete(player.id) ? 'complete' : 'aborted');
+			done();
+			return;
+		}
+		const production_started = is_profiling ? #monotonic_ms() : 0;
+		queue_production(game, player, bases, bases, units, metrics, false, true);
+		production_ms = is_profiling ? #monotonic_ms() - production_started : 0;
+		setup_ms += production_ms;
+		wait_for_event_drain(play_next_action);
+	};
+	wait_for_event_drain(queue_production_and_start);
 };
 
 return (game) => {

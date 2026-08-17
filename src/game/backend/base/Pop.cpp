@@ -79,24 +79,11 @@ void Pop::SetBase( Base* const base ) {
 }
 
 bool Pop::HasWorkedTileLink() const {
-	return const_cast< Pop* >( this )->CustomHas( "worked_tile" );
+	return m_has_worked_tile_link;
 }
 
 map::tile::Tile* Pop::GetWorkedTileLink() const {
-	auto* const value = const_cast< Pop* >( this )->CustomGet( "worked_tile" );
-	if ( !value ) {
-		return nullptr;
-	}
-	auto* const dereferenced = value->type == gse::VT_OBJECT
-		? value
-		: value->Deref();
-	if (
-		dereferenced->type != gse::VT_OBJECT ||
-		( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS
-	) {
-		return nullptr;
-	}
-	return (map::tile::Tile*)( (gse::value::Object*)dereferenced )->wrapobj;
+	return m_has_worked_tile_link ? m_worked_tile : nullptr;
 }
 
 void Pop::SetWorkedTile( GSE_CALLABLE, map::tile::Tile* const tile ) {
@@ -106,41 +93,25 @@ void Pop::SetWorkedTile( GSE_CALLABLE, map::tile::Tile* const tile ) {
 	if ( m_worked_tile && m_worked_tile != tile ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "population already works another tile" );
 	}
-	auto* const value = CustomGet( "worked_tile" );
-	if ( value ) {
-		auto* const dereferenced = value->Deref();
-		if (
-			dereferenced->type != gse::VT_OBJECT ||
-			( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS ||
-			( (gse::value::Object*)dereferenced )->wrapobj != tile
-		) {
+	if ( m_has_worked_tile_link ) {
+		if ( m_worked_tile != tile ) {
 			GSE_ERROR( gse::EC.GAME_ERROR, "population has a conflicting worked tile link" );
 		}
+		return;
 	}
 	m_worked_tile = tile;
-	if ( !value ) {
-		CustomSet( "worked_tile", tile->Wrap( GSE_CALL ) );
-	}
+	m_has_worked_tile_link = true;
 }
 
 void Pop::UnsetWorkedTile( GSE_CALLABLE, const map::tile::Tile* const tile ) {
 	if ( !m_worked_tile || m_worked_tile != tile ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile does not match" );
 	}
-	auto* const value = CustomGet( "worked_tile" );
-	if ( !value ) {
+	if ( !m_has_worked_tile_link ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile link is missing" );
 	}
-	auto* const dereferenced = value->Deref();
-	if (
-		dereferenced->type != gse::VT_OBJECT ||
-		( (gse::value::Object*)dereferenced )->object_class != map::tile::Tile::WRAP_CLASS ||
-		( (gse::value::Object*)dereferenced )->wrapobj != tile
-	) {
-		GSE_ERROR( gse::EC.GAME_ERROR, "population worked tile link does not match" );
-	}
 	m_worked_tile = nullptr;
-	CustomUnset( "worked_tile" );
+	m_has_worked_tile_link = false;
 }
 
 WRAPIMPL_SERIALIZE( Pop )
@@ -167,7 +138,51 @@ WRAPIMPL_DESERIALIZE( Pop )
 
 WRAPIMPL_BEGIN( Pop )
 	WRAPIMPL_PROPS
-	WRAPIMPL_CUSTOM_SETTERS
+		{
+			"set",
+			NATIVE_METHOD( "set", this ) {
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "worked_tile" ) {
+					GSE_ERROR( gse::EC.INVALID_ASSIGNMENT, "Worked tile assignments must use base worker controls" );
+				}
+				CustomSet( key, arguments[ 1 ] );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"unset",
+			NATIVE_METHOD( "unset", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "worked_tile" ) {
+					GSE_ERROR( gse::EC.INVALID_ASSIGNMENT, "Worked tile assignments must use base worker controls" );
+				}
+				CustomUnset( key );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"has",
+			NATIVE_METHOD( "has", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				return BOOL_VALUE( key == "worked_tile" ? HasWorkedTileLink() : CustomHas( key ) );
+			} )
+		},
+		{
+			"get",
+			NATIVE_METHOD( "get", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "worked_tile" ) {
+					auto* const tile = GetWorkedTileLink();
+					return tile ? tile->Wrap( GSE_CALL ) : VALUE( gse::value::Undefined );
+				}
+				auto* const value = CustomGet( key );
+				return value ? value : VALUE( gse::value::Undefined );
+			} )
+		},
 		{
 			"id",
 			VALUE( gse::value::Int,, m_id ),

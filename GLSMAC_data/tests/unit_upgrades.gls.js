@@ -93,6 +93,7 @@ let nano_factory = false;
 let obsolete_designs = {};
 let player = {
 	id: 1,
+	type: 'human',
 	name: 'Test Faction',
 	energy_credits: 100,
 	has_technology: (id) => {
@@ -230,6 +231,25 @@ test.assert(current_unit.health == 0.7);
 test.assert(current_unit.monolith_upgraded);
 test.assert(player.energy_credits == 100);
 test.assert(#sizeof(triggers) == 4);
+
+player.type = 'ai';
+player.energy_credits = 40;
+event.data.skip_if_unaffordable = true;
+test.assert(!#is_defined(upgrade_unit.validate(event)));
+event.resolved = upgrade_unit.resolve(event);
+event.applied = upgrade_unit.apply(event);
+test.assert(event.applied.skipped);
+test.assert(current_unit.id == 7 && current_unit.def == scout.id);
+test.assert(player.energy_credits == 40);
+test.assert(#sizeof(triggers) == 4);
+upgrade_unit.rollback(event);
+test.assert(current_unit.id == 7 && current_unit.def == scout.id);
+test.assert(player.energy_credits == 40);
+test.assert(#sizeof(triggers) == 4);
+player.type = 'human';
+test.assert(#is_defined(upgrade_unit.validate(event)));
+event.data.skip_if_unaffordable = false;
+player.energy_credits = 100;
 
 current_unit.moved_this_turn = true;
 test.assert(

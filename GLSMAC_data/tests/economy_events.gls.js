@@ -8,6 +8,7 @@ let player = null;
 let player_sanction_turns = 0;
 player = {
 	id: 1,
+	type: 'human',
 	energy_credits: 5,
 	set_energy_credits: (value) => { player.energy_credits = value; },
 	get_research_state: () => { return {technologies: []}; },
@@ -323,6 +324,19 @@ test.assert(#is_defined(hurry_base_production.validate(hurry_event)));
 hurry_event.caller = 1;
 player.energy_credits = 24;
 test.assert(#is_defined(hurry_base_production.validate(hurry_event)));
+player.type = 'ai';
+hurry_event.data.skip_if_unaffordable = true;
+test.assert(!#is_defined(hurry_base_production.validate(hurry_event)));
+const hurry_triggers_before_skip = hurry_trigger_count;
+hurry_event.applied = hurry_base_production.apply(hurry_event);
+test.assert(hurry_event.applied.skipped);
+test.assert(player.energy_credits == 24);
+test.assert(hurry_minerals == 10);
+hurry_base_production.rollback(hurry_event);
+test.assert(hurry_trigger_count == hurry_triggers_before_skip);
+player.type = 'human';
+test.assert(#is_defined(hurry_base_production.validate(hurry_event)));
+hurry_event.data.skip_if_unaffordable = false;
 
 let poor_has_node = true;
 let poor_player = null;

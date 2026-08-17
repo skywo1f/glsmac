@@ -1140,6 +1140,36 @@ void BaseManager::GetReachableObjects( std::unordered_set< Object* >& reachable_
 	GC_DEBUG_END();
 }
 
+#if defined( GLSMAC_TESTING )
+const BaseManager::profile_root_groups_t BaseManager::GetProfileRootGroups() {
+	profile_root_groups_t groups = {};
+
+	std::vector< gc::Object* > facility_callbacks = {};
+	std::vector< gc::Object* > facility_globals = {};
+	for ( const auto& facility : m_facility_defs ) {
+		facility.second->GetProfileRoots( facility_callbacks, facility_globals );
+	}
+	groups.push_back( { "facility-callbacks", facility_callbacks } );
+	groups.push_back( { "facility-globals", facility_globals } );
+
+	std::vector< gc::Object* > base_callbacks = {};
+	std::vector< gc::Object* > base_globals = {};
+	std::vector< gc::Object* > pop_callbacks = {};
+	std::vector< gc::Object* > pop_globals = {};
+	for ( const auto& base : m_bases ) {
+		base.second->GetProfileRoots( base_callbacks, base_globals );
+		for ( auto& pop : base.second->m_pops ) {
+			pop.second.GetProfileRoots( pop_callbacks, pop_globals );
+		}
+	}
+	groups.push_back( { "base-callbacks", base_callbacks } );
+	groups.push_back( { "base-globals", base_globals } );
+	groups.push_back( { "pop-callbacks", pop_callbacks } );
+	groups.push_back( { "pop-globals", pop_globals } );
+	return groups;
+}
+#endif
+
 void BaseManager::QueueBaseUpdate( const Base* base, const base_update_op_t op ) {
 	auto it = m_base_updates.find( base->m_id );
 	if ( it == m_base_updates.end() ) {

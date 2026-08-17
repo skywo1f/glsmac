@@ -282,6 +282,29 @@ void Wrappable::GetReachableObjects( std::unordered_set< gc::Object* >& reachabl
 	GC_DEBUG_END();
 }
 
+#if defined( GLSMAC_TESTING )
+void Wrappable::GetProfileRoots(
+	std::vector< gc::Object* >& callback_roots,
+	std::vector< gc::Object* >& global_roots
+) {
+	{
+		std::lock_guard guard( m_callbacks_mutex );
+		for ( const auto& event : m_callbacks ) {
+			for ( const auto& callback : event.second ) {
+				callback_roots.push_back( callback.second.callable );
+				callback_roots.push_back( callback.second.ctx );
+			}
+		}
+	}
+	{
+		std::lock_guard guard( m_globals_mutex );
+		for ( const auto& global : m_globals ) {
+			global_roots.push_back( global.second );
+		}
+	}
+}
+#endif
+
 void Wrappable::CustomSet( const std::string& key, gse::Value* const value ) {
 	std::lock_guard guard( m_globals_mutex );
 	if ( value->type != gse::VT_UNDEFINED ) {

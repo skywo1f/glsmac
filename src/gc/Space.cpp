@@ -15,6 +15,7 @@
 
 #if defined( GLSMAC_TESTING )
 #include "config/Config.h"
+#include "gse/GSE.h"
 #include "gse/context/ChildContext.h"
 #endif
 
@@ -218,6 +219,8 @@ const bool Space::Collect() {
 	static constexpr size_t PROFILE_SAMPLE_STRIDE = 1024;
 	std::unordered_map< std::string, size_t > removed_type_samples = {};
 	std::unordered_map< std::string, size_t > removed_child_context_site_samples = {};
+	std::unordered_map< std::string, size_t > retained_type_samples = {};
+	std::unordered_map< std::string, size_t > retained_child_context_site_samples = {};
 #endif
 
 	ASSERT( m_reachable_objects_tmp.empty(), "reachable objects tmp not empty" );
@@ -239,11 +242,40 @@ const bool Space::Collect() {
 	}
 	Object::DrainReachabilityQueue( m_reachable_objects_tmp );
 	GC_DEBUG_UNLOCK();
+	const size_t reachable_count = Object::GetReachableCount();
+#if defined( GLSMAC_TESTING )
+	if (
+		s_profile_gc &&
+		(
+			m_last_profiled_reachable_count == 0 ||
+			reachable_count >= m_last_profiled_reachable_count + 16384
+		)
+	) {
+		if ( auto* const gse = dynamic_cast< gse::GSE* >( m_root_object ) ) {
+			std::string summary = "GC root reachability:";
+			for ( const auto& group : gse->GetProfileRootGroups() ) {
+				Object::BeginReachabilityPass();
+				for ( auto* const object : group.second ) {
+					Object::QueueReachable( object, m_reachable_objects_tmp );
+				}
+				Object::DrainReachabilityQueue( m_reachable_objects_tmp );
+				summary += " " + group.first + "=" + std::to_string( Object::GetReachableCount() );
+				m_reachable_objects_tmp.clear();
+			}
+			Log( summary );
+		}
+		m_last_profiled_reachable_count = reachable_count;
+
+		// The sweep must use a final pass rooted at the complete GSE object.
+		Object::BeginReachabilityPass();
+		Object::QueueReachable( m_root_object, m_reachable_objects_tmp );
+		Object::DrainReachabilityQueue( m_reachable_objects_tmp );
+	}
+#endif
 	const auto reachability_finished = std::chrono::steady_clock::now();
 
 	size_t removed_count = 0;
 	size_t retained_count = 0;
-	const size_t reachable_count = Object::GetReachableCount();
 	auto sweep_started = reachability_finished;
 	auto sweep_finished = reachability_finished;
 	{
@@ -254,7 +286,7 @@ const bool Space::Collect() {
 
 			g_engine->GetGraphics()->NoRender( // tmp: prevent race conditions with render thread
 #if defined( GLSMAC_TESTING )
-				[ this, &removed_count, &retained_count, reachable_count, &removed_type_samples, &removed_child_context_site_samples, &sweep_started, &sweep_finished ]() {
+				[ this, &removed_count, &retained_count, reachable_count, &removed_type_samples, &removed_child_context_site_samples, &retained_type_samples, &retained_child_context_site_samples, &sweep_started, &sweep_finished ]() {
 #else
 				[ this, &removed_count, &retained_count, reachable_count, &sweep_started, &sweep_finished ]() {
 #endif
@@ -279,6 +311,14 @@ const bool Space::Collect() {
 							removed_count++;
 						}
 						else {
+#if defined( GLSMAC_TESTING )
+							if ( s_profile_gc && retained_count % PROFILE_SAMPLE_STRIDE == 0 ) {
+								retained_type_samples[ typeid( *object ).name() ]++;
+								if ( const auto* const child_context = dynamic_cast< const gse::context::ChildContext* >( object ) ) {
+									retained_child_context_site_samples[ child_context->GetSI().ToString() ]++;
+								}
+							}
+#endif
 							m_objects[ retained_count++ ] = object;
 						}
 					}
@@ -347,6 +387,45 @@ const bool Space::Collect() {
 				}
 			);
 			std::string site_summary = "GC child context site samples (1/" + std::to_string( PROFILE_SAMPLE_STRIDE ) + "):";
+			const size_t site_limit = std::min< size_t >( ordered_sites.size(), 12 );
+			for ( size_t i = 0; i < site_limit; i++ ) {
+				site_summary += " " + ordered_sites[ i ].first + "=" + std::to_string( ordered_sites[ i ].second );
+			}
+			Log( site_summary );
+		}
+	}
+	if ( s_profile_gc && !retained_type_samples.empty() ) {
+		std::vector< std::pair< std::string, size_t > > ordered_samples(
+			retained_type_samples.begin(),
+			retained_type_samples.end()
+		);
+		std::sort(
+			ordered_samples.begin(),
+			ordered_samples.end(),
+			[]( const auto& a, const auto& b ) {
+				return a.second != b.second ? a.second > b.second : a.first < b.first;
+			}
+		);
+		std::string summary = "GC retained type samples (1/" + std::to_string( PROFILE_SAMPLE_STRIDE ) + "):";
+		const size_t limit = std::min< size_t >( ordered_samples.size(), 12 );
+		for ( size_t i = 0; i < limit; i++ ) {
+			summary += " " + ordered_samples[ i ].first + "=" + std::to_string( ordered_samples[ i ].second );
+		}
+		Log( summary );
+
+		if ( !retained_child_context_site_samples.empty() ) {
+			std::vector< std::pair< std::string, size_t > > ordered_sites(
+				retained_child_context_site_samples.begin(),
+				retained_child_context_site_samples.end()
+			);
+			std::sort(
+				ordered_sites.begin(),
+				ordered_sites.end(),
+				[]( const auto& a, const auto& b ) {
+					return a.second != b.second ? a.second > b.second : a.first < b.first;
+				}
+			);
+			std::string site_summary = "GC retained child context site samples (1/" + std::to_string( PROFILE_SAMPLE_STRIDE ) + "):";
 			const size_t site_limit = std::min< size_t >( ordered_sites.size(), 12 );
 			for ( size_t i = 0; i < site_limit; i++ ) {
 				site_summary += " " + ordered_sites[ i ].first + "=" + std::to_string( ordered_sites[ i ].second );

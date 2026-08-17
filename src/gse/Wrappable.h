@@ -7,6 +7,7 @@
 #include <functional>
 #include <cstdint>
 #include <memory>
+#include <vector>
 
 #include "common/Mutex.h"
 
@@ -108,6 +109,13 @@ public:
 	virtual void ClearHandlers();
 
 	virtual void GetReachableObjects( std::unordered_set< gc::Object* >& reachable_objects );
+
+#if defined( GLSMAC_TESTING )
+	void GetProfileRoots(
+		std::vector< gc::Object* >& callback_roots,
+		std::vector< gc::Object* >& global_roots
+	);
+#endif
 
 protected:
 	common::Mutex m_wrapobjs_mutex;

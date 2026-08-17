@@ -433,55 +433,31 @@ void Tile::SetTerraforming( GSE_CALLABLE, const terraforming_t value ) {
 }
 
 bool Tile::HasWorkingPopLink() const {
-	return const_cast< Tile* >( this )->CustomHas( "working_pop" );
+	return m_working_pop != nullptr;
 }
 
 base::Pop* Tile::GetWorkingPop() const {
-	auto* const value = const_cast< Tile* >( this )->CustomGet( "working_pop" );
-	if ( !value ) {
-		return nullptr;
-	}
-	auto* const dereferenced = value->type == gse::VT_OBJECT
-		? value
-		: value->Deref();
-	if (
-		dereferenced->type != gse::VT_OBJECT ||
-		( (gse::value::Object*)dereferenced )->object_class != base::Pop::WRAP_CLASS
-	) {
-		return nullptr;
-	}
-	return (base::Pop*)( (gse::value::Object*)dereferenced )->wrapobj;
+	return m_working_pop;
 }
 
 void Tile::SetWorkingPop( GSE_CALLABLE, base::Pop* const pop ) {
 	if ( !pop ) {
 		GSE_ERROR( gse::EC.INVALID_CALL, "working population is null" );
 	}
-	auto* const value = CustomGet( "working_pop" );
-	if ( value ) {
-		auto* const dereferenced = value->Deref();
-		if (
-			dereferenced->type != gse::VT_OBJECT ||
-			( (gse::value::Object*)dereferenced )->object_class != base::Pop::WRAP_CLASS ||
-			( (gse::value::Object*)dereferenced )->wrapobj != pop
-		) {
+	if ( m_working_pop ) {
+		if ( m_working_pop != pop ) {
 			GSE_ERROR( gse::EC.GAME_ERROR, "tile already has another working population" );
 		}
 		return;
 	}
-	CustomSet( "working_pop", pop->Wrap( GSE_CALL ) );
+	m_working_pop = pop;
 }
 
 void Tile::UnsetWorkingPop( GSE_CALLABLE, const base::Pop* const pop ) {
-	auto* const value = CustomGet( "working_pop" );
-	if (
-		!value ||
-		value->type != gse::VT_OBJECT ||
-		( (gse::value::Object*)value )->wrapobj != pop
-	) {
+	if ( m_working_pop != pop ) {
 		GSE_ERROR( gse::EC.GAME_ERROR, "tile working population does not match" );
 	}
-	CustomUnset( "working_pop" );
+	m_working_pop = nullptr;
 }
 
 #define GETN( _n ) \
@@ -492,7 +468,50 @@ void Tile::UnsetWorkingPop( GSE_CALLABLE, const base::Pop* const pop ) {
 
 WRAPIMPL_BEGIN( Tile )
 	WRAPIMPL_PROPS
-	WRAPIMPL_CUSTOM_SETTERS
+		{
+			"set",
+			NATIVE_METHOD( "set", this ) {
+				N_EXPECT_ARGS( 2 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "working_pop" ) {
+					GSE_ERROR( gse::EC.INVALID_ASSIGNMENT, "Working population assignments must use base worker controls" );
+				}
+				CustomSet( key, arguments[ 1 ] );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"unset",
+			NATIVE_METHOD( "unset", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "working_pop" ) {
+					GSE_ERROR( gse::EC.INVALID_ASSIGNMENT, "Working population assignments must use base worker controls" );
+				}
+				CustomUnset( key );
+				return VALUE( gse::value::Undefined );
+			} )
+		},
+		{
+			"has",
+			NATIVE_METHOD( "has", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				return BOOL_VALUE( key == "working_pop" ? HasWorkingPopLink() : CustomHas( key ) );
+			} )
+		},
+		{
+			"get",
+			NATIVE_METHOD( "get", this ) {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( key, 0, String );
+				if ( key == "working_pop" ) {
+					return m_working_pop ? m_working_pop->Wrap( GSE_CALL ) : VALUE( gse::value::Undefined );
+				}
+				auto* const value = CustomGet( key );
+				return value ? value : VALUE( gse::value::Undefined );
+			} )
+		},
 		{
 			"x",
 			VALUE( gse::value::Int,, coord.x )

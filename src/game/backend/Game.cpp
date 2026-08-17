@@ -864,6 +864,14 @@ void Game::AddEventResponse( const std::string& event_id, const bool result, gse
 	});
 }
 
+bool Game::HasPendingEvents() {
+	if ( m_is_processing_events.load() ) {
+		return true;
+	}
+	std::lock_guard guard( m_pending_events_mutex );
+	return m_is_processing_events.load() || !m_pending_events.empty();
+}
+
 void Game::ClearEvents() {
 	std::lock_guard guard( m_event_handlers_mutex );
 /*#if defined( DEBUG ) || defined( FASTDEBUG )
@@ -1054,6 +1062,13 @@ WRAPIMPL_BEGIN( Game )
 						? slot.GetPlayer()->IsTurnCompleted()
 						: true // ai has always turn completed during turns of players
 				);
+			} )
+		},
+		{
+			"has_pending_events",
+			NATIVE_METHOD_AUTO( this ) {
+				N_EXPECT_ARGS( 0 );
+				return BOOL_VALUE( HasPendingEvents() );
 			} )
 		},
 		{
@@ -2468,6 +2483,13 @@ void Game::SetTurnStatus( const backend::turn::turn_status_t status ) {
 
 void Game::ProcessEvents() {
 	constexpr size_t MAX_EVENT_BATCHES_PER_ITERATION = 64;
+	m_is_processing_events.store( true );
+	struct processing_events_guard_t {
+		std::atomic< bool >& flag;
+		~processing_events_guard_t() {
+			flag.store( false );
+		}
+	} processing_events_guard = { m_is_processing_events };
 	// Drain host-authored child events before manager updates; clients still yield for response dependencies.
 	for ( size_t batch = 0 ; batch < MAX_EVENT_BATCHES_PER_ITERATION ; batch++ ) {
 		std::vector< pending_event_t > events;

@@ -5,6 +5,15 @@ return {
 		}
 		const base = e.data.base;
 		const owner = base.get_owner();
+		const skip_if_unaffordable = #is_defined(e.data.skip_if_unaffordable)
+			? e.data.skip_if_unaffordable
+			: false;
+		if (#typeof(skip_if_unaffordable) != 'Bool') {
+			return 'Conditional hurry setting must be a boolean';
+		}
+		if (skip_if_unaffordable && owner.type != 'ai') {
+			return 'Only computer players may submit conditional hurry orders';
+		}
 		if (e.caller != owner.id) {
 			return 'Only base owner can hurry production';
 		}
@@ -18,7 +27,7 @@ return {
 		if (cost <= 0) {
 			return 'Production is already complete';
 		}
-		if (owner.energy_credits < cost) {
+		if (owner.energy_credits < cost && !skip_if_unaffordable) {
 			return 'Not enough energy credits to hurry production';
 		}
 	},
@@ -28,7 +37,17 @@ return {
 		const owner = base.get_owner();
 		const production = base.get_production();
 		const cost = e.game.get('f_economy_get_hurry_cost')(base);
+		const skip_if_unaffordable = #is_defined(e.data.skip_if_unaffordable)
+			? e.data.skip_if_unaffordable
+			: false;
+		if (
+			skip_if_unaffordable &&
+			(cost <= 0 || owner.energy_credits < cost)
+		) {
+			return {skipped: true};
+		}
 		const previous = {
+			skipped: false,
 			energy_credits: owner.energy_credits,
 			minerals: base.get_accumulated_minerals(),
 		};
@@ -43,6 +62,9 @@ return {
 	},
 
 	rollback: (e) => {
+		if (e.applied.skipped) {
+			return;
+		}
 		const base = e.data.base;
 		const owner = base.get_owner();
 		owner.set_energy_credits(e.applied.energy_credits);

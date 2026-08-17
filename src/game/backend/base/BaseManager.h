@@ -84,6 +84,11 @@ public:
 
 	void GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) override;
 
+#if defined( GLSMAC_TESTING )
+	typedef std::vector< std::pair< std::string, std::vector< gc::Object* > > > profile_root_groups_t;
+	const profile_root_groups_t GetProfileRootGroups();
+#endif
+
 private:
 	Game* m_game = nullptr;
 

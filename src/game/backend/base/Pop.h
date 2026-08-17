@@ -40,6 +40,7 @@ public:
 	const PopDef* m_def;
 	uint8_t m_variant = 0;
 	map::tile::Tile* m_worked_tile = nullptr;
+	bool m_has_worked_tile_link = false;
 
 };
 

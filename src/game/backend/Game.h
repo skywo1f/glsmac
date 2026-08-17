@@ -314,6 +314,7 @@ CLASS2( Game, MTModule, gse::GCWrappable )
 	void AddEvent( event::Event* const event );
 	void AddSerializedEvent( const std::string& serialized_event, const bool from_server );
 	void AddEventResponse( const std::string& event_id, const bool result, gse::Value* const resolved );
+	bool HasPendingEvents();
 
 	void ClearEvents();
 
@@ -477,6 +478,7 @@ private:
 	};
 	std::vector< pending_event_t > m_pending_events = {};
 	common::Mutex m_pending_events_mutex;
+	std::atomic< bool > m_is_processing_events = false;
 
 	struct event_waiting_for_response_t {
 		event::Event* event;

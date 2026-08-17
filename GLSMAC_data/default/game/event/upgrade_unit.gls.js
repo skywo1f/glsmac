@@ -10,7 +10,29 @@ return {
 	unit_visibility: 'private',
 	player_visibility: 'private',
 	validate: (e) => {
-		return rules.get_error(e.game, e.data.unit, e.caller, e.data.target_def_id);
+		const skip_if_unaffordable = #is_defined(e.data.skip_if_unaffordable)
+			? e.data.skip_if_unaffordable
+			: false;
+		if (#typeof(skip_if_unaffordable) != 'Bool') {
+			return 'Conditional upgrade setting must be a boolean';
+		}
+		const player = e.game.get_player(e.caller);
+		if (skip_if_unaffordable && (player == null || player.type != 'ai')) {
+			return 'Only computer players may submit conditional unit upgrades';
+		}
+		const error = rules.get_error(
+			e.game,
+			e.data.unit,
+			e.caller,
+			e.data.target_def_id
+		);
+		if (
+			skip_if_unaffordable &&
+			error == 'Not enough energy credits to upgrade this unit'
+		) {
+			return;
+		}
+		return error;
 	},
 
 	resolve: (e) => {
@@ -30,6 +52,12 @@ return {
 		const snapshot = snapshot_unit(source);
 		const source_name = source.get_def().name;
 		const old_energy = rules.get_energy_credits(player);
+		const skip_if_unaffordable = #is_defined(e.data.skip_if_unaffordable)
+			? e.data.skip_if_unaffordable
+			: false;
+		if (skip_if_unaffordable && old_energy < e.resolved.cost) {
+			return {skipped: true};
+		}
 		e.game.um.despawn_unit(source);
 		const upgraded = e.game.um.spawn_unit({
 			id: snapshot.id,
@@ -67,12 +95,16 @@ return {
 			e.game.message(message);
 		}
 		return {
+			skipped: false,
 			unit: snapshot,
 			energy_credits: old_energy,
 		};
 	},
 
 	rollback: (e) => {
+		if (e.applied.skipped) {
+			return;
+		}
 		if (e.game.um.has_unit(e.applied.unit.id)) {
 			e.game.um.despawn_unit(e.game.um.get_unit(e.applied.unit.id));
 		}
