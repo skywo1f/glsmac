@@ -153,6 +153,8 @@ return {
 		if (#sizeof(completed_names) > 0) {
 			e.game.trigger('research_selection_requested', {
 				player: e.data.player,
+				technology_id: completed_ids[0],
+				technology_name: completed_names[0],
 			});
 			const queue_datalinks = e.game.get('f_project_queue_planetary_datalinks');
 			if (#is_defined(queue_datalinks)) {

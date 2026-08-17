@@ -4,6 +4,7 @@ const definitions = {
 	Biogenetics: {
 		id: 'Biogenetics',
 		name: 'Biogenetics',
+		source_index: 0,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -19,6 +20,7 @@ const definitions = {
 	IndustrialBase: {
 		id: 'IndustrialBase',
 		name: 'Industrial Base',
+		source_index: 1,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -34,6 +36,7 @@ const definitions = {
 	InformationNetworks: {
 		id: 'InformationNetworks',
 		name: 'Information Networks',
+		source_index: 2,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -49,6 +52,7 @@ const definitions = {
 	AppliedPhysics: {
 		id: 'AppliedPhysics',
 		name: 'Applied Physics',
+		source_index: 3,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -64,6 +68,7 @@ const definitions = {
 	SocialPsych: {
 		id: 'SocialPsych',
 		name: 'Social Psych',
+		source_index: 4,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -79,6 +84,7 @@ const definitions = {
 	DoctrineMobility: {
 		id: 'DoctrineMobility',
 		name: 'Doctrine: Mobility',
+		source_index: 5,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -94,6 +100,7 @@ const definitions = {
 	CentauriEcology: {
 		id: 'CentauriEcology',
 		name: 'Centauri Ecology',
+		source_index: 6,
 		cost: 20,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -109,6 +116,7 @@ const definitions = {
 	Superconductor: {
 		id: 'Superconductor',
 		name: 'Superconductor',
+		source_index: 7,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -124,6 +132,7 @@ const definitions = {
 	NonlinearMathematics: {
 		id: 'NonlinearMathematics',
 		name: 'Nonlinear Mathematics',
+		source_index: 8,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -139,6 +148,7 @@ const definitions = {
 	AppliedRelativity: {
 		id: 'AppliedRelativity',
 		name: 'Applied Relativity',
+		source_index: 9,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -154,6 +164,7 @@ const definitions = {
 	FusionPower: {
 		id: 'FusionPower',
 		name: 'Fusion Power',
+		source_index: 10,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -169,6 +180,7 @@ const definitions = {
 	SilksteelAlloys: {
 		id: 'SilksteelAlloys',
 		name: 'Silksteel Alloys',
+		source_index: 11,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -184,6 +196,7 @@ const definitions = {
 	AdvancedSubatomicTheory: {
 		id: 'AdvancedSubatomicTheory',
 		name: 'Advanced Subatomic Theory',
+		source_index: 12,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -199,6 +212,7 @@ const definitions = {
 	HighEnergyChemistry: {
 		id: 'HighEnergyChemistry',
 		name: 'High Energy Chemistry',
+		source_index: 13,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -214,6 +228,7 @@ const definitions = {
 	FrictionlessSurfaces: {
 		id: 'FrictionlessSurfaces',
 		name: 'Frictionless Surfaces',
+		source_index: 14,
 		cost: 110,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -229,6 +244,7 @@ const definitions = {
 	Nanometallurgy: {
 		id: 'Nanometallurgy',
 		name: 'Nanometallurgy',
+		source_index: 15,
 		cost: 90,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -244,6 +260,7 @@ const definitions = {
 	SuperstringTheory: {
 		id: 'SuperstringTheory',
 		name: 'Superstring Theory',
+		source_index: 16,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -259,6 +276,7 @@ const definitions = {
 	AdvancedMilitaryAlgorithms: {
 		id: 'AdvancedMilitaryAlgorithms',
 		name: 'Advanced Military Algorithms',
+		source_index: 17,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -274,6 +292,7 @@ const definitions = {
 	MonopoleMagnets: {
 		id: 'MonopoleMagnets',
 		name: 'Monopole Magnets',
+		source_index: 18,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -289,6 +308,7 @@ const definitions = {
 	MatterCompression: {
 		id: 'MatterCompression',
 		name: 'Matter Compression',
+		source_index: 19,
 		cost: 100,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -304,6 +324,7 @@ const definitions = {
 	UnifiedFieldTheory: {
 		id: 'UnifiedFieldTheory',
 		name: 'Unified Field Theory',
+		source_index: 20,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -319,6 +340,7 @@ const definitions = {
 	GravitonTheory: {
 		id: 'GravitonTheory',
 		name: 'Graviton Theory',
+		source_index: 21,
 		cost: 140,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -334,6 +356,7 @@ const definitions = {
 	PolymorphicSoftware: {
 		id: 'PolymorphicSoftware',
 		name: 'Polymorphic Software',
+		source_index: 22,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 1,
@@ -349,6 +372,7 @@ const definitions = {
 	AppliedGravitonics: {
 		id: 'AppliedGravitonics',
 		name: 'Applied Gravitonics',
+		source_index: 23,
 		cost: 150,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -364,6 +388,7 @@ const definitions = {
 	QuantumPower: {
 		id: 'QuantumPower',
 		name: 'Quantum Power',
+		source_index: 25,
 		cost: 120,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -379,6 +404,7 @@ const definitions = {
 	SingularityMechanics: {
 		id: 'SingularityMechanics',
 		name: 'Singularity Mechanics',
+		source_index: 26,
 		cost: 130,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -394,6 +420,7 @@ const definitions = {
 	ControlledSingularity: {
 		id: 'ControlledSingularity',
 		name: 'Controlled Singularity',
+		source_index: 27,
 		cost: 160,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -409,6 +436,7 @@ const definitions = {
 	TemporalMechanics: {
 		id: 'TemporalMechanics',
 		name: 'Temporal Mechanics',
+		source_index: 28,
 		cost: 150,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -424,6 +452,7 @@ const definitions = {
 	ProbabilityMechanics: {
 		id: 'ProbabilityMechanics',
 		name: 'Probability Mechanics',
+		source_index: 29,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -439,6 +468,7 @@ const definitions = {
 	PreSentientAlgorithms: {
 		id: 'PreSentientAlgorithms',
 		name: 'Pre-Sentient Algorithms',
+		source_index: 30,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 1,
@@ -454,6 +484,7 @@ const definitions = {
 	SuperTensileSolids: {
 		id: 'SuperTensileSolids',
 		name: 'Super Tensile Solids',
+		source_index: 31,
 		cost: 110,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -469,6 +500,7 @@ const definitions = {
 	PlanetaryNetworks: {
 		id: 'PlanetaryNetworks',
 		name: 'Planetary Networks',
+		source_index: 32,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -484,6 +516,7 @@ const definitions = {
 	DigitalSentience: {
 		id: 'DigitalSentience',
 		name: 'Digital Sentience',
+		source_index: 33,
 		cost: 110,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 1,
@@ -499,6 +532,7 @@ const definitions = {
 	SelfAwareMachines: {
 		id: 'SelfAwareMachines',
 		name: 'Self-Aware Machines',
+		source_index: 34,
 		cost: 120,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 1,
@@ -514,6 +548,7 @@ const definitions = {
 	DoctrineInitiative: {
 		id: 'DoctrineInitiative',
 		name: 'Doctrine: Initiative',
+		source_index: 35,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -529,6 +564,7 @@ const definitions = {
 	DoctrineFlexibility: {
 		id: 'DoctrineFlexibility',
 		name: 'Doctrine: Flexibility',
+		source_index: 36,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -544,6 +580,7 @@ const definitions = {
 	IntellectualIntegrity: {
 		id: 'IntellectualIntegrity',
 		name: 'Intellectual Integrity',
+		source_index: 37,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -559,6 +596,7 @@ const definitions = {
 	SyntheticFossilFuels: {
 		id: 'SyntheticFossilFuels',
 		name: 'Synthetic Fossil Fuels',
+		source_index: 38,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -574,6 +612,7 @@ const definitions = {
 	DoctrineAirPower: {
 		id: 'DoctrineAirPower',
 		name: 'Doctrine: Air Power',
+		source_index: 39,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -589,6 +628,7 @@ const definitions = {
 	PhotonWaveMechanics: {
 		id: 'PhotonWaveMechanics',
 		name: 'Photon/Wave Mechanics',
+		source_index: 40,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -604,6 +644,7 @@ const definitions = {
 	MindMachineInterface: {
 		id: 'MindMachineInterface',
 		name: 'Mind/Machine Interface',
+		source_index: 41,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 1,
@@ -619,6 +660,7 @@ const definitions = {
 	Nanominiaturization: {
 		id: 'Nanominiaturization',
 		name: 'Nanominiaturization',
+		source_index: 42,
 		cost: 90,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -634,6 +676,7 @@ const definitions = {
 	DoctrineLoyalty: {
 		id: 'DoctrineLoyalty',
 		name: 'Doctrine: Loyalty',
+		source_index: 43,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -649,6 +692,7 @@ const definitions = {
 	EthicalCalculus: {
 		id: 'EthicalCalculus',
 		name: 'Ethical Calculus',
+		source_index: 44,
 		cost: 30,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -664,6 +708,7 @@ const definitions = {
 	IndustrialEconomics: {
 		id: 'IndustrialEconomics',
 		name: 'Industrial Economics',
+		source_index: 45,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -679,6 +724,7 @@ const definitions = {
 	IndustrialAutomation: {
 		id: 'IndustrialAutomation',
 		name: 'Industrial Automation',
+		source_index: 46,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -694,6 +740,7 @@ const definitions = {
 	CentauriMeditation: {
 		id: 'CentauriMeditation',
 		name: 'Centauri Meditation',
+		source_index: 47,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -709,6 +756,7 @@ const definitions = {
 	SecretsHumanBrain: {
 		id: 'SecretsHumanBrain',
 		name: 'Secrets of the Human Brain',
+		source_index: 48,
 		cost: 80,
 		free_technology_for_first_discoverer: true,
 		probe_morale_bonus: 0,
@@ -724,6 +772,7 @@ const definitions = {
 	GeneSplicing: {
 		id: 'GeneSplicing',
 		name: 'Gene Splicing',
+		source_index: 49,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -739,6 +788,7 @@ const definitions = {
 	BioEngineering: {
 		id: 'BioEngineering',
 		name: 'Bio-Engineering',
+		source_index: 50,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -754,6 +804,7 @@ const definitions = {
 	Biomachinery: {
 		id: 'Biomachinery',
 		name: 'Biomachinery',
+		source_index: 51,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -769,6 +820,7 @@ const definitions = {
 	NeuralGrafting: {
 		id: 'NeuralGrafting',
 		name: 'Neural Grafting',
+		source_index: 52,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -784,6 +836,7 @@ const definitions = {
 	Cyberethics: {
 		id: 'Cyberethics',
 		name: 'Cyberethics',
+		source_index: 53,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -799,6 +852,7 @@ const definitions = {
 	Eudaimonia: {
 		id: 'Eudaimonia',
 		name: 'Eudaimonia',
+		source_index: 54,
 		cost: 130,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -814,6 +868,7 @@ const definitions = {
 	TheWillToPower: {
 		id: 'TheWillToPower',
 		name: 'The Will to Power',
+		source_index: 55,
 		cost: 100,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -829,6 +884,7 @@ const definitions = {
 	ThresholdOfTranscendence: {
 		id: 'ThresholdOfTranscendence',
 		name: 'Threshold of Transcendence',
+		source_index: 56,
 		cost: 160,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -844,6 +900,7 @@ const definitions = {
 	MatterTransmission: {
 		id: 'MatterTransmission',
 		name: 'Matter Transmission',
+		source_index: 57,
 		cost: 140,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -859,6 +916,7 @@ const definitions = {
 	CentauriEmpathy: {
 		id: 'CentauriEmpathy',
 		name: 'Centauri Empathy',
+		source_index: 58,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -874,6 +932,7 @@ const definitions = {
 	EnvironmentalEconomics: {
 		id: 'EnvironmentalEconomics',
 		name: 'Environmental Economics',
+		source_index: 59,
 		cost: 60,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -889,6 +948,7 @@ const definitions = {
 	EcologicalEngineering: {
 		id: 'EcologicalEngineering',
 		name: 'Ecological Engineering',
+		source_index: 60,
 		cost: 50,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -904,6 +964,7 @@ const definitions = {
 	PlanetaryEconomics: {
 		id: 'PlanetaryEconomics',
 		name: 'Planetary Economics',
+		source_index: 61,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -919,6 +980,7 @@ const definitions = {
 	AdvancedEcologicalEngineering: {
 		id: 'AdvancedEcologicalEngineering',
 		name: 'Adv. Ecological Engineering',
+		source_index: 62,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -934,6 +996,7 @@ const definitions = {
 	CentauriPsi: {
 		id: 'CentauriPsi',
 		name: 'Centauri Psi',
+		source_index: 63,
 		cost: 90,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -949,6 +1012,7 @@ const definitions = {
 	SecretsOfAlphaCentauri: {
 		id: 'SecretsOfAlphaCentauri',
 		name: 'Secrets of Alpha Centauri',
+		source_index: 64,
 		cost: 130,
 		free_technology_for_first_discoverer: true,
 		probe_morale_bonus: 0,
@@ -964,6 +1028,7 @@ const definitions = {
 	SecretsOfCreation: {
 		id: 'SecretsOfCreation',
 		name: 'Secrets of Creation',
+		source_index: 65,
 		cost: 110,
 		free_technology_for_first_discoverer: true,
 		probe_morale_bonus: 0,
@@ -979,6 +1044,7 @@ const definitions = {
 	AdvancedSpaceflight: {
 		id: 'AdvancedSpaceflight',
 		name: 'Advanced Spaceflight',
+		source_index: 66,
 		cost: 90,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -994,6 +1060,7 @@ const definitions = {
 	HomoSuperior: {
 		id: 'HomoSuperior',
 		name: 'Homo Superior',
+		source_index: 67,
 		cost: 90,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1009,6 +1076,7 @@ const definitions = {
 	OrganicSuperlubricant: {
 		id: 'OrganicSuperlubricant',
 		name: 'Organic Superlubricant',
+		source_index: 68,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1024,6 +1092,7 @@ const definitions = {
 	QuantumMachinery: {
 		id: 'QuantumMachinery',
 		name: 'Quantum Machinery',
+		source_index: 69,
 		cost: 130,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1039,6 +1108,7 @@ const definitions = {
 	MatterEditation: {
 		id: 'MatterEditation',
 		name: 'Matter Editation',
+		source_index: 71,
 		cost: 130,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1054,6 +1124,7 @@ const definitions = {
 	OpticalComputers: {
 		id: 'OpticalComputers',
 		name: 'Optical Computers',
+		source_index: 72,
 		cost: 40,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1069,6 +1140,7 @@ const definitions = {
 	IndustrialNanorobotics: {
 		id: 'IndustrialNanorobotics',
 		name: 'Industrial Nanorobotics',
+		source_index: 73,
 		cost: 100,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1084,6 +1156,7 @@ const definitions = {
 	CentauriGenetics: {
 		id: 'CentauriGenetics',
 		name: 'Centauri Genetics',
+		source_index: 74,
 		cost: 80,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1099,6 +1172,7 @@ const definitions = {
 	SentientEconometrics: {
 		id: 'SentientEconometrics',
 		name: 'Sentient Econometrics',
+		source_index: 75,
 		cost: 120,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1114,6 +1188,7 @@ const definitions = {
 	RetroviralEngineering: {
 		id: 'RetroviralEngineering',
 		name: 'Retroviral Engineering',
+		source_index: 76,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1129,6 +1204,7 @@ const definitions = {
 	OrbitalSpaceflight: {
 		id: 'OrbitalSpaceflight',
 		name: 'Orbital Spaceflight',
+		source_index: 77,
 		cost: 70,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,
@@ -1144,6 +1220,7 @@ const definitions = {
 	TranscendentThought: {
 		id: 'TranscendentThought',
 		name: 'Transcendent Thought',
+		source_index: 88,
 		cost: 170,
 		free_technology_for_first_discoverer: false,
 		probe_morale_bonus: 0,

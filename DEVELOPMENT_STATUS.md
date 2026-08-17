@@ -1778,3 +1778,16 @@ Retirement cannot be declared early. The Windows RelWithDebInfo build, all 149 n
 script tests, and a post-validation set of 10 default-runtime, frontend, save/load,
 and multiplayer tests passed. A naturally played campaign reaching the retirement
 year has not been run and remains a manual long-game regression requirement.
+
+Technology completion now opens a Datalinks presentation before the next
+research chooser. It loads each base technology's short description, long
+description, and quotation from the player's installed `TECHSHORTS.txt`,
+`techlongs.txt`, and `Blurbs.txt`; no Firaxis prose is committed to this
+repository. The generated catalog preserves original `alpha.txt` source
+indices so deleted and user-technology rows do not misalign later discoveries,
+including Transcendent Thought at `TECH88`. All 77 base entries loaded in the
+live research UI smoke, the complete 148-test script suite passed in 191.76
+seconds, and seven research, SDL input, Diplomacy, frontend, and save/load
+runtime checks passed in 60.19 seconds. Original discovery videos, voiceovers,
+and exact graphical presentation remain absent, and normal campaign play still
+requires human approval before the project can be called shippable.

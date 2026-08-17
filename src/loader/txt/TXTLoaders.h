@@ -4,6 +4,7 @@ namespace loader {
 namespace txt {
 
 class FactionTXTLoader;
+class TechnologyTXTLoader;
 
 class TXTLoaders {
 public:
@@ -11,6 +12,7 @@ public:
 	~TXTLoaders();
 
 	FactionTXTLoader* const factions;
+	TechnologyTXTLoader* const technologies;
 };
 
 }

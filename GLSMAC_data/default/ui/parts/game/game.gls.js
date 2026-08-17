@@ -72,9 +72,28 @@ return (m) => {
 
 		game.on('research_selection_requested', (e) => {
 			if (
-				p != null && game.get_player().id == e.player.id &&
-				!p.modules.popup.is_shown()
+				p == null || game.get_player().id != e.player.id ||
+				p.modules.popup.is_shown()
 			) {
+				return;
+			}
+			if (
+				#typeof(e.technology_id) == 'String' && e.technology_id != '' &&
+				#typeof(e.technology_name) == 'String' && e.technology_name != ''
+			) {
+				p.modules.popup.set('technology_discovery', {
+					technology_id: e.technology_id,
+					technology_name: e.technology_name,
+				});
+				p.modules.popup.show('technology_discovery', (result) => {
+					#async(1, () => {
+						if (!p.modules.popup.is_shown()) {
+							p.modules.popup.show('research');
+						}
+						return false;
+					});
+				});
+			} else {
 				p.modules.popup.show('research');
 			}
 		});

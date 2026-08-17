@@ -51,6 +51,7 @@ class TechnologyRow:
     code: str
     prerequisite_codes: tuple[str, ...]
     flags: int
+    source_index: int
 
 
 @dataclass(frozen=True)
@@ -156,7 +157,7 @@ def read_section(path: Path, section: str) -> list[str]:
 
 def read_technologies(path: Path) -> list[TechnologyRow]:
     technologies: list[TechnologyRow] = []
-    for line in read_section(path, "TECHNOLOGY"):
+    for source_index, line in enumerate(read_section(path, "TECHNOLOGY")):
         row = next(csv.reader([line], skipinitialspace=True))
         if len(row) < 9:
             raise ValueError(f"invalid TECHNOLOGY row: {line}")
@@ -172,6 +173,7 @@ def read_technologies(path: Path) -> list[TechnologyRow]:
                 code=row[1].strip(),
                 prerequisite_codes=prerequisite_codes,
                 flags=int(row[8].strip(), 2),
+                source_index=source_index,
             )
         )
     return technologies
@@ -322,6 +324,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
     prerequisites: dict[str, tuple[str, ...]] = {}
     names: dict[str, str] = {}
     flags: dict[str, int] = {}
+    source_indices: dict[str, int] = {}
     order: list[str] = []
     for row in rows:
         technology_id = code_to_id[row.code]
@@ -336,6 +339,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
         prerequisites[technology_id] = prerequisite_ids
         names[technology_id] = row.name
         flags[technology_id] = row.flags
+        source_indices[technology_id] = row.source_index
         order.append(technology_id)
 
     tiers: dict[str, int] = {}
@@ -377,6 +381,7 @@ def generate_technology_catalog(rows: list[TechnologyRow]) -> str:
                 f"\t{technology_id}: {{",
                 f"\t\tid: {quote(technology_id)},",
                 f"\t\tname: {quote(names[technology_id])},",
+                f"\t\tsource_index: {source_indices[technology_id]},",
                 f"\t\tcost: {cost},",
                 *(
                     f"\t\t{field}: " + (

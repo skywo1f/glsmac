@@ -4,6 +4,7 @@ return {
 		'turn_confirmation',
 		'please_dont_go',
 		'victory',
+		'technology_discovery',
 		'research',
 		'technology_report',
 		'faction_report',

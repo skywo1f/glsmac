@@ -34,11 +34,50 @@
 				event.game.trigger('economy_updated', {player: event.data.player});
 			},
 		});
+		game.register_event('research_ui_runtime_discovery', {
+			validate: (event) => {
+				if (event.caller != event.data.player.id) {
+					return 'Only the player may request its discovery presentation';
+				}
+			},
+			apply: (event) => {
+				event.game.trigger('research_selection_requested', {
+					player: event.data.player,
+					technology_id: 'Biogenetics',
+					technology_name: 'Biogenetics',
+				});
+				return {};
+			},
+			rollback: (event) => {},
+		});
 		game.on('economy_updated', (event) => {
 			invalidated = true;
 		});
 		game.set('f_ui_ready', (p) => {
 			const player = game.get_player();
+			let technology_count = 0;
+			for (technology_id of game.get('f_technology_get_order')()) {
+				const definition = game.get('f_technology_get_definition')(technology_id);
+				if (definition == null || #typeof(definition.source_index) != 'Int') {
+					fail('technology source index is missing: ' + technology_id);
+					return;
+				}
+				const technology_text = glsmac.get_technology_text(definition.source_index);
+				if (
+					technology_text.short_description == '' ||
+					technology_text.long_description == '' || technology_text.quote == '' ||
+					#sizeof(technology_text.description_lines) < 2 ||
+					#sizeof(technology_text.quote_lines) < 2
+				) {
+					fail('installed technology text did not load: ' + technology_id);
+					return;
+				}
+				technology_count++;
+			}
+			if (technology_count != 77) {
+				fail('installed technology text count is ' + #to_string(technology_count));
+				return;
+			}
 			const state = player.get_research_state();
 			for (target of game.get('f_technology_get_available_targets')(
 				state.technologies
@@ -52,43 +91,93 @@
 				return;
 			}
 
-			p.modules.popup.show('research');
-			const research = p.modules.popup.popup_defs.research;
-			if (research.available_count < 2) {
-				fail('research chooser did not expose multiple legal technologies');
-				return;
+			let discovery_requested = false;
+			if (
+				p.modules.popup.popup != null &&
+				p.modules.popup.popup.id == 'research'
+			) {
+				p.modules.popup.popup_defs.research.begin_button.trigger('click');
 			}
-			research.select_target(selected_target);
-			game.event('research_ui_runtime_invalidate', {player: game.get_player()});
-
-			let wait_ticks = 0;
+			let discovery_open_ticks = 0;
 			#async(50, () => {
-				wait_ticks++;
-				if (!invalidated) {
-					if (wait_ticks >= 100) {
-						fail('backend projection refresh timed out');
+				if (!discovery_requested) {
+					if (p.modules.popup.is_shown()) {
+						return true;
+					}
+					discovery_requested = true;
+					game.event('research_ui_runtime_discovery', {player: player});
+					return true;
+				}
+				if (
+					p.modules.popup.popup == null ||
+					p.modules.popup.popup.id != 'technology_discovery'
+				) {
+					discovery_open_ticks++;
+					if (discovery_open_ticks >= 100) {
+						fail('technology discovery popup did not open');
 						return false;
 					}
 					return true;
 				}
-				research.begin_button.trigger('click');
-				let target_ticks = 0;
+				const discovery = p.modules.popup.popup_defs.technology_discovery;
+				if (discovery.line_count < 6) {
+					fail('technology discovery popup did not display its datalinks text');
+					return false;
+				}
+				discovery.continue_button.trigger('click');
+
+				let discovery_wait_ticks = 0;
 				#async(50, () => {
-					target_ticks++;
-					if (game.get_player().get_research_state().target != selected_target) {
-						if (target_ticks >= 100) {
-							fail('live Begin Research click did not set the selected target');
+					discovery_wait_ticks++;
+					if (
+						p.modules.popup.popup == null ||
+						p.modules.popup.popup.id != 'research'
+					) {
+						if (discovery_wait_ticks >= 100) {
+							fail('technology discovery did not hand off to the research chooser');
 							return false;
 						}
 						return true;
 					}
-					if (p.modules.popup.popup != null) {
-						fail('research popup stayed open after selecting a target');
+					const research = p.modules.popup.popup_defs.research;
+					if (research.available_count < 2) {
+						fail('research chooser did not expose multiple legal technologies');
 						return false;
 					}
-					finished = true;
-					#print('RESEARCH_UI_RUNTIME_PASS: target=' + selected_target);
-					glsmac.exit();
+					research.select_target(selected_target);
+					game.event('research_ui_runtime_invalidate', {player: game.get_player()});
+
+					let wait_ticks = 0;
+					#async(50, () => {
+						wait_ticks++;
+						if (!invalidated) {
+							if (wait_ticks >= 100) {
+								fail('backend projection refresh timed out');
+								return false;
+							}
+							return true;
+						}
+						research.begin_button.trigger('click');
+						let target_ticks = 0;
+						#async(50, () => {
+							target_ticks++;
+							if (
+								game.get_player().get_research_state().target != selected_target ||
+								p.modules.popup.popup != null
+							) {
+								if (target_ticks >= 100) {
+									fail('live research selection did not finish');
+									return false;
+								}
+								return true;
+							}
+							finished = true;
+							#print('RESEARCH_UI_RUNTIME_PASS: target=' + selected_target);
+							glsmac.exit();
+							return false;
+						});
+						return false;
+					});
 					return false;
 				});
 				return false;

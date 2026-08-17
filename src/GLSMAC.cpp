@@ -7,6 +7,8 @@
 #include "engine/Engine.h"
 #include "config/Config.h"
 #include "resource/ResourceManager.h"
+#include "loader/txt/TXTLoaders.h"
+#include "loader/txt/TechnologyTXTLoader.h"
 #include "scheduler/Scheduler.h"
 #include "util/LogHelper.h"
 #include "gc/Space.h"
@@ -21,6 +23,7 @@
 #include "gse/Exception.h"
 #include "gse/value/Undefined.h"
 #include "gse/value/Bool.h"
+#include "gse/value/Array.h"
 
 #include "game/backend/Game.h"
 #include "game/backend/State.h"
@@ -403,6 +406,45 @@ WRAPIMPL_BEGIN( GLSMAC )
 				return VALUE(
 					gse::value::String,,
 					g_engine->GetResourceManager()->GetCustomPath( "maps/" + filename )
+				);
+			} )
+		},
+		{
+			"get_technology_text",
+			NATIVE_CALL() {
+				N_EXPECT_ARGS( 1 );
+				N_GETVALUE( index, 0, Int );
+				if ( index < 0 || index >= 89 ) {
+					GSE_ERROR(
+						gse::EC.INVALID_CALL,
+						"Technology text index is out of range: " + std::to_string( index )
+					);
+				}
+				const auto& data = g_engine->GetTXTLoaders()->technologies->GetTechnologyText(
+					static_cast< size_t >( index )
+				);
+				const auto wrap_lines = [ & ]( const std::vector< std::string >& lines ) {
+					gse::value::array_elements_t result = {};
+					result.reserve( lines.size() );
+					for ( const auto& line : lines ) {
+						result.push_back( VALUE( gse::value::String,, line ) );
+					}
+					return VALUE( gse::value::Array,, result );
+				};
+				return VALUEEXT(
+					gse::value::Object, GSE_CALL, gse::value::object_properties_t{
+						{
+							"short_description",
+							VALUE( gse::value::String,, data.short_description )
+						},
+						{
+							"long_description",
+							VALUE( gse::value::String,, data.long_description )
+						},
+						{ "quote", VALUE( gse::value::String,, data.quote ) },
+						{ "description_lines", wrap_lines( data.description_lines ) },
+						{ "quote_lines", wrap_lines( data.quote_lines ) },
+					}
 				);
 			} )
 		},

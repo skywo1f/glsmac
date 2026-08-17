@@ -3,6 +3,7 @@ const MAX_DEFINITION_VALUE = 1000000;
 const technology_fields = {
 	id: true,
 	name: true,
+	source_index: true,
 	cost: true,
 	free_technology_for_first_discoverer: true,
 	probe_morale_bonus: true,
@@ -397,6 +398,7 @@ const validate_technologies = (definitions, order, errors) => {
 			add_error(errors, path + '.id', 'must match catalog key ' + id);
 		}
 		validate_string(definition, 'name', path, errors, true);
+		validate_int(definition, 'source_index', path, errors, false, 0, 88);
 		validate_int(definition, 'cost', path, errors, true, 1, MAX_DEFINITION_VALUE);
 		validate_bool(
 			definition,

@@ -7,6 +7,7 @@ const biogenetics = technologies.get_definition('Biogenetics');
 test.assert(biogenetics == {
 	id: 'Biogenetics',
 	name: 'Biogenetics',
+	source_index: 0,
 	cost: 30,
 	free_technology_for_first_discoverer: false,
 	probe_morale_bonus: 0,
@@ -19,6 +20,9 @@ test.assert(biogenetics == {
 	fungus_nutrient_bonus: 0,
 	prerequisites: [],
 });
+test.assert(technologies.get_definition('QuantumPower').source_index == 25);
+test.assert(technologies.get_definition('MatterEditation').source_index == 71);
+test.assert(technologies.get_definition('TranscendentThought').source_index == 88);
 test.assert(
 	technologies.get_definition('SecretsHumanBrain').free_technology_for_first_discoverer
 );
