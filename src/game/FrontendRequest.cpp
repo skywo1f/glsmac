@@ -169,6 +169,12 @@ FrontendRequest::FrontendRequest( const FrontendRequest& other )
 	}
 }
 
+FrontendRequest::FrontendRequest( FrontendRequest&& other ) noexcept
+	: type( other.type ) {
+	data = other.data;
+	memset( &other.data, 0, sizeof( other.data ) );
+}
+
 FrontendRequest::~FrontendRequest() {
 	switch ( type ) {
 		case FR_QUIT: {

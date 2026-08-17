@@ -97,6 +97,7 @@ public:
 	};
 	FrontendRequest( const request_type_t type );
 	FrontendRequest( const FrontendRequest& other );
+	FrontendRequest( FrontendRequest&& other ) noexcept;
 	virtual ~FrontendRequest();
 
 	const request_type_t type = FR_NONE;

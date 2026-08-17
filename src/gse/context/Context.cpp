@@ -36,10 +36,10 @@ const bool Context::HasVariable( const std::string& name ) {
 	if ( it != m_variables.end() ) {
 		return true;
 	}
-	const auto ref_it = m_ref_contexts.find( name );
-	if ( ref_it != m_ref_contexts.end() ) {
-		ASSERT( ref_it->second != this, "unexpected ref context recursion (was this context freed while in use?)" );
-		return ref_it->second->HasVariable( name );
+	auto* const parent = GetParentContext();
+	if ( parent ) {
+		ASSERT( parent != this, "unexpected parent context recursion" );
+		return parent->HasVariable( name );
 	}
 	return false;
 }
@@ -56,11 +56,10 @@ Value* const Context::GetVariable( const std::string& name, const si_t& si, gse:
 	if ( it != m_variables.end() ) {
 		return it->second.value;
 	}
-	const auto ref_it = m_ref_contexts.find( name );
-	if ( ref_it != m_ref_contexts.end() ) {
-		const auto ref = ref_it->second;
-		ASSERT( ref != this, "unexpected ref context recursion (was this context freed while in use?)" );
-		return ref->GetVariable( name, si, ep );
+	auto* const parent = GetParentContext();
+	if ( parent ) {
+		ASSERT( parent != this, "unexpected parent context recursion" );
+		return parent->GetVariable( name, si, ep );
 	}
 	throw Exception( EC.REFERENCE_ERROR, "Variable '" + name + "' is not defined", CONTEXT_GSE_CALL );
 }
@@ -104,9 +103,10 @@ void Context::UpdateVariable( const std::string& name, Value* const value, CONTE
 		it->second.value = value;
 		return;
 	}
-	const auto ref_it = m_ref_contexts.find( name );
-	if ( ref_it != m_ref_contexts.end() ) {
-		ref_it->second->UpdateVariable( name, value, si, ep );
+	auto* const parent = GetParentContext();
+	if ( parent ) {
+		ASSERT( parent != this, "unexpected parent context recursion" );
+		parent->UpdateVariable( name, value, si, ep );
 		return;
 	}
 	throw Exception( EC.REFERENCE_ERROR, "Variable '" + name + "' is not defined", CONTEXT_GSE_CALL );
@@ -144,13 +144,6 @@ ChildContext* const Context::ForkAndExecute(
 ) {
 	CHECKACCUM( gc_space );
 	NEWV( result, ChildContext, m_gse, this, si, is_traceable );
-	// functions have access to parent variables
-	for ( auto& it : m_ref_contexts ) {
-		result->m_ref_contexts.insert_or_assign( it.first, it.second );
-	}
-	for ( auto& it : m_variables ) {
-		result->m_ref_contexts.insert_or_assign( it.first, this );
-	}
 	if ( m_this ) {
 		result->m_this = m_this;
 	}
@@ -168,16 +161,6 @@ void Context::Clear() {
 	}
 }
 
-void Context::UnrefVariable( const std::string& name ) {
-	const auto& it = m_ref_contexts.find( name );
-	if ( it != m_ref_contexts.end() ) {
-		m_ref_contexts.erase( it );
-		for ( const auto& c : m_child_contexts ) {
-			c->UnrefVariable( name );
-		}
-	}
-}
-
 void Context::GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) {
 	gc::Object::GetReachableObjects( reachable_objects );
 
@@ -188,12 +171,6 @@ void Context::GetReachableObjects( std::unordered_set< Object* >& reachable_obje
 		GC_DEBUG_BEGIN( v.first );
 		GC_REACHABLE( v.second.value );
 		GC_DEBUG_END();
-	}
-	GC_DEBUG_END();
-
-	GC_DEBUG_BEGIN( "ref_contexts" );
-	for ( const auto& it : m_ref_contexts ) {
-		GC_REACHABLE( it.second );
 	}
 	GC_DEBUG_END();
 

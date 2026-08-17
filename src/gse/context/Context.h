@@ -69,7 +69,6 @@ public:
 	);
 
 	void Clear();
-	void UnrefVariable( const std::string& name );
 
 	virtual void GetReachableObjects( std::unordered_set< Object* >& reachable_objects ) override;
 
@@ -85,8 +84,6 @@ protected:
 
 	typedef std::unordered_map< std::string, var_info_t > variables_t;
 	variables_t m_variables = {};
-	typedef std::unordered_map< std::string, Context* > ref_contexts_t;
-	ref_contexts_t m_ref_contexts = {};
 
 private:
 	std::unordered_set< ChildContext* > m_child_contexts = {};

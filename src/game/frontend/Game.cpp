@@ -1235,13 +1235,17 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.unit_update;
 			auto* unit = m_um->GetUnitById( d.unit_id );
 			ASSERT( unit, "unit is null" );
+			const auto& old_coords = unit->GetTile()->GetCoords();
+			const bool tile_changed =
+				d.tile_coords.x != old_coords.x || d.tile_coords.y != old_coords.y;
+			const bool visibility_changed =
+				unit->IsEmbarked() != d.embarked || tile_changed;
 			unit->SetMovement( d.movement );
 			unit->SetMorale( d.morale, *d.morale_string );
 			unit->SetHealth( d.health );
 			unit->SetEmbarked( d.embarked );
 			unit->SetAvailableForOrders( d.active );
-			const auto& c = unit->GetTile()->GetCoords();
-			if ( d.tile_coords.x != c.x || d.tile_coords.y != c.y ) {
+			if ( tile_changed ) {
 				if ( !d.embarked ) {
 					THROW( "non-embarked unit changed tiles without a move request" );
 				}
@@ -1251,6 +1255,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 				);
 			}
 			unit->Refresh();
+			m_map_visibility_dirty = m_map_visibility_dirty || visibility_changed;
 			break;
 		}
 		case FrontendRequest::FR_UNIT_MOVE: {
@@ -1328,6 +1333,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			const auto& d = request->data.base_update;
 			auto* base = m_bm->GetBaseById( d.base_id );
 			ASSERT( base, "base is null" );
+			const bool ownership_changed = base->GetOwner()->GetIndex() != d.slot_index;
 			auto* const faction = m_fm->GetFactionById( *d.faction_id );
 			ASSERT( faction, "base faction not found: " + *d.faction_id );
 			base::Base::pops_t pops = {};
@@ -1344,6 +1350,7 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			base->SetPops( pops );
 			m_bm->UpdateBase( base, d.slot_index, faction, *d.name );
 			m_bm->RefreshBase( base );
+			m_map_visibility_dirty = m_map_visibility_dirty || ownership_changed;
 			break;
 		}
 		case FrontendRequest::FR_RESOURCE_DEFINE: {
@@ -1388,12 +1395,10 @@ void Game::ProcessRequest( const FrontendRequest* request ) {
 			case FrontendRequest::FR_UPDATE_TILES:
 			case FrontendRequest::FR_UNIT_SPAWN:
 			case FrontendRequest::FR_UNIT_DESPAWN:
-			case FrontendRequest::FR_UNIT_UPDATE:
 			case FrontendRequest::FR_UNIT_MOVE:
 			case FrontendRequest::FR_UNIT_TELEPORT:
 			case FrontendRequest::FR_BASE_SPAWN:
 			case FrontendRequest::FR_BASE_DESPAWN:
-			case FrontendRequest::FR_BASE_UPDATE:
 				m_map_visibility_dirty = true;
 				break;
 			default:
